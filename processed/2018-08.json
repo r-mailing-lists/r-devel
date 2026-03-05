@@ -1,0 +1,44 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2018-08",
+  "messages": [
+    {
+      "id": "msg-228ead09fc99",
+      "message_id": "<CAFDcVCSkhGPSPBPXaqwh5gVB1MhbzJWUVz4iNzJPysrWoS8X=A@mail.gmail.com>",
+      "from_name": "Henrik Bengtsson",
+      "from_email_hash": "c5f7d707855e6bb7ec280aab1562d5b1c9b9adbf9c78f7d90cc0fc0523b614bc",
+      "date": "2018-08-31T17:24:32-07:00",
+      "subject": "[Rd] ROBUSTNESS: x || y and x && y to give warning/error if length(x) != 1 or length(y) != 1",
+      "subject_clean": "ROBUSTNESS: x || y and x && y to give warning/error if length(x) != 1 or length(y) != 1",
+      "in_reply_to": "<CF5BD448-B846-43EE-AB33-F3BFD68C5E34@dans.knaw.nl>",
+      "references": [
+        "<CAFDcVCSEqHvfhD358GD3Fgz6FjuOiMiYHswz+pyTnAEoV0CyZw@mail.gmail.com>",
+        "<CAO1zAVaCyKOQLFi2161PB3ycHbr72ue3EtTa189Lz-C+rO1_0w@mail.gmail.com>",
+        "<c5c5721f-65fb-39f0-c7e9-77bb413fbb03@kogentum.hu>",
+        "<CAO1zAVYgQyKP3AbyB_AdTPKogWGQs=cC+YaTtLuG2OSahzvrVA@mail.gmail.com>",
+        "<23432.5145.624837.968060@stat.math.ethz.ch>",
+        "<CABdHhvHvjHNdD3XkU=qA8CzxnL6VFritQ2tPy7JrY8VfbnR4rg@mail.gmail.com>",
+        "<CF5BD448-B846-43EE-AB33-F3BFD68C5E34@dans.knaw.nl>"
+      ],
+      "body_plain": "Thanks all for a great discussion.\n\nI think we can introduce assertions for length(x) <= 1 (and produce a\nwarning/error if not) without changing the value of these &&/||\nexpressions.\n\nIn R 3.4.0, '_R_CHECK_LENGTH_1_CONDITION_=true' was introduced to turn\nwarnings on \"the condition has length > 1 and only the first element\nwill be used\" in cases like 'if (c(TRUE, TRUE)) 42'  into errors.  The\nidea is to later make '_R_CHECK_LENGTH_1_CONDITION_=true' the new\ndefault.  I guess, someday this will always produce an error.\n\nSimilarly, the test for this &&/|| issue could be controlled by\n'_R_CHECK_LENGTH_1_LOGICAL_OPS_=warn' and\n'_R_CHECK_LENGTH_1_LOGICAL_OPS_=err' and possibly have\n'_R_CHECK_LENGTH_1_LOGICAL_OPS_=true' default to 'warn' and later\n'err'.\n\nChanging the behavior of cases where length(x) == 0 is more likely to\nbreak *some* code out there, and might require a separate\ndiscussion/set of validations.  It's not unlikely that someone\nactually relied on this to resolve to NA.  BTW, since it hasn't been\nexplicitly said, it's \"logical\" that we have TRUE && logical(0)\nresolving to NA, because it currently behaves as TRUE[1] &&\nlogical(0)[1], which resolves to TRUE && NA => NA.  If a decision on\nthe zero-length case would delay fixing the length(x) > 1 case, I\nwould postpone the decision on the former.\n\n/Henrik\n\nOn Fri, Aug 31, 2018 at 2:48 AM Emil Bode <emil.bode at dans.knaw.nl> wrote:\n>\n>\n> ?On 30/08/2018, 20:15, \"R-devel on behalf of Hadley Wickham\" <r-devel-bounces at r-project.org on behalf of h.wickham at gmail.com> wrote:\n>\n>     On Thu, Aug 30, 2018 at 10:58 AM Martin Maechler\n>     <maechler at stat.math.ethz.ch> wrote:\n>     >\n>     > >>>>> Joris Meys\n>     > >>>>>     on Thu, 30 Aug 2018 14:48:01 +0200 writes:\n>     >\n>     >     > On Thu, Aug 30, 2018 at 2:09 PM D?nes T?th\n>     >     > <toth.denes at kogentum.hu> wrote:\n>     >     >> Note that `||` and `&&` have never been symmetric:\n>     >     >>\n>     >     >> TRUE || stop() # returns TRUE stop() || TRUE # returns an\n>     >     >> error\n>     >     >>\n>     >     >>\n>     >     > Fair point. So the suggestion would be to check whether x\n>     >     > is of length 1 and whether y is of length 1 only when\n>     >     > needed. I.e.\n>     >\n>     >     > c(TRUE,FALSE) || TRUE\n>     >\n>     >     > would give an error and\n>     >\n>     >     > TRUE || c(TRUE, FALSE)\n>     >\n>     >     > would pass.\n>     >\n>     >     > Thought about it a bit more, and I can't come up with a\n>     >     > use case where the first line must pass. So if the short\n>     >     > circuiting remains and the extra check only gives a small\n>     >     > performance penalty, adding the error could indeed make\n>     >     > some bugs more obvious.\n>     >\n>     > I agree \"in theory\".\n>     > Thank you, Henrik, for bringing it up!\n>     >\n>     > In practice I think we should start having a warning signalled.\n>     > I have checked the source code in the mean time, and the check\n>     > is really very cheap\n>     > { because it can/should be done after checking isNumber(): so\n>     >   then we know we have an atomic and can use XLENGTH() }\n>     >\n>     >\n>     > The 0-length case I don't think we should change as I do find\n>     > NA (is logical!) to be an appropriate logical answer.\n>\n>     Can you explain your reasoning a bit more here? I'd like to understand\n>     the general principle, because from my perspective it's more\n>     parsimonious to say that the inputs to || and && must be length 1,\n>     rather than to say that inputs could be length 0 or length 1, and in\n>     the length 0 case they are replaced with NA.\n>\n>     Hadley\n>\n> I would say the value NA would cause warnings later on, that are easy to track down, so a return of NA is far less likely to cause problems than an unintended TRUE or FALSE. And I guess there would be some code reliant on 'logical(0) || TRUE' returning TRUE, that wouldn't necessarily be a mistake.\n>\n> But I think it's hard to predict how exactly people are using functions. I personally can't imagine a situation where I'd use || or && outside an if-statement, so I'd rather have the current behaviour, because I'm not sure if I'm reliant on logical(0) || TRUE  somewhere in my code (even though that would be ugly code, it's not wrong per se)\n> But I could always rewrite it, so I believe it's more a question of how much would have to be rewritten. Maybe implement it first in devel, to see how many people would complain?\n>\n> Emil Bode\n>\n>\n>\n>",
+      "body_snippet": "Thanks all for a great discussion.\n\nI think we can introduce assertions for length(x) <= 1 (and produce a\nwarning/error if not) without changing the value of these &&/||\nexpressions.\n\nIn R 3.4.0, '_R_",
+      "thread_id": "thread-228ead09fc99",
+      "thread_depth": 0,
+      "month": "2018-08"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-228ead09fc99",
+      "subject": "ROBUSTNESS: x || y and x && y to give warning/error if length(x) != 1 or length(y) != 1",
+      "message_count": 1,
+      "participants": [
+        "Henrik Bengtsson"
+      ],
+      "started": "2018-08-31T17:24:32-07:00",
+      "last_reply": "2018-08-31T17:24:32-07:00",
+      "root_message_id": "msg-228ead09fc99"
+    }
+  ]
+}

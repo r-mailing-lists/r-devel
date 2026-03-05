@@ -1,0 +1,3657 @@
+From cybergeorge2020 @end|ng |rom gm@||@com  Mon May  5 19:18:42 2025
+From: cybergeorge2020 @end|ng |rom gm@||@com (Tomek Gieorgijewski)
+Date: Mon, 5 May 2025 19:18:42 +0200
+Subject: [Rd] 
+ sqrt(.Machine$double.xmax)^2 == Inf, but only on Windows in R
+In-Reply-To: <mailman.54875.5.1746007202.43683.r-devel@r-project.org>
+References: <mailman.54875.5.1746007202.43683.r-devel@r-project.org>
+Message-ID: <CAFGdzpo+dd5oHkfsfhgUYQvmTrEVtKOedjC_D2FZb7391+K9xg@mail.gmail.com>
+
+Hello!
+
+My three Groschen:
+
+On MacOS (Intel CPU) and R 4.4.3 I report:
+> dput(.Machine$double.xmax, control = 'hex')
+0x1.fffffffffffffp+1023
+> dput(sqrt(.Machine$double.xmax), control = 'hex')
+0x1.fffffffffffffp+511
+> dput(sqrt(.Machine$double.xmax)^2, control = 'hex')
+0x1.ffffffffffffep+1023
+so as Ivan tested on Linux:
+
+> ...which differs from R on Linux:
+>
+> dput(.Machine$double.xmax, control = 'hex')
+> # 0x1.fffffffffffffp+1023
+> dput(sqrt(.Machine$double.xmax), control = 'hex')
+> # 0x1.fffffffffffffp+511
+> dput(sqrt(.Machine$double.xmax)^2, control = 'hex')
+> # 0x1.ffffffffffffep+1023
+>
+> --
+> Best regards,
+> Ivan
+>
+> --
+Also I've found when I was researching sqrt algorithms that on x86_64 GCC
+implements `sqrt` using machine instruction `sqrtsd` (sqrt scalar double):
+https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/x86_64/fpu/e_sqrt.c;h=33b59f67c10252bf8982303db2159f5a51c1ad9d;hb=f59f7adb4a00b7784cab1becdf257366104587b7
+
+So if it's used, on recent Intel CPUs should return consistent results
+among different platforms.
+I wonder what happens on Windows in this matter.
+--
+Also, to test what clang does, I compiled simple program doing square root
+of double value to assembly.
+It also shows usage of machine instruction:
+`sqrtsd  %xmm0, %xmm0`
+
+I guess OP reports the problem in consistency between R implementations on
+different OSs than precision itself.
+
+regards,
+Tomek.
+
+	[[alternative HTML version deleted]]
+
+
+From m|ch@e|ch|r|co4 @end|ng |rom gm@||@com  Tue May  6 08:35:57 2025
+From: m|ch@e|ch|r|co4 @end|ng |rom gm@||@com (Michael Chirico)
+Date: Mon, 5 May 2025 23:35:57 -0700
+Subject: [Rd] Recommend/clarify in ?utils::news that h2/h3 markdown
+ hierarchy is preferable to h1/h2
+Message-ID: <CAPRVBcxPtRETMPRNquOSfGsAZwYeBa9Enj3uHKBz9S9xPfcmpg@mail.gmail.com>
+
+The current wording in ?utils::news reads to me as implying we should
+use `#` and `##` for the respective version, category headings [1]:
+
+> File NEWS.md should contain the news in Markdown..., with the
+> primary heading level giving the version number... Where available,
+> secondary headings are taken to indicate categories.
+
+This style is quite common in R packages, but it trips the alarms of
+basically every markdown linter/style guide -- advice against using
+multiple <h1> tags in HTML abounds (e.g. [2], [3], [4]). There is some
+nuance, but I haven't seen anything suggesting those exceptions
+definitely apply for R package NEWS files.
+
+Anyway, utils::news _is_ perfectly happy with NEWS files using `##`
+and `###` instead [5]; this is documented in an internal comment [6].
+
+Is there an argument against (1) directly advocating h2/h3 usage in
+?utils::news; or, more softly, (2) documenting that any (L,L+1) pair,
+1<=L<=5, where 'L' gives version numbers as described, will be
+accepted when producing the news database? Note that doing so is
+perfectly back-compatible -- we needn't change the code at all, only
+its documentation.
+
+Mike C
+
+[1] https://github.com/r-devel/r-svn/blob/72d8171a54532ffe0fd44306caa0ee953cecc91e/src/library/utils/man/news.Rd#L95-L100
+[2] https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/Heading_Elements
+[3] https://yoast.com/one-h1-heading-per-post/
+[4] https://www.youtube.com/watch?v=GIn5qJKU8VM
+[5] https://gist.github.com/MichaelChirico/49f51edeecc288d7aabf6bc53cb1aa89
+[6] https://github.com/r-devel/r-svn/blob/72d8171a54532ffe0fd44306caa0ee953cecc91e/src/library/tools/R/news.R#L790-L807
+
+
+From @tephem@t|c|@n @end|ng |rom gm@||@com  Fri May  9 03:09:22 2025
+From: @tephem@t|c|@n @end|ng |rom gm@||@com (Stephen Wade)
+Date: Fri, 9 May 2025 11:09:22 +1000
+Subject: [Rd] array-bound error with GCC 13/14
+Message-ID: <CAHG+78w0m5_qFrsdghAje1K-SP5GdLpZt3i2DGQN+i8FVLBwFg@mail.gmail.com>
+
+The literanger package is no longer passing on CRAN
+(https://CRAN.R-project.org/package=literanger) due to array-bound
+warnings in GCC 13.3 and 14.2 (more details below).
+
+This _looks_ to me like one of either a) a compiler bug, b) a false
+positive, or c) (very unlikely) something in the standard library
+implementation.
+
+Have others seen warnings like this recently, and if so, what have you
+done about them? The warning did not appear in clang, nor with GCC
+15.1.0 on CRAN's Fedora test service.
+
+Firstly, the relevant code snippet:
+
+/** Compute adjusted p-values using Benjamini/Hochberg method */
+inline std::vector<double> adjust_pvalues(const std::vector<double> &
+unadjusted) {
+
+    const size_t n_pvalue = unadjusted.size();
+    if (n_pvalue < 2) return unadjusted; /* <-- WARNING HERE */
+
+    std::vector<double> adjusted(n_pvalue, 0);
+    /* Do some other stuff */
+    return adjusted;
+
+}
+
+
+Secondly, the warning (on my own machine, using GCC 13.2.0, which also
+has this problem):
+
+    inlined from ?std::vector<double> literanger::adjust_pvalues(const
+std::vector<double>&)? at ../src/literanger/utility_math.h:99:48:
+/usr/include/c++/13/bits/stl_algobase.h:437:30: warning: ?void*
+__builtin_memmove(void*, const void*, long unsigned int)? writing
+between 9 and 9223372036854775807 bytes into a region of size 8
+overflows the destination [-Wstringop-overflow=]
+  437 |             __builtin_memmove(__result, __first, sizeof(_Tp) * _Num);
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri May  9 15:17:55 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 9 May 2025 16:17:55 +0300
+Subject: [Rd] array-bound error with GCC 13/14
+In-Reply-To: <CAHG+78w0m5_qFrsdghAje1K-SP5GdLpZt3i2DGQN+i8FVLBwFg@mail.gmail.com>
+References: <CAHG+78w0m5_qFrsdghAje1K-SP5GdLpZt3i2DGQN+i8FVLBwFg@mail.gmail.com>
+Message-ID: <20250509161755.1da23a4b@trisector>
+
+? Fri, 9 May 2025 11:09:22 +1000
+Stephen Wade <stephematician at gmail.com> ?????:
+
+>     inlined from ?std::vector<double> literanger::adjust_pvalues(const
+> std::vector<double>&)? at ../src/literanger/utility_math.h:99:48:
+> /usr/include/c++/13/bits/stl_algobase.h:437:30: warning: ?void*
+> __builtin_memmove(void*, const void*, long unsigned int)? writing
+> between 9 and 9223372036854775807 bytes into a region of size 8
+> overflows the destination [-Wstringop-overflow=]
+>   437 |      __builtin_memmove(__result, __first, sizeof(_Tp) * _Num);
+
+The same problem (different reproducer, slightly different warning, but
+same place in the standard library and similar circumstances) has been
+reported as a false positive in GCC, Bug 109717:
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=109717
+
+There are comments by GCC developers acknowledging that the overflow
+detection may "detect" overflows in code paths that cannot be taken,
+but they don't see an easy way to fix the warnings on the compiler side.
+
+-- 
+Best regards,
+Ivan
+
+
+From kev|nu@hey @end|ng |rom gm@||@com  Fri May  9 19:29:06 2025
+From: kev|nu@hey @end|ng |rom gm@||@com (Kevin Ushey)
+Date: Fri, 9 May 2025 10:29:06 -0700
+Subject: [Rd] array-bound error with GCC 13/14
+In-Reply-To: <20250509161755.1da23a4b@trisector>
+References: <CAHG+78w0m5_qFrsdghAje1K-SP5GdLpZt3i2DGQN+i8FVLBwFg@mail.gmail.com>
+ <20250509161755.1da23a4b@trisector>
+Message-ID: <CAJXgQP1WVwAsBfzMD_aEukHhcVCivjBCzWQ7Yp37=+CX=mRjzQ@mail.gmail.com>
+
+Hopefully a member of the CRAN team will tell me I'm wrong, but I
+think whether or not there is a compiler bug is ultimately irrelevant
+-- packages on CRAN must compile cleanly even with potentially-buggy
+development versions of compilers.
+
+So, whether or not there is a bug in gcc is moot -- you'll need to
+find a way to avoid triggering this issue in your package code.
+
+Best,
+Kevin
+
+On Fri, May 9, 2025 at 6:18?AM Ivan Krylov via R-devel
+<r-devel at r-project.org> wrote:
+>
+> ? Fri, 9 May 2025 11:09:22 +1000
+> Stephen Wade <stephematician at gmail.com> ?????:
+>
+> >     inlined from ?std::vector<double> literanger::adjust_pvalues(const
+> > std::vector<double>&)? at ../src/literanger/utility_math.h:99:48:
+> > /usr/include/c++/13/bits/stl_algobase.h:437:30: warning: ?void*
+> > __builtin_memmove(void*, const void*, long unsigned int)? writing
+> > between 9 and 9223372036854775807 bytes into a region of size 8
+> > overflows the destination [-Wstringop-overflow=]
+> >   437 |      __builtin_memmove(__result, __first, sizeof(_Tp) * _Num);
+>
+> The same problem (different reproducer, slightly different warning, but
+> same place in the standard library and similar circumstances) has been
+> reported as a false positive in GCC, Bug 109717:
+> https://gcc.gnu.org/bugzilla/show_bug.cgi?id=109717
+>
+> There are comments by GCC developers acknowledging that the overflow
+> detection may "detect" overflows in code paths that cannot be taken,
+> but they don't see an easy way to fix the warnings on the compiler side.
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From o||v|er@benz @end|ng |rom b-d@t@@ch  Fri May  9 20:16:52 2025
+From: o||v|er@benz @end|ng |rom b-d@t@@ch (Olivier Benz)
+Date: Fri, 9 May 2025 18:16:52 +0000
+Subject: [Rd] array-bound error with GCC 13/14
+In-Reply-To: <CAJXgQP1WVwAsBfzMD_aEukHhcVCivjBCzWQ7Yp37=+CX=mRjzQ@mail.gmail.com>
+References: <CAHG+78w0m5_qFrsdghAje1K-SP5GdLpZt3i2DGQN+i8FVLBwFg@mail.gmail.com>
+ <20250509161755.1da23a4b@trisector>
+ <CAJXgQP1WVwAsBfzMD_aEukHhcVCivjBCzWQ7Yp37=+CX=mRjzQ@mail.gmail.com>
+Message-ID: <09705F8C-F441-4435-9091-E5606F668C17@b-data.ch>
+
+
+> On 9 May 2025, at 19:29, Kevin Ushey <kevinushey at gmail.com> wrote:
+> 
+> Hopefully a member of the CRAN team will tell me I'm wrong, but I
+> think whether or not there is a compiler bug is ultimately irrelevant
+> -- packages on CRAN must compile cleanly even with potentially-buggy
+> development versions of compilers.
+
+I disagree. This would be even worse than rejecting packages that use deprecated code.
+
+xref: https://github.com/nx10/httpgd/issues/218
+
+> 
+> So, whether or not there is a bug in gcc is moot -- you'll need to
+> find a way to avoid triggering this issue in your package code.
+> 
+> Best,
+> Kevin
+> 
+> On Fri, May 9, 2025 at 6:18?AM Ivan Krylov via R-devel
+> <r-devel at r-project.org> wrote:
+>> 
+>> ? Fri, 9 May 2025 11:09:22 +1000
+>> Stephen Wade <stephematician at gmail.com> ?????:
+>> 
+>>>    inlined from ?std::vector<double> literanger::adjust_pvalues(const
+>>> std::vector<double>&)? at ../src/literanger/utility_math.h:99:48:
+>>> /usr/include/c++/13/bits/stl_algobase.h:437:30: warning: ?void*
+>>> __builtin_memmove(void*, const void*, long unsigned int)? writing
+>>> between 9 and 9223372036854775807 bytes into a region of size 8
+>>> overflows the destination [-Wstringop-overflow=]
+>>>  437 |      __builtin_memmove(__result, __first, sizeof(_Tp) * _Num);
+>> 
+>> The same problem (different reproducer, slightly different warning, but
+>> same place in the standard library and similar circumstances) has been
+>> reported as a false positive in GCC, Bug 109717:
+>> https://gcc.gnu.org/bugzilla/show_bug.cgi?id=109717
+>> 
+>> There are comments by GCC developers acknowledging that the overflow
+>> detection may "detect" overflows in code paths that cannot be taken,
+>> but they don't see an easy way to fix the warnings on the compiler side.
+>> 
+>> --
+>> Best regards,
+>> Ivan
+>> 
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+--
+benz0li.b-data.io | @benz0li | olivier.benz at b-data.ch
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Sun May 11 19:58:18 2025
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Sun, 11 May 2025 10:58:18 -0700
+Subject: [Rd] Is it possible to gracefully interrupt a child R process on MS
+ Windows?
+Message-ID: <CAFDcVCTbOwjucSMMWJaC_FFy4B5Ho9kJ+t=s6ZjR+1mxxw3XVA@mail.gmail.com>
+
+In help("pskill", package = "tools") is says:
+
+  Only SIGINT and SIGTERM will be defined on Windows, and pskill will
+always use the Windows system call TerminateProcess.
+
+As far as I understand it, TerminateProcess [1] terminates the process
+"quite abruptly". Specifically, it is not possible for the process to
+intercept the termination and gracefully shutdown. In R terms, we
+cannot rely on:
+
+tryCatch({
+  ...
+}, interrupt = function(int) {
+  ## cleanup
+})
+
+Similarly, it does not look like R itself can exit gracefully. For
+example, when signalling pskill(pid, signal = SIGINT) to another R
+process, that R process leaves behind its tempdir(). In contrast, if
+the user interrupts the process interactively (Ctrl-C), there is an
+'interrupt' condition that can be caught, and R cleans up after itself
+before exiting.
+
+QUESTION:
+
+Is it possible to gracefully interrupt a child R process on MS
+Windows, e.g. a PSOCK cluster node? (I don't think so, but I figure
+it's worth asking)
+
+
+SUGGESTIONS:
+
+Also, if my understanding that TerminateProcess is abrupt is correct,
+and there is no way to exit gracefully, would it make sense to clarify
+this fact in help("pskill", package = "tools")? Right now you either
+have to know how 'TerminateProcess' works, or run various tests on MS
+Windows to figure out the current behavior.
+
+Also, would a better signal mapping be:
+
+  Only SIGKILL will be defined on Windows, and pskill will always use
+the Windows system call TerminateProcess. Signals SIGINT and SIGTERM
+are supported for backward compatible reasons, but are effectively
+identical to SIGKILL.
+
+? That would change the expectations on what will happen for people
+coming from the POSIX world.
+
+[1] https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-terminateprocess
+
+/Henrik
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sun May 11 23:37:44 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 12 May 2025 00:37:44 +0300
+Subject: [Rd] 
+ Is it possible to gracefully interrupt a child R process on MS
+ Windows?
+In-Reply-To: <CAFDcVCTbOwjucSMMWJaC_FFy4B5Ho9kJ+t=s6ZjR+1mxxw3XVA@mail.gmail.com>
+References: <CAFDcVCTbOwjucSMMWJaC_FFy4B5Ho9kJ+t=s6ZjR+1mxxw3XVA@mail.gmail.com>
+Message-ID: <20250512003744.7b2f0c56@Tarkus>
+
+On Sun, 11 May 2025 10:58:18 -0700
+Henrik Bengtsson <henrik.bengtsson at gmail.com> wrote:
+
+> Is it possible to gracefully interrupt a child R process on MS
+> Windows, e.g. a PSOCK cluster node?
+
+Not in the general case (I think, based on the code paths leading to
+Rf_onintr() on Windows), but PSOCK cluster nodes are instances of
+Rscript.exe running the terminal front-end, and the terminal front-end
+interrupts R upon receipt of Ctrl+C and Ctrl+Break console events:
+https://learn.microsoft.com/en-us/windows/console/setconsolectrlhandler
+
+This makes it possible for ps::ps_interrupt() to spawn a child process
+to attach to the console where Rscript.exe is running and generate this
+event:
+https://github.com/r-lib/ps/blob/042d4836ac584c95a59985171fdfa3b6baf2fa6c/src/interrupt.c#L33-L35
+
+This probably needs specially written code in the children that expects
+to be interrupted in order to work reliably, but interrupting the
+children and then interrupting the parent and submitting another job to
+the PSOCK cluster seems to have worked for me on R-4.5.0.
+
+-- 
+Best regards,
+Ivan
+
+
+From m|ch@e|ch|r|co4 @end|ng |rom gm@||@com  Mon May 12 00:35:10 2025
+From: m|ch@e|ch|r|co4 @end|ng |rom gm@||@com (Michael Chirico)
+Date: Sun, 11 May 2025 15:35:10 -0700
+Subject: [Rd] Why does format.default skip dispatch for list items?
+Message-ID: <CAPRVBcw_RstY-EWXMOHpMvQnPEtRyrZ74hTnsp7695jW64B7yQ@mail.gmail.com>
+
+This is the documented behavior since r35262 (2005), from ?format
+
+> If x is a list, the result is a character vector obtained by applying format.default(x, ...) to each element of the list
+
+One consequence is that we can't add "nice" printing methods for
+list-of-object columns in data.frames:
+
+https://github.com/eddelbuettel/rprotobuf/issues/109
+
+library(RProtoBuf)
+person_desc <- P("tutorial.Person")
+DF <- data.frame(id = 1:2)
+DF$person = list(person_desc$new(name = "Me"), person_desc$new(name =
+"You", email = "y at u.com"))
+
+DF
+#   id                                                  person
+# 1  1 <S4 class ?Message? [package ?RProtoBuf?] with 2 slots>
+# 2  2 <S4 class ?Message? [package ?RProtoBuf?] with 2 slots>
+             ^ from format.default, with option to make it more informative
+
+One assumes that at this point, there are back-compatibility concerns
+since this is the documented behavior.
+
+Is there no other option than to make the 'person' column itself an S3
+class with an associated format method?
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon May 12 09:57:14 2025
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 12 May 2025 09:57:14 +0200
+Subject: [Rd] 
+ Is it possible to gracefully interrupt a child R process on MS
+ Windows?
+In-Reply-To: <CAFDcVCTbOwjucSMMWJaC_FFy4B5Ho9kJ+t=s6ZjR+1mxxw3XVA@mail.gmail.com>
+References: <CAFDcVCTbOwjucSMMWJaC_FFy4B5Ho9kJ+t=s6ZjR+1mxxw3XVA@mail.gmail.com>
+Message-ID: <e0ead7ab-de27-473b-baf7-751f81cbf801@gmail.com>
+
+I think for reliability and portability of termination, one needs to 
+implement an application-specific termination protocol on both ends. 
+Only within specific application constraints, one can also define what 
+graceful termination means. Typically, one also has other expectations 
+from the termination process - such that the processes will terminate in 
+some finite time/soon. In some cases one also may require certain 
+behavior of the cleanup code (such as that wouldn't take long, wouldn't 
+do some things, etc), to meet the specific termination requirements. And 
+it may require some behavior of the non-cleanup code as well (such as 
+polling in some intervals).
+
+Using signals to terminate a process even on Unix may not be seen as 
+graceful enough, either. It is not just a Windows problem.
+
+Yes, TerminateProcess() on Windows will not allow the target process to 
+run any cleanup. The documentation of "pskill" names 
+"TerminateProcess()" explicitly so that the readers interested in the 
+details can follow Microsoft documentation. But I think one should avoid 
+using pskill()/signals for termination and instead use an 
+application-level termination protocol. The parallel package, PSOCK, has 
+one, based on socket connections, so perhaps one can take some 
+inspiration from there.
+
+Best
+Tomas
+
+On 5/11/25 19:58, Henrik Bengtsson wrote:
+> In help("pskill", package = "tools") is says:
+>
+>    Only SIGINT and SIGTERM will be defined on Windows, and pskill will
+> always use the Windows system call TerminateProcess.
+>
+> As far as I understand it, TerminateProcess [1] terminates the process
+> "quite abruptly". Specifically, it is not possible for the process to
+> intercept the termination and gracefully shutdown. In R terms, we
+> cannot rely on:
+>
+> tryCatch({
+>    ...
+> }, interrupt = function(int) {
+>    ## cleanup
+> })
+>
+> Similarly, it does not look like R itself can exit gracefully. For
+> example, when signalling pskill(pid, signal = SIGINT) to another R
+> process, that R process leaves behind its tempdir(). In contrast, if
+> the user interrupts the process interactively (Ctrl-C), there is an
+> 'interrupt' condition that can be caught, and R cleans up after itself
+> before exiting.
+>
+> QUESTION:
+>
+> Is it possible to gracefully interrupt a child R process on MS
+> Windows, e.g. a PSOCK cluster node? (I don't think so, but I figure
+> it's worth asking)
+>
+>
+> SUGGESTIONS:
+>
+> Also, if my understanding that TerminateProcess is abrupt is correct,
+> and there is no way to exit gracefully, would it make sense to clarify
+> this fact in help("pskill", package = "tools")? Right now you either
+> have to know how 'TerminateProcess' works, or run various tests on MS
+> Windows to figure out the current behavior.
+>
+> Also, would a better signal mapping be:
+>
+>    Only SIGKILL will be defined on Windows, and pskill will always use
+> the Windows system call TerminateProcess. Signals SIGINT and SIGTERM
+> are supported for backward compatible reasons, but are effectively
+> identical to SIGKILL.
+>
+> ? That would change the expectations on what will happen for people
+> coming from the POSIX world.
+>
+> [1] https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-terminateprocess
+>
+> /Henrik
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon May 12 14:02:10 2025
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 12 May 2025 14:02:10 +0200
+Subject: [Rd] array-bound error with GCC 13/14
+In-Reply-To: <CAHG+78w0m5_qFrsdghAje1K-SP5GdLpZt3i2DGQN+i8FVLBwFg@mail.gmail.com>
+References: <CAHG+78w0m5_qFrsdghAje1K-SP5GdLpZt3i2DGQN+i8FVLBwFg@mail.gmail.com>
+Message-ID: <ca22beb9-2215-46ef-b82c-398682b6dc62@gmail.com>
+
+
+On 5/9/25 03:09, Stephen Wade wrote:
+> The literanger package is no longer passing on CRAN
+> (https://CRAN.R-project.org/package=literanger) due to array-bound
+> warnings in GCC 13.3 and 14.2 (more details below).
+>
+> This _looks_ to me like one of either a) a compiler bug, b) a false
+> positive, or c) (very unlikely) something in the standard library
+> implementation.
+>
+> Have others seen warnings like this recently, and if so, what have you
+> done about them? The warning did not appear in clang, nor with GCC
+> 15.1.0 on CRAN's Fedora test service.
+>
+> Firstly, the relevant code snippet:
+>
+> /** Compute adjusted p-values using Benjamini/Hochberg method */
+> inline std::vector<double> adjust_pvalues(const std::vector<double> &
+> unadjusted) {
+>
+>      const size_t n_pvalue = unadjusted.size();
+>      if (n_pvalue < 2) return unadjusted; /* <-- WARNING HERE */
+>
+>      std::vector<double> adjusted(n_pvalue, 0);
+>      /* Do some other stuff */
+>      return adjusted;
+>
+> }
+>
+>
+> Secondly, the warning (on my own machine, using GCC 13.2.0, which also
+> has this problem):
+>
+>      inlined from ?std::vector<double> literanger::adjust_pvalues(const
+> std::vector<double>&)? at ../src/literanger/utility_math.h:99:48:
+> /usr/include/c++/13/bits/stl_algobase.h:437:30: warning: ?void*
+> __builtin_memmove(void*, const void*, long unsigned int)? writing
+> between 9 and 9223372036854775807 bytes into a region of size 8
+> overflows the destination [-Wstringop-overflow=]
+>    437 |             __builtin_memmove(__result, __first, sizeof(_Tp) * _Num);
+
+Perhaps you could try creating a minimal reproducible example, 
+standalone C++ program, which still reproduces the warning, and report 
+to GCC (or libstdc++). You may get a response it is a duplicate of the 
+bug Ivan identified, but it still might be useful to have that 
+confirmed. It might also become clearer which problem the compiler seems 
+to see there - so give a hint for a workaround.
+
+Even if it gets confirmed as a compiler bug, it might be useful to work 
+it around when possible so that your code builds cleanly, particularly 
+if it doesn't complicate the code much. We are doing the same thing with 
+various warnings in base R - we try to simplify/change the code to help 
+the compiler see it is correct. Also, sometimes one finds on the way 
+that there actually is a (sometimes theoretical but, still) problem.
+
+Once you have a minimal reproducible example it might also be easier to 
+experiment with work-arounds.
+
+Best
+Tomas
+
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon May 12 16:41:06 2025
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 12 May 2025 16:41:06 +0200
+Subject: [Rd] on.exit() handler being interrupted by time limit
+In-Reply-To: <3f30fa29-21ea-4db6-9d92-043796cb60b1@gmail.com>
+References: <3f30fa29-21ea-4db6-9d92-043796cb60b1@gmail.com>
+Message-ID: <c64bb185-ec7d-4b31-a5ea-7b733088b116@gmail.com>
+
+
+On 4/27/25 22:19, Duncan Murdoch wrote:
+>
+> BTW, the help for setTimeLimit() says that the time limit check 
+> happens frequently during `Sys.sleep()`, but that doesn't appear to be 
+> true. I've tried a variation on the code above which sleeps for 20 
+> seconds, even with a time limit of 1 second.
+
+Regarding base R, this works for me in Linux:
+
+ > setTimeLimit(elapsed=10)
+ > for(i in 1:1000) Sys.sleep(0.1)
+Error in Sys.sleep(0.1) : reached elapsed time limit
+
+That is,? the loop gets interrupted after about 10s.
+
+Reading the code of R, there is a check in Sys.sleep(), but only after 
+the first wait (in a loop, iteratively waiting for the required 
+duration). When polled events are not active, the first wait is the 
+whole duration.
+
+I would read the documentation of ?setTimeLimit as that the check 
+happens during Sys.sleep(), but not necessarily frequently, that 
+"frequently" only refers to R code. And then the documentation would 
+seem correct (or at least not contradicted). On the other hand, right, 
+we could change Rsleep() to use a shorter sleep when elapsed time limit 
+is in place, and that wouldn't contradict the documentation, either.
+
+Best
+Tomas
+
+
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Mon May 12 19:28:53 2025
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Mon, 12 May 2025 19:28:53 +0200
+Subject: [Rd] Recommend/clarify in ?utils::news that h2/h3 markdown
+ hierarchy is preferable to h1/h2
+In-Reply-To: <CAPRVBcxPtRETMPRNquOSfGsAZwYeBa9Enj3uHKBz9S9xPfcmpg@mail.gmail.com>
+References: <CAPRVBcxPtRETMPRNquOSfGsAZwYeBa9Enj3uHKBz9S9xPfcmpg@mail.gmail.com>
+Message-ID: <26658.12245.891719.774227@hornik.net>
+
+>>>>> Michael Chirico writes:
+
+Thanks.  Should be ok to change the wording (provided this can be done
+without confusing maintainers).  
+
+Perhaps you could make a suggestion? :-)
+
+Best
+-k
+
+> The current wording in ?utils::news reads to me as implying we should
+> use `#` and `##` for the respective version, category headings [1]:
+
+>> File NEWS.md should contain the news in Markdown..., with the
+>> primary heading level giving the version number... Where available,
+>> secondary headings are taken to indicate categories.
+
+> This style is quite common in R packages, but it trips the alarms of
+> basically every markdown linter/style guide -- advice against using
+> multiple <h1> tags in HTML abounds (e.g. [2], [3], [4]). There is some
+> nuance, but I haven't seen anything suggesting those exceptions
+> definitely apply for R package NEWS files.
+
+> Anyway, utils::news _is_ perfectly happy with NEWS files using `##`
+> and `###` instead [5]; this is documented in an internal comment [6].
+
+> Is there an argument against (1) directly advocating h2/h3 usage in
+> ?utils::news; or, more softly, (2) documenting that any (L,L+1) pair,
+> 1<=L<=5, where 'L' gives version numbers as described, will be
+> accepted when producing the news database? Note that doing so is
+> perfectly back-compatible -- we needn't change the code at all, only
+> its documentation.
+
+> Mike C
+
+> [1] https://github.com/r-devel/r-svn/blob/72d8171a54532ffe0fd44306caa0ee953cecc91e/src/library/utils/man/news.Rd#L95-L100
+> [2] https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/Heading_Elements
+> [3] https://yoast.com/one-h1-heading-per-post/
+> [4] https://www.youtube.com/watch?v=GIn5qJKU8VM
+> [5] https://gist.github.com/MichaelChirico/49f51edeecc288d7aabf6bc53cb1aa89
+> [6] https://github.com/r-devel/r-svn/blob/72d8171a54532ffe0fd44306caa0ee953cecc91e/src/library/tools/R/news.R#L790-L807
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From m|ch@e|ch|r|co4 @end|ng |rom gm@||@com  Mon May 12 19:55:55 2025
+From: m|ch@e|ch|r|co4 @end|ng |rom gm@||@com (Michael Chirico)
+Date: Mon, 12 May 2025 10:55:55 -0700
+Subject: [Rd] Recommend/clarify in ?utils::news that h2/h3 markdown
+ hierarchy is preferable to h1/h2
+In-Reply-To: <26658.12245.891719.774227@hornik.net>
+References: <CAPRVBcxPtRETMPRNquOSfGsAZwYeBa9Enj3uHKBz9S9xPfcmpg@mail.gmail.com>
+ <26658.12245.891719.774227@hornik.net>
+Message-ID: <CAPRVBcyP=6ZNDfSi-uUE40DPFx4rwm4zhb2qJAkus=3Mh4N7gw@mail.gmail.com>
+
+Sounds good. Moving over to Bugzilla:
+
+https://bugs.r-project.org/attachment.cgi?id=3480&action=diff
+
+On Mon, May 12, 2025 at 10:29?AM Kurt Hornik <Kurt.Hornik at wu.ac.at> wrote:
+>
+> >>>>> Michael Chirico writes:
+>
+> Thanks.  Should be ok to change the wording (provided this can be done
+> without confusing maintainers).
+>
+> Perhaps you could make a suggestion? :-)
+>
+> Best
+> -k
+>
+> > The current wording in ?utils::news reads to me as implying we should
+> > use `#` and `##` for the respective version, category headings [1]:
+>
+> >> File NEWS.md should contain the news in Markdown..., with the
+> >> primary heading level giving the version number... Where available,
+> >> secondary headings are taken to indicate categories.
+>
+> > This style is quite common in R packages, but it trips the alarms of
+> > basically every markdown linter/style guide -- advice against using
+> > multiple <h1> tags in HTML abounds (e.g. [2], [3], [4]). There is some
+> > nuance, but I haven't seen anything suggesting those exceptions
+> > definitely apply for R package NEWS files.
+>
+> > Anyway, utils::news _is_ perfectly happy with NEWS files using `##`
+> > and `###` instead [5]; this is documented in an internal comment [6].
+>
+> > Is there an argument against (1) directly advocating h2/h3 usage in
+> > ?utils::news; or, more softly, (2) documenting that any (L,L+1) pair,
+> > 1<=L<=5, where 'L' gives version numbers as described, will be
+> > accepted when producing the news database? Note that doing so is
+> > perfectly back-compatible -- we needn't change the code at all, only
+> > its documentation.
+>
+> > Mike C
+>
+> > [1] https://github.com/r-devel/r-svn/blob/72d8171a54532ffe0fd44306caa0ee953cecc91e/src/library/utils/man/news.Rd#L95-L100
+> > [2] https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/Heading_Elements
+> > [3] https://yoast.com/one-h1-heading-per-post/
+> > [4] https://www.youtube.com/watch?v=GIn5qJKU8VM
+> > [5] https://gist.github.com/MichaelChirico/49f51edeecc288d7aabf6bc53cb1aa89
+> > [6] https://github.com/r-devel/r-svn/blob/72d8171a54532ffe0fd44306caa0ee953cecc91e/src/library/tools/R/news.R#L790-L807
+>
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Mon May 12 21:52:26 2025
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Mon, 12 May 2025 12:52:26 -0700
+Subject: [Rd] 
+ Is it possible to gracefully interrupt a child R process on MS
+ Windows?
+In-Reply-To: <e0ead7ab-de27-473b-baf7-751f81cbf801@gmail.com>
+References: <CAFDcVCTbOwjucSMMWJaC_FFy4B5Ho9kJ+t=s6ZjR+1mxxw3XVA@mail.gmail.com>
+ <e0ead7ab-de27-473b-baf7-751f81cbf801@gmail.com>
+Message-ID: <CAFDcVCT3uBRxSsm4vTjGH_5w6NdVH38L8MVhGi0vZfbwdobzmA@mail.gmail.com>
+
+Thanks all.
+
+I can confirm that 'GenerateConsoleCtrlEvent', which Kevin and Ivan
+referred to, works. I have verified that ps::ps_interrupt() can
+trigger an interrupt of an Rscript process running in the background,
+which then R detects as a user-interrupt (think Ctrl-C) and signals an
+'interrupt' condition, which can be caught using calling handlers. If
+`tools::pskill(pid, signal = SIGINT)` could implement this approach, I
+think we end up with a consistent behavior of SIGINT across operating
+systems in base R.
+
+
+Regarding SIGINT for gracefully shutting down R processes:
+
+I think SIGINT is an obvious candidate for providing running processes
+a "preemption warning", before killing the process. That way the
+affected process gets a chance to exit gracefully, e.g. cleaning up
+files, closing connections, etc. In R, we already have most of this
+infrastructure in place, e.g. R_CheckUserInterrupt() and signalling of
+the 'interrupt' condition.
+
+Although one of my immediate uses cases is parallel R clusters, I'm
+after a general solution here. There are plenty of use cases where one
+would like to give an R process a chance to exit gracefully on
+request. This has work also when the R process is busy in the middle
+of some computation, which why I think SIGINT is the best candidate.
+
+> Using signals to terminate a process even on Unix may not be seen as
+graceful enough, either. It is not just a Windows problem.
+
+I agree with this, but it takes us a long way. It is already a
+de-facto standard to use POSIX signals this way in high-performance
+compute (HPC) environments. HPC schedulers give running jobs
+"preemption warnings" via POSIX signals. For instance, when a job is
+approaching its maximum run-time, the scheduler will let the job know
+in advance that it is about to be terminated. For example, Grid Engine
+signals SIGUSR2 twice (immediately after each other), and 60 seconds
+later SIGKILL is signaled. Similarly, Slurm sends a SIGTERM and then a
+SIGKILL after 30 seconds. The exact signals and grace periods can be
+configured globally, but I think also by the user at time of
+submission for some schedulers. Users can of course also customize it
+by having tools and shell traps that translate one signal to another,
+e.g. main job script receives a SIGUSR2 and resignals it as a SIGINT.
+
+> I think for reliability and portability of termination, one needs to implement an application-specific termination protocol on both ends.
+
+Maybe I misunderstand your proposal, but I don't think a custom
+termination protocol can meet the same needs as a handling interrupts.
+If it would be an API, then all parts of the R software stack need to
+be aware of that API, e.g. polling it frequently to check if there is
+a request to be shutdown. This is where I think R_CheckUserInterrupt()
+excels.
+
+> Yes, TerminateProcess() on Windows will not allow the target process to run any cleanup.
+
+Thanks for confirming - I wasn't 100% sure.
+
+> But I think one should avoid using pskill()/signals for termination and instead use an application-level termination protocol. The parallel package, PSOCK, has one, based on socket connections, so perhaps one can take some inspiration from there.
+
+We might be talking about different use cases. If we take a parallel
+cluster, the preferred way to shut it down is parallel::stopCluster().
+However, that will only take place when all workers are done with
+their current tasks and are ready to receive new commands from the
+parent process, including the "please-shut-yourself-down" command.
+That can take minutes, hours, days, or even never happen if the worker
+is stuck in an infinite loop. A harsher approach would be to just
+close the socket connection on the parent's end, but even that won't
+shut down the worker until it attempts to use that connection. So, we
+need a way to interrupt the worker also when the worker is busy. This
+will free up compute (CPU and memory) resources sooner. This might be
+based on an active decision of the user (Ctrl-C in the parent, or
+explicit function call), but also automatically if we know the results
+from the workers are no longer of value. The system might also signal
+such a shutdown, e.g. HPC scheduler or host rebooting. We can handle
+this already now using base R, but on Windows we cannot terminate a
+worker gracefully from R, because we cannot send a signal that
+resembles SIGINT.
+
+Thanks,
+
+Henrik
+
+On Mon, May 12, 2025 at 12:57?AM Tomas Kalibera
+<tomas.kalibera at gmail.com> wrote:
+>
+> I think for reliability and portability of termination, one needs to
+> implement an application-specific termination protocol on both ends.
+> Only within specific application constraints, one can also define what
+> graceful termination means. Typically, one also has other expectations
+> from the termination process - such that the processes will terminate in
+> some finite time/soon. In some cases one also may require certain
+> behavior of the cleanup code (such as that wouldn't take long, wouldn't
+> do some things, etc), to meet the specific termination requirements. And
+> it may require some behavior of the non-cleanup code as well (such as
+> polling in some intervals).
+>
+> Using signals to terminate a process even on Unix may not be seen as
+> graceful enough, either. It is not just a Windows problem.
+>
+> Yes, TerminateProcess() on Windows will not allow the target process to
+> run any cleanup. The documentation of "pskill" names
+> "TerminateProcess()" explicitly so that the readers interested in the
+> details can follow Microsoft documentation. But I think one should avoid
+> using pskill()/signals for termination and instead use an
+> application-level termination protocol. The parallel package, PSOCK, has
+> one, based on socket connections, so perhaps one can take some
+> inspiration from there.
+>
+> Best
+> Tomas
+>
+> On 5/11/25 19:58, Henrik Bengtsson wrote:
+> > In help("pskill", package = "tools") is says:
+> >
+> >    Only SIGINT and SIGTERM will be defined on Windows, and pskill will
+> > always use the Windows system call TerminateProcess.
+> >
+> > As far as I understand it, TerminateProcess [1] terminates the process
+> > "quite abruptly". Specifically, it is not possible for the process to
+> > intercept the termination and gracefully shutdown. In R terms, we
+> > cannot rely on:
+> >
+> > tryCatch({
+> >    ...
+> > }, interrupt = function(int) {
+> >    ## cleanup
+> > })
+> >
+> > Similarly, it does not look like R itself can exit gracefully. For
+> > example, when signalling pskill(pid, signal = SIGINT) to another R
+> > process, that R process leaves behind its tempdir(). In contrast, if
+> > the user interrupts the process interactively (Ctrl-C), there is an
+> > 'interrupt' condition that can be caught, and R cleans up after itself
+> > before exiting.
+> >
+> > QUESTION:
+> >
+> > Is it possible to gracefully interrupt a child R process on MS
+> > Windows, e.g. a PSOCK cluster node? (I don't think so, but I figure
+> > it's worth asking)
+> >
+> >
+> > SUGGESTIONS:
+> >
+> > Also, if my understanding that TerminateProcess is abrupt is correct,
+> > and there is no way to exit gracefully, would it make sense to clarify
+> > this fact in help("pskill", package = "tools")? Right now you either
+> > have to know how 'TerminateProcess' works, or run various tests on MS
+> > Windows to figure out the current behavior.
+> >
+> > Also, would a better signal mapping be:
+> >
+> >    Only SIGKILL will be defined on Windows, and pskill will always use
+> > the Windows system call TerminateProcess. Signals SIGINT and SIGTERM
+> > are supported for backward compatible reasons, but are effectively
+> > identical to SIGKILL.
+> >
+> > ? That would change the expectations on what will happen for people
+> > coming from the POSIX world.
+> >
+> > [1] https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-terminateprocess
+> >
+> > /Henrik
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @tephem@t|c|@n @end|ng |rom gm@||@com  Tue May 13 02:31:48 2025
+From: @tephem@t|c|@n @end|ng |rom gm@||@com (Stephen Wade)
+Date: Tue, 13 May 2025 10:31:48 +1000
+Subject: [Rd] array-bound error with GCC 13/14
+In-Reply-To: <ca22beb9-2215-46ef-b82c-398682b6dc62@gmail.com>
+References: <CAHG+78w0m5_qFrsdghAje1K-SP5GdLpZt3i2DGQN+i8FVLBwFg@mail.gmail.com>
+ <ca22beb9-2215-46ef-b82c-398682b6dc62@gmail.com>
+Message-ID: <CAHG+78zZ1XFMJBdRP5_rxsykUdTmuuzxK1+6zoKoRnpAzm4_KQ@mail.gmail.com>
+
+After (a lot) more work, including looking for MWE (see
+https://godbolt.org/z/38nnaEcrf), I am confident this is a bug which
+has already been resolved:
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111415.
+
+The bug only occurs when optimisation is enabled (-O1 to -O3 at
+least), on GCC 12.4, 13.1--13.3, and 14.1--14.2.
+
+The question is "what is the correct remedy for the package on CRAN"?
+Making the code _unnecessarily_ complicated compels GCC to avoid an
+optimisation pattern that is causing the warning, e.g.
+
+inline std::vector<double> adjust_pvalues(const std::vector<double> &
+unadjusted) {
+
+    const size_t n_pvalue = unadjusted.size();
+    if (n_pvalue < 2) {
+#if  ( __GNUC__ == 12 && __GNUC_MINOR__ > 3 && __GNUC_MINOR__ < 5 ) || \
+    ( __GNUC__ == 13 && __GNUC_MINOR__ < 4 ) || \
+    ( __GNUC__ == 14 && __GNUC_MINOR__ < 3 )
+    std::vector<double> kludge(n_pvalue);
+    kludge = unadjusted;
+    return kludge; /* no warning produced */
+#else
+        return unadjusted;
+#endif
+    }
+
+    std::vector<double> adjusted(n_pvalue, 0);
+    /* Do some other stuff */
+    return adjusted;
+}
+
+That is _not_ "good" code practice (in my view). I would only put this
+in a `cran_release` branch of the repository because it's not
+something I'd like to see in `main`. That means a (manual) merge into
+`cran_release` each time I release the package for the next few years
+until CRAN uses compilers that don't produce that warning. Annoying,
+but not a deal-breaker. All this tells me (not that it is a bad
+policy) that the CRAN policy isn't always going to produce the best
+outcome in terms of code practise (again, in my view).
+
+On Mon, May 12, 2025 at 10:02?PM Tomas Kalibera
+<tomas.kalibera at gmail.com> wrote:
+>
+>
+> On 5/9/25 03:09, Stephen Wade wrote:
+> > The literanger package is no longer passing on CRAN
+> > (https://CRAN.R-project.org/package=literanger) due to array-bound
+> > warnings in GCC 13.3 and 14.2 (more details below).
+> >
+> > This _looks_ to me like one of either a) a compiler bug, b) a false
+> > positive, or c) (very unlikely) something in the standard library
+> > implementation.
+> >
+> > Have others seen warnings like this recently, and if so, what have you
+> > done about them? The warning did not appear in clang, nor with GCC
+> > 15.1.0 on CRAN's Fedora test service.
+> >
+> > Firstly, the relevant code snippet:
+> >
+> > /** Compute adjusted p-values using Benjamini/Hochberg method */
+> > inline std::vector<double> adjust_pvalues(const std::vector<double> &
+> > unadjusted) {
+> >
+> >      const size_t n_pvalue = unadjusted.size();
+> >      if (n_pvalue < 2) return unadjusted; /* <-- WARNING HERE */
+> >
+> >      std::vector<double> adjusted(n_pvalue, 0);
+> >      /* Do some other stuff */
+> >      return adjusted;
+> >
+> > }
+> >
+> >
+> > Secondly, the warning (on my own machine, using GCC 13.2.0, which also
+> > has this problem):
+> >
+> >      inlined from ?std::vector<double> literanger::adjust_pvalues(const
+> > std::vector<double>&)? at ../src/literanger/utility_math.h:99:48:
+> > /usr/include/c++/13/bits/stl_algobase.h:437:30: warning: ?void*
+> > __builtin_memmove(void*, const void*, long unsigned int)? writing
+> > between 9 and 9223372036854775807 bytes into a region of size 8
+> > overflows the destination [-Wstringop-overflow=]
+> >    437 |             __builtin_memmove(__result, __first, sizeof(_Tp) * _Num);
+>
+> Perhaps you could try creating a minimal reproducible example,
+> standalone C++ program, which still reproduces the warning, and report
+> to GCC (or libstdc++). You may get a response it is a duplicate of the
+> bug Ivan identified, but it still might be useful to have that
+> confirmed. It might also become clearer which problem the compiler seems
+> to see there - so give a hint for a workaround.
+>
+> Even if it gets confirmed as a compiler bug, it might be useful to work
+> it around when possible so that your code builds cleanly, particularly
+> if it doesn't complicate the code much. We are doing the same thing with
+> various warnings in base R - we try to simplify/change the code to help
+> the compiler see it is correct. Also, sometimes one finds on the way
+> that there actually is a (sometimes theoretical but, still) problem.
+>
+> Once you have a minimal reproducible example it might also be easier to
+> experiment with work-arounds.
+>
+> Best
+> Tomas
+>
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From kev|nu@hey @end|ng |rom gm@||@com  Tue May 13 03:33:45 2025
+From: kev|nu@hey @end|ng |rom gm@||@com (Kevin Ushey)
+Date: Mon, 12 May 2025 18:33:45 -0700
+Subject: [Rd] array-bound error with GCC 13/14
+In-Reply-To: <CAHG+78zZ1XFMJBdRP5_rxsykUdTmuuzxK1+6zoKoRnpAzm4_KQ@mail.gmail.com>
+References: <CAHG+78w0m5_qFrsdghAje1K-SP5GdLpZt3i2DGQN+i8FVLBwFg@mail.gmail.com>
+ <ca22beb9-2215-46ef-b82c-398682b6dc62@gmail.com>
+ <CAHG+78zZ1XFMJBdRP5_rxsykUdTmuuzxK1+6zoKoRnpAzm4_KQ@mail.gmail.com>
+Message-ID: <CAJXgQP2qRpVWO365HqeYOtHa1oyM=_jw_744tBub5KQJsKbdBw@mail.gmail.com>
+
+Hi Stephen,
+
+I still believe your best option is still to just submit a version of
+your package that includes a workaround for this compiler issue.
+
+You could, in theory, try to contact the CRAN maintainers at
+CRAN at r-project.org, and either (1) request an exception for your
+package, or (2) request that they update the compilers used so that
+this issue no longer occurs. However, the repository policy states:
+
+    The time of the volunteers is CRAN?s most precious resource
+
+and so you're unlikely to be successful in petitioning for their time,
+even if your diagnosis of the issue is correct. Especially so now,
+since you have a workaround for the issue in question. (Of course, I
+could be wrong; I obviously cannot speak for them.)
+
+I would strongly recommend just biting your tongue and submitting a
+version of your package with the workaround.
+
+My own personal view: we must unfortunately accept that "good" code is
+not necessarily neat nor concise code, and I say this as someone who
+also hates having to write these sorts of kludges. However, what
+ultimately matters is whether your software works as expected on the
+systems where it is run; from that perspective, your kludge achieves
+that goal on more systems than your code would otherwise.
+
+Best,
+Kevin
+
+On Mon, May 12, 2025 at 5:32?PM Stephen Wade <stephematician at gmail.com> wrote:
+>
+> After (a lot) more work, including looking for MWE (see
+> https://godbolt.org/z/38nnaEcrf), I am confident this is a bug which
+> has already been resolved:
+> https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111415.
+>
+> The bug only occurs when optimisation is enabled (-O1 to -O3 at
+> least), on GCC 12.4, 13.1--13.3, and 14.1--14.2.
+>
+> The question is "what is the correct remedy for the package on CRAN"?
+> Making the code _unnecessarily_ complicated compels GCC to avoid an
+> optimisation pattern that is causing the warning, e.g.
+>
+> inline std::vector<double> adjust_pvalues(const std::vector<double> &
+> unadjusted) {
+>
+>     const size_t n_pvalue = unadjusted.size();
+>     if (n_pvalue < 2) {
+> #if  ( __GNUC__ == 12 && __GNUC_MINOR__ > 3 && __GNUC_MINOR__ < 5 ) || \
+>     ( __GNUC__ == 13 && __GNUC_MINOR__ < 4 ) || \
+>     ( __GNUC__ == 14 && __GNUC_MINOR__ < 3 )
+>     std::vector<double> kludge(n_pvalue);
+>     kludge = unadjusted;
+>     return kludge; /* no warning produced */
+> #else
+>         return unadjusted;
+> #endif
+>     }
+>
+>     std::vector<double> adjusted(n_pvalue, 0);
+>     /* Do some other stuff */
+>     return adjusted;
+> }
+>
+> That is _not_ "good" code practice (in my view). I would only put this
+> in a `cran_release` branch of the repository because it's not
+> something I'd like to see in `main`. That means a (manual) merge into
+> `cran_release` each time I release the package for the next few years
+> until CRAN uses compilers that don't produce that warning. Annoying,
+> but not a deal-breaker. All this tells me (not that it is a bad
+> policy) that the CRAN policy isn't always going to produce the best
+> outcome in terms of code practise (again, in my view).
+>
+> On Mon, May 12, 2025 at 10:02?PM Tomas Kalibera
+> <tomas.kalibera at gmail.com> wrote:
+> >
+> >
+> > On 5/9/25 03:09, Stephen Wade wrote:
+> > > The literanger package is no longer passing on CRAN
+> > > (https://CRAN.R-project.org/package=literanger) due to array-bound
+> > > warnings in GCC 13.3 and 14.2 (more details below).
+> > >
+> > > This _looks_ to me like one of either a) a compiler bug, b) a false
+> > > positive, or c) (very unlikely) something in the standard library
+> > > implementation.
+> > >
+> > > Have others seen warnings like this recently, and if so, what have you
+> > > done about them? The warning did not appear in clang, nor with GCC
+> > > 15.1.0 on CRAN's Fedora test service.
+> > >
+> > > Firstly, the relevant code snippet:
+> > >
+> > > /** Compute adjusted p-values using Benjamini/Hochberg method */
+> > > inline std::vector<double> adjust_pvalues(const std::vector<double> &
+> > > unadjusted) {
+> > >
+> > >      const size_t n_pvalue = unadjusted.size();
+> > >      if (n_pvalue < 2) return unadjusted; /* <-- WARNING HERE */
+> > >
+> > >      std::vector<double> adjusted(n_pvalue, 0);
+> > >      /* Do some other stuff */
+> > >      return adjusted;
+> > >
+> > > }
+> > >
+> > >
+> > > Secondly, the warning (on my own machine, using GCC 13.2.0, which also
+> > > has this problem):
+> > >
+> > >      inlined from ?std::vector<double> literanger::adjust_pvalues(const
+> > > std::vector<double>&)? at ../src/literanger/utility_math.h:99:48:
+> > > /usr/include/c++/13/bits/stl_algobase.h:437:30: warning: ?void*
+> > > __builtin_memmove(void*, const void*, long unsigned int)? writing
+> > > between 9 and 9223372036854775807 bytes into a region of size 8
+> > > overflows the destination [-Wstringop-overflow=]
+> > >    437 |             __builtin_memmove(__result, __first, sizeof(_Tp) * _Num);
+> >
+> > Perhaps you could try creating a minimal reproducible example,
+> > standalone C++ program, which still reproduces the warning, and report
+> > to GCC (or libstdc++). You may get a response it is a duplicate of the
+> > bug Ivan identified, but it still might be useful to have that
+> > confirmed. It might also become clearer which problem the compiler seems
+> > to see there - so give a hint for a workaround.
+> >
+> > Even if it gets confirmed as a compiler bug, it might be useful to work
+> > it around when possible so that your code builds cleanly, particularly
+> > if it doesn't complicate the code much. We are doing the same thing with
+> > various warnings in base R - we try to simplify/change the code to help
+> > the compiler see it is correct. Also, sometimes one finds on the way
+> > that there actually is a (sometimes theoretical but, still) problem.
+> >
+> > Once you have a minimal reproducible example it might also be easier to
+> > experiment with work-arounds.
+> >
+> > Best
+> > Tomas
+> >
+> > >
+> > > ______________________________________________
+> > > R-devel at r-project.org mailing list
+> > > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @tephem@t|c|@n @end|ng |rom gm@||@com  Tue May 13 04:48:32 2025
+From: @tephem@t|c|@n @end|ng |rom gm@||@com (Stephen Wade)
+Date: Tue, 13 May 2025 12:48:32 +1000
+Subject: [Rd] array-bound error with GCC 13/14
+In-Reply-To: <CAJXgQP2qRpVWO365HqeYOtHa1oyM=_jw_744tBub5KQJsKbdBw@mail.gmail.com>
+References: <CAHG+78w0m5_qFrsdghAje1K-SP5GdLpZt3i2DGQN+i8FVLBwFg@mail.gmail.com>
+ <ca22beb9-2215-46ef-b82c-398682b6dc62@gmail.com>
+ <CAHG+78zZ1XFMJBdRP5_rxsykUdTmuuzxK1+6zoKoRnpAzm4_KQ@mail.gmail.com>
+ <CAJXgQP2qRpVWO365HqeYOtHa1oyM=_jw_744tBub5KQJsKbdBw@mail.gmail.com>
+Message-ID: <CAHG+78wEv3jYu+F9ygJAFkc5owR2cDjfezg-39qwpCMh7pFi2Q@mail.gmail.com>
+
+Thanks, I agree with the course of action, especially given literanger
+seems to be the only casualty. I'm just making note that the policy
+doesn't necessarily generate the outcome we want. No policy ever will!
+I 100% appreciate CRAN volunteers' efforts.
+
+In this case, the compiler is generating a false positive - I'm
+reasonably sure of this having looked at the assembly generated. The
+kludge doesn't make the library perform 'as expected' on more systems
+=> the kludge means the _compiler_ performs 'as expected' (on more
+systems). With the kludge: the code will perform marginally worse at
+run time => we are trading some runtime performance to avoid a
+(build-time) bug confined to the build tools, and it takes additional
+effort to maintain. Such is life.
+
+On Tue, May 13, 2025 at 11:34?AM Kevin Ushey <kevinushey at gmail.com> wrote:
+>
+> Hi Stephen,
+>
+> I still believe your best option is still to just submit a version of
+> your package that includes a workaround for this compiler issue.
+>
+> You could, in theory, try to contact the CRAN maintainers at
+> CRAN at r-project.org, and either (1) request an exception for your
+> package, or (2) request that they update the compilers used so that
+> this issue no longer occurs. However, the repository policy states:
+>
+>     The time of the volunteers is CRAN?s most precious resource
+>
+> and so you're unlikely to be successful in petitioning for their time,
+> even if your diagnosis of the issue is correct. Especially so now,
+> since you have a workaround for the issue in question. (Of course, I
+> could be wrong; I obviously cannot speak for them.)
+>
+> I would strongly recommend just biting your tongue and submitting a
+> version of your package with the workaround.
+>
+> My own personal view: we must unfortunately accept that "good" code is
+> not necessarily neat nor concise code, and I say this as someone who
+> also hates having to write these sorts of kludges. However, what
+> ultimately matters is whether your software works as expected on the
+> systems where it is run; from that perspective, your kludge achieves
+> that goal on more systems than your code would otherwise.
+>
+> Best,
+> Kevin
+>
+> On Mon, May 12, 2025 at 5:32?PM Stephen Wade <stephematician at gmail.com> wrote:
+> >
+> > After (a lot) more work, including looking for MWE (see
+> > https://godbolt.org/z/38nnaEcrf), I am confident this is a bug which
+> > has already been resolved:
+> > https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111415.
+> >
+> > The bug only occurs when optimisation is enabled (-O1 to -O3 at
+> > least), on GCC 12.4, 13.1--13.3, and 14.1--14.2.
+> >
+> > The question is "what is the correct remedy for the package on CRAN"?
+> > Making the code _unnecessarily_ complicated compels GCC to avoid an
+> > optimisation pattern that is causing the warning, e.g.
+> >
+> > inline std::vector<double> adjust_pvalues(const std::vector<double> &
+> > unadjusted) {
+> >
+> >     const size_t n_pvalue = unadjusted.size();
+> >     if (n_pvalue < 2) {
+> > #if  ( __GNUC__ == 12 && __GNUC_MINOR__ > 3 && __GNUC_MINOR__ < 5 ) || \
+> >     ( __GNUC__ == 13 && __GNUC_MINOR__ < 4 ) || \
+> >     ( __GNUC__ == 14 && __GNUC_MINOR__ < 3 )
+> >     std::vector<double> kludge(n_pvalue);
+> >     kludge = unadjusted;
+> >     return kludge; /* no warning produced */
+> > #else
+> >         return unadjusted;
+> > #endif
+> >     }
+> >
+> >     std::vector<double> adjusted(n_pvalue, 0);
+> >     /* Do some other stuff */
+> >     return adjusted;
+> > }
+> >
+> > That is _not_ "good" code practice (in my view). I would only put this
+> > in a `cran_release` branch of the repository because it's not
+> > something I'd like to see in `main`. That means a (manual) merge into
+> > `cran_release` each time I release the package for the next few years
+> > until CRAN uses compilers that don't produce that warning. Annoying,
+> > but not a deal-breaker. All this tells me (not that it is a bad
+> > policy) that the CRAN policy isn't always going to produce the best
+> > outcome in terms of code practise (again, in my view).
+> >
+> > On Mon, May 12, 2025 at 10:02?PM Tomas Kalibera
+> > <tomas.kalibera at gmail.com> wrote:
+> > >
+> > >
+> > > On 5/9/25 03:09, Stephen Wade wrote:
+> > > > The literanger package is no longer passing on CRAN
+> > > > (https://CRAN.R-project.org/package=literanger) due to array-bound
+> > > > warnings in GCC 13.3 and 14.2 (more details below).
+> > > >
+> > > > This _looks_ to me like one of either a) a compiler bug, b) a false
+> > > > positive, or c) (very unlikely) something in the standard library
+> > > > implementation.
+> > > >
+> > > > Have others seen warnings like this recently, and if so, what have you
+> > > > done about them? The warning did not appear in clang, nor with GCC
+> > > > 15.1.0 on CRAN's Fedora test service.
+> > > >
+> > > > Firstly, the relevant code snippet:
+> > > >
+> > > > /** Compute adjusted p-values using Benjamini/Hochberg method */
+> > > > inline std::vector<double> adjust_pvalues(const std::vector<double> &
+> > > > unadjusted) {
+> > > >
+> > > >      const size_t n_pvalue = unadjusted.size();
+> > > >      if (n_pvalue < 2) return unadjusted; /* <-- WARNING HERE */
+> > > >
+> > > >      std::vector<double> adjusted(n_pvalue, 0);
+> > > >      /* Do some other stuff */
+> > > >      return adjusted;
+> > > >
+> > > > }
+> > > >
+> > > >
+> > > > Secondly, the warning (on my own machine, using GCC 13.2.0, which also
+> > > > has this problem):
+> > > >
+> > > >      inlined from ?std::vector<double> literanger::adjust_pvalues(const
+> > > > std::vector<double>&)? at ../src/literanger/utility_math.h:99:48:
+> > > > /usr/include/c++/13/bits/stl_algobase.h:437:30: warning: ?void*
+> > > > __builtin_memmove(void*, const void*, long unsigned int)? writing
+> > > > between 9 and 9223372036854775807 bytes into a region of size 8
+> > > > overflows the destination [-Wstringop-overflow=]
+> > > >    437 |             __builtin_memmove(__result, __first, sizeof(_Tp) * _Num);
+> > >
+> > > Perhaps you could try creating a minimal reproducible example,
+> > > standalone C++ program, which still reproduces the warning, and report
+> > > to GCC (or libstdc++). You may get a response it is a duplicate of the
+> > > bug Ivan identified, but it still might be useful to have that
+> > > confirmed. It might also become clearer which problem the compiler seems
+> > > to see there - so give a hint for a workaround.
+> > >
+> > > Even if it gets confirmed as a compiler bug, it might be useful to work
+> > > it around when possible so that your code builds cleanly, particularly
+> > > if it doesn't complicate the code much. We are doing the same thing with
+> > > various warnings in base R - we try to simplify/change the code to help
+> > > the compiler see it is correct. Also, sometimes one finds on the way
+> > > that there actually is a (sometimes theoretical but, still) problem.
+> > >
+> > > Once you have a minimal reproducible example it might also be easier to
+> > > experiment with work-arounds.
+> > >
+> > > Best
+> > > Tomas
+> > >
+> > > >
+> > > > ______________________________________________
+> > > > R-devel at r-project.org mailing list
+> > > > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Tue May 13 10:56:39 2025
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Tue, 13 May 2025 10:56:39 +0200
+Subject: [Rd] array-bound error with GCC 13/14
+In-Reply-To: <CAHG+78wEv3jYu+F9ygJAFkc5owR2cDjfezg-39qwpCMh7pFi2Q@mail.gmail.com>
+References: <CAHG+78w0m5_qFrsdghAje1K-SP5GdLpZt3i2DGQN+i8FVLBwFg@mail.gmail.com>
+ <ca22beb9-2215-46ef-b82c-398682b6dc62@gmail.com>
+ <CAHG+78zZ1XFMJBdRP5_rxsykUdTmuuzxK1+6zoKoRnpAzm4_KQ@mail.gmail.com>
+ <CAJXgQP2qRpVWO365HqeYOtHa1oyM=_jw_744tBub5KQJsKbdBw@mail.gmail.com>
+ <CAHG+78wEv3jYu+F9ygJAFkc5owR2cDjfezg-39qwpCMh7pFi2Q@mail.gmail.com>
+Message-ID: <26659.2375.436301.759924@hornik.net>
+
+>>>>> Stephen Wade writes:
+
+Thanks to everyone so far.
+
+Indeed, packages
+
+  GenomeAdmixR SpatialKWD literanger
+
+all give the same include/c++/14/bits/stl_algobase.h:452:30
+-Warray-bounds= warning for the GCC 14.2.0 compilers used for Debian
+testing and windows, but not for GCC 15.1.0 used for Fedora, and also
+not for gcc-snapshot on Debian testing (which shows its version as
+16.0.0 20250502). 
+
+So I will close the issues reported for these packages.
+
+Of course, if there was a simple workaround it would be great to use
+this, as we cannot (easily) work around the WARNINGs for the submission
+checks.  
+
+Best
+-k
+
+> Thanks, I agree with the course of action, especially given literanger
+> seems to be the only casualty. I'm just making note that the policy
+> doesn't necessarily generate the outcome we want. No policy ever will!
+> I 100% appreciate CRAN volunteers' efforts.
+
+> In this case, the compiler is generating a false positive - I'm
+> reasonably sure of this having looked at the assembly generated. The
+> kludge doesn't make the library perform 'as expected' on more systems
+> => the kludge means the _compiler_ performs 'as expected' (on more
+> systems). With the kludge: the code will perform marginally worse at
+> run time => we are trading some runtime performance to avoid a
+> (build-time) bug confined to the build tools, and it takes additional
+> effort to maintain. Such is life.
+
+> On Tue, May 13, 2025 at 11:34?AM Kevin Ushey <kevinushey at gmail.com> wrote:
+>> 
+>> Hi Stephen,
+>> 
+>> I still believe your best option is still to just submit a version of
+>> your package that includes a workaround for this compiler issue.
+>> 
+>> You could, in theory, try to contact the CRAN maintainers at
+>> CRAN at r-project.org, and either (1) request an exception for your
+>> package, or (2) request that they update the compilers used so that
+>> this issue no longer occurs. However, the repository policy states:
+>> 
+>> The time of the volunteers is CRAN?s most precious resource
+>> 
+>> and so you're unlikely to be successful in petitioning for their time,
+>> even if your diagnosis of the issue is correct. Especially so now,
+>> since you have a workaround for the issue in question. (Of course, I
+>> could be wrong; I obviously cannot speak for them.)
+>> 
+>> I would strongly recommend just biting your tongue and submitting a
+>> version of your package with the workaround.
+>> 
+>> My own personal view: we must unfortunately accept that "good" code is
+>> not necessarily neat nor concise code, and I say this as someone who
+>> also hates having to write these sorts of kludges. However, what
+>> ultimately matters is whether your software works as expected on the
+>> systems where it is run; from that perspective, your kludge achieves
+>> that goal on more systems than your code would otherwise.
+>> 
+>> Best,
+>> Kevin
+>> 
+>> On Mon, May 12, 2025 at 5:32?PM Stephen Wade <stephematician at gmail.com> wrote:
+>> >
+>> > After (a lot) more work, including looking for MWE (see
+>> > https://godbolt.org/z/38nnaEcrf), I am confident this is a bug which
+>> > has already been resolved:
+>> > https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111415.
+>> >
+>> > The bug only occurs when optimisation is enabled (-O1 to -O3 at
+>> > least), on GCC 12.4, 13.1--13.3, and 14.1--14.2.
+>> >
+>> > The question is "what is the correct remedy for the package on CRAN"?
+>> > Making the code _unnecessarily_ complicated compels GCC to avoid an
+>> > optimisation pattern that is causing the warning, e.g.
+>> >
+>> > inline std::vector<double> adjust_pvalues(const std::vector<double> &
+>> > unadjusted) {
+>> >
+>> >     const size_t n_pvalue = unadjusted.size();
+>> >     if (n_pvalue < 2) {
+>> > #if  ( __GNUC__ == 12 && __GNUC_MINOR__ > 3 && __GNUC_MINOR__ < 5 ) || \
+>> >     ( __GNUC__ == 13 && __GNUC_MINOR__ < 4 ) || \
+>> >     ( __GNUC__ == 14 && __GNUC_MINOR__ < 3 )
+>> >     std::vector<double> kludge(n_pvalue);
+>> >     kludge = unadjusted;
+>> >     return kludge; /* no warning produced */
+>> > #else
+>> >         return unadjusted;
+>> > #endif
+>> >     }
+>> >
+>> >     std::vector<double> adjusted(n_pvalue, 0);
+>> >     /* Do some other stuff */
+>> >     return adjusted;
+>> > }
+>> >
+>> > That is _not_ "good" code practice (in my view). I would only put this
+>> > in a `cran_release` branch of the repository because it's not
+>> > something I'd like to see in `main`. That means a (manual) merge into
+>> > `cran_release` each time I release the package for the next few years
+>> > until CRAN uses compilers that don't produce that warning. Annoying,
+>> > but not a deal-breaker. All this tells me (not that it is a bad
+>> > policy) that the CRAN policy isn't always going to produce the best
+>> > outcome in terms of code practise (again, in my view).
+>> >
+>> > On Mon, May 12, 2025 at 10:02?PM Tomas Kalibera
+>> > <tomas.kalibera at gmail.com> wrote:
+>> > >
+>> > >
+>> > > On 5/9/25 03:09, Stephen Wade wrote:
+>> > > > The literanger package is no longer passing on CRAN
+>> > > > (https://CRAN.R-project.org/package=literanger) due to array-bound
+>> > > > warnings in GCC 13.3 and 14.2 (more details below).
+>> > > >
+>> > > > This _looks_ to me like one of either a) a compiler bug, b) a false
+>> > > > positive, or c) (very unlikely) something in the standard library
+>> > > > implementation.
+>> > > >
+>> > > > Have others seen warnings like this recently, and if so, what have you
+>> > > > done about them? The warning did not appear in clang, nor with GCC
+>> > > > 15.1.0 on CRAN's Fedora test service.
+>> > > >
+>> > > > Firstly, the relevant code snippet:
+>> > > >
+>> > > > /** Compute adjusted p-values using Benjamini/Hochberg method */
+>> > > > inline std::vector<double> adjust_pvalues(const std::vector<double> &
+>> > > > unadjusted) {
+>> > > >
+>> > > >      const size_t n_pvalue = unadjusted.size();
+>> > > >      if (n_pvalue < 2) return unadjusted; /* <-- WARNING HERE */
+>> > > >
+>> > > >      std::vector<double> adjusted(n_pvalue, 0);
+>> > > >      /* Do some other stuff */
+>> > > >      return adjusted;
+>> > > >
+>> > > > }
+>> > > >
+>> > > >
+>> > > > Secondly, the warning (on my own machine, using GCC 13.2.0, which also
+>> > > > has this problem):
+>> > > >
+>> > > >      inlined from ?std::vector<double> literanger::adjust_pvalues(const
+>> > > > std::vector<double>&)? at ../src/literanger/utility_math.h:99:48:
+>> > > > /usr/include/c++/13/bits/stl_algobase.h:437:30: warning: ?void*
+>> > > > __builtin_memmove(void*, const void*, long unsigned int)? writing
+>> > > > between 9 and 9223372036854775807 bytes into a region of size 8
+>> > > > overflows the destination [-Wstringop-overflow=]
+>> > > >    437 |             __builtin_memmove(__result, __first, sizeof(_Tp) * _Num);
+>> > >
+>> > > Perhaps you could try creating a minimal reproducible example,
+>> > > standalone C++ program, which still reproduces the warning, and report
+>> > > to GCC (or libstdc++). You may get a response it is a duplicate of the
+>> > > bug Ivan identified, but it still might be useful to have that
+>> > > confirmed. It might also become clearer which problem the compiler seems
+>> > > to see there - so give a hint for a workaround.
+>> > >
+>> > > Even if it gets confirmed as a compiler bug, it might be useful to work
+>> > > it around when possible so that your code builds cleanly, particularly
+>> > > if it doesn't complicate the code much. We are doing the same thing with
+>> > > various warnings in base R - we try to simplify/change the code to help
+>> > > the compiler see it is correct. Also, sometimes one finds on the way
+>> > > that there actually is a (sometimes theoretical but, still) problem.
+>> > >
+>> > > Once you have a minimal reproducible example it might also be easier to
+>> > > experiment with work-arounds.
+>> > >
+>> > > Best
+>> > > Tomas
+>> > >
+>> > > >
+>> > > > ______________________________________________
+>> > > > R-devel at r-project.org mailing list
+>> > > > https://stat.ethz.ch/mailman/listinfo/r-devel
+>> >
+>> > ______________________________________________
+>> > R-devel at r-project.org mailing list
+>> > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From jeroenoom@ @end|ng |rom gm@||@com  Wed May 14 15:47:44 2025
+From: jeroenoom@ @end|ng |rom gm@||@com (Jeroen Ooms)
+Date: Wed, 14 May 2025 15:47:44 +0200
+Subject: [Rd] Packages manually setting NeedsCompilation
+Message-ID: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+
+R-universe builds and checks all CRAN packages on arm64 on Mac, Linux
+and soon Windows. It is important that we can identify from a binary
+package for which architecture it was built. R inserts this
+information into the second part of the "Built:" field in the
+DESCRIPTION. For example, packages with compiled code contain:
+
+    Built: R 4.5.0; aarch64-unknown-linux-gnu; 2025-05-05 14:06:56 UTC; unix
+
+And packages without compiled code contain:
+
+    Built: R 4.5.0; ; 2025-05-08 06:46:33 UTC; unix
+
+However this is not working for packages that compile something, but
+do not have a 'src' dir. I think these packages are supposed to
+manually set "NeedsCompilation: yes" in their DESCRIPTION file. Two
+suggestions:
+
+1. Currently R only records the platform in the mentioned "Built" if
+the source package contains a 'src' dir. Could this be improved such
+that it also does so for these packages with "NeedsCompilation: yes"?
+Here is a two line patch:
+https://github.com/r-devel/r-svn/pull/199/files
+
+2. There are a handful of CRAN packages that have "NeedsCompilation:
+yes" but they neither have a 'src' dir nor a 'configure' script. Afaik
+this is a contradiction, as there is no place any compilation can be
+invoked without either of these files present? I think in most these
+cases "NeedsCompilation: yes" is a leftover from older versions. If
+so, would it be possible for CMD check to warn against redundant
+NeedsCompilation:yes? Here is a script to list packages that currently
+use this: https://gist.github.com/jeroen/e8b225e9b1004a16ef90f50700352aa5
+
+Thank you
+
+
+From |uc@r @end|ng |rom |edor@project@org  Wed May 14 16:38:04 2025
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Wed, 14 May 2025 16:38:04 +0200
+Subject: [Rd] Packages manually setting NeedsCompilation
+In-Reply-To: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+References: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+Message-ID: <CALEXWq11_Vw2bzX7rrrVdMAWPNC-VR-U706YzrQ3-Zdi5VWZJw@mail.gmail.com>
+
+Strongly in favour of Jeroen's suggestions. Thanks for putting them together.
+
+I?aki
+
+
+On Wed, 14 May 2025 at 15:48, Jeroen Ooms <jeroenooms at gmail.com> wrote:
+>
+> R-universe builds and checks all CRAN packages on arm64 on Mac, Linux
+> and soon Windows. It is important that we can identify from a binary
+> package for which architecture it was built. R inserts this
+> information into the second part of the "Built:" field in the
+> DESCRIPTION. For example, packages with compiled code contain:
+>
+>     Built: R 4.5.0; aarch64-unknown-linux-gnu; 2025-05-05 14:06:56 UTC; unix
+>
+> And packages without compiled code contain:
+>
+>     Built: R 4.5.0; ; 2025-05-08 06:46:33 UTC; unix
+>
+> However this is not working for packages that compile something, but
+> do not have a 'src' dir. I think these packages are supposed to
+> manually set "NeedsCompilation: yes" in their DESCRIPTION file. Two
+> suggestions:
+>
+> 1. Currently R only records the platform in the mentioned "Built" if
+> the source package contains a 'src' dir. Could this be improved such
+> that it also does so for these packages with "NeedsCompilation: yes"?
+> Here is a two line patch:
+> https://github.com/r-devel/r-svn/pull/199/files
+>
+> 2. There are a handful of CRAN packages that have "NeedsCompilation:
+> yes" but they neither have a 'src' dir nor a 'configure' script. Afaik
+> this is a contradiction, as there is no place any compilation can be
+> invoked without either of these files present? I think in most these
+> cases "NeedsCompilation: yes" is a leftover from older versions. If
+> so, would it be possible for CMD check to warn against redundant
+> NeedsCompilation:yes? Here is a script to list packages that currently
+> use this: https://gist.github.com/jeroen/e8b225e9b1004a16ef90f50700352aa5
+>
+> Thank you
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+
+-- 
+I?aki ?car
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed May 14 23:05:41 2025
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 15 May 2025 09:05:41 +1200
+Subject: [Rd] Packages manually setting NeedsCompilation
+In-Reply-To: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+References: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+Message-ID: <D416EC65-681B-4875-8BB5-B615568AC24B@R-project.org>
+
+Jeroen,
+
+thanks for raising the issues. Comments inline.
+
+
+> On May 15, 2025, at 1:47 AM, Jeroen Ooms <jeroenooms at gmail.com> wrote:
+> 
+> R-universe builds and checks all CRAN packages on arm64 on Mac, Linux
+> and soon Windows. It is important that we can identify from a binary
+> package for which architecture it was built. R inserts this
+> information into the second part of the "Built:" field in the
+> DESCRIPTION. For example, packages with compiled code contain:
+> 
+>    Built: R 4.5.0; aarch64-unknown-linux-gnu; 2025-05-05 14:06:56 UTC; unix
+> 
+> And packages without compiled code contain:
+> 
+>    Built: R 4.5.0; ; 2025-05-08 06:46:33 UTC; unix
+> 
+> However this is not working for packages that compile something, but
+> do not have a 'src' dir.
+
+
+Can you give an example, please? I wonder if there is a real use-case or just bad package design. I wouldn't think that should happen as configure is supposed to only guide the compilation in src - if there is no src no binaries are expected as the package did not provide any native sources hence there should be no binary content. This looks like something that could be added to R CMD check?
+
+
+> I think these packages are supposed to manually set "NeedsCompilation: yes" in their DESCRIPTION file. Two suggestions:
+> 
+> 1. Currently R only records the platform in the mentioned "Built" if
+> the source package contains a 'src' dir. Could this be improved such
+> that it also does so for these packages with "NeedsCompilation: yes"?
+> Here is a two line patch:
+> https://github.com/r-devel/r-svn/pull/199/files
+> 
+> 2. There are a handful of CRAN packages that have "NeedsCompilation:
+> yes" but they neither have a 'src' dir nor a 'configure' script. Afaik
+> this is a contradiction, as there is no place any compilation can be
+> invoked without either of these files present? I think in most these
+> cases "NeedsCompilation: yes" is a leftover from older versions. If
+> so, would it be possible for CMD check to warn against redundant
+> NeedsCompilation:yes? Here is a script to list packages that currently
+> use this: https://gist.github.com/jeroen/e8b225e9b1004a16ef90f50700352aa5
+> 
+
+
+I think both cases look like candidates to R CMD check, so, yes, agreed. Without valid use-cases I'm not convinced yet that an override is a good idea since it may get out of sync just as you noted, but I may be just missing a valid use-case. That said, if the override is paired with the check, i.e., if both your proposals are implemented (and a warning if configure generates binaries  without declaring them) that would cover all the bases.
+
+Cheers,
+Simon
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Thu May 15 09:05:10 2025
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Thu, 15 May 2025 09:05:10 +0200
+Subject: [Rd] Packages manually setting NeedsCompilation
+In-Reply-To: <D416EC65-681B-4875-8BB5-B615568AC24B@R-project.org>
+References: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+ <D416EC65-681B-4875-8BB5-B615568AC24B@R-project.org>
+Message-ID: <26661.37414.426042.589544@hornik.net>
+
+>>>>> Simon Urbanek writes:
+
+Re part II (CRAN packages which have NeedsCompilation: yes but don't
+really need it): I of course have code for this, last touched in 2016.
+Running the code (which currently only looks at having a 'src' subdir,
+based on one possible interpreation of 
+
+  it is normally set by ?R CMD build? or the repository assuming
+  compilation is required if and only if the package has a ?src?
+  directory.
+
+in WRE) finds the same packages as on Jeroen's list (minus bcgam and
+NetFACS which got archived recently).  One could integrate a variant of
+the code into R CMD check if we think there is a "real need" (which I
+admit I have not seen thus far or else I would have added check code).
+
+For now I'll try the effect of writing to the maintainers of the 124
+current CRAN packages which have NeedsCompilation: yes but no 'src' and
+asking them to fix "as necessary", without setting a formal deadline.
+
+Best
+-k
+
+> Jeroen,
+> thanks for raising the issues. Comments inline.
+
+
+>> On May 15, 2025, at 1:47 AM, Jeroen Ooms <jeroenooms at gmail.com> wrote:
+>> 
+>> R-universe builds and checks all CRAN packages on arm64 on Mac, Linux
+>> and soon Windows. It is important that we can identify from a binary
+>> package for which architecture it was built. R inserts this
+>> information into the second part of the "Built:" field in the
+>> DESCRIPTION. For example, packages with compiled code contain:
+>> 
+>> Built: R 4.5.0; aarch64-unknown-linux-gnu; 2025-05-05 14:06:56 UTC; unix
+>> 
+>> And packages without compiled code contain:
+>> 
+>> Built: R 4.5.0; ; 2025-05-08 06:46:33 UTC; unix
+>> 
+>> However this is not working for packages that compile something, but
+>> do not have a 'src' dir.
+
+
+> Can you give an example, please? I wonder if there is a real use-case or just bad package design. I wouldn't think that should happen as configure is supposed to only guide the compilation in src - if there is no src no binaries are expected as the package did not provide any native sources hence there should be no binary content. This looks like something that could be added to R CMD check?
+
+
+>> I think these packages are supposed to manually set "NeedsCompilation: yes" in their DESCRIPTION file. Two suggestions:
+>> 
+>> 1. Currently R only records the platform in the mentioned "Built" if
+>> the source package contains a 'src' dir. Could this be improved such
+>> that it also does so for these packages with "NeedsCompilation: yes"?
+>> Here is a two line patch:
+>> https://github.com/r-devel/r-svn/pull/199/files
+>> 
+>> 2. There are a handful of CRAN packages that have "NeedsCompilation:
+>> yes" but they neither have a 'src' dir nor a 'configure' script. Afaik
+>> this is a contradiction, as there is no place any compilation can be
+>> invoked without either of these files present? I think in most these
+>> cases "NeedsCompilation: yes" is a leftover from older versions. If
+>> so, would it be possible for CMD check to warn against redundant
+>> NeedsCompilation:yes? Here is a script to list packages that currently
+>> use this: https://gist.github.com/jeroen/e8b225e9b1004a16ef90f50700352aa5
+>> 
+
+
+> I think both cases look like candidates to R CMD check, so, yes, agreed. Without valid use-cases I'm not convinced yet that an override is a good idea since it may get out of sync just as you noted, but I may be just missing a valid use-case. That said, if the override is paired with the check, i.e., if both your proposals are implemented (and a warning if configure generates binaries  without declaring them) that would cover all the bases.
+
+> Cheers,
+> Simon
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From jeroenoom@ @end|ng |rom gm@||@com  Thu May 15 11:41:47 2025
+From: jeroenoom@ @end|ng |rom gm@||@com (Jeroen Ooms)
+Date: Thu, 15 May 2025 11:41:47 +0200
+Subject: [Rd] Packages manually setting NeedsCompilation
+In-Reply-To: <D416EC65-681B-4875-8BB5-B615568AC24B@R-project.org>
+References: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+ <D416EC65-681B-4875-8BB5-B615568AC24B@R-project.org>
+Message-ID: <CABFfbXt_hcpUyfNL7sEgvvn-Wf6iUf9tj+rvYSjeuX6NDsBt=A@mail.gmail.com>
+
+On Wed, May 14, 2025 at 11:05?PM Simon Urbanek
+<simon.urbanek at r-project.org> wrote:
+>
+> Jeroen,
+>
+> thanks for raising the issues. Comments inline.
+>
+>
+> > On May 15, 2025, at 1:47 AM, Jeroen Ooms <jeroenooms at gmail.com> wrote:
+> >
+> > R-universe builds and checks all CRAN packages on arm64 on Mac, Linux
+> > and soon Windows. It is important that we can identify from a binary
+> > package for which architecture it was built. R inserts this
+> > information into the second part of the "Built:" field in the
+> > DESCRIPTION. For example, packages with compiled code contain:
+> >
+> >    Built: R 4.5.0; aarch64-unknown-linux-gnu; 2025-05-05 14:06:56 UTC; unix
+> >
+> > And packages without compiled code contain:
+> >
+> >    Built: R 4.5.0; ; 2025-05-08 06:46:33 UTC; unix
+> >
+> > However this is not working for packages that compile something, but
+> > do not have a 'src' dir.
+>
+>
+> Can you give an example, please? I wonder if there is a real use-case or just bad package design.
+
+The case that bit me yesterday was a Bioconductor package Rigraphlib,
+see https://bioconductor.org/packages/release/bioc/src/contrib/Rigraphlib_1.0.0.tar.gz
+
+This package builds a static library entirely from a configure script.
+Because there is no 'src' dir, we assumed the package to be all-arch,
+and get linking errors when trying to use it on another arch then it
+was built for. Arguably this is indeed bad package design, but that is
+hard to protect against.
+
+> I wouldn't think that should happen as configure is supposed to only guide the compilation in src - if there is no src no binaries are expected as the package did not provide any native sources hence there should be no binary content. This looks like something that could be added to R CMD check?
+
+In that case maybe R should warn if it runs a package configure script
+but there is no "src"? And check if NeedsCompilation: yes is set?
+
+One way or another, what matters is that when R runs configure or make
+during install, the value in the "Built" field in the binary package
+should contain the platform value. This is also important when distros
+ship R packages in deb or rpm format, to prevent packages that have
+compiled code from getting "Architecture: all" and be installed on the
+wrong platforms.
+
+
+From edd @end|ng |rom deb|@n@org  Thu May 15 12:06:55 2025
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 15 May 2025 05:06:55 -0500
+Subject: [Rd] Packages manually setting NeedsCompilation
+In-Reply-To: <CABFfbXt_hcpUyfNL7sEgvvn-Wf6iUf9tj+rvYSjeuX6NDsBt=A@mail.gmail.com>
+References: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+ <D416EC65-681B-4875-8BB5-B615568AC24B@R-project.org>
+ <CABFfbXt_hcpUyfNL7sEgvvn-Wf6iUf9tj+rvYSjeuX6NDsBt=A@mail.gmail.com>
+Message-ID: <26661.48319.778114.88794@rob.eddelbuettel.com>
+
+
+On 15 May 2025 at 11:41, Jeroen Ooms wrote:
+| The case that bit me yesterday was a Bioconductor package Rigraphlib,
+| see https://bioconductor.org/packages/release/bioc/src/contrib/Rigraphlib_1.0.0.tar.gz
+| 
+| This package builds a static library entirely from a configure script.
+| Because there is no 'src' dir, we assumed the package to be all-arch,
+| and get linking errors when trying to use it on another arch then it
+| was built for. Arguably this is indeed bad package design, but that is
+| hard to protect against.
+| 
+| > I wouldn't think that should happen as configure is supposed to only guide the compilation in src - if there is no src no binaries are expected as the package did not provide any native sources hence there should be no binary content. This looks like something that could be added to R CMD check?
+| 
+| In that case maybe R should warn if it runs a package configure script
+| but there is no "src"? And check if NeedsCompilation: yes is set?
+
+Conceivably we may have valid use cases to run 'detection' in `configure` that is not
+related to src/ and compilation. 
+
+| One way or another, what matters is that when R runs configure or make
+| during install, the value in the "Built" field in the binary package
+| should contain the platform value. This is also important when distros
+| ship R packages in deb or rpm format, to prevent packages that have
+| compiled code from getting "Architecture: all" and be installed on the
+| wrong platforms.
+
+That view is fairly narrow as it affects only R CMD INSTALL --build use
+(which may of course be the most common by far). But eg r2u wraps .deb
+meta-information around the inner tar.gz it does so by relying on src/ being
+present to detect binary per-platform status (Architecture: any" in Debian
+parlance).
+
+Can we get this BioConductor package to add a src/ field?
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From |uc@r @end|ng |rom |edor@project@org  Thu May 15 12:38:37 2025
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Thu, 15 May 2025 12:38:37 +0200
+Subject: [Rd] Packages manually setting NeedsCompilation
+In-Reply-To: <CABFfbXt_hcpUyfNL7sEgvvn-Wf6iUf9tj+rvYSjeuX6NDsBt=A@mail.gmail.com>
+References: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+ <D416EC65-681B-4875-8BB5-B615568AC24B@R-project.org>
+ <CABFfbXt_hcpUyfNL7sEgvvn-Wf6iUf9tj+rvYSjeuX6NDsBt=A@mail.gmail.com>
+Message-ID: <CALEXWq2nboNSc0uPChKg+YeP62VRC2==8fSa42f46Ai4W17zng@mail.gmail.com>
+
+On Thu, 15 May 2025 at 11:42, Jeroen Ooms <jeroenooms at gmail.com> wrote:
+>
+> On Wed, May 14, 2025 at 11:05?PM Simon Urbanek
+> <simon.urbanek at r-project.org> wrote:
+> >
+> > Can you give an example, please? I wonder if there is a real use-case or just bad package design.
+>
+> The case that bit me yesterday was a Bioconductor package Rigraphlib,
+> see https://bioconductor.org/packages/release/bioc/src/contrib/Rigraphlib_1.0.0.tar.gz
+>
+> This package builds a static library entirely from a configure script.
+> Because there is no 'src' dir, we assumed the package to be all-arch,
+> and get linking errors when trying to use it on another arch then it
+> was built for. Arguably this is indeed bad package design, but that is
+> hard to protect against.
+
+The opposite case is also true: there is a src directory but no
+compilation happens. This is a problem for deb/rpm shipment for two
+reasons. In rpm packaging at least, archful packages are inspected to
+extract debuginfo; since there is no compiled output there, this fails
+and the whole build fails. If the build succeeds (e.g. debuginfo is
+disabled), then we are building the same thing for all architectures,
+when there should be just one, noarch, for all.
+
+I can list at least 3 examples of this:
+
+- BANOVA: requires compilation, there is a src directory, nothing
+happens there, no source files, just a Makefile sitting there.
+- mixl: same, and the Makefile is just used to print if OpenMP is supported (?).
+- mathjaxr: same, and the Makefile is used to install a javascript library (!).
+
+> > I wouldn't think that should happen as configure is supposed to only guide the compilation in src - if there is no src no binaries are expected as the package did not provide any native sources hence there should be no binary content. This looks like something that could be added to R CMD check?
+>
+> In that case maybe R should warn if it runs a package configure script
+> but there is no "src"? And check if NeedsCompilation: yes is set?
+>
+> One way or another, what matters is that when R runs configure or make
+> during install, the value in the "Built" field in the binary package
+> should contain the platform value. This is also important when distros
+> ship R packages in deb or rpm format, to prevent packages that have
+> compiled code from getting "Architecture: all" and be installed on the
+> wrong platforms.
+
+IMHO, the flag NeedsCompilation in the DESCRIPTION file should be the
+one and only source of truth here, regardless of the presence or not
+of a src directory. Then I see two paths here:
+
+- Either the developer is responsible for setting this flag, and the R
+CMD check should fail if it's yes but no compilation happens or the
+other way around.
+- Or R CMD build is responsible for setting this flag after checking
+if compilation happens or not.
+
+-- 
+I?aki ?car
+
+
+From hp@ge@@on@g|thub @end|ng |rom gm@||@com  Sat May 17 04:03:07 2025
+From: hp@ge@@on@g|thub @end|ng |rom gm@||@com (=?UTF-8?B?SGVydsOpIFBhZ8Oocw==?=)
+Date: Fri, 16 May 2025 19:03:07 -0700
+Subject: [Rd] Packages manually setting NeedsCompilation
+In-Reply-To: <CALEXWq2nboNSc0uPChKg+YeP62VRC2==8fSa42f46Ai4W17zng@mail.gmail.com>
+References: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+ <D416EC65-681B-4875-8BB5-B615568AC24B@R-project.org>
+ <CABFfbXt_hcpUyfNL7sEgvvn-Wf6iUf9tj+rvYSjeuX6NDsBt=A@mail.gmail.com>
+ <CALEXWq2nboNSc0uPChKg+YeP62VRC2==8fSa42f46Ai4W17zng@mail.gmail.com>
+Message-ID: <7f4bdcc8-a16d-44a1-803c-87a280375ae7@gmail.com>
+
+FWIW NeedsCompilation is a misnomer. IIRC when I was discussing this 
+feature with R core members many years ago, it doesn't only flag 
+packages that require compilation (and thus contain arch-specific binary 
+files), but it is more generally intended to flag packages that the user 
+wouldn't be able to install **from source** on a pristine Windows or Mac 
+system because the installation process depends on tools that are not 
+necessarily present on such systems.
+
+For example I think I remember seeing at the time some packages that 
+were using 'make' for non-compilation related business. These packages 
+still needed to be flagged with 'NeedsCompilation: yes' in order to 
+recognize them as packages for which "binaries" needed to be made for 
+the purpose distributing them.
+
+Packages without 'NeedsCompilation' field (or with 'NeedsCompilation: 
+no') don't need binaries because the source tarballs is guaranteed to be 
+installable on **any** system, in particular on systems that don't have 
+any development tools.
+
+Best,
+
+H.
+
+On 15/05/2025 03:38, I?aki Ucar wrote:
+> On Thu, 15 May 2025 at 11:42, Jeroen Ooms <jeroenooms at gmail.com> wrote:
+>> On Wed, May 14, 2025 at 11:05?PM Simon Urbanek
+>> <simon.urbanek at r-project.org> wrote:
+>>> Can you give an example, please? I wonder if there is a real use-case or just bad package design.
+>> The case that bit me yesterday was a Bioconductor package Rigraphlib,
+>> see https://bioconductor.org/packages/release/bioc/src/contrib/Rigraphlib_1.0.0.tar.gz
+>>
+>> This package builds a static library entirely from a configure script.
+>> Because there is no 'src' dir, we assumed the package to be all-arch,
+>> and get linking errors when trying to use it on another arch then it
+>> was built for. Arguably this is indeed bad package design, but that is
+>> hard to protect against.
+> The opposite case is also true: there is a src directory but no
+> compilation happens. This is a problem for deb/rpm shipment for two
+> reasons. In rpm packaging at least, archful packages are inspected to
+> extract debuginfo; since there is no compiled output there, this fails
+> and the whole build fails. If the build succeeds (e.g. debuginfo is
+> disabled), then we are building the same thing for all architectures,
+> when there should be just one, noarch, for all.
+>
+> I can list at least 3 examples of this:
+>
+> - BANOVA: requires compilation, there is a src directory, nothing
+> happens there, no source files, just a Makefile sitting there.
+> - mixl: same, and the Makefile is just used to print if OpenMP is supported (?).
+> - mathjaxr: same, and the Makefile is used to install a javascript library (!).
+>
+>>> I wouldn't think that should happen as configure is supposed to only guide the compilation in src - if there is no src no binaries are expected as the package did not provide any native sources hence there should be no binary content. This looks like something that could be added to R CMD check?
+>> In that case maybe R should warn if it runs a package configure script
+>> but there is no "src"? And check if NeedsCompilation: yes is set?
+>>
+>> One way or another, what matters is that when R runs configure or make
+>> during install, the value in the "Built" field in the binary package
+>> should contain the platform value. This is also important when distros
+>> ship R packages in deb or rpm format, to prevent packages that have
+>> compiled code from getting "Architecture: all" and be installed on the
+>> wrong platforms.
+> IMHO, the flag NeedsCompilation in the DESCRIPTION file should be the
+> one and only source of truth here, regardless of the presence or not
+> of a src directory. Then I see two paths here:
+>
+> - Either the developer is responsible for setting this flag, and the R
+> CMD check should fail if it's yes but no compilation happens or the
+> other way around.
+> - Or R CMD build is responsible for setting this flag after checking
+> if compilation happens or not.
+>
+-- 
+Herv? Pag?s
+
+Bioconductor Core Team
+hpages.on.github at gmail.com
+
+
+From |uc@r @end|ng |rom |edor@project@org  Sat May 17 10:13:59 2025
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Sat, 17 May 2025 10:13:59 +0200
+Subject: [Rd] Packages manually setting NeedsCompilation
+In-Reply-To: <7f4bdcc8-a16d-44a1-803c-87a280375ae7@gmail.com>
+References: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+ <D416EC65-681B-4875-8BB5-B615568AC24B@R-project.org>
+ <CABFfbXt_hcpUyfNL7sEgvvn-Wf6iUf9tj+rvYSjeuX6NDsBt=A@mail.gmail.com>
+ <CALEXWq2nboNSc0uPChKg+YeP62VRC2==8fSa42f46Ai4W17zng@mail.gmail.com>
+ <7f4bdcc8-a16d-44a1-803c-87a280375ae7@gmail.com>
+Message-ID: <CALEXWq237oHVp8wtwq-i0YV-fEsUQVhP-aQcwVTf_5qPTV+cgw@mail.gmail.com>
+
+El s?b., 17 may. 2025 4:03, Herv? Pag?s <hpages.on.github at gmail.com>
+escribi?:
+
+> FWIW NeedsCompilation is a misnomer. IIRC when I was discussing this
+> feature with R core members many years ago, it doesn't only flag
+> packages that require compilation (and thus contain arch-specific binary
+> files), but it is more generally intended to flag packages that the user
+> wouldn't be able to install **from source** on a pristine Windows or Mac
+> system because the installation process depends on tools that are not
+> necessarily present on such systems.
+>
+> For example I think I remember seeing at the time some packages that
+> were using 'make' for non-compilation related business. These packages
+> still needed to be flagged with 'NeedsCompilation: yes' in order to
+> recognize them as packages for which "binaries" needed to be made for
+> the purpose distributing them.
+>
+
+Then maybe such thing shouldn't be allowed?
+
+I?aki
+
+
+> Packages without 'NeedsCompilation' field (or with 'NeedsCompilation:
+> no') don't need binaries because the source tarballs is guaranteed to be
+> installable on **any** system, in particular on systems that don't have
+> any development tools.
+>
+> Best,
+>
+> H.
+>
+> On 15/05/2025 03:38, I?aki Ucar wrote:
+> > On Thu, 15 May 2025 at 11:42, Jeroen Ooms <jeroenooms at gmail.com> wrote:
+> >> On Wed, May 14, 2025 at 11:05?PM Simon Urbanek
+> >> <simon.urbanek at r-project.org> wrote:
+> >>> Can you give an example, please? I wonder if there is a real use-case
+> or just bad package design.
+> >> The case that bit me yesterday was a Bioconductor package Rigraphlib,
+> >> see
+> https://bioconductor.org/packages/release/bioc/src/contrib/Rigraphlib_1.0.0.tar.gz
+> >>
+> >> This package builds a static library entirely from a configure script.
+> >> Because there is no 'src' dir, we assumed the package to be all-arch,
+> >> and get linking errors when trying to use it on another arch then it
+> >> was built for. Arguably this is indeed bad package design, but that is
+> >> hard to protect against.
+> > The opposite case is also true: there is a src directory but no
+> > compilation happens. This is a problem for deb/rpm shipment for two
+> > reasons. In rpm packaging at least, archful packages are inspected to
+> > extract debuginfo; since there is no compiled output there, this fails
+> > and the whole build fails. If the build succeeds (e.g. debuginfo is
+> > disabled), then we are building the same thing for all architectures,
+> > when there should be just one, noarch, for all.
+> >
+> > I can list at least 3 examples of this:
+> >
+> > - BANOVA: requires compilation, there is a src directory, nothing
+> > happens there, no source files, just a Makefile sitting there.
+> > - mixl: same, and the Makefile is just used to print if OpenMP is
+> supported (?).
+> > - mathjaxr: same, and the Makefile is used to install a javascript
+> library (!).
+> >
+> >>> I wouldn't think that should happen as configure is supposed to only
+> guide the compilation in src - if there is no src no binaries are expected
+> as the package did not provide any native sources hence there should be no
+> binary content. This looks like something that could be added to R CMD
+> check?
+> >> In that case maybe R should warn if it runs a package configure script
+> >> but there is no "src"? And check if NeedsCompilation: yes is set?
+> >>
+> >> One way or another, what matters is that when R runs configure or make
+> >> during install, the value in the "Built" field in the binary package
+> >> should contain the platform value. This is also important when distros
+> >> ship R packages in deb or rpm format, to prevent packages that have
+> >> compiled code from getting "Architecture: all" and be installed on the
+> >> wrong platforms.
+> > IMHO, the flag NeedsCompilation in the DESCRIPTION file should be the
+> > one and only source of truth here, regardless of the presence or not
+> > of a src directory. Then I see two paths here:
+> >
+> > - Either the developer is responsible for setting this flag, and the R
+> > CMD check should fail if it's yes but no compilation happens or the
+> > other way around.
+> > - Or R CMD build is responsible for setting this flag after checking
+> > if compilation happens or not.
+> >
+> --
+> Herv? Pag?s
+>
+> Bioconductor Core Team
+> hpages.on.github at gmail.com
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Sat May 17 10:50:59 2025
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 17 May 2025 03:50:59 -0500
+Subject: [Rd] Packages manually setting NeedsCompilation
+In-Reply-To: <CALEXWq237oHVp8wtwq-i0YV-fEsUQVhP-aQcwVTf_5qPTV+cgw@mail.gmail.com>
+References: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+ <D416EC65-681B-4875-8BB5-B615568AC24B@R-project.org>
+ <CABFfbXt_hcpUyfNL7sEgvvn-Wf6iUf9tj+rvYSjeuX6NDsBt=A@mail.gmail.com>
+ <CALEXWq2nboNSc0uPChKg+YeP62VRC2==8fSa42f46Ai4W17zng@mail.gmail.com>
+ <7f4bdcc8-a16d-44a1-803c-87a280375ae7@gmail.com>
+ <CALEXWq237oHVp8wtwq-i0YV-fEsUQVhP-aQcwVTf_5qPTV+cgw@mail.gmail.com>
+Message-ID: <26664.19955.213967.316328@rob.eddelbuettel.com>
+
+
+On 17 May 2025 at 10:13, I?aki Ucar wrote:
+| El s?b., 17 may. 2025 4:03, Herv? Pag?s <hpages.on.github at gmail.com>
+| escribi?:
+| 
+| > FWIW NeedsCompilation is a misnomer. IIRC when I was discussing this
+| > feature with R core members many years ago, it doesn't only flag
+| > packages that require compilation (and thus contain arch-specific binary
+| > files), but it is more generally intended to flag packages that the user
+| > wouldn't be able to install **from source** on a pristine Windows or Mac
+| > system because the installation process depends on tools that are not
+| > necessarily present on such systems.
+| >
+| > For example I think I remember seeing at the time some packages that
+| > were using 'make' for non-compilation related business. These packages
+| > still needed to be flagged with 'NeedsCompilation: yes' in order to
+| > recognize them as packages for which "binaries" needed to be made for
+| > the purpose distributing them.
+| >
+| 
+| Then maybe such thing shouldn't be allowed?
+
+Seconded.
+
+Seems like a case for 'SystemRequirements: make' at best -- but then make is
+a given (but GNU make isn't).
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From ||@t@ @end|ng |rom dewey@myzen@co@uk  Sat May 17 13:20:41 2025
+From: ||@t@ @end|ng |rom dewey@myzen@co@uk (Michael Dewey)
+Date: Sat, 17 May 2025 12:20:41 +0100
+Subject: [Rd] Packages manually setting NeedsCompilation
+In-Reply-To: <CALEXWq237oHVp8wtwq-i0YV-fEsUQVhP-aQcwVTf_5qPTV+cgw@mail.gmail.com>
+References: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+ <D416EC65-681B-4875-8BB5-B615568AC24B@R-project.org>
+ <CABFfbXt_hcpUyfNL7sEgvvn-Wf6iUf9tj+rvYSjeuX6NDsBt=A@mail.gmail.com>
+ <CALEXWq2nboNSc0uPChKg+YeP62VRC2==8fSa42f46Ai4W17zng@mail.gmail.com>
+ <7f4bdcc8-a16d-44a1-803c-87a280375ae7@gmail.com>
+ <CALEXWq237oHVp8wtwq-i0YV-fEsUQVhP-aQcwVTf_5qPTV+cgw@mail.gmail.com>
+Message-ID: <fde3dfa1-cf59-4c19-9a7e-bd01b26a7204@dewey.myzen.co.uk>
+
+This is all a bit above my head but as a Windows user I have always 
+interpreted NeedsCompilation as meaning I could install it without 
+having to wait for binaries to appear on CRAN. I do not need Rtools for 
+my own packages so I have never installed it.
+
+Michael
+
+On 17/05/2025 09:13, I?aki Ucar wrote:
+> El s?b., 17 may. 2025 4:03, Herv? Pag?s <hpages.on.github at gmail.com>
+> escribi?:
+> 
+>> FWIW NeedsCompilation is a misnomer. IIRC when I was discussing this
+>> feature with R core members many years ago, it doesn't only flag
+>> packages that require compilation (and thus contain arch-specific binary
+>> files), but it is more generally intended to flag packages that the user
+>> wouldn't be able to install **from source** on a pristine Windows or Mac
+>> system because the installation process depends on tools that are not
+>> necessarily present on such systems.
+>>
+>> For example I think I remember seeing at the time some packages that
+>> were using 'make' for non-compilation related business. These packages
+>> still needed to be flagged with 'NeedsCompilation: yes' in order to
+>> recognize them as packages for which "binaries" needed to be made for
+>> the purpose distributing them.
+>>
+> 
+> Then maybe such thing shouldn't be allowed?
+> 
+> I?aki
+> 
+> 
+>> Packages without 'NeedsCompilation' field (or with 'NeedsCompilation:
+>> no') don't need binaries because the source tarballs is guaranteed to be
+>> installable on **any** system, in particular on systems that don't have
+>> any development tools.
+>>
+>> Best,
+>>
+>> H.
+>>
+>> On 15/05/2025 03:38, I?aki Ucar wrote:
+>>> On Thu, 15 May 2025 at 11:42, Jeroen Ooms <jeroenooms at gmail.com> wrote:
+>>>> On Wed, May 14, 2025 at 11:05?PM Simon Urbanek
+>>>> <simon.urbanek at r-project.org> wrote:
+>>>>> Can you give an example, please? I wonder if there is a real use-case
+>> or just bad package design.
+>>>> The case that bit me yesterday was a Bioconductor package Rigraphlib,
+>>>> see
+>> https://bioconductor.org/packages/release/bioc/src/contrib/Rigraphlib_1.0.0.tar.gz
+>>>>
+>>>> This package builds a static library entirely from a configure script.
+>>>> Because there is no 'src' dir, we assumed the package to be all-arch,
+>>>> and get linking errors when trying to use it on another arch then it
+>>>> was built for. Arguably this is indeed bad package design, but that is
+>>>> hard to protect against.
+>>> The opposite case is also true: there is a src directory but no
+>>> compilation happens. This is a problem for deb/rpm shipment for two
+>>> reasons. In rpm packaging at least, archful packages are inspected to
+>>> extract debuginfo; since there is no compiled output there, this fails
+>>> and the whole build fails. If the build succeeds (e.g. debuginfo is
+>>> disabled), then we are building the same thing for all architectures,
+>>> when there should be just one, noarch, for all.
+>>>
+>>> I can list at least 3 examples of this:
+>>>
+>>> - BANOVA: requires compilation, there is a src directory, nothing
+>>> happens there, no source files, just a Makefile sitting there.
+>>> - mixl: same, and the Makefile is just used to print if OpenMP is
+>> supported (?).
+>>> - mathjaxr: same, and the Makefile is used to install a javascript
+>> library (!).
+>>>
+>>>>> I wouldn't think that should happen as configure is supposed to only
+>> guide the compilation in src - if there is no src no binaries are expected
+>> as the package did not provide any native sources hence there should be no
+>> binary content. This looks like something that could be added to R CMD
+>> check?
+>>>> In that case maybe R should warn if it runs a package configure script
+>>>> but there is no "src"? And check if NeedsCompilation: yes is set?
+>>>>
+>>>> One way or another, what matters is that when R runs configure or make
+>>>> during install, the value in the "Built" field in the binary package
+>>>> should contain the platform value. This is also important when distros
+>>>> ship R packages in deb or rpm format, to prevent packages that have
+>>>> compiled code from getting "Architecture: all" and be installed on the
+>>>> wrong platforms.
+>>> IMHO, the flag NeedsCompilation in the DESCRIPTION file should be the
+>>> one and only source of truth here, regardless of the presence or not
+>>> of a src directory. Then I see two paths here:
+>>>
+>>> - Either the developer is responsible for setting this flag, and the R
+>>> CMD check should fail if it's yes but no compilation happens or the
+>>> other way around.
+>>> - Or R CMD build is responsible for setting this flag after checking
+>>> if compilation happens or not.
+>>>
+>> --
+>> Herv? Pag?s
+>>
+>> Bioconductor Core Team
+>> hpages.on.github at gmail.com
+>>
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+-- 
+Michael Dewey
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Mon May 19 14:06:39 2025
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Mon, 19 May 2025 14:06:39 +0200
+Subject: [Rd] Packages manually setting NeedsCompilation
+In-Reply-To: <7f4bdcc8-a16d-44a1-803c-87a280375ae7@gmail.com>
+References: <CABFfbXsXyACmW73Pa0-_nBTNKp8CtVx6kj4g46Px0dK16hjW4g@mail.gmail.com>
+ <D416EC65-681B-4875-8BB5-B615568AC24B@R-project.org>
+ <CABFfbXt_hcpUyfNL7sEgvvn-Wf6iUf9tj+rvYSjeuX6NDsBt=A@mail.gmail.com>
+ <CALEXWq2nboNSc0uPChKg+YeP62VRC2==8fSa42f46Ai4W17zng@mail.gmail.com>
+ <7f4bdcc8-a16d-44a1-803c-87a280375ae7@gmail.com>
+Message-ID: <26667.7887.625395.65848@hornik.net>
+
+>>>>> Herv? Pag?s writes:
+
+> FWIW NeedsCompilation is a misnomer. IIRC when I was discussing this 
+> feature with R core members many years ago, it doesn't only flag 
+> packages that require compilation (and thus contain arch-specific binary 
+> files), but it is more generally intended to flag packages that the user 
+> wouldn't be able to install **from source** on a pristine Windows or Mac 
+> system because the installation process depends on tools that are not 
+> necessarily present on such systems.
+
+> For example I think I remember seeing at the time some packages that 
+> were using 'make' for non-compilation related business. These packages 
+> still needed to be flagged with 'NeedsCompilation: yes' in order to 
+> recognize them as packages for which "binaries" needed to be made for 
+> the purpose distributing them.
+
+> Packages without 'NeedsCompilation' field (or with 'NeedsCompilation: 
+> no') don't need binaries because the source tarballs is guaranteed to be 
+> installable on **any** system, in particular on systems that don't have 
+> any development tools.
+
+Indeed, this is what NeedsCompilation is about.  When (on Windows only?)
+we run install.packages(type = "both") looking for both binary and
+source packages to possibly install, and we find a package for which the
+version of the source is higher than that of the binary (or there is no
+binary), we double-check with the user whether to install the source
+when NeedsCompilation: yes is found (as this likely will not work on a
+system with "only R" installed.
+
+(See the comments in utils/R/packages2.R for what precisely is going
+on.)
+
+I.e., "NeedsCompilation: no" really means "should always be installable
+from source".
+
+Since R 3.2.0, R CMD build adds a 'NeedsCompilation' field to
+DESCRIPTION if one is not already present, setting to 'yes' if there is
+a 'src' subdir and to 'no' otherwise.
+
+On CRAN, there are currently 14 packages which have a 'src' subdir but
+no source files R knows to compile.  12 of these have 'install.libs.R'
+(see below), one has a Makefile for a subdir, and one (mixl, reported by
+I?aki) uses Makevars to print if OpenMP is supported (I'll complain
+about this one).
+
+In WRE we say
+
+  If a package wants to install other binaries (for example executable
+  programs), it should provide an R script ?src/install.libs.R? which
+  will be run as part of the installation in the ?src? build directory
+  _instead of_ copying the shared objects/DLLs.
+
+and most of the 12 above actually comply (but compile in a subdir).
+
+So if a package has a 'src' subdir, it should really need
+'NeedsCompilation: yes'.
+
+On the other hand, packages with no 'src' subdir are not necessarily
+always installable from source.  One could have configure code or top
+level R code which does not work with "only R" installed.  These are the
+cases when maintainers should manually set 'NeedsCompilation: yes' in
+their DESCRIPTION file.  As always, it would be better if this was not
+set manually but could be provided automagically, but I don't see how
+this can be accomplished.
+
+Best
+-k
+
+
+> Best,
+
+> H.
+
+> On 15/05/2025 03:38, I?aki Ucar wrote:
+>> On Thu, 15 May 2025 at 11:42, Jeroen Ooms <jeroenooms at gmail.com> wrote:
+>>> On Wed, May 14, 2025 at 11:05?PM Simon Urbanek
+>>> <simon.urbanek at r-project.org> wrote:
+>>>> Can you give an example, please? I wonder if there is a real use-case or just bad package design.
+>>> The case that bit me yesterday was a Bioconductor package Rigraphlib,
+>>> see https://bioconductor.org/packages/release/bioc/src/contrib/Rigraphlib_1.0.0.tar.gz
+>>> 
+>>> This package builds a static library entirely from a configure script.
+>>> Because there is no 'src' dir, we assumed the package to be all-arch,
+>>> and get linking errors when trying to use it on another arch then it
+>>> was built for. Arguably this is indeed bad package design, but that is
+>>> hard to protect against.
+>> The opposite case is also true: there is a src directory but no
+>> compilation happens. This is a problem for deb/rpm shipment for two
+>> reasons. In rpm packaging at least, archful packages are inspected to
+>> extract debuginfo; since there is no compiled output there, this fails
+>> and the whole build fails. If the build succeeds (e.g. debuginfo is
+>> disabled), then we are building the same thing for all architectures,
+>> when there should be just one, noarch, for all.
+>> 
+>> I can list at least 3 examples of this:
+>> 
+>> - BANOVA: requires compilation, there is a src directory, nothing
+>> happens there, no source files, just a Makefile sitting there.
+>> - mixl: same, and the Makefile is just used to print if OpenMP is supported (?).
+>> - mathjaxr: same, and the Makefile is used to install a javascript library (!).
+>> 
+>>>> I wouldn't think that should happen as configure is supposed to only guide the compilation in src - if there is no src no binaries are expected as the package did not provide any native sources hence there should be no binary content. This looks like something that could be added to R CMD check?
+>>> In that case maybe R should warn if it runs a package configure script
+>>> but there is no "src"? And check if NeedsCompilation: yes is set?
+>>> 
+>>> One way or another, what matters is that when R runs configure or make
+>>> during install, the value in the "Built" field in the binary package
+>>> should contain the platform value. This is also important when distros
+>>> ship R packages in deb or rpm format, to prevent packages that have
+>>> compiled code from getting "Architecture: all" and be installed on the
+>>> wrong platforms.
+>> IMHO, the flag NeedsCompilation in the DESCRIPTION file should be the
+>> one and only source of truth here, regardless of the presence or not
+>> of a src directory. Then I see two paths here:
+>> 
+>> - Either the developer is responsible for setting this flag, and the R
+>> CMD check should fail if it's yes but no compilation happens or the
+>> other way around.
+>> - Or R CMD build is responsible for setting this flag after checking
+>> if compilation happens or not.
+>> 
+> -- 
+> Herv? Pag?s
+
+> Bioconductor Core Team
+> hpages.on.github at gmail.com
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From ro|@nd@|u@@ @end|ng |rom thuenen@de  Fri May 23 08:23:04 2025
+From: ro|@nd@|u@@ @end|ng |rom thuenen@de (=?UTF-8?Q?Roland_Fu=C3=9F?=)
+Date: Fri, 23 May 2025 08:23:04 +0200
+Subject: [Rd] FR: improve "use" function
+Message-ID: <ffdeb8bc-bec8-49cc-b6b4-6f0a6b2b2b88@thuenen.de>
+
+Hello,
+
+Currently `use` fails silently if you try to attach functions from the 
+same namespace. It would be nice and more similiar to the use of 
+roxygen2 if it could add (and maybe even remove?) functions. Here is a 
+simple proof of concept I have posted on Stack Overflow [1]. Something 
+similar could be done within `use`. Of course, it would be preferable if 
+it didn't need to detach the namespace.
+
+|use("data.table", "fread") ls("package:data.table") #[1] "fread" 
+use("data.table", "nafill") ls("package:data.table") #[1] "fread" 
+useplus <- function(package, include.only) { loaded <- 
+ls(sprintf("package:%s", package), all.names = TRUE) 
+unloadNamespace(package) if (missing(include.only)) { use(package) } 
+else { use(package, union(loaded, include.only)) } } 
+useplus("data.table", "nafill") ls("package:data.table") #[1] "fread" 
+"nafill"|
+
+
+[1] https://stackoverflow.com/q/79633064/1412059
+
+-- 
+Dr. Roland Fu?
+
+Th?nen-Institut f?r Agrarklimaschutz/
+Th?nen Institute of Climate-Smart Agriculture
+
+Bundesallee 65
+D-38116 Braunschweig, Germany
+
+Tel./Webex: ++49 531 25701967
+Email: roland.fuss at thuenen.de
+
+Arbeitsgruppe "Emissionsberichterstattung"/
+Working group "Emission Inventories"
+Email: emissionsinventare at thuenen.de
+
+
+From m|kko@m@rtt||@ @end|ng |rom or|onph@rm@@com  Fri May 23 13:47:33 2025
+From: m|kko@m@rtt||@ @end|ng |rom or|onph@rm@@com (Marttila Mikko)
+Date: Fri, 23 May 2025 11:47:33 +0000
+Subject: [Rd] Bug in prettyNum
+Message-ID: <DU0PR09MB5500C551FB554E632FE7DE3E9898A@DU0PR09MB5500.eurprd09.prod.outlook.com>
+
+Dear list,
+
+I'd like to report a bug in `prettyNum()`. When called with a numeric vector, the `replace.zero` argument is disregarded.
+
+> prettyNum(0, zero.print = "- ", replace.zero = TRUE)
+[1] "-"
+Warning message:
+In .format.zeros(x, zero.print, replace = replace.zero) :
+  'zero.print' is truncated to fit into formatted zeros; consider 'replace=TRUE'
+
+A character vector as input works as expected:
+
+> prettyNum("0", zero.print = "- ", replace.zero = TRUE)
+[1] "- "
+
+Please see below a patch which I believe would fix this. I haven't tested it as I can't easily compile R from source with my setup.
+
+Best,
+
+Mikko
+
+diff --git a/src/library/base/R/format.R b/src/library/base/R/format.R
+index 63fef83..1afadd3 100644
+--- a/src/library/base/R/format.R
++++ b/src/library/base/R/format.R
+@@ -338,7 +338,7 @@ prettyNum <-
+                    big.mark=big.mark, big.interval=big.interval,
+                    small.mark=small.mark, small.interval=small.interval,
+                    decimal.mark=decimal.mark, zero.print=zero.print,
+-                   drop0trailing=drop0trailing, ...)
++                   replace.zero=replace.zero, drop0trailing=drop0trailing, ...)
+     }
+     ## be fast in trivial case, when all options have their default, or "match"
+     nMark <- big.mark == "" && small.mark == "" && (notChar || decimal.mark == input.d.mark)
+
+
+This e-mail transmission may contain confidential or legally privileged information that is intended only for the individual or entity named in the e-mail address. If you are not the intended recipient, you are hereby notified that any disclosure, copying, distribution, or reliance upon the contents of this e-mail is strictly prohibited. If you have received this e-mail transmission in error, please reply to the sender, so that they can arrange for proper delivery, and then please delete the message from your computer systems. Thank you.
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri May 23 16:14:57 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 23 May 2025 17:14:57 +0300
+Subject: [Rd] Bug in prettyNum
+In-Reply-To: <DU0PR09MB5500C551FB554E632FE7DE3E9898A@DU0PR09MB5500.eurprd09.prod.outlook.com>
+References: <DU0PR09MB5500C551FB554E632FE7DE3E9898A@DU0PR09MB5500.eurprd09.prod.outlook.com>
+Message-ID: <20250523171457.5260d7a9@arachnoid>
+
+? Fri, 23 May 2025 11:47:33 +0000
+Marttila Mikko via R-devel <r-devel at r-project.org> ?????:
+
+> When called with a numeric vector, the `replace.zero` argument is
+> disregarded.
+> 
+> > prettyNum(0, zero.print = "- ", replace.zero = TRUE)  
+> [1] "-"
+> Warning message:
+> In .format.zeros(x, zero.print, replace = replace.zero) :
+>   'zero.print' is truncated to fit into formatted zeros; consider
+> 'replace=TRUE'
+
+> Please see below a patch which I believe would fix this.
+
+Surprisingly, it's not enough. The 'replace' argument to .format.zeros
+needs to be "threaded" through both the call to vapply(x, format, ...)
+and the internal call from format.default(...) to prettyNum(...):
+
+R> options(warn = 2, error = recover)
+R> prettyNum(0, zero.print = "--", replace.zero = TRUE)
+Error in .format.zeros(x, zero.print, replace = replace.zero) :
+  (converted from warning) 'zero.print' is truncated to fit into formatted zeros; consider 'replace=TRUE'
+
+Enter a frame number, or 0 to exit
+
+ 1: prettyNum(0, zero.print = "--", replace.zero = TRUE)
+ 2: vapply(x, format, "", big.mark = big.mark, big.interval = big.interval, sma
+ 3: FUN(X[[i]], ...)
+ 4: format.default(X[[i]], ...)
+ 5: prettyNum(.Internal(format(x, trim, digits, nsmall, width, 3, na.encode, sc
+ 6: .format.zeros(x, zero.print, replace = replace.zero)
+ 7: warning("'zero.print' is truncated to fit into formatted zeros; consider 'r
+<...omitted...>
+Selection: 6
+<...>
+Browse[1]> ls.str()
+i0 :  logi TRUE
+ind0 :  int 1
+nc :  int 1
+nx :  num 0
+nz :  int 2
+replace :  logi FALSE
+warn.non.fitting :  logi TRUE
+x :  chr "0"
+zero.print :  chr "--"
+
+Since prettyNum() accepts ... and thus ignores unknown arguments, it
+seems to be safe to forward the ellipsis from format.default() to
+prettyNum(). The patch survives LANGUAGE=en TZ=UTC make check-devel.
+
+Index: src/library/base/R/format.R
+===================================================================
+--- src/library/base/R/format.R	(revision 88229)
++++ src/library/base/R/format.R	(working copy)
+@@ -73,7 +73,7 @@
+ 			     decimal.mark = decimal.mark, input.d.mark = decimal.mark,
+ 			     zero.print = zero.print, drop0trailing = drop0trailing,
+ 			     is.cmplx = is.complex(x),
+-			     preserve.width = if (trim) "individual" else "common"),
++			     preserve.width = if (trim) "individual" else "common", ...),
+ 	       ## all others (for now):
+ 	       stop(gettextf("Found no format() method for class \"%s\"",
+ 			     class(x)), domain = NA))
+@@ -338,7 +338,8 @@
+ 		    big.mark=big.mark, big.interval=big.interval,
+ 		    small.mark=small.mark, small.interval=small.interval,
+ 		    decimal.mark=decimal.mark, zero.print=zero.print,
+-		    drop0trailing=drop0trailing, ...)
++		    drop0trailing=drop0trailing, replace.zero=replace.zero,
++		    ...)
+     }
+     ## be fast in trivial case, when all options have their default, or "match"
+     nMark <- big.mark == "" && small.mark == "" && (notChar || decimal.mark == input.d.mark)
+
+
+-- 
+Best regards,
+Ivan
+
+
+From trevor@|@d@v|@ @end|ng |rom gm@||@com  Fri May 23 21:44:37 2025
+From: trevor@|@d@v|@ @end|ng |rom gm@||@com (Trevor Davis)
+Date: Fri, 23 May 2025 12:44:37 -0700
+Subject: [Rd] FR: improve "use" function
+In-Reply-To: <ffdeb8bc-bec8-49cc-b6b4-6f0a6b2b2b88@thuenen.de>
+References: <ffdeb8bc-bec8-49cc-b6b4-6f0a6b2b2b88@thuenen.de>
+Message-ID: <CAMigB8Ef9QB27aj1OP7T1dhG4qPmM3YjMWs7XTrxA+BkY7CGkg@mail.gmail.com>
+
+> Of course, it would be preferable if didn't need to detach the namespace.
+
+Here's a version only detaches the namespace when necessary:
+
+```r
+use <- function(package, include.only) {
+    package <- as.character(package)[[1L]]
+    if (!requireNamespace(package, quietly = TRUE)) {
+        warning("there is no package called ", sQuote(package))
+        return (invisible(FALSE))
+    }
+
+    if (missing(include.only)) {
+        ns <- asNamespace(package, base.OK = FALSE)
+        include.only <- getNamespaceExports(ns)
+    }
+
+    if (package %in% .packages()) {
+        name <- paste0("package:", package)
+        previously_attached <- ls(name, all.names = TRUE)
+        if (!all(include.only %in% previously_attached)) {
+            detach(name, character.only = TRUE)
+            include.only <- union(include.only, previously_attached)
+            attachNamespace(package, include.only = include.only)
+        } # else no need to detach and re-attach
+    } else {
+        attachNamespace(package, include.only = include.only)
+    }
+    invisible(TRUE)
+}
+```
+
+On Fri, May 23, 2025 at 3:40?AM Roland Fu? via R-devel <
+r-devel at r-project.org> wrote:
+
+> Hello,
+>
+> Currently `use` fails silently if you try to attach functions from the
+> same namespace. It would be nice and more similiar to the use of
+> roxygen2 if it could add (and maybe even remove?) functions. Here is a
+> simple proof of concept I have posted on Stack Overflow [1]. Something
+> similar could be done within `use`. Of course, it would be preferable if
+> it didn't need to detach the namespace.
+>
+> |use("data.table", "fread") ls("package:data.table") #[1] "fread"
+> use("data.table", "nafill") ls("package:data.table") #[1] "fread"
+> useplus <- function(package, include.only) { loaded <-
+> ls(sprintf("package:%s", package), all.names = TRUE)
+> unloadNamespace(package) if (missing(include.only)) { use(package) }
+> else { use(package, union(loaded, include.only)) } }
+> useplus("data.table", "nafill") ls("package:data.table") #[1] "fread"
+> "nafill"|
+>
+>
+> [1] https://stackoverflow.com/q/79633064/1412059
+>
+> --
+> Dr. Roland Fu?
+>
+> Th?nen-Institut f?r Agrarklimaschutz/
+> Th?nen Institute of Climate-Smart Agriculture
+>
+> Bundesallee 65
+> D-38116 Braunschweig, Germany
+>
+> Tel./Webex: ++49 531 25701967
+> Email: roland.fuss at thuenen.de
+>
+> Arbeitsgruppe "Emissionsberichterstattung"/
+> Working group "Emission Inventories"
+> Email: emissionsinventare at thuenen.de
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Mon May 26 18:27:57 2025
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Mon, 26 May 2025 18:27:57 +0200
+Subject: [Rd] Bug in prettyNum
+In-Reply-To: <20250523171457.5260d7a9@arachnoid>
+References: <DU0PR09MB5500C551FB554E632FE7DE3E9898A@DU0PR09MB5500.eurprd09.prod.outlook.com>
+ <20250523171457.5260d7a9@arachnoid>
+Message-ID: <26676.38541.365837.162746@stat.math.ethz.ch>
+
+Thank you,  Marttila  and Ivan,
+
+As the original author of prettyNum() {etc ..},
+I will commit such a bug fix to R-devel (and probably port it to
+R 4.5.0 patched) quite soon
+(but not yet today).
+
+Best regards,
+
+Martin Maechler
+
+>>>>> Ivan Krylov via R-devel 
+>>>>>     on Fri, 23 May 2025 17:14:57 +0300 writes:
+
+    > ? Fri, 23 May 2025 11:47:33 +0000
+    > Marttila Mikko via R-devel <r-devel at r-project.org> ?????:
+
+    >> When called with a numeric vector, the `replace.zero` argument is
+    >> disregarded.
+    >> 
+    >> > prettyNum(0, zero.print = "- ", replace.zero = TRUE)  
+    >> [1] "-"
+    >> Warning message:
+    >> In .format.zeros(x, zero.print, replace = replace.zero) :
+    >> 'zero.print' is truncated to fit into formatted zeros; consider
+    >> 'replace=TRUE'
+
+    >> Please see below a patch which I believe would fix this.
+
+    > Surprisingly, it's not enough. The 'replace' argument to .format.zeros
+    > needs to be "threaded" through both the call to vapply(x, format, ...)
+    > and the internal call from format.default(...) to prettyNum(...):
+
+    R> options(warn = 2, error = recover)
+    R> prettyNum(0, zero.print = "--", replace.zero = TRUE)
+    > Error in .format.zeros(x, zero.print, replace = replace.zero) :
+    > (converted from warning) 'zero.print' is truncated to fit into formatted zeros; consider 'replace=TRUE'
+
+    > Enter a frame number, or 0 to exit
+
+    > 1: prettyNum(0, zero.print = "--", replace.zero = TRUE)
+    > 2: vapply(x, format, "", big.mark = big.mark, big.interval = big.interval, sma
+    > 3: FUN(X[[i]], ...)
+    > 4: format.default(X[[i]], ...)
+    > 5: prettyNum(.Internal(format(x, trim, digits, nsmall, width, 3, na.encode, sc
+    > 6: .format.zeros(x, zero.print, replace = replace.zero)
+    > 7: warning("'zero.print' is truncated to fit into formatted zeros; consider 'r
+    > <...omitted...>
+    > Selection: 6
+    > <...>
+    > Browse[1]> ls.str()
+    > i0 :  logi TRUE
+    > ind0 :  int 1
+    > nc :  int 1
+    > nx :  num 0
+    > nz :  int 2
+    > replace :  logi FALSE
+    > warn.non.fitting :  logi TRUE
+    > x :  chr "0"
+    > zero.print :  chr "--"
+
+    > Since prettyNum() accepts ... and thus ignores unknown arguments, it
+    > seems to be safe to forward the ellipsis from format.default() to
+    > prettyNum(). The patch survives LANGUAGE=en TZ=UTC make check-devel.
+
+    > Index: src/library/base/R/format.R
+    > ===================================================================
+    > --- src/library/base/R/format.R	(revision 88229)
+    > +++ src/library/base/R/format.R	(working copy)
+    > @@ -73,7 +73,7 @@
+    > decimal.mark = decimal.mark, input.d.mark = decimal.mark,
+    > zero.print = zero.print, drop0trailing = drop0trailing,
+    > is.cmplx = is.complex(x),
+    > -			     preserve.width = if (trim) "individual" else "common"),
+    > +			     preserve.width = if (trim) "individual" else "common", ...),
+    > ## all others (for now):
+    > stop(gettextf("Found no format() method for class \"%s\"",
+    > class(x)), domain = NA))
+    > @@ -338,7 +338,8 @@
+    > big.mark=big.mark, big.interval=big.interval,
+    > small.mark=small.mark, small.interval=small.interval,
+    > decimal.mark=decimal.mark, zero.print=zero.print,
+    > -		    drop0trailing=drop0trailing, ...)
+    > +		    drop0trailing=drop0trailing, replace.zero=replace.zero,
+    > +		    ...)
+    > }
+    > ## be fast in trivial case, when all options have their default, or "match"
+    > nMark <- big.mark == "" && small.mark == "" && (notChar || decimal.mark == input.d.mark)
+
+
+    > -- 
+    > Best regards,
+    > Ivan
+
+    > ______________________________________________
+    > R-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Tue May 27 09:13:01 2025
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Tue, 27 May 2025 09:13:01 +0200
+Subject: [Rd] FR: improve "use" function
+In-Reply-To: <CAMigB8Ef9QB27aj1OP7T1dhG4qPmM3YjMWs7XTrxA+BkY7CGkg@mail.gmail.com>
+References: <ffdeb8bc-bec8-49cc-b6b4-6f0a6b2b2b88@thuenen.de>
+ <CAMigB8Ef9QB27aj1OP7T1dhG4qPmM3YjMWs7XTrxA+BkY7CGkg@mail.gmail.com>
+Message-ID: <26677.26109.816335.849333@hornik.net>
+
+>>>>> Trevor Davis writes:
+
+Thanks.
+
+This is really about what
+
+  library("foo", include.only = "fun2")
+
+should do if package 'foo' was already attached and the include.only
+contradicts a previous specification.
+
+In principle, one could look into allowing the underlying
+attachNamespace() to add more exports into the package environment (the
+'only' in 'include.only' might suggest differently, but we would have to
+live with that).  However, using detach/attach is not the right way of
+doing this, as it possibly modifies the search path and may trigger
+hooks that should not be triggered.  Doing it right would probably need
+an .Internal and hence be a lot of work ...
+
+What definitely needs attention is the fact that currently the above is
+silently ignored.  So at least for now we should teach attachNamespace()
+to throw a suitably classed error if called with include.only that
+contradicts a previous specification.
+
+Contributions welcome :-)
+
+Best
+-k
+
+
+>> Of course, it would be preferable if didn't need to detach the namespace.
+> Here's a version only detaches the namespace when necessary:
+
+> ```r
+> use <- function(package, include.only) {
+>     package <- as.character(package)[[1L]]
+>     if (!requireNamespace(package, quietly = TRUE)) {
+>         warning("there is no package called ", sQuote(package))
+>         return (invisible(FALSE))
+>     }
+
+>     if (missing(include.only)) {
+>         ns <- asNamespace(package, base.OK = FALSE)
+>         include.only <- getNamespaceExports(ns)
+>     }
+
+>     if (package %in% .packages()) {
+>         name <- paste0("package:", package)
+>         previously_attached <- ls(name, all.names = TRUE)
+>         if (!all(include.only %in% previously_attached)) {
+>             detach(name, character.only = TRUE)
+>             include.only <- union(include.only, previously_attached)
+>             attachNamespace(package, include.only = include.only)
+>         } # else no need to detach and re-attach
+>     } else {
+>         attachNamespace(package, include.only = include.only)
+>     }
+>     invisible(TRUE)
+> }
+> ```
+
+> On Fri, May 23, 2025 at 3:40?AM Roland Fu? via R-devel <
+> r-devel at r-project.org> wrote:
+
+>> Hello,
+>> 
+>> Currently `use` fails silently if you try to attach functions from the
+>> same namespace. It would be nice and more similiar to the use of
+>> roxygen2 if it could add (and maybe even remove?) functions. Here is a
+>> simple proof of concept I have posted on Stack Overflow [1]. Something
+>> similar could be done within `use`. Of course, it would be preferable if
+>> it didn't need to detach the namespace.
+>> 
+>> |use("data.table", "fread") ls("package:data.table") #[1] "fread"
+>> use("data.table", "nafill") ls("package:data.table") #[1] "fread"
+>> useplus <- function(package, include.only) { loaded <-
+>> ls(sprintf("package:%s", package), all.names = TRUE)
+>> unloadNamespace(package) if (missing(include.only)) { use(package) }
+>> else { use(package, union(loaded, include.only)) } }
+>> useplus("data.table", "nafill") ls("package:data.table") #[1] "fread"
+>> "nafill"|
+>> 
+>> 
+>> [1] https://stackoverflow.com/q/79633064/1412059
+>> 
+>> --
+>> Dr. Roland Fu?
+>> 
+>> Th?nen-Institut f?r Agrarklimaschutz/
+>> Th?nen Institute of Climate-Smart Agriculture
+>> 
+>> Bundesallee 65
+>> D-38116 Braunschweig, Germany
+>> 
+>> Tel./Webex: ++49 531 25701967
+>> Email: roland.fuss at thuenen.de
+>> 
+>> Arbeitsgruppe "Emissionsberichterstattung"/
+>> Working group "Emission Inventories"
+>> Email: emissionsinventare at thuenen.de
+>> 
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>> 
+
+> 	[[alternative HTML version deleted]]
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From tdhock5 @end|ng |rom gm@||@com  Tue May 27 09:16:51 2025
+From: tdhock5 @end|ng |rom gm@||@com (Toby Hocking)
+Date: Tue, 27 May 2025 09:16:51 +0200
+Subject: [Rd] Bug in prettyNum
+In-Reply-To: <26676.38541.365837.162746@stat.math.ethz.ch>
+References: <DU0PR09MB5500C551FB554E632FE7DE3E9898A@DU0PR09MB5500.eurprd09.prod.outlook.com>
+ <20250523171457.5260d7a9@arachnoid>
+ <26676.38541.365837.162746@stat.math.ethz.ch>
+Message-ID: <CALK03d2v+eFr_79n_HSscFn9DwYd6OcS96DN3mYhweOx=pw6Xw@mail.gmail.com>
+
+Thanks for the contribution Mikko!
+For testing future patches, you can actually do it right in the web
+browser, thanks to Heather Turner's R Dev Container, see instructions here
+https://contributor.r-project.org/r-dev-env/container_setup/
+Best
+Toby
+
+On Mon, May 26, 2025 at 6:28?PM Martin Maechler <maechler at stat.math.ethz.ch>
+wrote:
+
+> Thank you,  Marttila  and Ivan,
+>
+> As the original author of prettyNum() {etc ..},
+> I will commit such a bug fix to R-devel (and probably port it to
+> R 4.5.0 patched) quite soon
+> (but not yet today).
+>
+> Best regards,
+>
+> Martin Maechler
+>
+> >>>>> Ivan Krylov via R-devel
+> >>>>>     on Fri, 23 May 2025 17:14:57 +0300 writes:
+>
+>     > ? Fri, 23 May 2025 11:47:33 +0000
+>     > Marttila Mikko via R-devel <r-devel at r-project.org> ?????:
+>
+>     >> When called with a numeric vector, the `replace.zero` argument is
+>     >> disregarded.
+>     >>
+>     >> > prettyNum(0, zero.print = "- ", replace.zero = TRUE)
+>     >> [1] "-"
+>     >> Warning message:
+>     >> In .format.zeros(x, zero.print, replace = replace.zero) :
+>     >> 'zero.print' is truncated to fit into formatted zeros; consider
+>     >> 'replace=TRUE'
+>
+>     >> Please see below a patch which I believe would fix this.
+>
+>     > Surprisingly, it's not enough. The 'replace' argument to
+> .format.zeros
+>     > needs to be "threaded" through both the call to vapply(x, format,
+> ...)
+>     > and the internal call from format.default(...) to prettyNum(...):
+>
+>     R> options(warn = 2, error = recover)
+>     R> prettyNum(0, zero.print = "--", replace.zero = TRUE)
+>     > Error in .format.zeros(x, zero.print, replace = replace.zero) :
+>     > (converted from warning) 'zero.print' is truncated to fit into
+> formatted zeros; consider 'replace=TRUE'
+>
+>     > Enter a frame number, or 0 to exit
+>
+>     > 1: prettyNum(0, zero.print = "--", replace.zero = TRUE)
+>     > 2: vapply(x, format, "", big.mark = big.mark, big.interval =
+> big.interval, sma
+>     > 3: FUN(X[[i]], ...)
+>     > 4: format.default(X[[i]], ...)
+>     > 5: prettyNum(.Internal(format(x, trim, digits, nsmall, width, 3,
+> na.encode, sc
+>     > 6: .format.zeros(x, zero.print, replace = replace.zero)
+>     > 7: warning("'zero.print' is truncated to fit into formatted zeros;
+> consider 'r
+>     > <...omitted...>
+>     > Selection: 6
+>     > <...>
+>     > Browse[1]> ls.str()
+>     > i0 :  logi TRUE
+>     > ind0 :  int 1
+>     > nc :  int 1
+>     > nx :  num 0
+>     > nz :  int 2
+>     > replace :  logi FALSE
+>     > warn.non.fitting :  logi TRUE
+>     > x :  chr "0"
+>     > zero.print :  chr "--"
+>
+>     > Since prettyNum() accepts ... and thus ignores unknown arguments, it
+>     > seems to be safe to forward the ellipsis from format.default() to
+>     > prettyNum(). The patch survives LANGUAGE=en TZ=UTC make check-devel.
+>
+>     > Index: src/library/base/R/format.R
+>     > ===================================================================
+>     > --- src/library/base/R/format.R   (revision 88229)
+>     > +++ src/library/base/R/format.R   (working copy)
+>     > @@ -73,7 +73,7 @@
+>     > decimal.mark = decimal.mark, input.d.mark = decimal.mark,
+>     > zero.print = zero.print, drop0trailing = drop0trailing,
+>     > is.cmplx = is.complex(x),
+>     > -                      preserve.width = if (trim) "individual" else
+> "common"),
+>     > +                      preserve.width = if (trim) "individual" else
+> "common", ...),
+>     > ## all others (for now):
+>     > stop(gettextf("Found no format() method for class \"%s\"",
+>     > class(x)), domain = NA))
+>     > @@ -338,7 +338,8 @@
+>     > big.mark=big.mark, big.interval=big.interval,
+>     > small.mark=small.mark, small.interval=small.interval,
+>     > decimal.mark=decimal.mark, zero.print=zero.print,
+>     > -             drop0trailing=drop0trailing, ...)
+>     > +             drop0trailing=drop0trailing, replace.zero=replace.zero,
+>     > +             ...)
+>     > }
+>     > ## be fast in trivial case, when all options have their default, or
+> "match"
+>     > nMark <- big.mark == "" && small.mark == "" && (notChar ||
+> decimal.mark == input.d.mark)
+>
+>
+>     > --
+>     > Best regards,
+>     > Ivan
+>
+>     > ______________________________________________
+>     > R-devel at r-project.org mailing list
+>     > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |g@tto @end|ng |rom protonm@||@ch  Tue May 27 21:38:40 2025
+From: |g@tto @end|ng |rom protonm@||@ch (Laurent Gatto)
+Date: Tue, 27 May 2025 19:38:40 +0000
+Subject: [Rd] FR: improve "use" function
+In-Reply-To: <26677.26109.816335.849333@hornik.net>
+References: <ffdeb8bc-bec8-49cc-b6b4-6f0a6b2b2b88@thuenen.de>
+ <CAMigB8Ef9QB27aj1OP7T1dhG4qPmM3YjMWs7XTrxA+BkY7CGkg@mail.gmail.com>
+ <26677.26109.816335.849333@hornik.net>
+Message-ID: <X_sz0Ee-RPDu7Lm1TnpUx4ZGuqttBwjET2Y7L7JRpWGvuPPf-HimC3nxs2B81iO7hE9ktfO-Fg0mSyx26HV5TskEp_Zf2F5_OkE781GUO8Y=@protonmail.ch>
+
+On Tuesday, May 27th, 2025 at 9:13 AM, Kurt Hornik <Kurt.Hornik at wu.ac.at> wrote:
+
+> > > > > > Trevor Davis writes:
+> 
+> 
+> Thanks.
+> 
+> This is really about what
+> 
+> library("foo", include.only = "fun2")
+> 
+> should do if package 'foo' was already attached and the include.only
+> contradicts a previous specification.
+> 
+> In principle, one could look into allowing the underlying
+> attachNamespace() to add more exports into the package environment (the
+> 'only' in 'include.only' might suggest differently, but we would have to
+> live with that). However, using detach/attach is not the right way of
+> doing this, as it possibly modifies the search path and may trigger
+> hooks that should not be triggered. Doing it right would probably need
+> an .Internal and hence be a lot of work ...
+> 
+> What definitely needs attention is the fact that currently the above is
+> silently ignored. So at least for now we should teach attachNamespace()
+> to throw a suitably classed error if called with include.only that
+> contradicts a previous specification.
+> 
+> Contributions welcome :-)
+
+Some work has been done on that front during last week's r-dev-day
+with Ella Kaye and Philippe Grosjean [1]. After some more thinking, I
+think we haven't been stringent enough, and would suggest that the
+user should be alerted as soon as what they want to attach doesn't
+match exactly what is already on the search path. Something along the
+lines of (the warning/message can of course be amended).
+
+These two situations are OK, given that exactly the same set is asked
+for repeated, either with a limited set of functions:
+
+> library("Matrix", include.only = "isDiagonal")
+> library("Matrix", include.only = "isDiagonal") ## ok
+
+or, in a new session, with the whole package:
+
+> library("Matrix", include.only = "isDiagonal")
+> library("Matrix", include.only = "isDiagonal") ## ok
+
+Below, (again, in a new session) the user could be mislead that either
+only qr would be attached (and isDiagonal not anymore), or all
+Matrix's exported symbols:
+
+> library("Matrix", include.only = "isDiagonal")
+> library("Matrix", include.only = "qr") ## warn
+Warning message:
+In library("Matrix", include.only = "qr") :
+  The package 'Matrix' is already loaded with a different set of functions. Please detach() it first.
+> library("Matrix") ## warn
+Warning message:
+In library("Matrix") :
+  The package 'Matrix' is already loaded with a different set of functions. Please detach() it first.
+
+In the following cases, a subset is asked after all symbols are
+attached, which also triggers a warning/message:
+
+> library("Matrix")
+> library("Matrix", exclude = "isDiagonal") ## warn
+Warning message:
+In library("Matrix", exclude = "isDiagonal") :
+  The package 'Matrix' is already loaded with a different set of functions. Please detach() it first.
+> library("Matrix", include.only = "isDiagonal") ## warn
+Warning message:
+In library("Matrix", include.only = "isDiagonal") :
+  The package 'Matrix' is already loaded with a different set of functions. Please detach() it first.
+
+If this is a good way forward, I would be happy to carry on that work.
+
+Laurent
+
+
+[1] https://github.com/r-devel/r-dev-day/issues/48
+
+
+From p@kr|v|t@ky @end|ng |rom un@w@edu@@u  Wed May 28 03:36:57 2025
+From: p@kr|v|t@ky @end|ng |rom un@w@edu@@u (Pavel Krivitsky)
+Date: Wed, 28 May 2025 01:36:57 +0000
+Subject: [Rd] 
+ sqrt(.Machine$double.xmax)^2 == Inf, but only on Windows in R
+In-Reply-To: <ce20c57b-b54d-41f2-b74e-658489c2d228@gmail.com>
+References: <932522381896167814ac7c724befc5a3cf4607a2.camel@unsw.edu.au>
+ <26640.41769.490888.93738@stat.math.ethz.ch>
+ <ce20c57b-b54d-41f2-b74e-658489c2d228@gmail.com>
+Message-ID: <aa8dc880e1ff602277e0b1548272ae73b0b7101c.camel@unsw.edu.au>
+
+Dear All,
+
+Thanks for looking into it, and apologies for bumping this.
+
+I think the strangest thing for me is that the C and the R
+implementations on Windows yield different results. I don't know if it
+warrants a deeper look.
+
+Ultimately, I rewrote the code that relied on this behaviour. (I needed
+something that was a finite number when squared but was still as big as
+possible, so I divided it 1 + Machine epsilon, and it seems to work for
+my particular situation.)
+
+				Best,
+				Pavel
+
+On Tue, 2025-04-29 at 15:54 +0200, Tomas Kalibera wrote:
+> 
+> On 4/29/25 12:00, Martin Maechler wrote:
+> > > > > > > Pavel Krivitsky via R-devel
+> > > > > > > ???? on Mon, 28 Apr 2025 05:13:41 +0000 writes:
+> > ???? > Hello, Under R 4.5.0 on Windows (x86-64), I get:
+> > 
+> > ???? >> sqrt(.Machine$double.xmax)^2
+> > ???? > [1] Inf
+> > ???? >> sqrt(.Machine$double.xmax)*sqrt(.Machine$double.xmax)
+> > ???? > [1] Inf
+> > 
+> > ???? > On other hand on other platforms, including Debian Linux
+> > ???? > (x86-64), I get:
+> > 
+> > ???? d> sqrt(.Machine$double.xmax)^2
+> > ???? > [1] 1.797693134862315508561e+308
+> > ???? d> sqrt(.Machine$double.xmax)*sqrt(.Machine$double.xmax)
+> > ???? > [1] 1.797693134862315508561e+308
+> > 
+> > ???? > Windows is running inside a VirtualBox instance on the
+> > ???? > same host as Linux. I don't have direct results from the
+> > ???? > MacOS platforms, but based on the symptoms that had led me
+> > ???? > to investigate, the behaviour is as the Linux.
+> > 
+> > ???? > Adding to the mystery, if I implement the same operation in
+> > C, e.g.,
+> > 
+> > ???? > library(inline)
+> > ???? > sqrsqrt <- cfunction(sig = c(x = "numeric"), language = "C",
+> > "
+> > ???? > double sqrtx = sqrt(Rf_asReal(x));
+> > ???? > return Rf_ScalarReal(sqrtx*sqrtx);
+> > ???? > ")
+> > 
+> > ???? > R on Linux yields:
+> > 
+> > ???? d> sqrsqrt(.Machine$double.xmax)
+> > ???? > [1] 1.797693134862315508561e+308
+> > 
+> > ???? > i.e., the same number, whereas R on Windows yields:
+> > 
+> > ???? d> sqrsqrt(.Machine$double.xmax)
+> > ???? > [1] 1.797693134862315508804e+308
+> > 
+> > ???? > which is not Inf but not the same as Linux either.
+> > 
+> > ???? > Lastly, on both platforms,
+> > 
+> > ???? d> sqrsqrt(.Machine$double.xmax) < .Machine$double.xmax
+> > ???? > [1] TRUE
+> > 
+> > ???? > I am not sure if this is a bug, intended behaviour, or
+> > something else.
+> > 
+> > "something else":? It is not a bug, nor intended, but should
+> > also *not* be surprising nor a mistery:? The largest possible
+> > double precision number is by definition "very close to
+> > infinity" (in the space of double precision numbers)
+> > [R 4.5.0 patched on Linux (Fedora 40; x86_64)] :
+> > 
+> > > (M <- .Machine$double.xmax)
+> > [1] 1.797693e+308
+> > > M+1 == M
+> > [1] TRUE
+> > > M*(1 + 2^-52)
+> > [1] Inf
+> > > print(1 + 2^-52, digits= 16)
+> > [1] 1
+> > > print(1 + 2^-52, digits= 17)
+> > [1] 1.0000000000000002
+> > What you see, I'd classify as quite related to R FAQ 7.31,
+> > ? := "the most frequently asked question about R
+> > ????? among all the other frequently asked questions"
+> > 
+> > A nice reading is the README you get here
+> > ?? https://github.com/ThinkR-open/seven31
+> > which does link also to the R FAQ at
+> > ?
+> > https://cran.r-project.org/doc/FAQ/R-FAQ.html#Why-doesn_0027t-R-think-these-numbers-are-equal_003f
+> > 
+> > Of tangential interest only:
+> > You mention that it is R 4.5.0 you use on Windows.
+> > Would you (or anybody else) know if this is new behaviour or it
+> > also happened e.g. in R 4.4.x versions on? Windows?
+> 
+> This depends on C math function sqrt. With sqrt implemented in mingw-
+> w64 
+> (mingwex), which is still the case of mingw-w64 v11, so still of 
+> Rtools45, the result of sqrt(.Machine$double.xmax) is
+> 
+> "0x1p+512"
+> 
+> with mingw-w64 v12 (so with UCRT, and also on Linux, and also using
+> mpfr 
+> library) it is
+> 
+> "0x1.fffffffffffffp+511"
+> 
+> It is not required by any standard for the math functions in the C
+> math 
+> library to be precise (correctly rounded). But still, in this case,
+> the 
+> correctly rounded value would be returned once Rtools can switch to 
+> mingw-w64 v12 (which could be no sooner than Rtools46, as mingw-w64
+> is a 
+> core component of the toolchain).
+> 
+> A bit of advertising -? I used Martin's Rmpfr package to compute this
+> using mpfr.
+> And there is a related blog post: 
+> https://blog.r-project.org/2025/04/24/sensitivity-to-c-math-library-and-mingw-w64-v12
+> 
+> Best
+> Tomas
+> 
+> 
+> > 
+> > 
+> > Best regards,
+> > Martin
+> > 
+> > --
+> > Martin Maechler
+> > ETH Zurich? and? R Core team
+> > 
+> > ______________________________________________
+> > R-devel at r-project.org?mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+From p@kr|v|t@ky @end|ng |rom un@w@edu@@u  Wed May 28 04:15:39 2025
+From: p@kr|v|t@ky @end|ng |rom un@w@edu@@u (Pavel Krivitsky)
+Date: Wed, 28 May 2025 02:15:39 +0000
+Subject: [Rd] Specifying a long string literal across several lines
+Message-ID: <0d740a410d3ad7629105ad508f6969f2c9785e79.camel@unsw.edu.au>
+
+Dear All,
+
+Perhaps this should go in r-package-devel, but I suspect that this is
+going to turn into a feature request, and I want to run it by the list
+before filing it in the Bugzilla.
+
+I would like to specify a long string literal without making the line
+of code too long. In R,
+
+"abc
+def"
+
+yields the string "abc\def", and, as far as I can tell, there is no
+mechanism for preventing it from inserting a newline into the string.
+
+Putting a backslash before the newline, i.e.,
+
+"abc\
+def"
+
+eliminates the newline in (that I know of) C/C++, Python, and Julia,
+but it makes no difference in R.
+
+The implicit concatenation of Python and C/C++, e.g., "abc" "def", is a
+syntax error as well in R.
+
+It is, of course, possible to use paste0(), but is there a more concise
+built-in mechanism in R of which I am not aware?
+
+If not, I think it would make sense to bring R in line with the others.
+Currently, backslash and no backslash before a newline behave
+identically (at least as far as I can tell), so I doubt that a
+nontrivial amount of code relies on the current behaviour. [1]
+
+				Any thoughts?
+				Pavel
+
+[1] On the off chance that it does, it should easy to check by
+searching for "\\\n" in package sources, because a backslash before a
+newline is a syntax error outside a string.
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed May 28 10:27:45 2025
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 28 May 2025 10:27:45 +0200
+Subject: [Rd] 
+ sqrt(.Machine$double.xmax)^2 == Inf, but only on Windows in R
+In-Reply-To: <aa8dc880e1ff602277e0b1548272ae73b0b7101c.camel@unsw.edu.au>
+References: <932522381896167814ac7c724befc5a3cf4607a2.camel@unsw.edu.au>
+ <26640.41769.490888.93738@stat.math.ethz.ch>
+ <ce20c57b-b54d-41f2-b74e-658489c2d228@gmail.com>
+ <aa8dc880e1ff602277e0b1548272ae73b0b7101c.camel@unsw.edu.au>
+Message-ID: <26678.51457.116363.991761@stat.math.ethz.ch>
+
+>>>>> Pavel Krivitsky 
+>>>>>     on Wed, 28 May 2025 01:36:57 +0000 writes:
+
+    > Dear All,
+    > Thanks for looking into it, and apologies for bumping this.
+
+    > I think the strangest thing for me is that the C and the R
+    > implementations on Windows yield different results. I don't know if it
+    > warrants a deeper look.
+
+This is not so strange, really:
+In many cases (and some similar to this one), we *did* want R to
+be platform independent and give the same results independent of
+platform. ... consequently differing on some platforms from
+their platform dependent C libraries ..
+
+Martin
+
+    > Ultimately, I rewrote the code that relied on this behaviour. (I needed
+    > something that was a finite number when squared but was still as big as
+    > possible, so I divided it 1 + Machine epsilon, and it seems to work for
+    > my particular situation.)
+
+    > Best,
+    > Pavel
+
+    > On Tue, 2025-04-29 at 15:54 +0200, Tomas Kalibera wrote:
+    >> 
+    >> On 4/29/25 12:00, Martin Maechler wrote:
+    >> > > > > > > Pavel Krivitsky via R-devel
+    >> > > > > > > ???? on Mon, 28 Apr 2025 05:13:41 +0000 writes:
+    >> > ???? > Hello, Under R 4.5.0 on Windows (x86-64), I get:
+    >> > 
+    >> > ???? >> sqrt(.Machine$double.xmax)^2
+    >> > ???? > [1] Inf
+    >> > ???? >> sqrt(.Machine$double.xmax)*sqrt(.Machine$double.xmax)
+    >> > ???? > [1] Inf
+    >> > 
+    >> > ???? > On other hand on other platforms, including Debian Linux
+    >> > ???? > (x86-64), I get:
+    >> > 
+    >> > ???? d> sqrt(.Machine$double.xmax)^2
+    >> > ???? > [1] 1.797693134862315508561e+308
+    >> > ???? d> sqrt(.Machine$double.xmax)*sqrt(.Machine$double.xmax)
+    >> > ???? > [1] 1.797693134862315508561e+308
+    >> > 
+    >> > ???? > Windows is running inside a VirtualBox instance on the
+    >> > ???? > same host as Linux. I don't have direct results from the
+    >> > ???? > MacOS platforms, but based on the symptoms that had led me
+    >> > ???? > to investigate, the behaviour is as the Linux.
+    >> > 
+    >> > ???? > Adding to the mystery, if I implement the same operation in
+    >> > C, e.g.,
+    >> > 
+    >> > ???? > library(inline)
+    >> > ???? > sqrsqrt <- cfunction(sig = c(x = "numeric"), language = "C",
+    >> > "
+    >> > ???? > double sqrtx = sqrt(Rf_asReal(x));
+    >> > ???? > return Rf_ScalarReal(sqrtx*sqrtx);
+    >> > ???? > ")
+    >> > 
+    >> > ???? > R on Linux yields:
+    >> > 
+    >> > ???? d> sqrsqrt(.Machine$double.xmax)
+    >> > ???? > [1] 1.797693134862315508561e+308
+    >> > 
+    >> > ???? > i.e., the same number, whereas R on Windows yields:
+    >> > 
+    >> > ???? d> sqrsqrt(.Machine$double.xmax)
+    >> > ???? > [1] 1.797693134862315508804e+308
+    >> > 
+    >> > ???? > which is not Inf but not the same as Linux either.
+    >> > 
+    >> > ???? > Lastly, on both platforms,
+    >> > 
+    >> > ???? d> sqrsqrt(.Machine$double.xmax) < .Machine$double.xmax
+    >> > ???? > [1] TRUE
+    >> > 
+    >> > ???? > I am not sure if this is a bug, intended behaviour, or
+    >> > something else.
+    >> > 
+    >> > "something else":? It is not a bug, nor intended, but should
+    >> > also *not* be surprising nor a mistery:? The largest possible
+    >> > double precision number is by definition "very close to
+    >> > infinity" (in the space of double precision numbers)
+    >> > [R 4.5.0 patched on Linux (Fedora 40; x86_64)] :
+    >> > 
+    >> > > (M <- .Machine$double.xmax)
+    >> > [1] 1.797693e+308
+    >> > > M+1 == M
+    >> > [1] TRUE
+    >> > > M*(1 + 2^-52)
+    >> > [1] Inf
+    >> > > print(1 + 2^-52, digits= 16)
+    >> > [1] 1
+    >> > > print(1 + 2^-52, digits= 17)
+    >> > [1] 1.0000000000000002
+    >> > What you see, I'd classify as quite related to R FAQ 7.31,
+    >> > ? := "the most frequently asked question about R
+    >> > ????? among all the other frequently asked questions"
+    >> > 
+    >> > A nice reading is the README you get here
+    >> > ?? https://github.com/ThinkR-open/seven31
+    >> > which does link also to the R FAQ at
+    >> > ?
+    >> > https://cran.r-project.org/doc/FAQ/R-FAQ.html#Why-doesn_0027t-R-think-these-numbers-are-equal_003f
+    >> > 
+    >> > Of tangential interest only:
+    >> > You mention that it is R 4.5.0 you use on Windows.
+    >> > Would you (or anybody else) know if this is new behaviour or it
+    >> > also happened e.g. in R 4.4.x versions on? Windows?
+    >> 
+    >> This depends on C math function sqrt. With sqrt implemented in mingw-
+    >> w64 
+    >> (mingwex), which is still the case of mingw-w64 v11, so still of 
+    >> Rtools45, the result of sqrt(.Machine$double.xmax) is
+    >> 
+    >> "0x1p+512"
+    >> 
+    >> with mingw-w64 v12 (so with UCRT, and also on Linux, and also using
+    >> mpfr 
+    >> library) it is
+    >> 
+    >> "0x1.fffffffffffffp+511"
+    >> 
+    >> It is not required by any standard for the math functions in the C
+    >> math 
+    >> library to be precise (correctly rounded). But still, in this case,
+    >> the 
+    >> correctly rounded value would be returned once Rtools can switch to 
+    >> mingw-w64 v12 (which could be no sooner than Rtools46, as mingw-w64
+    >> is a 
+    >> core component of the toolchain).
+    >> 
+    >> A bit of advertising -? I used Martin's Rmpfr package to compute this
+    >> using mpfr.
+    >> And there is a related blog post: 
+    >> https://blog.r-project.org/2025/04/24/sensitivity-to-c-math-library-and-mingw-w64-v12
+    >> 
+    >> Best
+    >> Tomas
+    >> 
+    >> 
+    >> > 
+    >> > 
+    >> > Best regards,
+    >> > Martin
+    >> > 
+    >> > --
+    >> > Martin Maechler
+    >> > ETH Zurich? and? R Core team
+    >> > 
+    >> > ______________________________________________
+    >> > R-devel at r-project.org?mailing list
+    >> > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From pd@|gd @end|ng |rom gm@||@com  Wed May 28 15:17:04 2025
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Wed, 28 May 2025 15:17:04 +0200
+Subject: [Rd] R 4.5.1 scheduled for June 13
+Message-ID: <75ADBEEB-31A3-4C6D-BD54-CC614E9C7078@gmail.com>
+
+Full schedule is available on developer.r-project.org (pending update from SVN).
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel
+
+

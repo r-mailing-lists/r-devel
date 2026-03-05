@@ -1,0 +1,3240 @@
+From th|erry@onke||nx @end|ng |rom |nbo@be  Mon May  6 08:45:57 2024
+From: th|erry@onke||nx @end|ng |rom |nbo@be (Thierry Onkelinx)
+Date: Mon, 6 May 2024 08:45:57 +0200
+Subject: [Rd] [R-sig-ME] lmer error: number of observations <= number of
+ random effects
+In-Reply-To: <CAMvZauqY=naWQtSgfp+JtX73vB5+Sm3pO=iv6P6ujNGQHcg5WQ@mail.gmail.com>
+References: <CAMvZauqY=naWQtSgfp+JtX73vB5+Sm3pO=iv6P6ujNGQHcg5WQ@mail.gmail.com>
+Message-ID: <CAJuCY5ysmodQ=Jt8UGSuimNyz66WS9MAxdxWv4fttrM6O1Tw5A@mail.gmail.com>
+
+Dear Srinidhi,
+
+You are trying to fit 1 random intercept and 2 random slopes per
+individual, while you have at most 3 observations per individual. You
+simply don't have enough data to fit the random slopes. Reduce the random
+part to (1|ID).
+
+Best regards,
+
+Thierry
+
+ir. Thierry Onkelinx
+Statisticus / Statistician
+
+Vlaamse Overheid / Government of Flanders
+INSTITUUT VOOR NATUUR- EN BOSONDERZOEK / RESEARCH INSTITUTE FOR NATURE AND
+FOREST
+Team Biometrie & Kwaliteitszorg / Team Biometrics & Quality Assurance
+thierry.onkelinx at inbo.be
+Havenlaan 88 bus 73, 1000 Brussel
+*Postadres:* Koning Albert II-laan 15 bus 186, 1210 Brussel
+*Poststukken die naar dit adres worden gestuurd, worden ingescand en
+digitaal aan de geadresseerde bezorgd. Zo kan de Vlaamse overheid haar
+dossiers volledig digitaal behandelen. Poststukken met de vermelding
+?vertrouwelijk? worden niet ingescand, maar ongeopend aan de geadresseerde
+bezorgd.*
+www.inbo.be
+
+///////////////////////////////////////////////////////////////////////////////////////////
+To call in the statistician after the experiment is done may be no more
+than asking him to perform a post-mortem examination: he may be able to say
+what the experiment died of. ~ Sir Ronald Aylmer Fisher
+The plural of anecdote is not data. ~ Roger Brinner
+The combination of some data and an aching desire for an answer does not
+ensure that a reasonable answer can be extracted from a given body of data.
+~ John Tukey
+///////////////////////////////////////////////////////////////////////////////////////////
+
+<https://www.inbo.be>
+
+
+Op ma 6 mei 2024 om 01:59 schreef Srinidhi Jayakumar via R-sig-mixed-models
+<r-sig-mixed-models at r-project.org>:
+
+> I am running a multilevel growth curve model to examine predictors of
+> social anhedonia (SA) trajectory through ages 12, 15 and 18. SA is a
+> continuous numeric variable. The age variable (Index1) has been coded as 0
+> for age 12, 1 for age 15 and 2 for age 18. I am currently using a time
+> varying predictor, stress (LSI), which was measured at ages 12, 15 and 18,
+> to examine whether trajectory/variation in LSI predicts difference in SA
+> trajectory. LSI is a continuous numeric variable and was grand-mean
+> centered before using in the models. The data has been converted to long
+> format with SA in 1 column, LSI in the other, ID in another, and age in
+> another column. I used the code below to run my model using lmer. However,
+> I get the following error. Please let me know how I can solve this error.
+> Please note that I have 50% missing data in SA at age 12.
+> modelLSI_maineff_RE <- lmer(SA ~ Index1* LSI+ (1 + Index1+LSI |ID), data =
+> LSIDATA, control = lmerControl(optimizer ="bobyqa"), REML=TRUE)
+> summary(modelLSI_maineff_RE)
+> Error: number of observations (=1080) <= number of random effects (=1479)
+> for term (1 + Index1 + LSI | ID); the random-effects parameters and the
+> residual variance (or scale parameter) are probably unidentifiable
+>
+> I did test the within-person variance for the LSI variable and the
+> within-person variance is significant from the Greenhouse-Geisser,
+> Hyunh-Feidt tests.
+>
+> I also tried control = lmerControl(check.nobs.vs.nRE = "ignore") which gave
+> me the following output. modelLSI_maineff_RE <- lmer(SA ~ Index1* LSI+ (1 +
+> Index1+LSI |ID), data = LSIDATA, control = lmerControl(check.nobs.vs.nRE =
+> "ignore", optimizer ="bobyqa", check.conv.singular = .makeCC(action =
+> "ignore", tol = 1e-4)), REML=TRUE)
+>
+> summary(modelLSI_maineff_RE)
+> Linear mixed model fit by REML. t-tests use Satterthwaite's method
+> ['lmerModLmerTest']
+> Formula: SA ~ Index1 * LSI + (1 + Index1 + LSI | ID)
+> Data: LSIDATA
+> Control: lmerControl(check.nobs.vs.nRE = "ignore", optimizer = "bobyqa",
+> check.conv.singular = .makeCC(action = "ignore", tol = 1e-04))
+>
+> REML criterion at convergence: 7299.6
+>
+> Scaled residuals:
+> Min 1Q Median 3Q Max
+> -2.7289 -0.4832 -0.1449 0.3604 4.5715
+>
+> Random effects:
+> Groups Name Variance Std.Dev. Corr
+> ID (Intercept) 30.2919 5.5038
+> Index1 2.4765 1.5737 -0.15
+> LSI 0.1669 0.4085 -0.23 0.70
+> Residual 24.1793 4.9172
+> Number of obs: 1080, groups: ID, 493
+>
+> Fixed effects:
+> Estimate Std. Error df t value Pr(>|t|)
+> (Intercept) 24.68016 0.39722 313.43436 62.133 < 2e-16 ***
+> Index1 0.98495 0.23626 362.75018 4.169 3.83e-05 ***
+> LSI -0.05197 0.06226 273.85575 -0.835 0.4046
+> Index1:LSI 0.09797 0.04506 426.01185 2.174 0.0302 *
+> Signif. codes: 0 ?? 0.001 ?? 0.01 ?? 0.05 ?.? 0.1 ? ? 1
+>
+> Correlation of Fixed Effects:
+> (Intr) Index1 LSI
+> Index1 -0.645
+> LSI -0.032 0.057
+> Index1:LSI 0.015 0.037 -0.695
+>
+> I am a little vary of the output still as the error states that I have
+> equal observations as the number of random effects (i.e., 3 observations
+> per ID and 3 random effects). Hence, I am wondering whether I can simplify
+> the model as either of the below models and choose the one with the
+> best-fit statistics:
+>
+>  modelLSI2 <- lmer(SA ~ Index1* LSI+ (1 |ID)+ (Index1+LSI -1|ID),data =
+> LSIDATA, control = lmerControl(optimizer ="bobyqa"), REML=TRUE) *OR*
+>
+> modelLSI3 <- lmer(SA ~ Index1* LSI+ (1+LSI |ID),data = LSIDATA, control =
+> lmerControl(optimizer ="bobyqa"), REML=TRUE) [image: example of dataset]
+> <https://i.sstatic.net/JcRKS2C9.png>
+>
+>         [[alternative HTML version deleted]]
+>
+> _______________________________________________
+> R-sig-mixed-models at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @r|n|dh|@j@y@kum@r @end|ng |rom @tonybrook@edu  Mon May  6 01:58:35 2024
+From: @r|n|dh|@j@y@kum@r @end|ng |rom @tonybrook@edu (Srinidhi Jayakumar)
+Date: Sun, 5 May 2024 19:58:35 -0400
+Subject: [Rd] lmer error: number of observations <= number of random effects
+Message-ID: <CAMvZauqY=naWQtSgfp+JtX73vB5+Sm3pO=iv6P6ujNGQHcg5WQ@mail.gmail.com>
+
+I am running a multilevel growth curve model to examine predictors of
+social anhedonia (SA) trajectory through ages 12, 15 and 18. SA is a
+continuous numeric variable. The age variable (Index1) has been coded as 0
+for age 12, 1 for age 15 and 2 for age 18. I am currently using a time
+varying predictor, stress (LSI), which was measured at ages 12, 15 and 18,
+to examine whether trajectory/variation in LSI predicts difference in SA
+trajectory. LSI is a continuous numeric variable and was grand-mean
+centered before using in the models. The data has been converted to long
+format with SA in 1 column, LSI in the other, ID in another, and age in
+another column. I used the code below to run my model using lmer. However,
+I get the following error. Please let me know how I can solve this error.
+Please note that I have 50% missing data in SA at age 12.
+modelLSI_maineff_RE <- lmer(SA ~ Index1* LSI+ (1 + Index1+LSI |ID), data =
+LSIDATA, control = lmerControl(optimizer ="bobyqa"), REML=TRUE)
+summary(modelLSI_maineff_RE)
+Error: number of observations (=1080) <= number of random effects (=1479)
+for term (1 + Index1 + LSI | ID); the random-effects parameters and the
+residual variance (or scale parameter) are probably unidentifiable
+
+I did test the within-person variance for the LSI variable and the
+within-person variance is significant from the Greenhouse-Geisser,
+Hyunh-Feidt tests.
+
+I also tried control = lmerControl(check.nobs.vs.nRE = "ignore") which gave
+me the following output. modelLSI_maineff_RE <- lmer(SA ~ Index1* LSI+ (1 +
+Index1+LSI |ID), data = LSIDATA, control = lmerControl(check.nobs.vs.nRE =
+"ignore", optimizer ="bobyqa", check.conv.singular = .makeCC(action =
+"ignore", tol = 1e-4)), REML=TRUE)
+
+summary(modelLSI_maineff_RE)
+Linear mixed model fit by REML. t-tests use Satterthwaite's method
+['lmerModLmerTest']
+Formula: SA ~ Index1 * LSI + (1 + Index1 + LSI | ID)
+Data: LSIDATA
+Control: lmerControl(check.nobs.vs.nRE = "ignore", optimizer = "bobyqa",
+check.conv.singular = .makeCC(action = "ignore", tol = 1e-04))
+
+REML criterion at convergence: 7299.6
+
+Scaled residuals:
+Min 1Q Median 3Q Max
+-2.7289 -0.4832 -0.1449 0.3604 4.5715
+
+Random effects:
+Groups Name Variance Std.Dev. Corr
+ID (Intercept) 30.2919 5.5038
+Index1 2.4765 1.5737 -0.15
+LSI 0.1669 0.4085 -0.23 0.70
+Residual 24.1793 4.9172
+Number of obs: 1080, groups: ID, 493
+
+Fixed effects:
+Estimate Std. Error df t value Pr(>|t|)
+(Intercept) 24.68016 0.39722 313.43436 62.133 < 2e-16 ***
+Index1 0.98495 0.23626 362.75018 4.169 3.83e-05 ***
+LSI -0.05197 0.06226 273.85575 -0.835 0.4046
+Index1:LSI 0.09797 0.04506 426.01185 2.174 0.0302 *
+Signif. codes: 0 ?? 0.001 ?? 0.01 ?? 0.05 ?.? 0.1 ? ? 1
+
+Correlation of Fixed Effects:
+(Intr) Index1 LSI
+Index1 -0.645
+LSI -0.032 0.057
+Index1:LSI 0.015 0.037 -0.695
+
+I am a little vary of the output still as the error states that I have
+equal observations as the number of random effects (i.e., 3 observations
+per ID and 3 random effects). Hence, I am wondering whether I can simplify
+the model as either of the below models and choose the one with the
+best-fit statistics:
+
+ modelLSI2 <- lmer(SA ~ Index1* LSI+ (1 |ID)+ (Index1+LSI -1|ID),data =
+LSIDATA, control = lmerControl(optimizer ="bobyqa"), REML=TRUE) *OR*
+
+modelLSI3 <- lmer(SA ~ Index1* LSI+ (1+LSI |ID),data = LSIDATA, control =
+lmerControl(optimizer ="bobyqa"), REML=TRUE) [image: example of dataset]
+<https://i.sstatic.net/JcRKS2C9.png>
+
+	[[alternative HTML version deleted]]
+
+
+From tr@ver@c @end|ng |rom gm@||@com  Sat May 11 02:39:53 2024
+From: tr@ver@c @end|ng |rom gm@||@com (Travers Ching)
+Date: Fri, 10 May 2024 17:39:53 -0700
+Subject: [Rd] R hang/bug with circular references and promises
+Message-ID: <CAPLMX9EyfB7cLgu89WPT_RFeuC1BDPYcZ81jR2q1aaDPVtnkEw@mail.gmail.com>
+
+The following code snippet causes R to hang. This example might be a
+bit contrived as I was experimenting and trying to understand
+promises, but uses only base R.
+
+It looks like it is looking for "not_a_variable" recursively but since
+it doesn't exist it goes on indefinitely.
+
+x0 <- new.env()
+x1 <- new.env(parent = x0)
+parent.env(x0) <- x1
+delayedAssign("v", not_a_variable, eval.env=x1)
+delayedAssign("w", v, assign.env=x1, eval.env=x0)
+x1$w
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Sat May 11 03:34:19 2024
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Fri, 10 May 2024 20:34:19 -0500 (CDT)
+Subject: [Rd] 
+ [External]  R hang/bug with circular references and promises
+In-Reply-To: <CAPLMX9EyfB7cLgu89WPT_RFeuC1BDPYcZ81jR2q1aaDPVtnkEw@mail.gmail.com>
+References: <CAPLMX9EyfB7cLgu89WPT_RFeuC1BDPYcZ81jR2q1aaDPVtnkEw@mail.gmail.com>
+Message-ID: <d0dc027e-b579-ba5b-ec62-d1bd52fbf47f@uiowa.edu>
+
+On Sat, 11 May 2024, Travers Ching wrote:
+
+> The following code snippet causes R to hang. This example might be a
+> bit contrived as I was experimenting and trying to understand
+> promises, but uses only base R.
+>
+> It looks like it is looking for "not_a_variable" recursively but since
+> it doesn't exist it goes on indefinitely.
+>
+> x0 <- new.env()
+> x1 <- new.env(parent = x0)
+> parent.env(x0) <- x1
+> delayedAssign("v", not_a_variable, eval.env=x1)
+> delayedAssign("w", v, assign.env=x1, eval.env=x0)
+> x1$w
+
+This has nothing to do with promises. You created a cycle in the
+environment chain. A simpler variant:
+
+e <- new.env()
+parent.env(e) <- e
+get("x", e)
+
+This will hang and is not interruptable -- loops searching up
+environment chains are too speed-critical to check for interrupts.  It
+is, however, pretty easy to check whether the parent change would
+create a cycle and throw an error if it would. Need to think a bit
+about exactly where the check should go.
+
+Best,
+
+luke
+
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+
+From peter@|@ng|e|der @end|ng |rom gm@||@com  Sat May 11 17:03:07 2024
+From: peter@|@ng|e|der @end|ng |rom gm@||@com (Peter Langfelder)
+Date: Sat, 11 May 2024 23:03:07 +0800
+Subject: [Rd] 
+ [External] R hang/bug with circular references and promises
+In-Reply-To: <d0dc027e-b579-ba5b-ec62-d1bd52fbf47f@uiowa.edu>
+References: <CAPLMX9EyfB7cLgu89WPT_RFeuC1BDPYcZ81jR2q1aaDPVtnkEw@mail.gmail.com>
+ <d0dc027e-b579-ba5b-ec62-d1bd52fbf47f@uiowa.edu>
+Message-ID: <CA+hbrhVPoFR8tLuhS60oXW_OhWW76YxhnD0VLSZaAi4yVDgWhA@mail.gmail.com>
+
+On Sat, May 11, 2024 at 9:34?AM luke-tierney--- via R-devel
+<r-devel at r-project.org> wrote:
+>
+> On Sat, 11 May 2024, Travers Ching wrote:
+>
+> > The following code snippet causes R to hang. This example might be a
+> > bit contrived as I was experimenting and trying to understand
+> > promises, but uses only base R.
+>
+> This has nothing to do with promises. You created a cycle in the
+> environment chain. A simpler variant:
+>
+> e <- new.env()
+> parent.env(e) <- e
+> get("x", e)
+>
+> This will hang and is not interruptable -- loops searching up
+> environment chains are too speed-critical to check for interrupts.  It
+> is, however, pretty easy to check whether the parent change would
+> create a cycle and throw an error if it would. Need to think a bit
+> about exactly where the check should go.
+
+FWIW, the help for parent.env already explicitly warns against using
+parent.env <-:
+
+The replacement function ?parent.env<-? is extremely dangerous as
+     it can be used to destructively change environments in ways that
+     violate assumptions made by the internal C code.  It may be
+     removed in the near future.
+
+Peter
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Mon May 13 07:56:57 2024
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Mon, 13 May 2024 01:56:57 -0400
+Subject: [Rd] Change between 86152 and 86534 - probably 86265 - that looks
+ for zspmv in BLAS and not LAPACK causes R with OpenBLAS to fail
+Message-ID: <CAL6gwn+ZiPo7hUcJ5v99Y3AeTkSv+4o_yNa=h-A-qjjze2yNwA@mail.gmail.com>
+
+Executive summary:
+
+I believe revision 86265 makes it more difficult to build R with
+OpenBLAS on Windows as now the entire LAPACK needs to be built to
+obtain zspmv. Is there anything that can be done to allow the former
+behavior to be used, something in Mkrules.local perhaps?
+
+Detailed Explanation:
+
+I have been building R with OpenBLAS for Windows 64 for over a decade
+by patching /src/extra/blas/Makevars.win as follows:
+
+--- /c/r/trunk/src/extra/blas/Makefile.win    2024-01-24
+18:34:42.755255900 +0000
++++ /c/r/Makefile.win    2024-01-24 18:39:39.716458000 +0000
+@@ -12,7 +12,7 @@
+ ../../../$(BINDIR)/Rblas.dll: blas00.o ../../gnuwin32/dllversion.o
+     @$(ECHO) -------- Building $@ --------
+     $(DLL) -s -shared $(DLLFLAGS) -o $@ $^ Rblas.def \
+-       -L../../../$(IMPDIR) -lR  -L"$(ATLAS_PATH)" -lf77blas -latlas
++       -L../../../$(IMPDIR) -lR -L"$(ATLAS_PATH)" -fopenmp -lopenblas
+ else
+ ../../../$(BINDIR)/Rblas.dll: blas.o blas2.o cmplxblas.o cmplxblas2.o
+../../gnuwin32/dllversion.o
+     @$(ECHO) -------- Building $@ --------
+
+and then passing USE_ATLAS = YES and ATLAS_PATH = C:/R/OPB/whatever in
+Mkrules.local
+
+When I compile OpenBLAS, I have always done so with NO_CBLAS,
+NO_LAPACK, and NO_SHARED, as the Windows toolchain does not need
+CBLAS, a shared library, or allow for a separate LAPACK and this has
+worked, for the most part, since roughly 2013.
+When building the recent R-devel (a revision slightly before 86534),
+the compilation stopped when building Rblas with the following error:
+
+-------- Building ../../../bin/x64/Rblas.dll --------
+gcc  -s -shared  -o ../../../bin/x64/Rblas.dll blas00.o
+../../gnuwin32/dllversion.o Rblas.def \
+   -L../../../bin/x64 -lR -L"C:/R/OPB/OpenBLAS-develop-f0560f9"
+-fopenmp -lopenblas
+C:\rtools44\x86_64-w64-mingw32.static.posix\bin/ld.exe: cannot export
+zspmv_: symbol not defined
+collect2.exe: error: ld returned 1 exit status
+make[4]: *** [Makefile.win:14: ../../../bin/x64/Rblas.dll] Error 1
+make[3]: *** [Makefile:227: Rblas] Error 2
+make[2]: *** [Makefile:116: rbuild] Error 2
+make[1]: *** [Makefile:17: all] Error 2
+make: *** [Makefile:392: distribution] Error 2
+
+I reached out to OpenBLAS (there were other issues with OPB 0.3.27)
+and one of the maintainers responded:
+
+> "for historical reasons, ZSPMV is in LAPACK although conceptionally [sic] it belongs in BLAS. As you specified NO_LAPACK=1, this function gets omitted since 0.3.20 to allow combining the BLAS-only build with an external LAPACK." [1]
+
+He later followed up with "0.3.26 built with NO_LAPACK=1 will likewise
+omit the zspmv symbol (as directed)." [2]
+
+I last successfully compiled v86152 with OpenBLAS 0.3.26 on
+2024-03-19. When I compiled 86534 tonight with OPB 0.3.27, I got the
+error above. I then tried with OPB 0.3.26?which worked for 86152?and
+still got the zspmv error.
+
+I am guessing this relates to revision 86265 "amending r85873: zspmv
+is BLAS, not Lapack?" [3].
+
+I built OpenBLAS AND its LAPACK, which takes MUCH MUCH longer, and
+tried building R. This time, the build succeeded and passes make
+check-devel.
+
+Is there any way to allow the former functionality if the build
+recognizes the use of OpenBLAS? Is the only option to compile
+OpenBLAS's LAPACK too?
+
+Thank you,
+
+Avi
+
+
+[1] https://github.com/OpenMathLib/OpenBLAS/issues/4684#issuecomment-2101123154
+[2] https://github.com/OpenMathLib/OpenBLAS/issues/4684#issuecomment-2101213474
+[3] https://github.com/r-devel/r-svn/commit/c9f3aba39aa89821d294f4a524331a21e6904aec
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Mon May 13 16:54:27 2024
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Mon, 13 May 2024 09:54:27 -0500 (CDT)
+Subject: [Rd] 
+ [External] R hang/bug with circular references and promises
+In-Reply-To: <CA+hbrhVPoFR8tLuhS60oXW_OhWW76YxhnD0VLSZaAi4yVDgWhA@mail.gmail.com>
+References: <CAPLMX9EyfB7cLgu89WPT_RFeuC1BDPYcZ81jR2q1aaDPVtnkEw@mail.gmail.com>
+ <d0dc027e-b579-ba5b-ec62-d1bd52fbf47f@uiowa.edu>
+ <CA+hbrhVPoFR8tLuhS60oXW_OhWW76YxhnD0VLSZaAi4yVDgWhA@mail.gmail.com>
+Message-ID: <988ea195-1fbe-9e54-d68c-64f6bf36f9a0@uiowa.edu>
+
+On Sat, 11 May 2024, Peter Langfelder wrote:
+
+> On Sat, May 11, 2024 at 9:34?AM luke-tierney--- via R-devel
+> <r-devel at r-project.org> wrote:
+>>
+>> On Sat, 11 May 2024, Travers Ching wrote:
+>>
+>>> The following code snippet causes R to hang. This example might be a
+>>> bit contrived as I was experimenting and trying to understand
+>>> promises, but uses only base R.
+>>
+>> This has nothing to do with promises. You created a cycle in the
+>> environment chain. A simpler variant:
+>>
+>> e <- new.env()
+>> parent.env(e) <- e
+>> get("x", e)
+>>
+>> This will hang and is not interruptable -- loops searching up
+>> environment chains are too speed-critical to check for interrupts.  It
+>> is, however, pretty easy to check whether the parent change would
+>> create a cycle and throw an error if it would. Need to think a bit
+>> about exactly where the check should go.
+>
+> FWIW, the help for parent.env already explicitly warns against using
+> parent.env <-:
+>
+> The replacement function ?parent.env<-? is extremely dangerous as
+>     it can be used to destructively change environments in ways that
+>     violate assumptions made by the internal C code.  It may be
+>     removed in the near future.
+
+Looks like I added that warning 22 years ago, so that should be enough
+notice :-). I'll look into removing it now.
+
+Best,
+
+luke
+
+>
+> Peter
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+From |kry|ov @end|ng |rom d|@root@org  Mon May 13 17:44:27 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 13 May 2024 18:44:27 +0300
+Subject: [Rd] 
+ [External] R hang/bug with circular references and promises
+In-Reply-To: <988ea195-1fbe-9e54-d68c-64f6bf36f9a0@uiowa.edu>
+References: <CAPLMX9EyfB7cLgu89WPT_RFeuC1BDPYcZ81jR2q1aaDPVtnkEw@mail.gmail.com>
+ <d0dc027e-b579-ba5b-ec62-d1bd52fbf47f@uiowa.edu>
+ <CA+hbrhVPoFR8tLuhS60oXW_OhWW76YxhnD0VLSZaAi4yVDgWhA@mail.gmail.com>
+ <988ea195-1fbe-9e54-d68c-64f6bf36f9a0@uiowa.edu>
+Message-ID: <20240513184427.0ba6a251@arachnoid>
+
+On Mon, 13 May 2024 09:54:27 -0500 (CDT)
+luke-tierney--- via R-devel <r-devel at r-project.org> wrote:
+
+> Looks like I added that warning 22 years ago, so that should be enough
+> notice :-). I'll look into removing it now.
+
+Dear Luke,
+
+I've got a somewhat niche use case: as a way of protecting myself
+against rogue *.rds files and vulnerabilities in the C code, I've been
+manually unserializing "plain" data objects (without anything
+executable), including environments, in R [1].
+
+I see that SET_ENCLOS() is already commented as "not API and probably
+should not be <...> used". Do you think there is a way to recreate an
+environment, taking the REFSXP entries into account, without
+`parent.env<-`?  Would you recommend to abandon the folly of
+unserializing environments manually?
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://codeberg.org/aitap/unserializeData/src/commit/33d72705c1ee265349b3e369874ce4b47f9cd358/R/unserialize.R#L289-L313
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Mon May 13 19:26:48 2024
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Mon, 13 May 2024 12:26:48 -0500 (CDT)
+Subject: [Rd] 
+ [External] R hang/bug with circular references and promises
+In-Reply-To: <20240513184427.0ba6a251@arachnoid>
+References: <CAPLMX9EyfB7cLgu89WPT_RFeuC1BDPYcZ81jR2q1aaDPVtnkEw@mail.gmail.com>
+ <d0dc027e-b579-ba5b-ec62-d1bd52fbf47f@uiowa.edu>
+ <CA+hbrhVPoFR8tLuhS60oXW_OhWW76YxhnD0VLSZaAi4yVDgWhA@mail.gmail.com>
+ <988ea195-1fbe-9e54-d68c-64f6bf36f9a0@uiowa.edu>
+ <20240513184427.0ba6a251@arachnoid>
+Message-ID: <b92b7f76-50fc-645b-51a9-91233e45b30@uiowa.edu>
+
+On Mon, 13 May 2024, Ivan Krylov wrote:
+
+> [You don't often get email from ikrylov at disroot.org. Learn why this is important at https://aka.ms/LearnAboutSenderIdentification ]
+>
+> On Mon, 13 May 2024 09:54:27 -0500 (CDT)
+> luke-tierney--- via R-devel <r-devel at r-project.org> wrote:
+>
+>> Looks like I added that warning 22 years ago, so that should be enough
+>> notice :-). I'll look into removing it now.
+>
+
+For now I have just changed the internal code to throw an error
+if the change would produce a cycle (r86545). This gives
+
+     > e <- new.env()
+     > parent.env(e) <- e
+     Error in `parent.env<-`(`*tmp*`, value = <environment>) :
+       cycles in parent chains are not allowed
+
+> Dear Luke,
+>
+> I've got a somewhat niche use case: as a way of protecting myself
+> against rogue *.rds files and vulnerabilities in the C code, I've been
+> manually unserializing "plain" data objects (without anything
+> executable), including environments, in R [1].
+
+I would try using two passes: create the environments in the first pass
+and in a second pass, either over the file or a new object with place holders, fill them in.
+
+> I see that SET_ENCLOS() is already commented as "not API and probably
+> should not be <...> used". Do you think there is a way to recreate an
+> environment, taking the REFSXP entries into account, without
+> `parent.env<-`?  Would you recommend to abandon the folly of
+> unserializing environments manually?
+
+SET_ENCLOS is one of a number of SET... functions that are not in the
+API and should not be since they are potentially unsafe to use. (One
+that is in the API and needs to be removed is SET_TYPEOF). So we would
+like to move them out of installed headers and not export them as
+entry points. For this particular case most uses I see are something
+like
+
+     env = allocSExp(ENVSXP);
+     SET_FRAME(env, R_NilValue);
+     SET_ENCLOS(env, parent);
+     SET_HASHTAB(env, R_NilValue);
+     SET_ATTRIB(env, R_NilValue);
+
+which could just use
+
+      env = R_NewEnv(parent, FALSE, 0);
+
+Best,
+
+luke
+
+>
+> --
+> Best regards,
+> Ivan
+>
+> [1]
+> https://codeberg.org/aitap/unserializeData/src/commit/33d72705c1ee265349b3e369874ce4b47f9cd358/R/unserialize.R#L289-L313
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Tue May 14 09:45:25 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Tue, 14 May 2024 09:45:25 +0200
+Subject: [Rd] Altrep and translations (was "[R] Description of error is
+ untranslated when ....")
+In-Reply-To: <20240514080858.3c232a07@Tarkus>
+References: <CAEUCyyW4QdEMRieLtGP_+eeaWfSOY2TEtaznKTQOCVNSZ0fKWA@mail.gmail.com>
+ <20240514080858.3c232a07@Tarkus>
+Message-ID: <26179.5781.212922.250318@stat.math.ethz.ch>
+
+>>>>> Ivan Krylov via R-help 
+>>>>>     on Tue, 14 May 2024 08:08:58 +0300 writes:
+
+    > Dear Ricardo Villalba, Thank you for spotting this corner
+    > case!
+
+    > ? Mon, 13 May 2024 11:37:57 -0300 Ricardo Villalba
+    > <rikivillalba at gmail.com> ?????:
+
+    >> I track the messages to be coded here:
+    >> https://github.com/r-devel/r-svn/blob/abe625945c4402cd2bb97b5a64e7469db3e904f0/src/main/altclasses.c#L580
+    >> and here
+    >> https://github.com/r-devel/r-svn/blob/abe625945c4402cd2bb97b5a64e7469db3e904f0/src/main/seq.c#L102
+
+    > You may have noticed that one of these places lacks the
+    > underscore that R uses as the translation keyword: it's
+    > _(string) that looks up the translation of the string.
+
+    > Would you like to suggest a patch on R-devel at r-project.org
+    > or https://bugs.r-project.org ?
+
+    > -- 
+    > Best regards, Ivan
+
+Thank you, but, well... for such small changes -- that would be
+quite a bit of (human, i.e. R-core) overhead, but of course is
+generally a good possibility  (but here, wait! .. and read on : )
+
+Actually -- this now gets more  "R-devel" - appropriate --
+I notice that there are quite a few  error("..." .. )
+and also  warning("..." ..) calls in
+src/main/altclasses.c *and* in
+src/main/altrep.c        and *none* of them asks for translation;
+
+While this could be for historical reasons (code originally much
+by Gabe Becker from outside R-core *and* at first just in a
+separate branch before being merged in to the main (r-devel)
+branch.
+OTOH: There may be good reasons for translations lookup being
+brittle in case of altrep error messages .. and hence left off
+purposely?
+
+Martin
+
+--
+Martin Maechler
+ETH Zurich  and  R Core Team
+
+
+From |@go@g|ne @end|ng |rom @jd@e@  Tue May 14 11:25:27 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?gb2312?B?SWFnbyBHaW6opiBWqKJ6cXVleg==?=)
+Date: Tue, 14 May 2024 09:25:27 +0000
+Subject: [Rd] FR: Customize background colour of row and column headers for
+ the View output
+In-Reply-To: <20240513153435.2a735f2c@arachnoid>
+References: <AM6PR02MB4423181B246EC91BEA61412294E42@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <6fd81bdd-4e7e-4736-b71d-f71c402d5cfa@gmail.com>
+ <AM6PR02MB4423E2D236D742E90FC6603494E42@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <1fd3aba6-1da9-4d6a-804b-13a70cb9f096@gmail.com>
+ <20240508095832.7886e41c@rolf-Latitude-E7470>
+ <AM6PR02MB4423D3D9A3934F4489338FC894E22@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <cd6eee8a-a70d-40b8-b4ad-ba4a2e929c26@gmail.com>
+ <20240513153435.2a735f2c@arachnoid>
+Message-ID: <AM6PR02MB44236CC3F4A7D6769DD7BA8994E32@AM6PR02MB4423.eurprd02.prod.outlook.com>
+
+Thanks again Duncan and Ivan,
+
+I forward then the email to R-devel.
+
+Summarizing, the dataedit options (in RGui preferences or RConsole) to
+colouring the View output do not have effect on the background of the row
+and column names (see https://ibb.co/Dkn2pVs).
+
+Could this be implemented?
+
+Thank you!
+
+Best regards,
+Iago
+________________________________
+De: Ivan Krylov <ikrylov at disroot.org>
+Enviat el: dilluns, 13 de maig de 2024 14:34
+Per a: Duncan Murdoch <murdoch.duncan at gmail.com>
+A/c: Iago Gin?? V??zquez <iago.gine at sjd.es>; r-help at r-project.org <r-help at r-project.org>
+Tema: Re: [R] Is there some way to customize colours for the View output?
+
+?? Mon, 13 May 2024 06:08:22 -0400
+Duncan Murdoch <murdoch.duncan at gmail.com> ??????:
+
+> The row and column names don't appear to be controllable from that
+> menu, they seem (on my machine) to be displayed in the same colour as
+> the background of a dialog box, i.e. some kind of gray.  I don't
+> think R tries to control that colour, but perhaps some Windows
+> setting would change it.
+
+This is entirely correct: the dialog uses the colour returned by
+dialog_bg(), which is GetSysColor(COLOR_BTNFACE).
+
+I think it could be a reasonable feature request to use an adjustable
+colour for the row and column headers.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue May 14 14:22:01 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 14 May 2024 08:22:01 -0400
+Subject: [Rd] 
+ FR: Customize background colour of row and column headers for
+ the View output
+In-Reply-To: <AM6PR02MB44236CC3F4A7D6769DD7BA8994E32@AM6PR02MB4423.eurprd02.prod.outlook.com>
+References: <AM6PR02MB4423181B246EC91BEA61412294E42@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <6fd81bdd-4e7e-4736-b71d-f71c402d5cfa@gmail.com>
+ <AM6PR02MB4423E2D236D742E90FC6603494E42@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <1fd3aba6-1da9-4d6a-804b-13a70cb9f096@gmail.com>
+ <20240508095832.7886e41c@rolf-Latitude-E7470>
+ <AM6PR02MB4423D3D9A3934F4489338FC894E22@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <cd6eee8a-a70d-40b8-b4ad-ba4a2e929c26@gmail.com>
+ <20240513153435.2a735f2c@arachnoid>
+ <AM6PR02MB44236CC3F4A7D6769DD7BA8994E32@AM6PR02MB4423.eurprd02.prod.outlook.com>
+Message-ID: <d90f9a91-dee0-44e3-89c3-bdba711f4ab8@gmail.com>
+
+This seems like something that should be fairly easily doable.  Why 
+don't you work out a patch?
+
+Some decisions to make:
+
+- What colours are we talking about?  Would you want the labels to have 
+their colour set independent of the dialog colours?  If so, would you 
+also want to configure the dialog colours?
+
+- What names should be used for the colours?
+
+- Where should all of these definitions be documented?
+
+If you don't feel comfortable with the coding, perhaps you could answer 
+these questions, and someone else may code it for you.  I won't (I no 
+longer have easy access to Windows), but I could help with the design.
+
+Duncan Murdoch
+
+On 2024-05-14 5:25 a.m., Iago Gin? V?zquez wrote:
+> Thanks again Duncan and Ivan,
+> 
+> I forward then the email to R-devel.
+> 
+> Summarizing, the dataedit options (in RGui preferences or RConsole) to
+> colouring the View output do not have effect on the background of the row
+> and column names (see https://ibb.co/Dkn2pVs <https://ibb.co/Dkn2pVs>).
+> 
+> Could this be implemented?
+> 
+> Thank you!
+> 
+> Best regards,
+> Iago
+> ------------------------------------------------------------------------
+> *De:* Ivan Krylov <ikrylov at disroot.org>
+> *Enviat el:* dilluns, 13 de maig de 2024 14:34
+> *Per a:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> *A/c:* Iago Gin? V?zquez <iago.gine at sjd.es>; r-help at r-project.org 
+> <r-help at r-project.org>
+> *Tema:* Re: [R] Is there some way to customize colours for the View output?
+> ? Mon, 13 May 2024 06:08:22 -0400
+> Duncan Murdoch <murdoch.duncan at gmail.com> ?????:
+> 
+>> The row and column names don't appear to be controllable from that
+>> menu, they seem (on my machine) to be displayed in the same colour as
+>> the background of a dialog box, i.e. some kind of gray.? I don't
+>> think R tries to control that colour, but perhaps some Windows
+>> setting would change it.
+> 
+> This is entirely correct: the dialog uses the colour returned by
+> dialog_bg(), which is GetSysColor(COLOR_BTNFACE).
+> 
+> I think it could be a reasonable feature request to use an adjustable
+> colour for the row and column headers.
+> 
+> -- 
+> Best regards,
+> Ivan
+
+
+From r|k|v|||@|b@ @end|ng |rom gm@||@com  Tue May 14 16:15:01 2024
+From: r|k|v|||@|b@ @end|ng |rom gm@||@com (Ricardo Villalba)
+Date: Tue, 14 May 2024 11:15:01 -0300
+Subject: [Rd] Altrep and translations (was "[R] Description of error is
+ untranslated when ....")
+In-Reply-To: <26179.5781.212922.250318@stat.math.ethz.ch>
+References: <CAEUCyyW4QdEMRieLtGP_+eeaWfSOY2TEtaznKTQOCVNSZ0fKWA@mail.gmail.com>
+ <20240514080858.3c232a07@Tarkus> <26179.5781.212922.250318@stat.math.ethz.ch>
+Message-ID: <CAEUCyyWKAk1Ze=T4F2k0evGEUCRDG-DEtC0UDY+eJe0gOebyJg@mail.gmail.com>
+
+Hello
+On the other hand, i find that R_compact_intrange checks whether (r = n2 -
+n1 + 1) >= R_XLEN_T_MAX,  while seq_colon checks for (r = fabs(n2 - n1)) >=
+R_XLEN_T_MAX. And only then n is defined as r + 1 + epsilon. r is not used
+again
+That is why seq_colon does not reject that size at first and then altrep
+does.
+Should not line 101  be  " if (r + 1 + FLT_EPSILON >= R_XLEN_T_MAX) "
+instead of r >= R_XLEN_T_MAX?
+
+El mar, 14 may 2024 a las 4:45, Martin Maechler (<maechler at stat.math.ethz.ch>)
+escribi?:
+
+> >>>>> Ivan Krylov via R-help
+> >>>>>     on Tue, 14 May 2024 08:08:58 +0300 writes:
+>
+>     > Dear Ricardo Villalba, Thank you for spotting this corner
+>     > case!
+>
+>     > ? Mon, 13 May 2024 11:37:57 -0300 Ricardo Villalba
+>     > <rikivillalba at gmail.com> ?????:
+>
+>     >> I track the messages to be coded here:
+>     >>
+> https://github.com/r-devel/r-svn/blob/abe625945c4402cd2bb97b5a64e7469db3e904f0/src/main/altclasses.c#L580
+>     >> and here
+>     >>
+> https://github.com/r-devel/r-svn/blob/abe625945c4402cd2bb97b5a64e7469db3e904f0/src/main/seq.c#L102
+>
+>     > You may have noticed that one of these places lacks the
+>     > underscore that R uses as the translation keyword: it's
+>     > _(string) that looks up the translation of the string.
+>
+>     > Would you like to suggest a patch on R-devel at r-project.org
+>     > or https://bugs.r-project.org ?
+>
+>     > --
+>     > Best regards, Ivan
+>
+> Thank you, but, well... for such small changes -- that would be
+> quite a bit of (human, i.e. R-core) overhead, but of course is
+> generally a good possibility  (but here, wait! .. and read on : )
+>
+> Actually -- this now gets more  "R-devel" - appropriate --
+> I notice that there are quite a few  error("..." .. )
+> and also  warning("..." ..) calls in
+> src/main/altclasses.c *and* in
+> src/main/altrep.c        and *none* of them asks for translation;
+>
+> While this could be for historical reasons (code originally much
+> by Gabe Becker from outside R-core *and* at first just in a
+> separate branch before being merged in to the main (r-devel)
+> branch.
+> OTOH: There may be good reasons for translations lookup being
+> brittle in case of altrep error messages .. and hence left off
+> purposely?
+>
+> Martin
+>
+> --
+> Martin Maechler
+> ETH Zurich  and  R Core Team
+>
+>
+
+-- 
+?DV!
+
+	[[alternative HTML version deleted]]
+
+
+From hp@ge@@on@g|thub @end|ng |rom gm@||@com  Tue May 14 18:55:48 2024
+From: hp@ge@@on@g|thub @end|ng |rom gm@||@com (=?UTF-8?B?SGVydsOpIFBhZ8Oocw==?=)
+Date: Tue, 14 May 2024 09:55:48 -0700
+Subject: [Rd] Support for as(x, "raw")
+Message-ID: <c8868feb-ac25-4b69-8690-13c7db964ffa@gmail.com>
+
+Hi,
+
+as(x, "<vector-type>") is supported and does as.<vector-type>(x) for all 
+vector types except for raw. For example all the following coercions 
+work and do what you'd expect: as(1L, "logical"), as(1L, "double"), 
+as(1L, "complex"), as(1L, "character"), as(1L, "list"). But as(1L, 
+"raw") does not:
+
+ ??? > as(1L, "raw")
+ ??? Error in as(1L, "raw") :
+ ? ? ? no method or default for coercing ?integer? to ?raw?
+
+Even though as.raw(1L) works:
+
+ ??? > as.raw(1L)
+ ??? [1] 01
+
+Is there any particular reason for that or would it be reasonable to 
+define a coerce() method from ANY to raw like it's been done for all the 
+other vector types:
+
+ ??? > selectMethod(coerce, c("ANY", "logical"))
+ ??? Method Definition:
+ ??? function (from, to, strict = TRUE)
+ ??? {
+ ? ? ? ? value <- as.logical(from)
+ ? ? ? ? if (strict)
+ ?? ? ?? ??? attributes(value) <- NULL
+ ? ? ? ? value
+ ??? }
+ ??? <environment: namespace:methods>
+ ??? Signatures:
+ ??? ? ?? ?? from? to
+ ??? target? "ANY" "logical"
+ ??? defined "ANY" "logical"
+
+ ??? ...
+
+ ??? ...
+
+ ??? > selectMethod(coerce, c("ANY", "list"))
+ ??? Method Definition:
+ ??? function (from, to, strict = TRUE)
+ ??? {
+ ? ? ? ? value <- as.list(from)
+ ?? ? ?? if (strict)
+ ?? ? ?? ??? attributes(value) <- NULL
+ ? ? ? ? value
+ ??? }
+ ??? <environment: namespace:methods>
+ ??? Signatures:
+ ? ? ? ????? from? to
+ ??? target? "ANY" "list"
+ ??? defined "ANY" "list"
+
+
+ ??? > selectMethod(coerce, c("ANY", "raw"))
+ ??? Error in selectMethod(coerce, c("ANY", "raw")) :
+ ? ? ? no method found for signature ANY, raw
+
+Thanks,
+
+H.
+
+-- 
+Herv? Pag?s
+
+Bioconductor Core Team
+hpages.on.github at gmail.com
+
+	[[alternative HTML version deleted]]
+
+
+From |@go@g|ne @end|ng |rom @jd@e@  Wed May 15 08:20:38 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?gb2312?B?SWFnbyBHaW6opiBWqKJ6cXVleg==?=)
+Date: Wed, 15 May 2024 06:20:38 +0000
+Subject: [Rd] 
+ FR: Customize background colour of row and column headers for
+ the View output
+In-Reply-To: <d90f9a91-dee0-44e3-89c3-bdba711f4ab8@gmail.com>
+References: <AM6PR02MB4423181B246EC91BEA61412294E42@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <6fd81bdd-4e7e-4736-b71d-f71c402d5cfa@gmail.com>
+ <AM6PR02MB4423E2D236D742E90FC6603494E42@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <1fd3aba6-1da9-4d6a-804b-13a70cb9f096@gmail.com>
+ <20240508095832.7886e41c@rolf-Latitude-E7470>
+ <AM6PR02MB4423D3D9A3934F4489338FC894E22@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <cd6eee8a-a70d-40b8-b4ad-ba4a2e929c26@gmail.com>
+ <20240513153435.2a735f2c@arachnoid>
+ <AM6PR02MB44236CC3F4A7D6769DD7BA8994E32@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <d90f9a91-dee0-44e3-89c3-bdba711f4ab8@gmail.com>
+Message-ID: <AM6PR02MB4423958F79FB134A16406AF194EC2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+
+About the decisions:
+
+Actually, the same way dataedittext modifies the text colour not only
+of data, but also of row and column names, and dataedituser modifies
+the colour of all the borders, I think dataeditbg should modify the
+background of all the window, at least that "inside" those
+borders. Otherwise, any other option for the background colour on row
+and column headers would allow the same set of colours and with the
+same names, which are those commented in Rconsole:
+
+## Colours for console and pager(s)
+# (see rwxxxx/etc/rgb.txt for the known colours).
+
+Regarding the code, looking to the Windows data editor [1], and taking
+into account what you and lastly Ivan told previously
+
+    This is entirely correct: the dialog uses the colour returned by
+    dialog_bg(), which is GetSysColor(COLOR_BTNFACE).
+
+(maybe a naive question from who does not know the code), could not be
+used `guiColors[dataeditbg]` instead of `dialog_bg()` in the unique
+place this is present?. So, instead of
+
+    bbg = dialog_bg()
+
+it would appear
+
+    bbg = guiColors[dataeditbg];
+
+
+Thanks!
+Iago
+
+
+[1] https://svn.r-project.org/R/trunk/src/library/utils/src/windows/dataentry.c
+________________________________
+De: Duncan Murdoch <murdoch.duncan at gmail.com>
+Enviat el: dimarts, 14 de maig de 2024 14:22
+Per a: Iago Gin?? V??zquez <iago.gine at sjd.es>; r-devel at R-project.org <r-devel at r-project.org>
+A/c: Ivan Krylov <ikrylov at disroot.org>
+Tema: Re: FR: Customize background colour of row and column headers for the View output
+
+This seems like something that should be fairly easily doable.  Why
+don't you work out a patch?
+
+Some decisions to make:
+
+- What colours are we talking about?  Would you want the labels to have
+their colour set independent of the dialog colours?  If so, would you
+also want to configure the dialog colours?
+
+- What names should be used for the colours?
+
+- Where should all of these definitions be documented?
+
+If you don't feel comfortable with the coding, perhaps you could answer
+these questions, and someone else may code it for you.  I won't (I no
+longer have easy access to Windows), but I could help with the design.
+
+Duncan Murdoch
+
+On 2024-05-14 5:25 a.m., Iago Gin?? V??zquez wrote:
+> Thanks again Duncan and Ivan,
+>
+> I forward then the email to R-devel.
+>
+> Summarizing, the dataedit options (in RGui preferences or RConsole) to
+> colouring the View output do not have effect on the background of the row
+> and column names (see https://ibb.co/Dkn2pVs <https://ibb.co/Dkn2pVs>).
+>
+> Could this be implemented?
+>
+> Thank you!
+>
+> Best regards,
+> Iago
+> ------------------------------------------------------------------------
+> *De:* Ivan Krylov <ikrylov at disroot.org>
+> *Enviat el:* dilluns, 13 de maig de 2024 14:34
+> *Per a:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> *A/c:* Iago Gin?? V??zquez <iago.gine at sjd.es>; r-help at r-project.org
+> <r-help at r-project.org>
+> *Tema:* Re: [R] Is there some way to customize colours for the View output?
+> ?? Mon, 13 May 2024 06:08:22 -0400
+> Duncan Murdoch <murdoch.duncan at gmail.com> ??????:
+>
+>> The row and column names don't appear to be controllable from that
+>> menu, they seem (on my machine) to be displayed in the same colour as
+>> the background of a dialog box, i.e. some kind of gray.  I don't
+>> think R tries to control that colour, but perhaps some Windows
+>> setting would change it.
+>
+> This is entirely correct: the dialog uses the colour returned by
+> dialog_bg(), which is GetSysColor(COLOR_BTNFACE).
+>
+> I think it could be a reasonable feature request to use an adjustable
+> colour for the row and column headers.
+>
+> --
+> Best regards,
+> Ivan
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed May 15 11:12:51 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 15 May 2024 05:12:51 -0400
+Subject: [Rd] 
+ FR: Customize background colour of row and column headers for
+ the View output
+In-Reply-To: <AM6PR02MB4423958F79FB134A16406AF194EC2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+References: <AM6PR02MB4423181B246EC91BEA61412294E42@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <6fd81bdd-4e7e-4736-b71d-f71c402d5cfa@gmail.com>
+ <AM6PR02MB4423E2D236D742E90FC6603494E42@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <1fd3aba6-1da9-4d6a-804b-13a70cb9f096@gmail.com>
+ <20240508095832.7886e41c@rolf-Latitude-E7470>
+ <AM6PR02MB4423D3D9A3934F4489338FC894E22@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <cd6eee8a-a70d-40b8-b4ad-ba4a2e929c26@gmail.com>
+ <20240513153435.2a735f2c@arachnoid>
+ <AM6PR02MB44236CC3F4A7D6769DD7BA8994E32@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <d90f9a91-dee0-44e3-89c3-bdba711f4ab8@gmail.com>
+ <AM6PR02MB4423958F79FB134A16406AF194EC2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+Message-ID: <ecfae895-c648-4025-b786-b4c734ade5ba@gmail.com>
+
+A criticism of your suggestion is that it is not backwards compatible. 
+Does that matter?  I don't know, but probably not.  The X11 version of 
+the viewer does what you suggest.
+
+Duncan Murdoch
+
+On 2024-05-15 2:20 a.m., Iago Gin? V?zquez wrote:
+> About the decisions:
+> 
+> Actually, the same way dataedittext modifies the text colour not only
+> of data, but also of row and column names, and dataedituser modifies
+> the colour of all the borders, I think dataeditbg should modify the
+> background of all the window, at least that "inside" those
+> borders. Otherwise, any other option for the background colour on row
+> and column headers would allow the same set of colours and with the
+> same names, which are those commented in Rconsole:
+> 
+> ## Colours for console and pager(s)
+> # (see rwxxxx/etc/rgb.txt for the known colours).
+> 
+> Regarding the code, looking to the Windows data editor [1], and taking
+> into account what you and lastly Ivan told previously
+> 
+>  ? ? This is entirely correct: the dialog uses the colour returned by
+>  ? ? dialog_bg(), which is GetSysColor(COLOR_BTNFACE).
+> 
+> (maybe a naive question from who does not know the code), could not be
+> used `guiColors[dataeditbg]` instead of `dialog_bg()` in the unique
+> place this is present?. So, instead of
+> 
+>  ? ? bbg = dialog_bg()
+> 
+> it would appear
+> 
+>  ? ? bbg = guiColors[dataeditbg];
+> 
+> 
+> Thanks!
+> Iago
+> 
+> 
+> [1] 
+> https://svn.r-project.org/R/trunk/src/library/utils/src/windows/dataentry.c <https://svn.r-project.org/R/trunk/src/library/utils/src/windows/dataentry.c>
+> ------------------------------------------------------------------------
+> *De:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> *Enviat el:* dimarts, 14 de maig de 2024 14:22
+> *Per a:* Iago Gin? V?zquez <iago.gine at sjd.es>; r-devel at R-project.org 
+> <r-devel at r-project.org>
+> *A/c:* Ivan Krylov <ikrylov at disroot.org>
+> *Tema:* Re: FR: Customize background colour of row and column headers 
+> for the View output
+> This seems like something that should be fairly easily doable.? Why
+> don't you work out a patch?
+> 
+> Some decisions to make:
+> 
+> - What colours are we talking about?? Would you want the labels to have
+> their colour set independent of the dialog colours?? If so, would you
+> also want to configure the dialog colours?
+> 
+> - What names should be used for the colours?
+> 
+> - Where should all of these definitions be documented?
+> 
+> If you don't feel comfortable with the coding, perhaps you could answer
+> these questions, and someone else may code it for you.? I won't (I no
+> longer have easy access to Windows), but I could help with the design.
+> 
+> Duncan Murdoch
+> 
+> On 2024-05-14 5:25 a.m., Iago Gin? V?zquez wrote:
+>> Thanks again Duncan and Ivan,
+>> 
+>> I forward then the email to R-devel.
+>> 
+>> Summarizing, the dataedit options (in RGui preferences or RConsole) to
+>> colouring the View output do not have effect on the background of the row
+>> and column names (see https://ibb.co/Dkn2pVs <https://ibb.co/Dkn2pVs> <https://ibb.co/Dkn2pVs 
+> <https://ibb.co/Dkn2pVs>>).
+>> 
+>> Could this be implemented?
+>> 
+>> Thank you!
+>> 
+>> Best regards,
+>> Iago
+>> ------------------------------------------------------------------------
+>> *De:* Ivan Krylov <ikrylov at disroot.org>
+>> *Enviat el:* dilluns, 13 de maig de 2024 14:34
+>> *Per a:* Duncan Murdoch <murdoch.duncan at gmail.com>
+>> *A/c:* Iago Gin? V?zquez <iago.gine at sjd.es>; r-help at r-project.org 
+>> <r-help at r-project.org>
+>> *Tema:* Re: [R] Is there some way to customize colours for the View output?
+>> ? Mon, 13 May 2024 06:08:22 -0400
+>> Duncan Murdoch <murdoch.duncan at gmail.com> ?????:
+>> 
+>>> The row and column names don't appear to be controllable from that
+>>> menu, they seem (on my machine) to be displayed in the same colour as
+>>> the background of a dialog box, i.e. some kind of gray.? I don't
+>>> think R tries to control that colour, but perhaps some Windows
+>>> setting would change it.
+>> 
+>> This is entirely correct: the dialog uses the colour returned by
+>> dialog_bg(), which is GetSysColor(COLOR_BTNFACE).
+>> 
+>> I think it could be a reasonable feature request to use an adjustable
+>> colour for the row and column headers.
+>> 
+>> -- 
+>> Best regards,
+>> Ivan
+>
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu May 16 17:48:52 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 16 May 2024 18:48:52 +0300
+Subject: [Rd] 
+ FR: Customize background colour of row and column headers for
+ the View output
+In-Reply-To: <ecfae895-c648-4025-b786-b4c734ade5ba@gmail.com>
+References: <AM6PR02MB4423181B246EC91BEA61412294E42@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <6fd81bdd-4e7e-4736-b71d-f71c402d5cfa@gmail.com>
+ <AM6PR02MB4423E2D236D742E90FC6603494E42@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <1fd3aba6-1da9-4d6a-804b-13a70cb9f096@gmail.com>
+ <20240508095832.7886e41c@rolf-Latitude-E7470>
+ <AM6PR02MB4423D3D9A3934F4489338FC894E22@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <cd6eee8a-a70d-40b8-b4ad-ba4a2e929c26@gmail.com>
+ <20240513153435.2a735f2c@arachnoid>
+ <AM6PR02MB44236CC3F4A7D6769DD7BA8994E32@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <d90f9a91-dee0-44e3-89c3-bdba711f4ab8@gmail.com>
+ <AM6PR02MB4423958F79FB134A16406AF194EC2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <ecfae895-c648-4025-b786-b4c734ade5ba@gmail.com>
+Message-ID: <20240516184852.17c5fcba@arachnoid>
+
+The change suggested by Iago Gin? V?zquez is indeed very simple. It
+sets the background colour of the row and column headers to the
+background of the rest of the dataentry window. With this patch, R
+passes 'make check'. As Duncan Murdoch mentions, the X11 editor already
+behaves this way.
+
+If it's not acceptable to make the row and column headers the same
+colour as the rest of the text, let's make it into a separate setting.
+
+--- src/library/utils/src/windows/dataentry.c	(revision 86557)
++++ src/library/utils/src/windows/dataentry.c	(working copy)
+@@ -1474,7 +1474,7 @@
+     resize(DE->de, r);
+ 
+     DE->CellModified = DE->CellEditable = FALSE;
+-    bbg = dialog_bg();
++    bbg = guiColors[dataeditbg];
+     /* set the active cell to be the upper left one */
+     DE->crow = 1;
+     DE->ccol = 1;
+
+-- 
+Best regards,
+Ivan
+
+
+From doug|@@@@d@m@@15 @end|ng |rom u@@@|@m||  Thu May 16 20:11:30 2024
+From: doug|@@@@d@m@@15 @end|ng |rom u@@@|@m|| (ADAMS, DOUGLAS L CIV USAF AFMC OO-ALC/OBWA)
+Date: Thu, 16 May 2024 18:11:30 +0000
+Subject: [Rd] R for the US Air Force
+Message-ID: <SN5P111MB175722D047F81105BE189D558AEDA@SN5P111MB1757.NAMP111.PROD.OUTLOOK.COM>
+
+Hello,
+
+ 
+
+The US Air Force used to have R available on our main network, but now those who need to accept it back are
+being very particular about what they're accepting in terms of official documentation.
+
+ 
+
+Would you be able to help me with this endeavor?  I'm attaching a pdf that shows what documentation they'd
+require for us to re-establish R as being acceptable on the network here.  I understand if you're too busy or
+if it's a pain.  Haha
+
+ 
+
+Thank you so much for your help and consideration!
+
+ 
+
+Doug Adams
+
+United States Air Force
+
+Hill AFB, Utah
+
+ 
+
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: EVS Documentation Requirements.pdf
+Type: application/pdf
+Size: 56246 bytes
+Desc: not available
+URL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20240516/e0407884/attachment.pdf>
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Thu May 16 21:05:08 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Thu, 16 May 2024 15:05:08 -0400
+Subject: [Rd] R for the US Air Force
+In-Reply-To: <SN5P111MB175722D047F81105BE189D558AEDA@SN5P111MB1757.NAMP111.PROD.OUTLOOK.COM>
+References: <SN5P111MB175722D047F81105BE189D558AEDA@SN5P111MB1757.NAMP111.PROD.OUTLOOK.COM>
+Message-ID: <CAL3ufUJqYmui+O=zssuUfd9kEMsnqELfMs=JvJ9CN7YTC0WENw@mail.gmail.com>
+
+Hey Doug,
+
+R is not a product that is provided by a company or any vendor that can be
+procured through a vendor e.g. something on a GSA schedule.
+
+Seems like you're caught in the bureaucracy hell hole. I used to help the
+USAF, and other DoD members use R when I was at RStudio (now Posit).
+
+I recommend you find someone in your organization who is doing Data
+Science. They'll likely have charted a path and you can follow in their
+footsteps.
+For example https://www.linkedin.com/in/joshua-couse/.
+
+Jeremy Allen has since taken over my role at Posit since I've left. I'm
+sure he knows a plethora of people in the USAF who are using R and can help
+you out.
+
+https://www.linkedin.com/in/jeremy-allen-data/
+
+
+
+
+On Thu, May 16, 2024 at 2:57?PM ADAMS, DOUGLAS L CIV USAF AFMC OO-ALC/OBWA
+via R-devel <r-devel at r-project.org> wrote:
+
+> Hello,
+>
+>
+>
+> The US Air Force used to have R available on our main network, but now
+> those who need to accept it back are
+> being very particular about what they're accepting in terms of official
+> documentation.
+>
+>
+>
+> Would you be able to help me with this endeavor?  I'm attaching a pdf that
+> shows what documentation they'd
+> require for us to re-establish R as being acceptable on the network here.
+> I understand if you're too busy or
+> if it's a pain.  Haha
+>
+>
+>
+> Thank you so much for your help and consideration!
+>
+>
+>
+> Doug Adams
+>
+> United States Air Force
+>
+> Hill AFB, Utah
+>
+>
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From doug|@@@@d@m@@15 @end|ng |rom u@@@|@m||  Thu May 16 22:03:30 2024
+From: doug|@@@@d@m@@15 @end|ng |rom u@@@|@m|| (ADAMS, DOUGLAS L CIV USAF AFMC OO-ALC/OBWA)
+Date: Thu, 16 May 2024 20:03:30 +0000
+Subject: [Rd] [Non-DoD Source] Re:  R for the US Air Force
+In-Reply-To: <CAL3ufUJqYmui+O=zssuUfd9kEMsnqELfMs=JvJ9CN7YTC0WENw@mail.gmail.com>
+References: <SN5P111MB175722D047F81105BE189D558AEDA@SN5P111MB1757.NAMP111.PROD.OUTLOOK.COM>
+ <CAL3ufUJqYmui+O=zssuUfd9kEMsnqELfMs=JvJ9CN7YTC0WENw@mail.gmail.com>
+Message-ID: <SN5P111MB17572AFF3891803B0E74776B8AEDA@SN5P111MB1757.NAMP111.PROD.OUTLOOK.COM>
+
+You described it well; I?m afraid that?s what it is.  They want documents of an organization that doesn?t fit the description, and only then will they test it.
+
+ 
+
+That sounds great.  I?ll reach out to Jeremy and see if he can help me get the IDs the USAF wants.  It sounds like Joshua predates my time here.  That?s a really good idea.
+
+ 
+
+Thanks very much!
+
+ 
+
+Doug
+
+ 
+
+ 
+
+From: Josiah Parry <josiah.parry at gmail.com> 
+Sent: Thursday, May 16, 2024 1:05 PM
+To: ADAMS, DOUGLAS L CIV USAF AFMC OO-ALC/OBWA <douglas.adams.15 at us.af.mil>
+Cc: R-devel at R-project.org
+Subject: [Non-DoD Source] Re: [Rd] R for the US Air Force
+
+ 
+
+	
+You don't often get email from josiah.parry at gmail.com.  <https://aka.ms/LearnAboutSenderIdentification> Learn why this is important
+
+	
+
+Hey Doug, 
+
+ 
+
+R is not a product that is provided by a company or any vendor that can be procured through a vendor e.g. something on a GSA schedule. 
+
+ 
+
+Seems like you're caught in the bureaucracy hell hole. I used to help the USAF, and other DoD members use R when I was at RStudio (now Posit). 
+
+ 
+
+I recommend you find someone in your organization who is doing Data Science. They'll likely have charted a path and you can follow in their footsteps. 
+
+For example https://www.linkedin.com/in/joshua-couse/. 
+
+ 
+
+Jeremy Allen has since taken over my role at Posit since I've left. I'm sure he knows a plethora of people in the USAF who are using R and can help you out.
+
+ 
+
+https://www.linkedin.com/in/jeremy-allen-data/
+
+ 
+
+ 
+
+ 
+
+ 
+
+On Thu, May 16, 2024 at 2:57?PM ADAMS, DOUGLAS L CIV USAF AFMC OO-ALC/OBWA via R-devel <r-devel at r-project.org <mailto:r-devel at r-project.org> > wrote:
+
+Hello,
+
+
+
+The US Air Force used to have R available on our main network, but now those who need to accept it back are
+being very particular about what they're accepting in terms of official documentation.
+
+
+
+Would you be able to help me with this endeavor?  I'm attaching a pdf that shows what documentation they'd
+require for us to re-establish R as being acceptable on the network here.  I understand if you're too busy or
+if it's a pain.  Haha
+
+
+
+Thank you so much for your help and consideration!
+
+
+
+Doug Adams
+
+United States Air Force
+
+Hill AFB, Utah
+
+
+
+______________________________________________
+R-devel at r-project.org <mailto:R-devel at r-project.org>  mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From bbo|ker @end|ng |rom gm@||@com  Thu May 16 23:30:56 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Thu, 16 May 2024 17:30:56 -0400
+Subject: [Rd] [Non-DoD Source] Re: R for the US Air Force
+In-Reply-To: <SN5P111MB17572AFF3891803B0E74776B8AEDA@SN5P111MB1757.NAMP111.PROD.OUTLOOK.COM>
+References: <SN5P111MB175722D047F81105BE189D558AEDA@SN5P111MB1757.NAMP111.PROD.OUTLOOK.COM>
+ <CAL3ufUJqYmui+O=zssuUfd9kEMsnqELfMs=JvJ9CN7YTC0WENw@mail.gmail.com>
+ <SN5P111MB17572AFF3891803B0E74776B8AEDA@SN5P111MB1757.NAMP111.PROD.OUTLOOK.COM>
+Message-ID: <91481640-d3e4-4182-bca5-424c5e32764a@gmail.com>
+
+   For what it's worth
+
+https://www.r-project.org/foundation/board.html
+
+  says
+
+The R Foundation is seated in Vienna, Austria and currently hosted by 
+the Vienna University of Economics and Business. It is a registered 
+association under Austrian law and active worldwide. The R Foundation 
+can be contacted by e-mail to R-foundation at r-project.org
+
+
+   The statutes here <https://www.r-project.org/foundation/> probably 
+won't be useful, but you might be able to get the Austrian registration 
+documents from someone at the R foundation (see e-mail above); it seems 
+as though that might qualify for lists A and B in your documentation 
+specs, and they might be able to provide you with an Austrian tax 
+receipt for list C ...
+
+   cheers
+     Ben Bolker
+
+On 2024-05-16 4:03 p.m., ADAMS, DOUGLAS L CIV USAF AFMC OO-ALC/OBWA via 
+R-devel wrote:
+> You described it well; I?m afraid that?s what it is.  They want documents of an organization that doesn?t fit the description, and only then will they test it.
+> 
+>   
+> 
+> That sounds great.  I?ll reach out to Jeremy and see if he can help me get the IDs the USAF wants.  It sounds like Joshua predates my time here.  That?s a really good idea.
+> 
+>   
+> 
+> Thanks very much!
+> 
+>   
+> 
+> Doug
+> 
+>   
+> 
+>   
+> 
+> From: Josiah Parry <josiah.parry at gmail.com>
+> Sent: Thursday, May 16, 2024 1:05 PM
+> To: ADAMS, DOUGLAS L CIV USAF AFMC OO-ALC/OBWA <douglas.adams.15 at us.af.mil>
+> Cc: R-devel at R-project.org
+> Subject: [Non-DoD Source] Re: [Rd] R for the US Air Force
+> 
+>   
+> 
+> 	
+> You don't often get email from josiah.parry at gmail.com.  <https://aka.ms/LearnAboutSenderIdentification> Learn why this is important
+> 
+> 	
+> 
+> Hey Doug,
+> 
+>   
+> 
+> R is not a product that is provided by a company or any vendor that can be procured through a vendor e.g. something on a GSA schedule.
+> 
+>   
+> 
+> Seems like you're caught in the bureaucracy hell hole. I used to help the USAF, and other DoD members use R when I was at RStudio (now Posit).
+> 
+>   
+> 
+> I recommend you find someone in your organization who is doing Data Science. They'll likely have charted a path and you can follow in their footsteps.
+> 
+> For example https://www.linkedin.com/in/joshua-couse/.
+> 
+>   
+> 
+> Jeremy Allen has since taken over my role at Posit since I've left. I'm sure he knows a plethora of people in the USAF who are using R and can help you out.
+> 
+>   
+> 
+> https://www.linkedin.com/in/jeremy-allen-data/
+> 
+>   
+> 
+>   
+> 
+>   
+> 
+>   
+> 
+> On Thu, May 16, 2024 at 2:57?PM ADAMS, DOUGLAS L CIV USAF AFMC OO-ALC/OBWA via R-devel <r-devel at r-project.org <mailto:r-devel at r-project.org> > wrote:
+> 
+> Hello,
+> 
+> 
+> 
+> The US Air Force used to have R available on our main network, but now those who need to accept it back are
+> being very particular about what they're accepting in terms of official documentation.
+> 
+> 
+> 
+> Would you be able to help me with this endeavor?  I'm attaching a pdf that shows what documentation they'd
+> require for us to re-establish R as being acceptable on the network here.  I understand if you're too busy or
+> if it's a pain.  Haha
+> 
+> 
+> 
+> Thank you so much for your help and consideration!
+> 
+> 
+> 
+> Doug Adams
+> 
+> United States Air Force
+> 
+> Hill AFB, Utah
+> 
+> 
+> 
+> ______________________________________________
+> R-devel at r-project.org <mailto:R-devel at r-project.org>  mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @i@o m@iii@g oii i@hi@de  Fri May 17 07:39:33 2024
+From: @i@o m@iii@g oii i@hi@de (@i@o m@iii@g oii i@hi@de)
+Date: Fri, 17 May 2024 07:39:33 +0200 (CEST)
+Subject: [Rd] R for the US Air Force
+In-Reply-To: <SN5P111MB175722D047F81105BE189D558AEDA@SN5P111MB1757.NAMP111.PROD.OUTLOOK.COM>
+References: <SN5P111MB175722D047F81105BE189D558AEDA@SN5P111MB1757.NAMP111.PROD.OUTLOOK.COM>
+Message-ID: <1407136090.21492079.1715924373170.JavaMail.zimbra@mail>
+
+Years ago, there was a commercialized version of R from Revolution. It was bought by Microsoft, and turned into Microsoft R. Their version of CRAN was called MRAN. It's discontinued I believe, but the last Microsoft R version was already on the 4.0 major version.
+________________________________
+From: ADAMS, DOUGLAS L CIV USAF AFMC OO-ALC/OBWA via R-devel <r-devel-bounces at r-project.org> on behalf of ADAMS, DOUGLAS L CIV USAF AFMC OO-ALC/OBWA via R-devel <r-devel at r-project.org>
+Sent: Thursday, May 16, 2024 8:11:30 PM
+To: R-devel at R-project.org <R-devel at R-project.org>
+Subject: [Rd] R for the US Air Force
+
+Hello,
+
+
+
+The US Air Force used to have R available on our main network, but now those who need to accept it back are
+being very particular about what they're accepting in terms of official documentation.
+
+
+
+Would you be able to help me with this endeavor?  I'm attaching a pdf that shows what documentation they'd
+require for us to re-establish R as being acceptable on the network here.  I understand if you're too busy or
+if it's a pain.  Haha
+
+
+
+Thank you so much for your help and consideration!
+
+
+
+Doug Adams
+
+United States Air Force
+
+Hill AFB, Utah
+
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From b@row||ng@on @end|ng |rom |@nc@@ter@@c@uk  Sat May 18 10:09:37 2024
+From: b@row||ng@on @end|ng |rom |@nc@@ter@@c@uk (Barry Rowlingson)
+Date: Sat, 18 May 2024 09:09:37 +0100
+Subject: [Rd] [External] Re:  R for the US Air Force
+In-Reply-To: <c6aea0617d6c4a06843f2708bf32e089@LO0P265MB2603.GBRP265.PROD.OUTLOOK.COM>
+References: <SN5P111MB175722D047F81105BE189D558AEDA@SN5P111MB1757.NAMP111.PROD.OUTLOOK.COM>
+ <c6aea0617d6c4a06843f2708bf32e089@LO0P265MB2603.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <CANVKczNZObFX6JY-mt6SE529ud2byXrM85AKxDsm4TCP=WfW7A@mail.gmail.com>
+
+R is not a product that is provided by a company or any vendor that can be
+> procured through a vendor e.g. something on a GSA schedule.
+>
+>
+ that's not strictly true though is it? Anyone can form a company and
+supply R, as long as everyone complies with the license. You are also free
+to download R from public services and do it without any corporate
+wrappings and trappings, which is what Posit (ex-RStudio) do, right?
+
+
+> Seems like you're caught in the bureaucracy hell hole. I used to help the
+> USAF, and other DoD members use R when I was at RStudio (now Posit).
+>
+
+I don't see anything in the PDF posted that links the software to the
+company details required. Does it have to be the copyright holder of the
+software? Or anyone free to distribute it by license? Does the USAF use
+other open source systems, eg Linux, in which case are they going through a
+licensed reseller to tick these boxes?
+
+Barry
+
+
+>
+> On Thu, May 16, 2024 at 2:57?PM ADAMS, DOUGLAS L CIV USAF AFMC OO-ALC/OBWA
+> via R-devel <r-devel at r-project.org> wrote:
+>
+> > Hello,
+> >
+> >
+> >
+> > The US Air Force used to have R available on our main network, but now
+> > those who need to accept it back are
+> > being very particular about what they're accepting in terms of official
+> > documentation.
+> >
+> >
+> >
+> > Would you be able to help me with this endeavor?  I'm attaching a pdf
+> that
+> > shows what documentation they'd
+> > require for us to re-establish R as being acceptable on the network here.
+> > I understand if you're too busy or
+> > if it's a pain.  Haha
+> >
+> >
+> >
+> > Thank you so much for your help and consideration!
+> >
+> >
+> >
+> > Doug Adams
+> >
+> > United States Air Force
+> >
+> > Hill AFB, Utah
+> >
+> >
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From b@row||ng@on @end|ng |rom |@nc@@ter@@c@uk  Sat May 18 10:12:37 2024
+From: b@row||ng@on @end|ng |rom |@nc@@ter@@c@uk (Barry Rowlingson)
+Date: Sat, 18 May 2024 09:12:37 +0100
+Subject: [Rd] [External] Re:  R for the US Air Force
+In-Reply-To: <CANVKczNZObFX6JY-mt6SE529ud2byXrM85AKxDsm4TCP=WfW7A@mail.gmail.com>
+References: <SN5P111MB175722D047F81105BE189D558AEDA@SN5P111MB1757.NAMP111.PROD.OUTLOOK.COM>
+ <c6aea0617d6c4a06843f2708bf32e089@LO0P265MB2603.GBRP265.PROD.OUTLOOK.COM>
+ <CANVKczNZObFX6JY-mt6SE529ud2byXrM85AKxDsm4TCP=WfW7A@mail.gmail.com>
+Message-ID: <CANVKczP2qc5ZMZUVU7Myrz7o-iu1LwD7qusQeSTkkipKQkATuw@mail.gmail.com>
+
+>  that's not strictly true though is it? Anyone can form a company and
+> supply R, as long as everyone complies with the license. You are also free
+> to download R from public services and do it without any corporate
+> wrappings and trappings, which is what Posit (ex-RStudio) do, right?
+>
+>
+[correction for clarity: I mean Posit *do* supply R with corporate
+"wrappings and trappings" (whatever they are), the logic may have got
+twisted there in edits]
+
+B
+
+	[[alternative HTML version deleted]]
+
+
+From z@|er@b@rutcuog|u @end|ng |rom gm@||@com  Mon May 20 07:36:59 2024
+From: z@|er@b@rutcuog|u @end|ng |rom gm@||@com (Zafer Barutcuoglu)
+Date: Mon, 20 May 2024 01:36:59 -0400
+Subject: [Rd] Output pipes to TTY hang
+In-Reply-To: <mailman.54288.3.1716026401.7919.r-devel@r-project.org>
+References: <mailman.54288.3.1716026401.7919.r-devel@r-project.org>
+Message-ID: <FA262651-F35A-436F-9086-A7DE77965A5B@gmail.com>
+
+Hi,
+
+I am seeing this on Linux as well as MacOS: Opening any output pipe from R 4.4.0 to TTY programs like "less"/"more" hangs, SIGINT-proof:
+> $ R/4.4.0/bin/Rscript -e 'pipe("less", "w")'
+> $ R/4.4.0/bin/Rscript -e 'cat("test", file="|less")
+> $ R/4.4.0/bin/Rscript -e 'cat("test", file="|more")
+
+R 4.3.3 and earlier have been working fine:
+> $ R/4.3.3/bin/Rscript -e 'pipe("less", "w")'
+> $ R/4.3.3/bin/Rscript -e 'cat("test", file="|less")
+> $ R/4.3.3/bin/Rscript -e 'cat("test", file="|more")
+
+
+R 4.4.0 also works fine with non-TTY output pipes:
+> $ R/4.4.0/bin/Rscript -e 'pipe("cat", "w")'
+
+> $ R/4.4.0/bin/Rscript -e 'cat("test", file="|cat")
+> $ R/4.4.0/bin/Rscript -e 'cat("Hi!\n", file="|tr i o")'
+> $ R/4.4.0/bin/Rscript -e 'cat("Hi!\n", file="|sed -e s/i/o/")'
+
+For what it's worth, input pipes from less/more to R 4.4.0 do not hang, but are not always the same as before either. These are the same:
+> $ R/4.3.3/bin/Rscript -e 'con <- pipe("less --version", "r"); readLines(con); close(con)'
+> [1] "less (GNU regular expressions)" "Copyright (C) Mark Nudelman" ...
+> $ R/4.4.0/bin/Rscript -e 'con <- pipe("less --version", "r"); readLines(con); close(con)'
+> [1] "less (GNU regular expressions)" "Copyright (C) Mark Nudelman" ...
+But these are not (again, on both Linux and MacOS):
+> $ R/4.3.3/bin/Rscript -e 'con <- pipe("less", "r"); readLines(con); close(con)'
+> [1] "Missing filename (\"less --help\" for help)"
+
+> $ R/4.4.0/bin/Rscript -e 'con <- pipe("less", "r"); readLines(con); close(con)'
+> character(0)
+
+
+I did not see anything related here or in release notes or bugzilla. Is this a bug or something else?
+
+Best,
+--
+Zafer
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon May 20 10:06:40 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 20 May 2024 04:06:40 -0400
+Subject: [Rd] config.site settings for M3 Mac typo in manual?
+Message-ID: <7d2fba0d-6abb-4df0-b388-e82280a8bac1@gmail.com>
+
+I've just upgraded to an M3 Mac laptop, and I'm working through getting 
+the right configure settings to build R.
+
+The Installation and Administration manual says to have this in config.site:
+
+FFLAGS="-g -O2 -mmacos-version-min=11.0"
+FCFLAGS="-g -O2 -mmacos-version-min=11.0"
+
+but those give an error on my system, with it suggesting the FFLAGS and 
+FCFLAGS version option should be -mmacosx-version-min=11.0.  I don't 
+know if that's a typo or a change.
+
+Besides
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon May 20 12:20:37 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 20 May 2024 12:20:37 +0200
+Subject: [Rd] Output pipes to TTY hang
+In-Reply-To: <FA262651-F35A-436F-9086-A7DE77965A5B@gmail.com>
+References: <mailman.54288.3.1716026401.7919.r-devel@r-project.org>
+ <FA262651-F35A-436F-9086-A7DE77965A5B@gmail.com>
+Message-ID: <7da31dd1-3760-4c9f-be90-1f4051dddb2b@gmail.com>
+
+
+On 5/20/24 07:36, Zafer Barutcuoglu wrote:
+> Hi,
+>
+> I am seeing this on Linux as well as MacOS: Opening any output pipe from R 4.4.0 to TTY programs like "less"/"more" hangs, SIGINT-proof:
+>> $ R/4.4.0/bin/Rscript -e 'pipe("less", "w")'
+>> $ R/4.4.0/bin/Rscript -e 'cat("test", file="|less")
+>> $ R/4.4.0/bin/Rscript -e 'cat("test", file="|more")
+> R 4.3.3 and earlier have been working fine:
+>> $ R/4.3.3/bin/Rscript -e 'pipe("less", "w")'
+>> $ R/4.3.3/bin/Rscript -e 'cat("test", file="|less")
+>> $ R/4.3.3/bin/Rscript -e 'cat("test", file="|more")
+
+I've tried the first example and it doesn't work for me even in R 4.3.3 
+on Linux, so I can't easily test what changed the behavior for you, but 
+it was very likely a bugfix for PR#17764. Now the pipe() uses a special 
+process group to protect the processes (assumed to be background) from 
+the terminal.
+
+If you are interested in the details behind this, see the bug report 
+discussion or the blog post (below), and the source code.
+
+A perhaps slightly over-simplified description is that tasks executed 
+via pipe() and (file="|") and system(wait="FALSE") are background tasks, 
+which should not be interruptible e.g. by Ctrl+C. This was fixed in R 
+4.4, which required significant changes of the underlying implementation.
+
+To support the very rare case when a task executed via 
+system(wait="FALSE") should receive signals from a console, because it 
+is to logically implement an interactive task using background tasks, 
+there is now an argument "receive.console.signals", which can be used to 
+override this. This is used by the R's parallel package to implement 
+interactive computation on a cluster.
+
+Your use case seems to be running an interactive task using pipe(). 
+Currently, there is no argument of pipe() to allow this as we didn't 
+anticipate anyone would actually be doing this - and, on my system, it 
+doesn't work even in R 4.3.3.
+
+I assume the examples above are narrowed down cases to reproduce the 
+change in behavior. If there was a plausible, realistic example that 
+would indicate the need to add such argument to pipe(), it could be 
+considered, but perhaps it would be more natural to use 
+system(wait=FALSE,receive.console.signals=TRUE), anyway?
+
+Best
+Tomas
+
+https://blog.r-project.org/2023/05/23/not-interrupting-background-tasks-with-ctrl-c/index.html
+https://bugs.r-project.org/show_bug.cgi?id=17764
+
+>
+> R 4.4.0 also works fine with non-TTY output pipes:
+>> $ R/4.4.0/bin/Rscript -e 'pipe("cat", "w")'
+>> $ R/4.4.0/bin/Rscript -e 'cat("test", file="|cat")
+>> $ R/4.4.0/bin/Rscript -e 'cat("Hi!\n", file="|tr i o")'
+>> $ R/4.4.0/bin/Rscript -e 'cat("Hi!\n", file="|sed -e s/i/o/")'
+> For what it's worth, input pipes from less/more to R 4.4.0 do not hang, but are not always the same as before either. These are the same:
+>> $ R/4.3.3/bin/Rscript -e 'con <- pipe("less --version", "r"); readLines(con); close(con)'
+>> [1] "less (GNU regular expressions)" "Copyright (C) Mark Nudelman" ...
+>> $ R/4.4.0/bin/Rscript -e 'con <- pipe("less --version", "r"); readLines(con); close(con)'
+>> [1] "less (GNU regular expressions)" "Copyright (C) Mark Nudelman" ...
+> But these are not (again, on both Linux and MacOS):
+>> $ R/4.3.3/bin/Rscript -e 'con <- pipe("less", "r"); readLines(con); close(con)'
+>> [1] "Missing filename (\"less --help\" for help)"
+>> $ R/4.4.0/bin/Rscript -e 'con <- pipe("less", "r"); readLines(con); close(con)'
+>> character(0)
+>
+> I did not see anything related here or in release notes or bugzilla. Is this a bug or something else?
+>
+> Best,
+> --
+> Zafer
+>
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From r|p|ey @end|ng |rom @t@t@@ox@@c@uk  Mon May 20 13:10:02 2024
+From: r|p|ey @end|ng |rom @t@t@@ox@@c@uk (Prof Brian Ripley)
+Date: Mon, 20 May 2024 12:10:02 +0100
+Subject: [Rd] config.site settings for M3 Mac typo in manual?
+In-Reply-To: <7d2fba0d-6abb-4df0-b388-e82280a8bac1@gmail.com>
+References: <7d2fba0d-6abb-4df0-b388-e82280a8bac1@gmail.com>
+Message-ID: <344faa38-c054-400b-b1b4-15ef47a00d7f@stats.ox.ac.uk>
+
+On 20/05/2024 09:06, Duncan Murdoch wrote:
+> I've just upgraded to an M3 Mac laptop, and I'm working through getting 
+> the right configure settings to build R.
+> 
+> The Installation and Administration manual says to have this in 
+> config.site:
+> 
+> FFLAGS="-g -O2 -mmacos-version-min=11.0"
+> FCFLAGS="-g -O2 -mmacos-version-min=11.0"
+> 
+> but those give an error on my system, with it suggesting the FFLAGS and 
+> FCFLAGS version option should be -mmacosx-version-min=11.0.? I don't 
+> know if that's a typo or a change.
+
+-mmacos-version-min= is the current Apple option.  However, the gfortran 
+build recommended in the manual is quite old and this has apparently 
+differed by GCC version (and is not documented in the 'man gfortran' I 
+have).
+
+I'll change the manual to mention both forms, and that it is only 
+sometimes needed (not on my current setup).
+
+-- 
+Brian D. Ripley,                  ripley at stats.ox.ac.uk
+Emeritus Professor of Applied Statistics, University of Oxford
+
+
+From z@|er@b@rutcuog|u @end|ng |rom gm@||@com  Mon May 20 14:19:32 2024
+From: z@|er@b@rutcuog|u @end|ng |rom gm@||@com (Zafer Barutcuoglu)
+Date: Mon, 20 May 2024 08:19:32 -0400
+Subject: [Rd] Output pipes to TTY hang
+In-Reply-To: <7da31dd1-3760-4c9f-be90-1f4051dddb2b@gmail.com>
+References: <mailman.54288.3.1716026401.7919.r-devel@r-project.org>
+ <FA262651-F35A-436F-9086-A7DE77965A5B@gmail.com>
+ <7da31dd1-3760-4c9f-be90-1f4051dddb2b@gmail.com>
+Message-ID: <FE131191-A2A6-487D-A386-1DD15DE83ED2@gmail.com>
+
+Thank you, that makes sense. Not worth messing with those changes on my account, but since you asked, my actual use case was for an R script (or rather my package used by one) to display text (e.g. for --help) using the system PAGER, without writing temporary files for file.show() because modifying the file system just to show some help text doesn't seem right. No worries, easy enough for me to add a text.show() or general pipecat() in C, though cat(x, file="|less") did use to just work fine, too. Thanks again for clearing this up.
+
+> On May 20, 2024, at 6:20 AM, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+> 
+> 
+> On 5/20/24 07:36, Zafer Barutcuoglu wrote:
+>> Hi,
+>> 
+>> I am seeing this on Linux as well as MacOS: Opening any output pipe from R 4.4.0 to TTY programs like "less"/"more" hangs, SIGINT-proof:
+>>> $ R/4.4.0/bin/Rscript -e 'pipe("less", "w")'
+>>> $ R/4.4.0/bin/Rscript -e 'cat("test", file="|less")
+>>> $ R/4.4.0/bin/Rscript -e 'cat("test", file="|more")
+>> R 4.3.3 and earlier have been working fine:
+>>> $ R/4.3.3/bin/Rscript -e 'pipe("less", "w")'
+>>> $ R/4.3.3/bin/Rscript -e 'cat("test", file="|less")
+>>> $ R/4.3.3/bin/Rscript -e 'cat("test", file="|more")
+> 
+> I've tried the first example and it doesn't work for me even in R 4.3.3 on Linux, so I can't easily test what changed the behavior for you, but it was very likely a bugfix for PR#17764. Now the pipe() uses a special process group to protect the processes (assumed to be background) from the terminal.
+> 
+> If you are interested in the details behind this, see the bug report discussion or the blog post (below), and the source code.
+> 
+> A perhaps slightly over-simplified description is that tasks executed via pipe() and (file="|") and system(wait="FALSE") are background tasks, which should not be interruptible e.g. by Ctrl+C. This was fixed in R 4.4, which required significant changes of the underlying implementation.
+> 
+> To support the very rare case when a task executed via system(wait="FALSE") should receive signals from a console, because it is to logically implement an interactive task using background tasks, there is now an argument "receive.console.signals", which can be used to override this. This is used by the R's parallel package to implement interactive computation on a cluster.
+> 
+> Your use case seems to be running an interactive task using pipe(). Currently, there is no argument of pipe() to allow this as we didn't anticipate anyone would actually be doing this - and, on my system, it doesn't work even in R 4.3.3.
+> 
+> I assume the examples above are narrowed down cases to reproduce the change in behavior. If there was a plausible, realistic example that would indicate the need to add such argument to pipe(), it could be considered, but perhaps it would be more natural to use system(wait=FALSE,receive.console.signals=TRUE), anyway?
+> 
+> Best
+> Tomas
+> 
+> https://blog.r-project.org/2023/05/23/not-interrupting-background-tasks-with-ctrl-c/index.html
+> https://bugs.r-project.org/show_bug.cgi?id=17764
+> 
+>> 
+>> R 4.4.0 also works fine with non-TTY output pipes:
+>>> $ R/4.4.0/bin/Rscript -e 'pipe("cat", "w")'
+>>> $ R/4.4.0/bin/Rscript -e 'cat("test", file="|cat")
+>>> $ R/4.4.0/bin/Rscript -e 'cat("Hi!\n", file="|tr i o")'
+>>> $ R/4.4.0/bin/Rscript -e 'cat("Hi!\n", file="|sed -e s/i/o/")'
+>> For what it's worth, input pipes from less/more to R 4.4.0 do not hang, but are not always the same as before either. These are the same:
+>>> $ R/4.3.3/bin/Rscript -e 'con <- pipe("less --version", "r"); readLines(con); close(con)'
+>>> [1] "less (GNU regular expressions)" "Copyright (C) Mark Nudelman" ...
+>>> $ R/4.4.0/bin/Rscript -e 'con <- pipe("less --version", "r"); readLines(con); close(con)'
+>>> [1] "less (GNU regular expressions)" "Copyright (C) Mark Nudelman" ...
+>> But these are not (again, on both Linux and MacOS):
+>>> $ R/4.3.3/bin/Rscript -e 'con <- pipe("less", "r"); readLines(con); close(con)'
+>>> [1] "Missing filename (\"less --help\" for help)"
+>>> $ R/4.4.0/bin/Rscript -e 'con <- pipe("less", "r"); readLines(con); close(con)'
+>>> character(0)
+>> 
+>> I did not see anything related here or in release notes or bugzilla. Is this a bug or something else?
+>> 
+>> Best,
+>> --
+>> Zafer
+>> 
+>> 
+>> 	[[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From d@tr7320 @end|ng |rom un|@@ydney@edu@@u  Tue May 21 10:00:11 2024
+From: d@tr7320 @end|ng |rom un|@@ydney@edu@@u (Dario Strbenac)
+Date: Tue, 21 May 2024 08:00:11 +0000
+Subject: [Rd] confint Attempts to Use All Server CPUs by Default
+Message-ID: <SY2PR01MB3003B98D67B632CB7EF7498CCDEA2@SY2PR01MB3003.ausprd01.prod.outlook.com>
+
+Hello,
+
+Would a less resource-intensive value, such as 1, be a safer default CPU value for confint? I noticed excessive CPU usage on a I.T. administrator-managed server which was being three-quarters used by another staff member when the confidence interval calculation in an R Markdown document suddenly changed from two seconds to ninety seconds because of competition for CPUs between users. Also, there is no mention of such parallel processing in ?confint, so it was not clear at first where to look for performance degradation. It could at least be described in the manual page so that users would know that export OPENBLAS_NUM_THREADS=1 is a solution.
+
+--------------------------------------
+Dario Strbenac
+University of Sydney
+Camperdown NSW 2050
+Australia
+
+From |kry|ov @end|ng |rom d|@root@org  Tue May 21 12:00:28 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 21 May 2024 13:00:28 +0300
+Subject: [Rd] confint Attempts to Use All Server CPUs by Default
+In-Reply-To: <SY2PR01MB3003B98D67B632CB7EF7498CCDEA2@SY2PR01MB3003.ausprd01.prod.outlook.com>
+References: <SY2PR01MB3003B98D67B632CB7EF7498CCDEA2@SY2PR01MB3003.ausprd01.prod.outlook.com>
+Message-ID: <20240521130028.18b79409@arachnoid>
+
+? Tue, 21 May 2024 08:00:11 +0000
+Dario Strbenac via R-devel <r-devel at r-project.org> ?????:
+
+> Would a less resource-intensive value, such as 1, be a safer default
+> CPU value for confint?
+
+Which confint() method do you have in mind? There is at least four of
+them by default in R, and many additional classes could make use of
+stats:::confint.default by implementing vcov().
+
+> Also, there is no mention of such parallel processing in ?confint, so
+> it was not clear at first where to look for performance degradation.
+> It could at least be described in the manual page so that users would
+> know that export OPENBLAS_NUM_THREADS=1 is a solution.
+
+There isn't much R can do about the behaviour of the BLAS, because
+there is no standard interface to set the number of threads. Some BLASes
+(like ATLAS) don't even offer it as a tunable number at all [*].
+
+A system administrator could link the installation of R against
+FlexiBLAS [**], provide safe defaults in the environment variables and
+educate the users about its tunables [***], but that's a choice just
+like it had been a choice to link R against a parallel variant of
+OpenBLAS on a shared computer. This is described in R Installation and
+Administration, section A.3.1 [****].
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://math-atlas.sourceforge.net/faq.html#tnum
+
+[**]
+https://www.mpi-magdeburg.mpg.de/projects/flexiblas
+
+[***]
+https://search.r-project.org/CRAN/refmans/flexiblas/html/flexiblas-threads.html
+
+[****]
+https://cran.r-project.org/doc/manuals/R-admin.html#BLAS
+
+
+From bbo|ker @end|ng |rom gm@||@com  Thu May 23 00:45:30 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 22 May 2024 18:45:30 -0400
+Subject: [Rd] confint Attempts to Use All Server CPUs by Default
+In-Reply-To: <20240521130028.18b79409@arachnoid>
+References: <SY2PR01MB3003B98D67B632CB7EF7498CCDEA2@SY2PR01MB3003.ausprd01.prod.outlook.com>
+ <20240521130028.18b79409@arachnoid>
+Message-ID: <7efae16d-f59e-4cfe-a9eb-dd0400d39386@gmail.com>
+
+   Following up on this -- on my system, I have 69 packages installed 
+that appear to provide something like a confint() method:
+
+h <-  help.search("confint", agrep = FALSE)
+p <- sort(unique(h$matches$Package))
+length(p)
+## [1] 69
+
+p
+
+  [1] "bamlss"          "bbmle"           "binom"           "brglm2" 
+
+  [5] "broom"           "caper"           "car"             "CDM" 
+
+  [9] "CLME"            "coin"            "crosstable"      "dclone" 
+
+[13] "doBy"            "drc"             "Ecfun"           "emmeans"
+[17] "epigrowthfit"    "evd"             "Exact"           "fitode"
+[21] "fixest"          "ggfortify"       "ggplot2"         "GLMMadaptive"
+[25] "glmmTMB"         "gratia"          "hdm"             "JMbayes"
+[29] "JointAI"         "lava"            "lme4"            "lmeresampler"
+[33] "lmtest"          "logistf"         "MASS"            "maxLik"
+[37] "metafor"         "mitml"           "MKmisc"          "mmrm"
+[41] "mosaic"          "MplusAutomation" "multcomp"        "ordinal"
+[45] "papaja"          "parsnip"         "prodlim"         "R2admb"
+[49] "rethinking"      "riskRegression"  "RSA"             "rstanarm"
+[53] "rxode2"          "segmented"       "simr"            "sirt"
+[57] "sn"              "spaMM"           "stats"           "stats4"
+[61] "strucchange"     "survey"          "survival"        "systemfit"
+[65] "TMB"             "unmarked"        "vegan"           "VGAM"
+[69] "zipfR"
+
+  If a confint() method were actually included in the package test 
+suite, I would expect this kind of problem to be caught by CRAN checks 
+(which look for code that is being greedy with parallelization). But 
+it's perfectly possible that a package maintainer neglected to include 
+such tests ...
+
+
+On 2024-05-21 6:00 a.m., Ivan Krylov via R-devel wrote:
+> ? Tue, 21 May 2024 08:00:11 +0000
+> Dario Strbenac via R-devel <r-devel at r-project.org> ?????:
+> 
+>> Would a less resource-intensive value, such as 1, be a safer default
+>> CPU value for confint?
+> 
+> Which confint() method do you have in mind? There is at least four of
+> them by default in R, and many additional classes could make use of
+> stats:::confint.default by implementing vcov().
+> 
+>> Also, there is no mention of such parallel processing in ?confint, so
+>> it was not clear at first where to look for performance degradation.
+>> It could at least be described in the manual page so that users would
+>> know that export OPENBLAS_NUM_THREADS=1 is a solution.
+> 
+> There isn't much R can do about the behaviour of the BLAS, because
+> there is no standard interface to set the number of threads. Some BLASes
+> (like ATLAS) don't even offer it as a tunable number at all [*].
+> 
+> A system administrator could link the installation of R against
+> FlexiBLAS [**], provide safe defaults in the environment variables and
+> educate the users about its tunables [***], but that's a choice just
+> like it had been a choice to link R against a parallel variant of
+> OpenBLAS on a shared computer. This is described in R Installation and
+> Administration, section A.3.1 [****].
+>
+
+
+From d@tr7320 @end|ng |rom un|@@ydney@edu@@u  Thu May 23 01:05:06 2024
+From: d@tr7320 @end|ng |rom un|@@ydney@edu@@u (Dario Strbenac)
+Date: Wed, 22 May 2024 23:05:06 +0000
+Subject: [Rd] confint Attempts to Use All Server CPUs by Default
+In-Reply-To: <7efae16d-f59e-4cfe-a9eb-dd0400d39386@gmail.com>
+References: <SY2PR01MB3003B98D67B632CB7EF7498CCDEA2@SY2PR01MB3003.ausprd01.prod.outlook.com>
+ <20240521130028.18b79409@arachnoid>
+ <7efae16d-f59e-4cfe-a9eb-dd0400d39386@gmail.com>
+Message-ID: <SY2PR01MB30037D83DBDD9DB76E8B9F02CDEB2@SY2PR01MB3003.ausprd01.prod.outlook.com>
+
+Hello,
+
+It is from the stats package and applied to the output of logistic regression as implemented by glm with setting family = "binomial". So, it is a base package and not an add-on CRAN package. I shall recommend linking to FlexiBLAS to our system administrator.
+
+--------------------------------------
+Dario Strbenac
+University of Sydney
+Camperdown NSW 2050
+Australia
+
+From @ndrew_gu@t@r @end|ng |rom m@n@com  Thu May 23 18:33:24 2024
+From: @ndrew_gu@t@r @end|ng |rom m@n@com (Andrew Gustar)
+Date: Thu, 23 May 2024 16:33:24 +0000
+Subject: [Rd] Undesirable behaviour of base::factor
+In-Reply-To: <DB4P195MB2266A52E6F1456922F5F11AD97F42@DB4P195MB2266.EURP195.PROD.OUTLOOK.COM>
+References: <DB4P195MB2266A52E6F1456922F5F11AD97F42@DB4P195MB2266.EURP195.PROD.OUTLOOK.COM>
+Message-ID: <DB4P195MB226629D3C69513584B71BB9597F42@DB4P195MB2266.EURP195.PROD.OUTLOOK.COM>
+
+This thread on stackoverflow illustrates the problem... https://stackoverflow.com/questions/78523612/r-factor-from-numeric-vector-drops-every-100-000th-element-from-its-levels
+
+The issue is that factor(), applied to numeric values, uses as.character(), which converts numbers to character strings according to the value of scipen. The stackoverflow thread illustrates a case where this causes some factor levels to become NA. There is also an inconsistency between the treatment of numeric and integer values.
+
+On the face of it, using format(..., scientific = FALSE) instead of as.character() would solve the problem, but this probably needs careful thinking through in case of other side effects!
+
+
+	[[alternative HTML version deleted]]
+
+
+From pd@|gd @end|ng |rom gm@||@com  Fri May 24 10:34:05 2024
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Fri, 24 May 2024 10:34:05 +0200
+Subject: [Rd] Undesirable behaviour of base::factor
+In-Reply-To: <DB4P195MB226629D3C69513584B71BB9597F42@DB4P195MB2266.EURP195.PROD.OUTLOOK.COM>
+References: <DB4P195MB2266A52E6F1456922F5F11AD97F42@DB4P195MB2266.EURP195.PROD.OUTLOOK.COM>
+ <DB4P195MB226629D3C69513584B71BB9597F42@DB4P195MB2266.EURP195.PROD.OUTLOOK.COM>
+Message-ID: <73412EF7-A673-4F92-82E2-2D0472ABDF87@gmail.com>
+
+I think this is a "Doctor, it hurts when I do this" issue. 
+
+The root of it is that as.character() behaves differently on integers and floating values.
+
+> factor(100000)
+[1] 1e+05
+Levels: 1e+05
+
+> factor(100000,levels=100000)
+[1] 1e+05
+Levels: 1e+05
+
+> factor(100000,levels=100000:100000)
+[1] <NA>
+
+> factor(as.integer(100000),levels=100000:100000)
+[1] 100000
+Levels: 100000
+
+Or, more directly: It is the difference between these
+
+> as.character(seq(99999L,100001L,1L))
+[1] "99999"  "100000" "100001"
+> as.character(seq(99999L,100001L,1))
+[1] "99999"  "1e+05"  "100001"
+
+in which the formatting code has detected that "1e+05" is shorter than "100000", but won't convert integers to scientific notation.
+
+You can play whack-a-mole with this sort of issue: Fix a perceived problem in one place only to find a new problem popping up elsewhere. It is probably better just to never trust character conversion of numbers beyond 99999.
+
+- pd
+
+
+
+> On 23 May 2024, at 18:33 , Andrew Gustar <andrew_gustar at msn.com> wrote:
+> 
+> This thread on stackoverflow illustrates the problem... https://stackoverflow.com/questions/78523612/r-factor-from-numeric-vector-drops-every-100-000th-element-from-its-levels
+> 
+> The issue is that factor(), applied to numeric values, uses as.character(), which converts numbers to character strings according to the value of scipen. The stackoverflow thread illustrates a case where this causes some factor levels to become NA. There is also an inconsistency between the treatment of numeric and integer values.
+> 
+> On the face of it, using format(..., scientific = FALSE) instead of as.character() would solve the problem, but this probably needs careful thinking through in case of other side effects!
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From rkoenker @end|ng |rom ||||no|@@edu  Mon May 27 12:52:26 2024
+From: rkoenker @end|ng |rom ||||no|@@edu (Koenker, Roger W)
+Date: Mon, 27 May 2024 10:52:26 +0000
+Subject: [Rd] Mismatches for methods registered for non-generic:
+Message-ID: <F5CBCFF2-44E2-4D13-8D65-BA8B85A33377@illinois.edu>
+
+I?m trying to repair my SparseM package to meet new CRAN rules.  The fun part was rewriting the arithmetic-ifs in cholesky.f ? to conform with new fortran rules.  (This struck me as a bit like updating ?the wine dark seas?  in Homer.)  Now, my remaining trouble is that I have several functions declared as generic, e.g. 
+
+setGeneric("as.matrix.coo")
+setMethod("as.matrix.coo","matrix.csr", function(x, nrow, ncol,eps){.csr.coo(x)})
+
+that have been fine until now and on my fresh R version 4.4.0 (2024-04-24) are still ok with R CMD check ?as-cran but CRAN checking reveals, e.g.
+
+Check: S3 generic/method consistency, Result: NOTE
+ Mismatches for methods registered for non-generic:
+ as:
+   function(object, Class, strict, ext)
+ as.matrix.coo:
+   function(x, nrow, ncol, eps, ?)
+
+which I interpret as regarding  my generics as just S3 methods for the non-generic ?as?.  Can someone advise on the best way to repair this?
+
+With best regards, and eternal gratitude for the efforts of R-core in making R a living language.
+
+
+Roger Koenker
+r.koenker at ucl.ac.uk
+Honorary Professor of Economics
+Department of Economics, UCL
+Emeritus Professor of Economics
+	and Statistics, UIUC
+
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon May 27 13:16:15 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 27 May 2024 14:16:15 +0300
+Subject: [Rd] Mismatches for methods registered for non-generic:
+In-Reply-To: <F5CBCFF2-44E2-4D13-8D65-BA8B85A33377@illinois.edu>
+References: <F5CBCFF2-44E2-4D13-8D65-BA8B85A33377@illinois.edu>
+Message-ID: <20240527141615.28531049@arachnoid>
+
+? Mon, 27 May 2024 10:52:26 +0000
+"Koenker, Roger W" <rkoenker at illinois.edu> ?????:
+
+> that have been fine until now and on my fresh R version 4.4.0
+> (2024-04-24) are still ok with R CMD check ?as-cran
+
+This extra check requires the environment variable
+_R_CHECK_S3_METHODS_SHOW_POSSIBLE_ISSUES_ to be set to TRUE to show the
+issues.
+
+> but CRAN checking reveals, e.g.
+> 
+> Check: S3 generic/method consistency, Result: NOTE
+>  Mismatches for methods registered for non-generic:
+>  as:
+>    function(object, Class, strict, ext)
+>  as.matrix.coo:
+>    function(x, nrow, ncol, eps, ?)
+> 
+> which I interpret as regarding  my generics as just S3 methods for
+> the non-generic ?as?.
+
+There are calls to S3method("as", ...) and S3method("is", ...) at the
+end of the NAMESPACE for the current CRAN version of SparseM. If I
+comment them out, the package passes R CMD check --as-cran without the
+NOTE and seemingly with no extra problems.
+
+-- 
+Best regards,
+Ivan
+
+
+From dom|n|c@@chuhm@cher @end|ng |rom m@them@t|k@un|-goett|ngen@de  Mon May 27 17:49:06 2024
+From: dom|n|c@@chuhm@cher @end|ng |rom m@them@t|k@un|-goett|ngen@de (Schuhmacher, Dominic)
+Date: Mon, 27 May 2024 15:49:06 +0000
+Subject: [Rd] Keep class attribute when applying c() to hexmodes
+Message-ID: <52BAF15B-B97D-4695-891E-904A903E3CC7@gwdg.de>
+
+Dear list,
+
+The following behavior in base R is unexpected to me:
+
+a <- as.hexmode("99ac")
+b <- as.hexmode("9ce5")
+v <- c(a,b)
+v
+#> [1] 39340 40165
+class(v)
+#> [1] "integer"
+
+Is there a good reason why v should not be of class "hexmode"?
+
+I can see that this is exactly as documented. The help for `c()` only says that the arguments are coerced to a common type (which is integer anyway) and that all attributes except names are removed. On the other hand, it says further down that "c methods other than the default are not required to remove attributes (and they will almost certainly preserve a class attribute)".
+
+So couldn't (or even shouldn't) there be a c.hexmode that keeps the class attribute?
+
+Best regards,
+Dominic
+
+
+------------------------------------------
+Prof. Dr. Dominic Schuhmacher
+Institute for Mathematical Stochastics
+University of G?ttingen, Germany
+https://dschuhm1.pages.gwdg.de
+
+
+
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon May 27 21:24:18 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 27 May 2024 15:24:18 -0400
+Subject: [Rd] Keep class attribute when applying c() to hexmodes
+In-Reply-To: <52BAF15B-B97D-4695-891E-904A903E3CC7@gwdg.de>
+References: <52BAF15B-B97D-4695-891E-904A903E3CC7@gwdg.de>
+Message-ID: <6f167450-51ba-4d5e-8382-f189422cf449@gmail.com>
+
+On 2024-05-27 11:49 a.m., Schuhmacher, Dominic wrote:
+> Dear list,
+> 
+> The following behavior in base R is unexpected to me:
+> 
+> a <- as.hexmode("99ac")
+> b <- as.hexmode("9ce5")
+> v <- c(a,b)
+> v
+> #> [1] 39340 40165
+> class(v)
+> #> [1] "integer"
+> 
+> Is there a good reason why v should not be of class "hexmode"?
+> 
+> I can see that this is exactly as documented. The help for `c()` only says that the arguments are coerced to a common type (which is integer anyway) and that all attributes except names are removed. On the other hand, it says further down that "c methods other than the default are not required to remove attributes (and they will almost certainly preserve a class attribute)".
+> 
+> So couldn't (or even shouldn't) there be a c.hexmode that keeps the class attribute?
+
+I believe there could.  If you think there should, then you should 
+submit a patch containing it to bugs.r-project.org.  Based on c.Date, 
+here's a first attempt:
+
+   c.hexmode <- function(...) as.hexmode(c(unlist(lapply(list(...), 
+function(e) unclass(as.hexmode(e))))))
+
+If you want this to be incorporated into R, you should test it, document 
+it, and submit a patch containing it.
+
+Duncan Murdoch
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Tue May 28 16:56:13 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Tue, 28 May 2024 16:56:13 +0200
+Subject: [Rd] 
+ FR: Customize background colour of row and column headers for
+ the View output
+In-Reply-To: <20240516184852.17c5fcba@arachnoid>
+References: <AM6PR02MB4423181B246EC91BEA61412294E42@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <6fd81bdd-4e7e-4736-b71d-f71c402d5cfa@gmail.com>
+ <AM6PR02MB4423E2D236D742E90FC6603494E42@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <1fd3aba6-1da9-4d6a-804b-13a70cb9f096@gmail.com>
+ <20240508095832.7886e41c@rolf-Latitude-E7470>
+ <AM6PR02MB4423D3D9A3934F4489338FC894E22@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <cd6eee8a-a70d-40b8-b4ad-ba4a2e929c26@gmail.com>
+ <20240513153435.2a735f2c@arachnoid>
+ <AM6PR02MB44236CC3F4A7D6769DD7BA8994E32@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <d90f9a91-dee0-44e3-89c3-bdba711f4ab8@gmail.com>
+ <AM6PR02MB4423958F79FB134A16406AF194EC2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <ecfae895-c648-4025-b786-b4c734ade5ba@gmail.com>
+ <20240516184852.17c5fcba@arachnoid>
+Message-ID: <e625c734-fba5-4333-8f08-1a3ab20792b8@gmail.com>
+
+I think we should do more than this trivial change. The two real dialogs 
+used by the data editor would then also get the new background color 
+(setting the cell width, the "variable" editor). Then, the code clearly 
+distinguishes between cells for names (row, column) and cells for data, 
+so choosing a different color for the two types, but setting these two 
+colors in the code to the same one would make the code confusing.
+
+This could be fixed, but I also think there is a value in 
+back-compatibility, people may have saved preferences with customized 
+background color and have been used to how it looked like, after all the 
+current behavior has been around for about 16 years and from the code, 
+it was intentional. Yes, it meant that one would have to choose a 
+foreground color for the data editor that would be visible on any chosen 
+background color as well as on lighgray (the names), so, e.g., not 
+yellow. But, maybe that was good enough as there had been no reports 
+about this earlier.
+
+So, instead of changing the behavior I've created a new setting for the 
+background for the names in the data editor (dataeditnbg). Now in 
+R-devel. Please let me know if you see any problems with this,
+
+Thanks
+Tomas
+
+On 5/16/24 17:48, Ivan Krylov via R-devel wrote:
+> The change suggested by Iago Gin? V?zquez is indeed very simple. It
+> sets the background colour of the row and column headers to the
+> background of the rest of the dataentry window. With this patch, R
+> passes 'make check'. As Duncan Murdoch mentions, the X11 editor already
+> behaves this way.
+>
+> If it's not acceptable to make the row and column headers the same
+> colour as the rest of the text, let's make it into a separate setting.
+>
+> --- src/library/utils/src/windows/dataentry.c	(revision 86557)
+> +++ src/library/utils/src/windows/dataentry.c	(working copy)
+> @@ -1474,7 +1474,7 @@
+>       resize(DE->de, r);
+>   
+>       DE->CellModified = DE->CellEditable = FALSE;
+> -    bbg = dialog_bg();
+> +    bbg = guiColors[dataeditbg];
+>       /* set the active cell to be the upper left one */
+>       DE->crow = 1;
+>       DE->ccol = 1;
+>
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Tue May 28 19:35:10 2024
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Tue, 28 May 2024 12:35:10 -0500
+Subject: [Rd] Segfault when parsing UTF-8 text with srcrefs
+Message-ID: <CABdHhvGF04U8YAA5m5qA7eiDS45_Dq3toTyf1-nPcibo0VNPTw@mail.gmail.com>
+
+Hi all,
+
+When I run the following code, R segfaults:
+
+text <- "?"
+srcfile <- srcfilecopy("test.r", text)
+parse(textConnection(text), srcfile = srcfile)
+
+It doesn't segfault if text is ASCII, or it's not wrapped in
+textConnection, or srcfile isn't set.
+
+Hadley
+
+-- 
+http://hadley.nz
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue May 28 20:14:05 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 28 May 2024 14:14:05 -0400
+Subject: [Rd] Segfault when parsing UTF-8 text with srcrefs
+In-Reply-To: <CABdHhvGF04U8YAA5m5qA7eiDS45_Dq3toTyf1-nPcibo0VNPTw@mail.gmail.com>
+References: <CABdHhvGF04U8YAA5m5qA7eiDS45_Dq3toTyf1-nPcibo0VNPTw@mail.gmail.com>
+Message-ID: <92adfffe-a691-48ce-bbba-6eb2d96be637@gmail.com>
+
+On 2024-05-28 1:35 p.m., Hadley Wickham wrote:
+> Hi all,
+> 
+> When I run the following code, R segfaults:
+> 
+> text <- "?"
+> srcfile <- srcfilecopy("test.r", text)
+> parse(textConnection(text), srcfile = srcfile)
+> 
+> It doesn't segfault if text is ASCII, or it's not wrapped in
+> textConnection, or srcfile isn't set.
+
+I also see the segfault on
+
+   R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+   Copyright (C) 2024 The R Foundation for Statistical Computing
+   Platform: aarch64-apple-darwin20
+
+Apple shows me this stack trace:
+
+Thread 0 Crashed::  Dispatch queue: com.apple.main-thread
+0   libsystem_platform.dylib      	       0x189364904 _platform_strlen + 4
+1   libR.dylib                    	       0x10380a954 Rf_mkChar + 20 
+(envir.c:4076)
+2   libR.dylib                    	       0x10385e3ac finalizeData + 1516
+3   libR.dylib                    	       0x10385d6dc R_Parse + 924 
+(gram.c:4215)
+4   libR.dylib                    	       0x1038f4a6c do_parse + 1260 
+(source.c:294)
+5   libR.dylib                    	       0x10383ac4c bcEval_loop + 
+40204 (eval.c:8141)
+6   libR.dylib                    	       0x10382356c bcEval + 684 
+(eval.c:7524)
+7   libR.dylib                    	       0x103822c6c Rf_eval + 556 
+(eval.c:1167)
+8   libR.dylib                    	       0x10382582c R_execClosure + 
+812 (eval.c:2398)
+9   libR.dylib                    	       0x103824924 applyClosure_core 
++ 164 (eval.c:2311)
+10  libR.dylib                    	       0x103822f08 Rf_applyClosure + 
+20 (eval.c:2333) [inlined]
+11  libR.dylib                    	       0x103822f08 Rf_eval + 1224 
+(eval.c:1285)
+12  libR.dylib                    	       0x10387f8f8 R_ReplDLLdo1 + 440 
+(main.c:398)
+13  R                             	       0x102d22fa0 
+run_REngineRmainloop + 260
+14  R                             	       0x102d1a64c -[REngine runREPL] 
++ 124
+15  R                             	       0x102d0dd90 main + 588
+16  dyld                          	       0x188fae0e0 start + 2360
+
+Duncan Murdoch
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Tue May 28 20:41:31 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Tue, 28 May 2024 20:41:31 +0200
+Subject: [Rd] Segfault when parsing UTF-8 text with srcrefs
+In-Reply-To: <CABdHhvGF04U8YAA5m5qA7eiDS45_Dq3toTyf1-nPcibo0VNPTw@mail.gmail.com>
+References: <CABdHhvGF04U8YAA5m5qA7eiDS45_Dq3toTyf1-nPcibo0VNPTw@mail.gmail.com>
+Message-ID: <97e8b60f-271e-4959-81eb-93c236d922ac@gmail.com>
+
+
+On 5/28/24 19:35, Hadley Wickham wrote:
+> Hi all,
+>
+> When I run the following code, R segfaults:
+>
+> text <- "?"
+> srcfile <- srcfilecopy("test.r", text)
+> parse(textConnection(text), srcfile = srcfile)
+>
+> It doesn't segfault if text is ASCII, or it's not wrapped in
+> textConnection, or srcfile isn't set.
+
+Thanks, this is because R parser doesn't support non-ASCII UTF-8 outside 
+string literals and comments, plus a missing bounds check. The "correct" 
+result should be an R error, which I get in a debug build.
+
+The tokenizer ends up with a negative token and then when the parse data 
+are being finalized, creating a table of token names, there is an out of 
+bounds access (yytname array). Probably the check should go right away 
+into the tokenizer.
+
+Tomas
+
+>
+> Hadley
+>
+
+
+From re|jo@@und @end|ng |rom ue|@||  Wed May 29 00:25:54 2024
+From: re|jo@@und @end|ng |rom ue|@|| (Reijo Sund)
+Date: Tue, 28 May 2024 22:25:54 +0000
+Subject: [Rd] How to call directly "dotTcl" C-function of the tcltk-package
+ from the C-code of an external package?
+Message-ID: <DDF6B4A9-693B-4C4F-8D6E-2E828BB41225@uef.fi>
+
+I have a use case with tcltk-package where I need to repeatedly call Tcl/Tk functions
+very quickly. For such purpose, the standard R-interface turned out to be too slow, and
+better option has been to call package's C-function dotTcl directly from my own C-code.
+
+Before R 4.4.0 it was possible to use getNativeSymbolInfo("dotTcl","tcltk")$address (or 
+R_FindSymbol("dotTcl","tcltk",NULL) in C) to get the function-pointer and then call the
+function directly, even though it has not been registered as C-callable for other
+packages.
+
+With R 4.4.0 these methods are unable to find the symbol anymore (tested in Linux).
+I was not able to find what change has caused this new behaviour.
+
+Taking a look at tcltk source code, it can be seen that the dotTcl is called using 
+.External within tcltk-package and there is a registration done for it with
+R_registerRoutines. An object of class NativeSymbolInfo has also been created in the
+tcltk namespace, and that can be accessed using tcltk:::.C_dotTcl.
+
+However, the tcltk:::.C_dotTcl$address is an external pointer of a class
+RegisteredNativeSymbol and not directly the function pointer to the actual routine. The
+problem is that there appears not to be any R-level function that would extract the actual
+function-pointer and that the C-interface for R_RegisteredNativeSymbol has been defined
+in the internal Rdynpriv.h header that is not included in the public API headers.
+
+The only way I was able to access the function directly was using the following C-level 
+approach in which essential parts of the headers are copied from the Rdynpriv.h:
+
+#include <R.h>
+#include <Rinternals.h>
+#include <R_ext/Rdynload.h>
+
+typedef struct {
+    char       *name;
+    DL_FUNC     fun;
+    int         numArgs;
+
+    R_NativePrimitiveArgType *types;   
+} Rf_DotCSymbol;
+
+typedef Rf_DotCSymbol Rf_DotFortranSymbol;
+
+typedef struct {
+    char       *name;
+    DL_FUNC     fun;
+    int         numArgs;
+} Rf_DotCallSymbol;
+
+typedef Rf_DotCallSymbol Rf_DotExternalSymbol;
+
+struct Rf_RegisteredNativeSymbol {
+    NativeSymbolType type;
+    union {
+	Rf_DotCSymbol        *c;
+	Rf_DotCallSymbol     *call;
+	Rf_DotFortranSymbol  *fortran;
+	Rf_DotExternalSymbol *external;
+    } symbol;
+};
+
+SEXP(*direct_dotTcl)(SEXP) = NULL;
+
+SEXP FindRegFunc(SEXP symbol) {
+    R_RegisteredNativeSymbol *tmp = NULL;
+    tmp = (R_RegisteredNativeSymbol *) R_ExternalPtrAddr(symbol);
+    if (tmp==NULL) return R_NilValue;
+	direct_dotTcl = (SEXP(*)(SEXP)) tmp->symbol.external->fun;	
+    return R_NilValue;
+}	
+
+
+Although that works for me, I'm aware that this kind of approach is certainly not
+recommmended for publicly available external packages. However, I couldn't find any
+other more legitimate way to access dotTcl function directly from my C-code in R 4.4.0. 
+
+
+I have two questions:
+
+Would it be possible to get dotTcl C-function (in tcltk.c) of the tcltk-package
+registered as C-callable from other packages?
+
+Was it an intentional change that caused the hiding of the earlier visible (registered)
+symbols from other packages?
+
+
+From b@row||ng@on @end|ng |rom |@nc@@ter@@c@uk  Thu May 30 09:29:39 2024
+From: b@row||ng@on @end|ng |rom |@nc@@ter@@c@uk (Barry Rowlingson)
+Date: Thu, 30 May 2024 08:29:39 +0100
+Subject: [Rd] 
+ [External] Re:  Segfault when parsing UTF-8 text with srcrefs
+In-Reply-To: <bedfaebd85074cbcbf9969f66acd985b@LO0P265MB2603.GBRP265.PROD.OUTLOOK.COM>
+References: <CABdHhvGF04U8YAA5m5qA7eiDS45_Dq3toTyf1-nPcibo0VNPTw@mail.gmail.com>
+ <bedfaebd85074cbcbf9969f66acd985b@LO0P265MB2603.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <CANVKczPMSbF4epkdyj5c__BG9WSqaPiaC5ViSvF4f_SVDT1hkw@mail.gmail.com>
+
+I get an R error and no segfault:
+
+> parse(textConnection(text), srcfile = srcfile)
+Error in parse(textConnection(text), srcfile = srcfile) :
+  test.r:1:1: unexpected $end
+1: ?
+    ^
+
+This is R 4.3.0, so maybe the bug has been introduced since then...
+
+Version and system info:
+
+> version
+               _
+platform       x86_64-pc-linux-gnu
+arch           x86_64
+os             linux-gnu
+system         x86_64, linux-gnu
+status
+major          4
+minor          3.0
+year           2023
+month          04
+day            21
+svn rev        84292
+language       R
+version.string R version 4.3.0 (2023-04-21)
+nickname       Already Tomorrow
+
+> sessionInfo()
+R version 4.3.0 (2023-04-21)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 22.04.4 LTS
+
+Matrix products: default
+BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3
+LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.20.so;
+ LAPACK version 3.10.0
+
+locale:
+ [1] LC_CTYPE=en_GB.UTF-8       LC_NUMERIC=C
+ [3] LC_TIME=en_GB.UTF-8        LC_COLLATE=en_GB.UTF-8
+ [5] LC_MONETARY=en_GB.UTF-8    LC_MESSAGES=en_GB.UTF-8
+ [7] LC_PAPER=en_GB.UTF-8       LC_NAME=C
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C
+[11] LC_MEASUREMENT=en_GB.UTF-8 LC_IDENTIFICATION=C
+
+time zone: Europe/London
+tzcode source: system (glibc)
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.3.0
+
+On Tue, May 28, 2024 at 7:42?PM Tomas Kalibera <tomas.kalibera at gmail.com>
+wrote:
+
+> This email originated outside the University. Check before clicking links
+> or attachments.
+>
+> On 5/28/24 19:35, Hadley Wickham wrote:
+> > Hi all,
+> >
+> > When I run the following code, R segfaults:
+> >
+> > text <- "?"
+> > srcfile <- srcfilecopy("test.r", text)
+> > parse(textConnection(text), srcfile = srcfile)
+> >
+> > It doesn't segfault if text is ASCII, or it's not wrapped in
+> > textConnection, or srcfile isn't set.
+>
+> Thanks, this is because R parser doesn't support non-ASCII UTF-8 outside
+> string literals and comments, plus a missing bounds check. The "correct"
+> result should be an R error, which I get in a debug build.
+>
+> The tokenizer ends up with a negative token and then when the parse data
+> are being finalized, creating a table of token names, there is an out of
+> bounds access (yytname array). Probably the check should go right away
+> into the tokenizer.
+>
+> Tomas
+>
+> >
+> > Hadley
+> >
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Thu May 30 10:00:52 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Thu, 30 May 2024 10:00:52 +0200
+Subject: [Rd] 
+ [External] Re:  Segfault when parsing UTF-8 text with srcrefs
+In-Reply-To: <CANVKczPMSbF4epkdyj5c__BG9WSqaPiaC5ViSvF4f_SVDT1hkw@mail.gmail.com>
+References: <CABdHhvGF04U8YAA5m5qA7eiDS45_Dq3toTyf1-nPcibo0VNPTw@mail.gmail.com>
+ <bedfaebd85074cbcbf9969f66acd985b@LO0P265MB2603.GBRP265.PROD.OUTLOOK.COM>
+ <CANVKczPMSbF4epkdyj5c__BG9WSqaPiaC5ViSvF4f_SVDT1hkw@mail.gmail.com>
+Message-ID: <97d19568-1be1-4739-b1d8-a14a3895c61e@gmail.com>
+
+
+On 5/30/24 09:29, Barry Rowlingson wrote:
+> I get an R error and no segfault:
+>
+> > parse(textConnection(text), srcfile = srcfile)
+> Error in parse(textConnection(text), srcfile = srcfile) :
+> ? test.r:1:1: unexpected $end
+> 1: ?
+> ? ? ^
+>
+> This is R 4.3.0, so maybe the bug has been introduced since then...
+
+Thanks, am looking into it and have found the cause, now testing a 
+patch. The bug has been in the code for a long time, but whether it 
+causes a crash or not is non-deterministic, depending on memory layout 
+and content (out of bounds access).
+
+Tomas
+
+>
+> Version and system info:
+>
+> > version
+> ? ? ? ? ? ? ? ?_
+> platform ? ? ? x86_64-pc-linux-gnu
+> arch ? ? ? ? ? x86_64
+> os ? ? ? ? ? ? linux-gnu
+> system ? ? ? ? x86_64, linux-gnu
+> status
+> major ? ? ? ? ?4
+> minor ? ? ? ? ?3.0
+> year ? ? ? ? ? 2023
+> month ? ? ? ? ?04
+> day ? ? ? ? ? ?21
+> svn rev ? ? ? ?84292
+> language ? ? ? R
+> version.string R version 4.3.0 (2023-04-21)
+> nickname ? ? ? Already Tomorrow
+>
+> > sessionInfo()
+> R version 4.3.0 (2023-04-21)
+> Platform: x86_64-pc-linux-gnu (64-bit)
+> Running under: Ubuntu 22.04.4 LTS
+>
+> Matrix products: default
+> BLAS: /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3
+> LAPACK: 
+> /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.20.so 
+> <http://libopenblasp-r0.3.20.so>; ?LAPACK version 3.10.0
+>
+> locale:
+> ?[1] LC_CTYPE=en_GB.UTF-8 ? ? ? LC_NUMERIC=C
+> ?[3] LC_TIME=en_GB.UTF-8 ? ? ? ?LC_COLLATE=en_GB.UTF-8
+> ?[5] LC_MONETARY=en_GB.UTF-8 ? ?LC_MESSAGES=en_GB.UTF-8
+> ?[7] LC_PAPER=en_GB.UTF-8 ? ? ? LC_NAME=C
+> ?[9] LC_ADDRESS=C ? ? ? ? ? ? ? LC_TELEPHONE=C
+> [11] LC_MEASUREMENT=en_GB.UTF-8 LC_IDENTIFICATION=C
+>
+> time zone: Europe/London
+> tzcode source: system (glibc)
+>
+> attached base packages:
+> [1] stats ? ? graphics ?grDevices utils ? ? datasets ?methods ? base
+>
+> loaded via a namespace (and not attached):
+> [1] compiler_4.3.0
+>
+> On Tue, May 28, 2024 at 7:42?PM Tomas Kalibera 
+> <tomas.kalibera at gmail.com> wrote:
+>
+>     This email originated outside the University. Check before
+>     clicking links or attachments.
+>
+>     On 5/28/24 19:35, Hadley Wickham wrote:
+>     > Hi all,
+>     >
+>     > When I run the following code, R segfaults:
+>     >
+>     > text <- "?"
+>     > srcfile <- srcfilecopy("test.r", text)
+>     > parse(textConnection(text), srcfile = srcfile)
+>     >
+>     > It doesn't segfault if text is ASCII, or it's not wrapped in
+>     > textConnection, or srcfile isn't set.
+>
+>     Thanks, this is because R parser doesn't support non-ASCII UTF-8
+>     outside
+>     string literals and comments, plus a missing bounds check. The
+>     "correct"
+>     result should be an R error, which I get in a debug build.
+>
+>     The tokenizer ends up with a negative token and then when the
+>     parse data
+>     are being finalized, creating a table of token names, there is an
+>     out of
+>     bounds access (yytname array). Probably the check should go right away
+>     into the tokenizer.
+>
+>     Tomas
+>
+>     >
+>     > Hadley
+>     >
+>
+>     ______________________________________________
+>     R-devel at r-project.org mailing list
+>     https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+
+From pd@|gd @end|ng |rom gm@||@com  Thu May 30 15:54:25 2024
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Thu, 30 May 2024 15:54:25 +0200
+Subject: [Rd] 
+ How to call directly "dotTcl" C-function of the tcltk-package
+ from the C-code of an external package?
+In-Reply-To: <DDF6B4A9-693B-4C4F-8D6E-2E828BB41225@uef.fi>
+References: <DDF6B4A9-693B-4C4F-8D6E-2E828BB41225@uef.fi>
+Message-ID: <6172673F-9E42-4940-9D7A-B5A2C2A21800@gmail.com>
+
+I asked Tomas. 
+
+
+Apparently this works:
+
+getNativeSymbolInfo("dotTcl",PACKAGE=getLoadedDLLs()$tcltk)
+
+and the tcltk behavior was changed by 
+
+
+r84265 | hornik | 2023-04-15 08:44:36 +0200 (Sat, 15 Apr 2023) | 1 line
+
+Try forcing symbols in ff calls.
+
+Index: library/tcltk/src/init.c
+===================================================================
+--- library/tcltk/src/init.c    (revision 84264)
++++ library/tcltk/src/init.c    (revision 84265)
+@@ -66,6 +66,6 @@
+ {
+     R_registerRoutines(dll, CEntries, NULL, NULL, ExternEntries);
+     R_useDynamicSymbols(dll, FALSE);
+-    R_forceSymbols(dll, FALSE);
++    R_forceSymbols(dll, TRUE);
+ }
+
+I don't know what that was all about, and I'm also a bit puzzled
+
+a) that the .External lookup is so slow that you need to bypass it (would have thought that the byte compiler could speed it up)
+b) that you don't use dotTclObjv and friends to avoid parsing on the Tcl side.
+
+- pd
+
+
+> On 29 May 2024, at 00:25 , Reijo Sund <reijo.sund at uef.fi> wrote:
+> 
+> I have a use case with tcltk-package where I need to repeatedly call Tcl/Tk functions
+> very quickly. For such purpose, the standard R-interface turned out to be too slow, and
+> better option has been to call package's C-function dotTcl directly from my own C-code.
+> 
+> Before R 4.4.0 it was possible to use getNativeSymbolInfo("dotTcl","tcltk")$address (or 
+> R_FindSymbol("dotTcl","tcltk",NULL) in C) to get the function-pointer and then call the
+> function directly, even though it has not been registered as C-callable for other
+> packages.
+> 
+> With R 4.4.0 these methods are unable to find the symbol anymore (tested in Linux).
+> I was not able to find what change has caused this new behaviour.
+> 
+> Taking a look at tcltk source code, it can be seen that the dotTcl is called using 
+> .External within tcltk-package and there is a registration done for it with
+> R_registerRoutines. An object of class NativeSymbolInfo has also been created in the
+> tcltk namespace, and that can be accessed using tcltk:::.C_dotTcl.
+> 
+> However, the tcltk:::.C_dotTcl$address is an external pointer of a class
+> RegisteredNativeSymbol and not directly the function pointer to the actual routine. The
+> problem is that there appears not to be any R-level function that would extract the actual
+> function-pointer and that the C-interface for R_RegisteredNativeSymbol has been defined
+> in the internal Rdynpriv.h header that is not included in the public API headers.
+> 
+> The only way I was able to access the function directly was using the following C-level 
+> approach in which essential parts of the headers are copied from the Rdynpriv.h:
+> 
+> #include <R.h>
+> #include <Rinternals.h>
+> #include <R_ext/Rdynload.h>
+> 
+> typedef struct {
+>    char       *name;
+>    DL_FUNC     fun;
+>    int         numArgs;
+> 
+>    R_NativePrimitiveArgType *types;   
+> } Rf_DotCSymbol;
+> 
+> typedef Rf_DotCSymbol Rf_DotFortranSymbol;
+> 
+> typedef struct {
+>    char       *name;
+>    DL_FUNC     fun;
+>    int         numArgs;
+> } Rf_DotCallSymbol;
+> 
+> typedef Rf_DotCallSymbol Rf_DotExternalSymbol;
+> 
+> struct Rf_RegisteredNativeSymbol {
+>    NativeSymbolType type;
+>    union {
+> 	Rf_DotCSymbol        *c;
+> 	Rf_DotCallSymbol     *call;
+> 	Rf_DotFortranSymbol  *fortran;
+> 	Rf_DotExternalSymbol *external;
+>    } symbol;
+> };
+> 
+> SEXP(*direct_dotTcl)(SEXP) = NULL;
+> 
+> SEXP FindRegFunc(SEXP symbol) {
+>    R_RegisteredNativeSymbol *tmp = NULL;
+>    tmp = (R_RegisteredNativeSymbol *) R_ExternalPtrAddr(symbol);
+>    if (tmp==NULL) return R_NilValue;
+> 	direct_dotTcl = (SEXP(*)(SEXP)) tmp->symbol.external->fun;	
+>    return R_NilValue;
+> }	
+> 
+> 
+> Although that works for me, I'm aware that this kind of approach is certainly not
+> recommmended for publicly available external packages. However, I couldn't find any
+> other more legitimate way to access dotTcl function directly from my C-code in R 4.4.0. 
+> 
+> 
+> I have two questions:
+> 
+> Would it be possible to get dotTcl C-function (in tcltk.c) of the tcltk-package
+> registered as C-callable from other packages?
+> 
+> Was it an intentional change that caused the hiding of the earlier visible (registered)
+> symbols from other packages?
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From pd@|gd @end|ng |rom gm@||@com  Fri May 31 16:31:25 2024
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Fri, 31 May 2024 16:31:25 +0200
+Subject: [Rd] R 4.4.1 scheduled for June 14
+Message-ID: <53FC7302-AB4F-4DA5-A88F-5A26061ACD33@gmail.com>
+
+Full schedule is available on developer.r-project.org (pending update from SVN).
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Fri May 31 16:36:11 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Fri, 31 May 2024 16:36:11 +0200
+Subject: [Rd] Segfault when parsing UTF-8 text with srcrefs
+In-Reply-To: <97e8b60f-271e-4959-81eb-93c236d922ac@gmail.com>
+References: <CABdHhvGF04U8YAA5m5qA7eiDS45_Dq3toTyf1-nPcibo0VNPTw@mail.gmail.com>
+ <97e8b60f-271e-4959-81eb-93c236d922ac@gmail.com>
+Message-ID: <07006d3c-9383-410e-8be8-729cd5267f0d@gmail.com>
+
+
+On 5/28/24 20:41, Tomas Kalibera wrote:
+>
+> On 5/28/24 19:35, Hadley Wickham wrote:
+>> Hi all,
+>>
+>> When I run the following code, R segfaults:
+>>
+>> text <- "?"
+>> srcfile <- srcfilecopy("test.r", text)
+>> parse(textConnection(text), srcfile = srcfile)
+>>
+>> It doesn't segfault if text is ASCII, or it's not wrapped in
+>> textConnection, or srcfile isn't set.
+>
+> Thanks, this is because R parser doesn't support non-ASCII UTF-8 
+> outside string literals and comments, plus a missing bounds check. The 
+> "correct" result should be an R error, which I get in a debug build.
+
+To be more precise, the current implementation of the parser allows a 
+bit more than that, but there are recommendations in WRE 1.1.5 "Package 
+subdirectories" on (not) using non-ASCII characters in packages.
+
+"?" (\ud7) is not an allowed symbol name and the current implementation 
+should throw an error.
+
+> The tokenizer ends up with a negative token and then when the parse 
+> data are being finalized, creating a table of token names, there is an 
+> out of bounds access (yytname array). Probably the check should go 
+> right away into the tokenizer.
+
+Fixed in R-devel.
+
+Tomas
+
+>
+> Tomas
+>
+>>
+>> Hadley
+>>
+
+
+From re|jo@@und @end|ng |rom ue|@||  Fri May 31 23:47:14 2024
+From: re|jo@@und @end|ng |rom ue|@|| (Reijo Sund)
+Date: Fri, 31 May 2024 21:47:14 +0000
+Subject: [Rd] 
+ How to call directly "dotTcl" C-function of the tcltk-package
+ from the C-code of an external package?
+In-Reply-To: <6172673F-9E42-4940-9D7A-B5A2C2A21800@gmail.com>
+References: <DDF6B4A9-693B-4C4F-8D6E-2E828BB41225@uef.fi>
+ <6172673F-9E42-4940-9D7A-B5A2C2A21800@gmail.com>
+Message-ID: <DCB036A7-D345-4795-8AF0-41C1757B1E83@uef.fi>
+
+> Apparently this works:
+> getNativeSymbolInfo("dotTcl",PACKAGE=getLoadedDLLs()$tcltk)
+
+Thank you Peter! This solved the problem.
+
+> and the tcltk behavior was changed by 
+> r84265 | hornik | 2023-04-15 08:44:36 +0200 (Sat, 15 Apr 2023) | 1 line
+> Try forcing symbols in ff calls.
+> I don't know what that was all about, and I'm also a bit puzzled
+
+> a) that the .External lookup is so slow that you need to bypass it (would have thought that the byte compiler could speed it up)
+
+I want to use Tcl/Tk directly from C-code, so any unnecessary crosswalk through R back to C slows things down in a disturbing way especially when there is need for potentially tens of thousands of calls to Tcl/Tk as fast as possible (e.g. while constructing a vector image from small number of basic elements or while (re)rendering parts of the text-widget). 
+
+> b) that you don't use dotTclObjv and friends to avoid parsing on the Tcl side.
+
+Thanks for the tip - avoiding parsing on the Tcl side would be great! I need to take a look at that possibility. Never done that before as using just dotTcl has been working fast enough for me the past fifteen years.
+
+ 
+
+

@@ -1,0 +1,4473 @@
+From p@tr|ck@g|r@udoux @end|ng |rom un|v-|comte@|r  Tue Feb  1 16:16:47 2022
+From: p@tr|ck@g|r@udoux @end|ng |rom un|v-|comte@|r (Patrick Giraudoux)
+Date: Tue, 1 Feb 2022 16:16:47 +0100
+Subject: [Rd] 
+ =?utf-8?q?trouble_with_package_loading=3A_Function_found_wh?=
+ =?utf-8?q?en_exporting_methods_from_the_namespace_=E2=80=98raster?=
+ =?utf-8?b?4oCZIHdoaWNoIGlzIG5vdCBTNCBnZW5lcmljOiDigJhhbGwuZXF1YWzigJk=?=
+In-Reply-To: <SV0P279MB04758AD91D4739D2BAA5F067EE259@SV0P279MB0475.NORP279.PROD.OUTLOOK.COM>
+References: <SV0P279MB04758AD91D4739D2BAA5F067EE259@SV0P279MB0475.NORP279.PROD.OUTLOOK.COM>
+Message-ID: <d18b5037-d2a2-3d1e-1400-b2bc2f29f5b5@univ-fcomte.fr>
+
+A Master student of? us has just send us the way he has found to get out 
+of the problem met. Here is the translation of his mail:
+
+I have updated R to 4.1.2 using updateR() of the package installr from 
+the R consol, specifying I want to keep the packages.
+
+I have installed Rtools from there: 
+https://cran.rstudio.com/bin/windows/Rtools/rtools40.html
+
+Then I have opened the consol and applied:
+
+write('PATH="${RTOOLS40_HOME}\\usr\\bin;${PATH}"', file = "~/.Renviron", 
+append = TRUE)
+
+then restarted R, and checked the RTools path applying:
+
+Restart R, and verify that make can be found, which should show the path 
+to your Rtools installation.
+
+Sys.which("make")
+## "C:\\rtools40\\usr\\bin\\make.exe"
+
+then install.packages("terra", type = "source")
+
+It has solved the problem, pgirmess work without trouble now.
+
+This fit with Roger's info about late updates from *.tar.gz and *.zip? 
+on CRAN messing a standard installation.
+
+Best,
+
+Patrick
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Tue Feb  1 18:58:54 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Tue, 1 Feb 2022 18:58:54 +0100
+Subject: [Rd] inconsistency between as.list(df) and as.list(mat) with
+ mode(mat) == "list"
+In-Reply-To: <CAD4oTHFotrgFG6m4oL7EsxdFjf=_4b485kgLzVNifwLZgGiOOA@mail.gmail.com>
+References: <CAD4oTHFotrgFG6m4oL7EsxdFjf=_4b485kgLzVNifwLZgGiOOA@mail.gmail.com>
+Message-ID: <25081.29918.780598.770679@stat.math.ethz.ch>
+
+>>>>> Gabriel Becker 
+>>>>>     on Mon, 31 Jan 2022 12:11:10 -0800 writes:
+
+  (using an HTMLifying mail client .... so I've manually pretty edited a bit)
+
+    > Hi All,
+
+    > I ran into the following the other day:
+
+    >> mat <- matrix(1:6, nrow = 2)
+    >> as.list(mat)
+    > [[1]]
+    > [1] 1
+
+    > *<snip>*
+
+    > [[6]]
+    > [1] 6
+
+    >> mat2 <- mat
+    >> mode(mat2) <- "list"
+    >> as.list(mat2)
+    >   [,1] [,2] [,3]
+    > [1,] 1    3    5
+    > [2,] 2    4    6
+
+
+    > I realize this is not guaranteed by the documentation, and the behavior is
+    > technically (if I would argue fairly subtly) as documented. Generally,
+    > however, as.list returns something without dimensions (other than length),
+    > regardless of the dimensions of the input.
+
+    > Furthermore, this behavior agrees with neither the data.frame (which are
+    > lists) method nor the non-list-mode matrix behavior which comes from the
+    > default behavior. Both result in a non-dimensioned object (the data.frame
+    > method explicitly and intentionally so).
+
+    > Matrices of mode "list" are fairly rare, in practice, I would think, but I
+    > wonder if the as.list behavior for them should agree with that of similar
+    > dimensioned objects (data.frames and non-list-mode matrices). As a user, I
+    > certainly expected it to, and had to read the docs with a careful eye
+    > before I realized what was happening and why.
+
+    > For the record, as.vector  does not drop dimension (or anything else) from
+    > data.frames nor list-matrices, so there the behaviors agree, although we do
+    > get:
+
+    >> is.vector(mat)
+    > [1] FALSE
+
+    >> is.vector(mat2)
+    > [1] FALSE
+
+    >> is.vector(mtcars)
+    > [1] FALSE
+
+
+    > Which does make the fact that for the latter two as.vector returns the
+    > objects unmodified somewhat puzzling.
+
+    > I wonder if as.list and as.vector could get a strict argument - it could
+    > default to FALSE for a deprecation period, or forever if preferred by
+    > R-core -  where attributes are always stripped for 'strict' conversions.
+
+    > Also, as a final aside, the documentation at ?as.list says:
+
+    > Attributes may be
+    > dropped unless the argument already is a list or expression.
+
+    > (This is inconsistent with functions such as ?as.character? which
+    > always drop attributes, *and is for efficiency since lists can be*
+    > *     expensive to copy.*)
+
+    > (emphasis mine). Is this still the case with shallow duplication? I was
+    > under the impression that it was not.
+
+Well, you are entering the topic Kurt Hornik and I  tried to
+improve on, 2  months ago  and then had to give up (for the time
+being) with only a small step of progress;  at the time
+producing extra work for CRAN team members who saw many dozens
+of CRAN package failing just because we tried to change
+is.vector() / as.vector()  to become slightly less inconsistent.
+
+There were many misuse problems in these CRAN packages,
+which basically used  is.vector(obj) to check if `obj` was not
+a matrix.
+
+During ca. one week in early December 2021, we (mostly me) tried
+several things and had to conditionalize (via a 
+environment variable you must set *before* starting R) in the
+end most of the change, because we saw too much R code out
+there, being based on wrong assumptions ...
+------------------------------------------------------------------------
+r81299 | maechler | 2021-12-06 13:21:26 +0100 (Mon, 06. Dec 2021) | 1 Zeile
+Ge?nderte Pfade:
+   M /trunk/doc/NEWS.Rd
+   M /trunk/src/library/base/man/vector.Rd
+   M /trunk/src/main/coerce.c
+   M /trunk/tests/demos.Rout.save
+   M /trunk/tests/reg-tests-1d.R
+
+conditionalize most as.vector/is.vector changes from 81252,81270,81274,81285-6
+------------------------------------------------------------------------
+
+I mentioned above that one problem that useRs use is.vector() when they
+shouldn't -- because they are not aware that list() and
+expression()s  also fulfill `is.vector()`.
+I would have recommended to use (is.atomic() && !is.array())
+instead conceptually called is.simplevector() in my mind.
+
+But there's another fact which dirties the water further:
+is.atomic() actually does *not* check for atomic vectors,
+but for  "atomic vector _OR_ NULL"  which I've found unfortunate.
+
+Since then, I've contemplated introducing a new primitive
+is.atomicV()  which really is true only if its argument is an
+atomic vector.
+One thing not so nice is its name. To make that even longer is
+strongly against my taste ("testing for 'atom' should be short
+and succinct ")  so maybe people would agree with   is.atom()
+
+... yes, I've somewhat hijacked your thread to talk about part
+of the underlying problem(s) that I would like to address first.
+
+
+Martin
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Feb  1 21:17:08 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 1 Feb 2022 15:17:08 -0500
+Subject: [Rd] inconsistency between as.list(df) and as.list(mat) with
+ mode(mat) == "list"
+In-Reply-To: <25081.29918.780598.770679@stat.math.ethz.ch>
+References: <CAD4oTHFotrgFG6m4oL7EsxdFjf=_4b485kgLzVNifwLZgGiOOA@mail.gmail.com>
+ <25081.29918.780598.770679@stat.math.ethz.ch>
+Message-ID: <35724075-cbcf-b5cb-3001-fe186273ab9b@gmail.com>
+
+The definitions of is.vector() etc. are now so old, it's probably 
+hopeless to change them.  But there are already some definitions in the 
+rlang package that look more consistent and rational.  For example, 
+is_atomic() and is_vector() fix the issues you were complaining about.
+
+The rlang package doesn't have many hard dependencies (just utils), so 
+you could easily use it instead of the base test functions.  On the 
+other hand:  It does have a long list of packages in Suggests,
+and it doesn't really fix Gabe's issue:  as_list is more consistent than 
+as.list, but it gives a deprecation warning:
+
+Warning message:
+`as_list()` is deprecated as of rlang 0.4.0
+Please use `vctrs::vec_cast()` instead.
+This warning is displayed once per session.
+
+My conclusion is that it would make more sense to import a subset of the 
+definitions and names from rlang into base R.
+
+Duncan Murdoch
+
+On 01/02/2022 12:58 p.m., Martin Maechler wrote:
+>>>>>> Gabriel Becker
+>>>>>>      on Mon, 31 Jan 2022 12:11:10 -0800 writes:
+> 
+>    (using an HTMLifying mail client .... so I've manually pretty edited a bit)
+> 
+>      > Hi All,
+> 
+>      > I ran into the following the other day:
+> 
+>      >> mat <- matrix(1:6, nrow = 2)
+>      >> as.list(mat)
+>      > [[1]]
+>      > [1] 1
+> 
+>      > *<snip>*
+> 
+>      > [[6]]
+>      > [1] 6
+> 
+>      >> mat2 <- mat
+>      >> mode(mat2) <- "list"
+>      >> as.list(mat2)
+>      >   [,1] [,2] [,3]
+>      > [1,] 1    3    5
+>      > [2,] 2    4    6
+> 
+> 
+>      > I realize this is not guaranteed by the documentation, and the behavior is
+>      > technically (if I would argue fairly subtly) as documented. Generally,
+>      > however, as.list returns something without dimensions (other than length),
+>      > regardless of the dimensions of the input.
+> 
+>      > Furthermore, this behavior agrees with neither the data.frame (which are
+>      > lists) method nor the non-list-mode matrix behavior which comes from the
+>      > default behavior. Both result in a non-dimensioned object (the data.frame
+>      > method explicitly and intentionally so).
+> 
+>      > Matrices of mode "list" are fairly rare, in practice, I would think, but I
+>      > wonder if the as.list behavior for them should agree with that of similar
+>      > dimensioned objects (data.frames and non-list-mode matrices). As a user, I
+>      > certainly expected it to, and had to read the docs with a careful eye
+>      > before I realized what was happening and why.
+> 
+>      > For the record, as.vector  does not drop dimension (or anything else) from
+>      > data.frames nor list-matrices, so there the behaviors agree, although we do
+>      > get:
+> 
+>      >> is.vector(mat)
+>      > [1] FALSE
+> 
+>      >> is.vector(mat2)
+>      > [1] FALSE
+> 
+>      >> is.vector(mtcars)
+>      > [1] FALSE
+> 
+> 
+>      > Which does make the fact that for the latter two as.vector returns the
+>      > objects unmodified somewhat puzzling.
+> 
+>      > I wonder if as.list and as.vector could get a strict argument - it could
+>      > default to FALSE for a deprecation period, or forever if preferred by
+>      > R-core -  where attributes are always stripped for 'strict' conversions.
+> 
+>      > Also, as a final aside, the documentation at ?as.list says:
+> 
+>      > Attributes may be
+>      > dropped unless the argument already is a list or expression.
+> 
+>      > (This is inconsistent with functions such as ?as.character? which
+>      > always drop attributes, *and is for efficiency since lists can be*
+>      > *     expensive to copy.*)
+> 
+>      > (emphasis mine). Is this still the case with shallow duplication? I was
+>      > under the impression that it was not.
+> 
+> Well, you are entering the topic Kurt Hornik and I  tried to
+> improve on, 2  months ago  and then had to give up (for the time
+> being) with only a small step of progress;  at the time
+> producing extra work for CRAN team members who saw many dozens
+> of CRAN package failing just because we tried to change
+> is.vector() / as.vector()  to become slightly less inconsistent.
+> 
+> There were many misuse problems in these CRAN packages,
+> which basically used  is.vector(obj) to check if `obj` was not
+> a matrix.
+> 
+> During ca. one week in early December 2021, we (mostly me) tried
+> several things and had to conditionalize (via a
+> environment variable you must set *before* starting R) in the
+> end most of the change, because we saw too much R code out
+> there, being based on wrong assumptions ...
+> ------------------------------------------------------------------------
+> r81299 | maechler | 2021-12-06 13:21:26 +0100 (Mon, 06. Dec 2021) | 1 Zeile
+> Ge?nderte Pfade:
+>     M /trunk/doc/NEWS.Rd
+>     M /trunk/src/library/base/man/vector.Rd
+>     M /trunk/src/main/coerce.c
+>     M /trunk/tests/demos.Rout.save
+>     M /trunk/tests/reg-tests-1d.R
+> 
+> conditionalize most as.vector/is.vector changes from 81252,81270,81274,81285-6
+> ------------------------------------------------------------------------
+> 
+> I mentioned above that one problem that useRs use is.vector() when they
+> shouldn't -- because they are not aware that list() and
+> expression()s  also fulfill `is.vector()`.
+> I would have recommended to use (is.atomic() && !is.array())
+> instead conceptually called is.simplevector() in my mind.
+> 
+> But there's another fact which dirties the water further:
+> is.atomic() actually does *not* check for atomic vectors,
+> but for  "atomic vector _OR_ NULL"  which I've found unfortunate.
+> 
+> Since then, I've contemplated introducing a new primitive
+> is.atomicV()  which really is true only if its argument is an
+> atomic vector.
+> One thing not so nice is its name. To make that even longer is
+> strongly against my taste ("testing for 'atom' should be short
+> and succinct ")  so maybe people would agree with   is.atom()
+> 
+> ... yes, I've somewhat hijacked your thread to talk about part
+> of the underlying problem(s) that I would like to address first.
+> 
+> 
+> Martin
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed Feb  2 03:21:46 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Tue, 1 Feb 2022 21:21:46 -0500
+Subject: [Rd] model.weights and model.offset: request for adjustment
+Message-ID: <1e70261f-3379-092a-2c11-f835d3d8ff70@gmail.com>
+
+   The model.weights() and model.offset() functions from the 'stats' 
+package index possibly-missing elements of a data frame via $, e.g.
+
+x$"(offset)"
+x$"(weights)"
+
+This returns NULL without comment when x is a data frame:
+
+x <- data.frame(a=1)
+x$"(offset)"  ## NULL
+x$"(weights)"  ## NULL
+
+However, when x is a tibble we get a warning as well:
+
+x <- tibble::as_tibble(x)
+x$"(offset)"
+## NULL
+## Warning message:
+## Unknown or uninitialised column: `(offset)`.
+
+    I know it's not R-core's responsibility to manage forward 
+compatibility with tibbles, but in this case [[-indexing would seem to 
+be better practice in any case.
+
+   Might a patch be accepted ... ?
+
+   cheers
+    Ben Bolker
+
+
+From trevor@|@d@v|@ @end|ng |rom gm@||@com  Wed Feb  2 21:05:55 2022
+From: trevor@|@d@v|@ @end|ng |rom gm@||@com (Trevor Davis)
+Date: Wed, 2 Feb 2022 12:05:55 -0800
+Subject: [Rd] license.db Bug Report (FSF field for CC 4.0 licenses)
+Message-ID: <CAMigB8EVR0nSafhmTOhr+AdNNqYu8pTrT19xUcfULDhqg6BDFw@mail.gmail.com>
+
+Hi,
+
+I noticed some errors in the `FSF` fields in `share/licenses/license.db`
+for some Creative Commons licenses:
+
+`license.db` should be corrected to:
+
+```
+Name: Creative Commons Attribution-ShareAlike 2.0 Generic License
+Abbrev: CC BY-SA 2.0
+FSF: free_and_GPLv3_incompatible
+
+Name: Creative Commons Attribution 4.0 International License
+Abbrev: CC BY 4.0
+FSF: free_and_GPLv3_compatible (
+https://www.gnu.org/licenses/license-list.html#ccby)
+
+Name: Creative Commons Attribution-ShareAlike 4.0 International License
+Abbrev: CC BY-SA 4.0
+FSF: free_and_GPLv3_compatible (
+https://www.gnu.org/licenses/license-list.html#ccbysa)
+```
+
+* According to the current version of
+https://www.gnu.org/licenses/license-list.html the FSF considers the CC BY
+4.0 license "compatible with all versions of the GNU GPL" and the CC BY-SA
+4.0 license "one-way compatible with the GNU GPL version 3: this means you
+may license your modified versions of CC BY-SA 4.0 materials under GNU GPL
+version 3".
+* Note Creative Commons explicitly declared GPL-3 a "BY-SA Compatible
+License" for version 4.0 on October 8th, 2015:
+https://creativecommons.org/share-your-work/licensing-considerations/compatible-licenses
+* In a previous version of the FSF license website available on web
+archives (e.g.
+http://web.archive.org/web/20150124042152/https://www.gnu.org/licenses/license-list.html#OtherLicenses)
+the FSF explicitly considered the earlier CC BY 2.0 and CC BY-SA 2.0
+licenses incompatible with the GNU GPL licenses.
+
+  I'm unsure whether the URL for the `FSF` field for the CC BY-SA 2.0
+license should point to such a Web Archived link or simply be stripped as I
+suggested above.  However the current version of
+https://www.gnu.org/licenses/license-list.html#ccbysa no longer mentions
+the CC BY-SA 2.0 license nor its incompatibility with the GPL license and
+hence it should be updated in some fashion.
+
+Best,
+
+Trevor
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Feb  3 12:14:06 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 3 Feb 2022 12:14:06 +0100
+Subject: [Rd] model.weights and model.offset: request for adjustment
+In-Reply-To: <1e70261f-3379-092a-2c11-f835d3d8ff70@gmail.com>
+References: <1e70261f-3379-092a-2c11-f835d3d8ff70@gmail.com>
+Message-ID: <25083.47358.617639.35342@stat.math.ethz.ch>
+
+>>>>> Ben Bolker 
+>>>>>     on Tue, 1 Feb 2022 21:21:46 -0500 writes:
+
+    > The model.weights() and model.offset() functions from the 'stats' 
+    > package index possibly-missing elements of a data frame via $, e.g.
+
+    > x$"(offset)"
+    > x$"(weights)"
+
+    > This returns NULL without comment when x is a data frame:
+
+    > x <- data.frame(a=1)
+    > x$"(offset)"  ## NULL
+    > x$"(weights)"  ## NULL
+
+    > However, when x is a tibble we get a warning as well:
+
+    > x <- tibble::as_tibble(x)
+    > x$"(offset)"
+    > ## NULL
+    > ## Warning message:
+    > ## Unknown or uninitialised column: `(offset)`.
+
+    > I know it's not R-core's responsibility to manage forward 
+    > compatibility with tibbles, but in this case [[-indexing would seem to 
+    > be better practice in any case.
+
+Yes, I would agree:  we should use  [[ instead of $ here
+in order to force exact matching just as principle
+
+Importantly, because  also  mf[["(weights)"]]
+will return  NULL without a warning for a model/data frame, and
+it seems it does so also for tibbles.
+
+    > Might a patch be accepted ... ?
+
+That would not be necessary.
+
+There's one remaining problem however:
+`$` access is clearly faster than `[[` for small data frames
+(because `$` is a primitive function doing everything in C, 
+ whereas `[[` calls the R level data frame method ).
+
+Faster in both cases, i.e., when there *is* a column and when there
+is none (and NULL is returned), e.g., for the first case
+
+> system.time(for(i in 1:20000) df[["a"]])
+   user  system elapsed 
+  0.064   0.000   0.065 
+> system.time(for(i in 1:20000) df$a)
+   user  system elapsed 
+  0.009   0.000   0.009 
+
+So that's probably been the reason why  `$`  has been prefered?
+
+
+Martin
+
+    > cheers
+    > Ben Bolker
+
+
+From tim@t@yior m@iii@g oii hidde@eieph@@ts@co@uk  Thu Feb  3 12:30:17 2022
+From: tim@t@yior m@iii@g oii hidde@eieph@@ts@co@uk (tim@t@yior m@iii@g oii hidde@eieph@@ts@co@uk)
+Date: Thu, 3 Feb 2022 11:30:17 +0000 (GMT)
+Subject: [Rd] model.weights and model.offset: request for adjustment
+In-Reply-To: <25083.47358.617639.35342@stat.math.ethz.ch>
+References: <1e70261f-3379-092a-2c11-f835d3d8ff70@gmail.com>
+ <25083.47358.617639.35342@stat.math.ethz.ch>
+Message-ID: <1406749407.8755.1643887817729@office.mailbox.org>
+
+
+> On 03/02/2022 11:14 Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+> 
+>  
+> >>>>> Ben Bolker 
+> >>>>>     on Tue, 1 Feb 2022 21:21:46 -0500 writes:
+> 
+>     > The model.weights() and model.offset() functions from the 'stats' 
+>     > package index possibly-missing elements of a data frame via $, e.g.
+> 
+>     > x$"(offset)"
+>     > x$"(weights)"
+> 
+>     > This returns NULL without comment when x is a data frame:
+> 
+>     > x <- data.frame(a=1)
+>     > x$"(offset)"  ## NULL
+>     > x$"(weights)"  ## NULL
+> 
+>     > However, when x is a tibble we get a warning as well:
+> 
+>     > x <- tibble::as_tibble(x)
+>     > x$"(offset)"
+>     > ## NULL
+>     > ## Warning message:
+>     > ## Unknown or uninitialised column: `(offset)`.
+> 
+>     > I know it's not R-core's responsibility to manage forward 
+>     > compatibility with tibbles, but in this case [[-indexing would seem to 
+>     > be better practice in any case.
+> 
+> Yes, I would agree:  we should use  [[ instead of $ here
+> in order to force exact matching just as principle
+> 
+> Importantly, because  also  mf[["(weights)"]]
+> will return  NULL without a warning for a model/data frame, and
+> it seems it does so also for tibbles.
+> 
+>     > Might a patch be accepted ... ?
+> 
+> That would not be necessary.
+> 
+> There's one remaining problem however:
+> `$` access is clearly faster than `[[` for small data frames
+> (because `$` is a primitive function doing everything in C, 
+>  whereas `[[` calls the R level data frame method ).
+> 
+> Faster in both cases, i.e., when there *is* a column and when there
+> is none (and NULL is returned), e.g., for the first case
+> 
+> > system.time(for(i in 1:20000) df[["a"]])
+>    user  system elapsed 
+>   0.064   0.000   0.065 
+> > system.time(for(i in 1:20000) df$a)
+>    user  system elapsed 
+>   0.009   0.000   0.009 
+> 
+> So that's probably been the reason why  `$`  has been prefered?
+
+Would .subset2(df, "a) be preferable?
+R> df <- mtcars
+R> system.time(for(i in 1:20000) df[["hp"]])
+   user  system elapsed 
+  0.078   0.000   0.078 
+R> system.time(for(i in 1:20000) df$hp)
+   user  system elapsed 
+  0.011   0.000   0.010 
+R> system.time(for(i in 1:20000) .subset2(df,"hp"))
+   user  system elapsed 
+  0.004   0.000   0.004 
+Tim
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Feb  3 15:15:03 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 3 Feb 2022 15:15:03 +0100
+Subject: [Rd] inconsistency between as.list(df) and as.list(mat) with
+ mode(mat) == "list"
+In-Reply-To: <35724075-cbcf-b5cb-3001-fe186273ab9b@gmail.com>
+References: <CAD4oTHFotrgFG6m4oL7EsxdFjf=_4b485kgLzVNifwLZgGiOOA@mail.gmail.com>
+ <25081.29918.780598.770679@stat.math.ethz.ch>
+ <35724075-cbcf-b5cb-3001-fe186273ab9b@gmail.com>
+Message-ID: <25083.58215.309289.155180@stat.math.ethz.ch>
+
+>>>>> Duncan Murdoch 
+>>>>>     on Tue, 1 Feb 2022 15:17:08 -0500 writes:
+
+    > The definitions of is.vector() etc. are now so old, it's probably 
+    > hopeless to change them.  But there are already some definitions in the 
+    > rlang package that look more consistent and rational.  For example, 
+    > is_atomic() and is_vector() fix the issues you were complaining about.
+
+    > The rlang package doesn't have many hard dependencies (just utils), so 
+    > you could easily use it instead of the base test functions.  On the 
+    > other hand:  It does have a long list of packages in Suggests,
+    > and it doesn't really fix Gabe's issue:  as_list is more consistent than 
+    > as.list, but it gives a deprecation warning:
+
+    > Warning message:
+    > `as_list()` is deprecated as of rlang 0.4.0
+    > Please use `vctrs::vec_cast()` instead.
+    > This warning is displayed once per session.
+
+    > My conclusion is that it would make more sense to import a subset of the 
+    > definitions and names from rlang into base R.
+
+    > Duncan Murdoch
+
+Regarding is.atomic() and is_atomic() : Within R Core, we have
+talked about it and for now created a branch of R-devel in svn,
+called 'R-is' (*),  in which  is.atomic(NULL) is false {as in is_atomic()}.
+
+Hopefully, most CRAN (& Bioc) packages would continue to work unaffected,
+and we could ask maintainers of the few others to adapt ...
+... so possibly, hopefully, ...,
+we would change is.atomic()  in spite of all history.
+
+*) If you are interested, get and install that branch by
+
+   svn co -q https://svn.r-project.org/R/branches/R-is R
+   ( cd R ; tools/rsync-recommended )
+
+  and then build R the same as you would build another one from
+  source.
+
+-------------
+
+One more thing  I forgot to mention in reply to Gabe's original
+post -- even though *also* only partly related:
+
+In R-devel, for any data frame  df,
+all three of
+
+  as.list  (df)
+  as.vector(df)  
+  as.vector(df, mode="list")  
+
+are identical.
+This has *not* been the case in previous versions
+of R, i.e. notably all released ones  where   as.vector(df)
+was a no-op for data frames.
+
+Martin
+
+
+    > On 01/02/2022 12:58 p.m., Martin Maechler wrote:
+    >>>>>>> Gabriel Becker
+    >>>>>>> on Mon, 31 Jan 2022 12:11:10 -0800 writes:
+    >> 
+    >> (using an HTMLifying mail client .... so I've manually pretty edited a bit)
+    >> 
+    >> > Hi All,
+    >> 
+    >> > I ran into the following the other day:
+    >> 
+    >> >> mat <- matrix(1:6, nrow = 2)
+    >> >> as.list(mat)
+    >> > [[1]]
+    >> > [1] 1
+    >> 
+    >> > *<snip>*
+    >> 
+    >> > [[6]]
+    >> > [1] 6
+    >> 
+    >> >> mat2 <- mat
+    >> >> mode(mat2) <- "list"
+    >> >> as.list(mat2)
+    >> >   [,1] [,2] [,3]
+    >> > [1,] 1    3    5
+    >> > [2,] 2    4    6
+    >> 
+    >> 
+    >> > I realize this is not guaranteed by the documentation, and the behavior is
+    >> > technically (if I would argue fairly subtly) as documented. Generally,
+    >> > however, as.list returns something without dimensions (other than length),
+    >> > regardless of the dimensions of the input.
+    >> 
+    >> > Furthermore, this behavior agrees with neither the data.frame (which are
+    >> > lists) method nor the non-list-mode matrix behavior which comes from the
+    >> > default behavior. Both result in a non-dimensioned object (the data.frame
+    >> > method explicitly and intentionally so).
+    >> 
+    >> > Matrices of mode "list" are fairly rare, in practice, I would think, but I
+    >> > wonder if the as.list behavior for them should agree with that of similar
+    >> > dimensioned objects (data.frames and non-list-mode matrices). As a user, I
+    >> > certainly expected it to, and had to read the docs with a careful eye
+    >> > before I realized what was happening and why.
+    >> 
+    >> > For the record, as.vector  does not drop dimension (or anything else) from
+    >> > data.frames nor list-matrices, so there the behaviors agree, although we do
+    >> > get:
+    >> 
+    >> >> is.vector(mat)
+    >> > [1] FALSE
+    >> 
+    >> >> is.vector(mat2)
+    >> > [1] FALSE
+    >> 
+    >> >> is.vector(mtcars)
+    >> > [1] FALSE
+    >> 
+    >> 
+    >> > Which does make the fact that for the latter two as.vector returns the
+    >> > objects unmodified somewhat puzzling.
+    >> 
+    >> > I wonder if as.list and as.vector could get a strict argument - it could
+    >> > default to FALSE for a deprecation period, or forever if preferred by
+    >> > R-core -  where attributes are always stripped for 'strict' conversions.
+    >> 
+    >> > Also, as a final aside, the documentation at ?as.list says:
+    >> 
+    >> > Attributes may be
+    >> > dropped unless the argument already is a list or expression.
+    >> 
+    >> > (This is inconsistent with functions such as ?as.character? which
+    >> > always drop attributes, *and is for efficiency since lists can be*
+    >> > *     expensive to copy.*)
+    >> 
+    >> > (emphasis mine). Is this still the case with shallow duplication? I was
+    >> > under the impression that it was not.
+    >> 
+    >> Well, you are entering the topic Kurt Hornik and I  tried to
+    >> improve on, 2  months ago  and then had to give up (for the time
+    >> being) with only a small step of progress;  at the time
+    >> producing extra work for CRAN team members who saw many dozens
+    >> of CRAN package failing just because we tried to change
+    >> is.vector() / as.vector()  to become slightly less inconsistent.
+    >> 
+    >> There were many misuse problems in these CRAN packages,
+    >> which basically used  is.vector(obj) to check if `obj` was not
+    >> a matrix.
+    >> 
+    >> During ca. one week in early December 2021, we (mostly me) tried
+    >> several things and had to conditionalize (via a
+    >> environment variable you must set *before* starting R) in the
+    >> end most of the change, because we saw too much R code out
+    >> there, being based on wrong assumptions ...
+    >> ------------------------------------------------------------------------
+    >> r81299 | maechler | 2021-12-06 13:21:26 +0100 (Mon, 06. Dec 2021) | 1 Zeile
+    >> Ge?nderte Pfade:
+    >> M /trunk/doc/NEWS.Rd
+    >> M /trunk/src/library/base/man/vector.Rd
+    >> M /trunk/src/main/coerce.c
+    >> M /trunk/tests/demos.Rout.save
+    >> M /trunk/tests/reg-tests-1d.R
+    >> 
+    >> conditionalize most as.vector/is.vector changes from 81252,81270,81274,81285-6
+    >> ------------------------------------------------------------------------
+    >> 
+    >> I mentioned above that one problem that useRs use is.vector() when they
+    >> shouldn't -- because they are not aware that list() and
+    >> expression()s  also fulfill `is.vector()`.
+    >> I would have recommended to use (is.atomic() && !is.array())
+    >> instead conceptually called is.simplevector() in my mind.
+    >> 
+    >> But there's another fact which dirties the water further:
+    >> is.atomic() actually does *not* check for atomic vectors,
+    >> but for  "atomic vector _OR_ NULL"  which I've found unfortunate.
+    >> 
+    >> Since then, I've contemplated introducing a new primitive
+    >> is.atomicV()  which really is true only if its argument is an
+    >> atomic vector.
+    >> One thing not so nice is its name. To make that even longer is
+    >> strongly against my taste ("testing for 'atom' should be short
+    >> and succinct ")  so maybe people would agree with   is.atom()
+    >> 
+    >> ... yes, I've somewhat hijacked your thread to talk about part
+    >> of the underlying problem(s) that I would like to address first.
+    >> 
+    >> 
+    >> Martin
+    >> 
+    >> ______________________________________________
+    >> R-devel at r-project.org mailing list
+    >> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Feb  3 15:21:45 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 3 Feb 2022 15:21:45 +0100
+Subject: [Rd] model.weights and model.offset: request for adjustment
+In-Reply-To: <1406749407.8755.1643887817729@office.mailbox.org>
+References: <1e70261f-3379-092a-2c11-f835d3d8ff70@gmail.com>
+ <25083.47358.617639.35342@stat.math.ethz.ch>
+ <1406749407.8755.1643887817729@office.mailbox.org>
+Message-ID: <25083.58617.36940.759063@stat.math.ethz.ch>
+
+>>>>> tim taylor 
+>>>>>     on Thu, 3 Feb 2022 11:30:17 +0000 (GMT) writes:
+
+    >> On 03/02/2022 11:14 Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+    >> 
+    >> 
+    >> >>>>> Ben Bolker 
+    >> >>>>>     on Tue, 1 Feb 2022 21:21:46 -0500 writes:
+    >> 
+    >> > The model.weights() and model.offset() functions from the 'stats' 
+    >> > package index possibly-missing elements of a data frame via $, e.g.
+    >> 
+    >> > x$"(offset)"
+    >> > x$"(weights)"
+    >> 
+    >> > This returns NULL without comment when x is a data frame:
+    >> 
+    >> > x <- data.frame(a=1)
+    >> > x$"(offset)"  ## NULL
+    >> > x$"(weights)"  ## NULL
+    >> 
+    >> > However, when x is a tibble we get a warning as well:
+    >> 
+    >> > x <- tibble::as_tibble(x)
+    >> > x$"(offset)"
+    >> > ## NULL
+    >> > ## Warning message:
+    >> > ## Unknown or uninitialised column: `(offset)`.
+    >> 
+    >> > I know it's not R-core's responsibility to manage forward 
+    >> > compatibility with tibbles, but in this case [[-indexing would seem to 
+    >> > be better practice in any case.
+    >> 
+    >> Yes, I would agree:  we should use  [[ instead of $ here
+    >> in order to force exact matching just as principle
+    >> 
+    >> Importantly, because  also  mf[["(weights)"]]
+    >> will return  NULL without a warning for a model/data frame, and
+    >> it seems it does so also for tibbles.
+    >> 
+    >> > Might a patch be accepted ... ?
+    >> 
+    >> That would not be necessary.
+    >> 
+    >> There's one remaining problem however:
+    >> `$` access is clearly faster than `[[` for small data frames
+    >> (because `$` is a primitive function doing everything in C, 
+    >> whereas `[[` calls the R level data frame method ).
+    >> 
+    >> Faster in both cases, i.e., when there *is* a column and when there
+    >> is none (and NULL is returned), e.g., for the first case
+    >> 
+    >> > system.time(for(i in 1:20000) df[["a"]])
+    >> user  system elapsed 
+    >> 0.064   0.000   0.065 
+    >> > system.time(for(i in 1:20000) df$a)
+    >> user  system elapsed 
+    >> 0.009   0.000   0.009 
+    >> 
+    >> So that's probably been the reason why  `$`  has been prefered?
+
+    > Would .subset2(df, "a) be preferable?
+
+    R> df <- mtcars
+    R> system.time(for(i in 1:20000) df[["hp"]])
+    > user  system elapsed 
+    > 0.078   0.000   0.078 
+    R> system.time(for(i in 1:20000) df$hp)
+    > user  system elapsed 
+    > 0.011   0.000   0.010 
+    R> system.time(for(i in 1:20000) .subset2(df,"hp"))
+    > user  system elapsed 
+    > 0.004   0.000   0.004 
+
+    > Tim
+
+Yes, I think that's a very good idea --
+
+notably, as interestingly it seems to work with tibble's very
+well, too.
+
+Martin
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Feb  3 18:09:29 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 3 Feb 2022 18:09:29 +0100
+Subject: [Rd] model.weights and model.offset: request for adjustment
+In-Reply-To: <25083.58617.36940.759063@stat.math.ethz.ch>
+References: <1e70261f-3379-092a-2c11-f835d3d8ff70@gmail.com>
+ <25083.47358.617639.35342@stat.math.ethz.ch>
+ <1406749407.8755.1643887817729@office.mailbox.org>
+ <25083.58617.36940.759063@stat.math.ethz.ch>
+Message-ID: <25084.3145.108729.52160@stat.math.ethz.ch>
+
+>>>>> Martin Maechler 
+>>>>>     on Thu, 3 Feb 2022 15:21:45 +0100 writes:
+
+>>>>> tim taylor 
+>>>>>     on Thu, 3 Feb 2022 11:30:17 +0000 (GMT) writes:
+
+    >>> On 03/02/2022 11:14 Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+    >>> 
+    >>> 
+    >>> >>>>> Ben Bolker 
+    >>> >>>>>     on Tue, 1 Feb 2022 21:21:46 -0500 writes:
+    >>> 
+    >>> > The model.weights() and model.offset() functions from the 'stats' 
+    >>> > package index possibly-missing elements of a data frame via $, e.g.
+    >>> 
+    >>> > x$"(offset)"
+    >>> > x$"(weights)"
+    >>> 
+    >>> > This returns NULL without comment when x is a data frame:
+    >>> 
+    >>> > x <- data.frame(a=1)
+    >>> > x$"(offset)"  ## NULL
+    >>> > x$"(weights)"  ## NULL
+    >>> 
+    >>> > However, when x is a tibble we get a warning as well:
+    >>> 
+    >>> > x <- tibble::as_tibble(x)
+    >>> > x$"(offset)"
+    >>> > ## NULL
+    >>> > ## Warning message:
+    >>> > ## Unknown or uninitialised column: `(offset)`.
+    >>> 
+    >>> > I know it's not R-core's responsibility to manage forward 
+    >>> > compatibility with tibbles, but in this case [[-indexing would seem to 
+    >>> > be better practice in any case.
+    >>> 
+    >>> Yes, I would agree:  we should use  [[ instead of $ here
+    >>> in order to force exact matching just as principle
+    >>> 
+    >>> Importantly, because  also  mf[["(weights)"]]
+    >>> will return  NULL without a warning for a model/data frame, and
+    >>> it seems it does so also for tibbles.
+    >>> 
+    >>> > Might a patch be accepted ... ?
+    >>> 
+    >>> That would not be necessary.
+    >>> 
+    >>> There's one remaining problem however:
+    >>> `$` access is clearly faster than `[[` for small data frames
+    >>> (because `$` is a primitive function doing everything in C, 
+    >>> whereas `[[` calls the R level data frame method ).
+    >>> 
+    >>> Faster in both cases, i.e., when there *is* a column and when there
+    >>> is none (and NULL is returned), e.g., for the first case
+    >>> 
+    >>> > system.time(for(i in 1:20000) df[["a"]])
+    >>> user  system elapsed 
+    >>> 0.064   0.000   0.065 
+    >>> > system.time(for(i in 1:20000) df$a)
+    >>> user  system elapsed 
+    >>> 0.009   0.000   0.009 
+    >>> 
+    >>> So that's probably been the reason why  `$`  has been prefered?
+
+    >> Would .subset2(df, "a) be preferable?
+
+    R> df <- mtcars
+    R> system.time(for(i in 1:20000) df[["hp"]])
+    >> user  system elapsed 
+    >> 0.078   0.000   0.078 
+    R> system.time(for(i in 1:20000) df$hp)
+    >> user  system elapsed 
+    >> 0.011   0.000   0.010 
+    R> system.time(for(i in 1:20000) .subset2(df,"hp"))
+    >> user  system elapsed 
+    >> 0.004   0.000   0.004 
+
+    >> Tim
+
+    > Yes, I think that's a very good idea --
+
+    > notably, as interestingly it seems to work with tibble's very
+    > well, too.
+
+Interestingly (or not), changing this also fixes a real (rare!) bug:
+When digging for a regression test, I've stumbled over an lm() example,
+which when modified to use the not so common  "(weight)_2" as
+*predictor* variable name it started to use that both as
+predictor and also as weight (of some kind) such that the fit
+changed.
+
+This problem went away after apply the change,
+[replacing `a$b` with `.subset2(a,b)]
+
+Now committed to R-devel, svn rev 81650.
+
+If there are no negative effects, this may also be backported to
+R-patched.
+
+Thank you both, once more!
+Martin
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Feb  4 18:33:41 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 4 Feb 2022 12:33:41 -0500
+Subject: [Rd] Parser oddity with <- and =
+Message-ID: <8ee66596-5531-2fc4-252f-a2a0946a1d1c@gmail.com>
+
+Here's an odd parse:
+
+    a <- b = 1
+
+This appears to be parsed as
+
+    `<-<-`(a, b, 1)
+
+instead of being equivalent to
+
+    a <- b <- 1
+
+I wonder if that's intentional?
+
+(This showed up at https://stackoverflow.com/q/70989067/2554330, where 
+it caused a lot of confusion.  I think the original intent was that `a` 
+would be a macro holding `b = 1`, but I'm not sure of that.)
+
+Duncan Murdoch
+
+
+From ht @end|ng |rom he@therturner@net  Fri Feb  4 21:02:13 2022
+From: ht @end|ng |rom he@therturner@net (Heather Turner)
+Date: Fri, 04 Feb 2022 20:02:13 +0000
+Subject: [Rd] Google Season of Docs 2022
+Message-ID: <a9526ce4-0cea-46fc-b1e9-4bfced56aadf@www.fastmail.com>
+
+Dear All,
+
+Yesterday Google announced Season of Docs 2022: https://opensource.googleblog.com/2022/02/Announcing%20Season%20of%20Docs%202022.html.
+
+You may know that the R project participated for the first time last year with a project related to useR! and there is interest in us offering a project again this year.
+
+Organization applications open at the end of February, so now is the time for us to explore ideas for projects and line up potential mentors. 
+
+Organization of GSoD is done on GitHub: https://github.com/rstats-gsod/gsod2022 and I have added a number of issues with ideas drawn from discussions on the R Contribution Working Group, R-Devel Slack, Forwards taskforce, and R Consortium Repositories Working Group. Feel free to comment on these issues or add your own suggestions.
+
+For more general discussion of GSoD, you can reply here, on the R-Devel Slack or at the next R Contribution Working Group (see the R Contribution Site for details of the Slack/working group: https://contributor.r-project.org/).
+
+Best wishes,
+Heather
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Fri Feb  4 21:28:12 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Fri, 4 Feb 2022 12:28:12 -0800
+Subject: [Rd] Parser oddity with <- and =
+In-Reply-To: <8ee66596-5531-2fc4-252f-a2a0946a1d1c@gmail.com>
+References: <8ee66596-5531-2fc4-252f-a2a0946a1d1c@gmail.com>
+Message-ID: <CAHqSRuQvhB-rDeHNhLVRffahkpSyu=hjOdRNs0LUXvUrAopeKA@mail.gmail.com>
+
+In R-4.1.2 and R-devel from two weeks ago I do not get the `<-<-`:
+
+> str.language(parse(text = "a <- b = c"))
+expression: structure(expression(a <- b = c), sr ...
+  language: a <- b = c
+    symbol: =
+    language: a <- b
+      symbol: <-
+      symbol: a
+      symbol: b
+    symbol: c
+> identical(parse(text = "a <- b = c")[[1]], parse(text = "`=`( `<-`(a, b),
+c)")[[1]])
+[1] TRUE
+
+str.language() is a rudimentary parse tree displayer:
+
+str.language <- function(expr, name = "", indent = 0)
+{
+    trim... <- function(string, width.cutoff) {
+        if (nchar(string) > width.cutoff) {
+            string <- sprintf("%.*s ...", width.cutoff-4, string)
+        }
+        string
+    }
+    cat(sep="", rep("  ", indent), typeof(expr), ": ",
+        if(length(name)==1 && nzchar(name)) { paste0(name, " = ") },
+        trim...(deparse1(expr, width.cutoff=40), width.cutoff=40),
+        "\n")
+    if (is.function(expr)) {
+        str.language(formals(expr), name="[formals]", indent = indent + 1)
+        str.language(body(expr), name="[body]", indent = indent + 1)
+    } else if (is.recursive(expr)) {
+        expr <- as.list(expr)
+        nms <- names(expr)
+        for (i in seq_along(expr)) {
+            str.language(expr[[i]], name=nms[[i]], indent = indent + 1)
+        }
+    }
+    invisible(expr)
+}
+
+
+-Bill
+
+On Fri, Feb 4, 2022 at 9:34 AM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> Here's an odd parse:
+>
+>     a <- b = 1
+>
+> This appears to be parsed as
+>
+>     `<-<-`(a, b, 1)
+>
+> instead of being equivalent to
+>
+>     a <- b <- 1
+>
+> I wonder if that's intentional?
+>
+> (This showed up at https://stackoverflow.com/q/70989067/2554330, where
+> it caused a lot of confusion.  I think the original intent was that `a`
+> would be a macro holding `b = 1`, but I'm not sure of that.)
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Feb  4 21:38:45 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 4 Feb 2022 15:38:45 -0500
+Subject: [Rd] Parser oddity with <- and =
+In-Reply-To: <CAHqSRuQvhB-rDeHNhLVRffahkpSyu=hjOdRNs0LUXvUrAopeKA@mail.gmail.com>
+References: <8ee66596-5531-2fc4-252f-a2a0946a1d1c@gmail.com>
+ <CAHqSRuQvhB-rDeHNhLVRffahkpSyu=hjOdRNs0LUXvUrAopeKA@mail.gmail.com>
+Message-ID: <9cf21284-79f5-1e04-b489-4d283dffabe7@gmail.com>
+
+Sorry, I wrote in a sloppy way.  The parsing I see is just what you saw. 
+  It's the evaluation of that expression that tries to call `<-<-`:
+
+ > a <- 1
+ > a <- b = c
+Error in a <- b = c : could not find function "<-<-"
+
+This happens because R is trying to make an assignment using = with a 
+LHS that is the function call a <- b.
+
+Duncan Murdoch
+
+
+On 04/02/2022 3:28 p.m., Bill Dunlap wrote:
+> In R-4.1.2 and R-devel from two weeks ago I do not get the `<-<-`:
+> 
+>      > str.language(parse(text = "a <- b = c"))
+>     expression: structure(expression(a <- b = c), sr ...
+>      ? language: a <- b = c
+>      ? ? symbol: =
+>      ? ? language: a <- b
+>      ? ? ? symbol: <-
+>      ? ? ? symbol: a
+>      ? ? ? symbol: b
+>      ? ? symbol: c
+>      > identical(parse(text = "a <- b = c")[[1]], parse(text = "`=`(
+>     `<-`(a, b), c)")[[1]])
+>     [1] TRUE
+> 
+> str.language() is a rudimentary parse tree displayer:
+> 
+>     str.language <- function(expr, name = "", indent = 0)
+>     {
+>      ? ? trim... <- function(string, width.cutoff) {
+>      ? ? ? ? if (nchar(string) > width.cutoff) {
+>      ? ? ? ? ? ? string <- sprintf("%.*s ...", width.cutoff-4, string)
+>      ? ? ? ? }
+>      ? ? ? ? string
+>      ? ? }
+>      ? ? cat(sep="", rep(" ?", indent), typeof(expr), ": ",
+>      ? ? ? ? if(length(name)==1 && nzchar(name)) { paste0(name, " = ") },
+>      ? ? ? ? trim...(deparse1(expr, width.cutoff=40), width.cutoff=40),
+>      ? ? ? ? "\n")
+>      ? ? if (is.function(expr)) {
+>      ? ? ? ? str.language(formals(expr), name="[formals]", indent =
+>     indent + 1)
+>      ? ? ? ? str.language(body(expr), name="[body]", indent = indent + 1)
+>      ? ? } else if (is.recursive(expr)) {
+>      ? ? ? ? expr <- as.list(expr)
+>      ? ? ? ? nms <- names(expr)
+>      ? ? ? ? for (i in seq_along(expr)) {
+>      ? ? ? ? ? ? str.language(expr[[i]], name=nms[[i]], indent = indent + 1)
+>      ? ? ? ? }
+>      ? ? }
+>      ? ? invisible(expr)
+>     }
+> 
+> 
+> -Bill
+> 
+> On Fri, Feb 4, 2022 at 9:34 AM Duncan Murdoch <murdoch.duncan at gmail.com 
+> <mailto:murdoch.duncan at gmail.com>> wrote:
+> 
+>     Here's an odd parse:
+> 
+>      ? ? a <- b = 1
+> 
+>     This appears to be parsed as
+> 
+>      ? ? `<-<-`(a, b, 1)
+> 
+>     instead of being equivalent to
+> 
+>      ? ? a <- b <- 1
+> 
+>     I wonder if that's intentional?
+> 
+>     (This showed up at https://stackoverflow.com/q/70989067/2554330
+>     <https://stackoverflow.com/q/70989067/2554330>, where
+>     it caused a lot of confusion.? I think the original intent was that `a`
+>     would be a macro holding `b = 1`, but I'm not sure of that.)
+> 
+>     Duncan Murdoch
+> 
+>     ______________________________________________
+>     R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list
+>     https://stat.ethz.ch/mailman/listinfo/r-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-devel>
+>
+
+
+From ggrothend|eck @end|ng |rom gm@||@com  Tue Feb  8 12:49:05 2022
+From: ggrothend|eck @end|ng |rom gm@||@com (Gabor Grothendieck)
+Date: Tue, 8 Feb 2022 06:49:05 -0500
+Subject: [Rd] aggregate.formula and pipes
+In-Reply-To: <CAP01uRnONpc=WnQATrcdU0xLv_Ce=RJ-TTyCfKBN+pnV0NMYbw@mail.gmail.com>
+References: <CAP01uRnONpc=WnQATrcdU0xLv_Ce=RJ-TTyCfKBN+pnV0NMYbw@mail.gmail.com>
+Message-ID: <CAP01uR=Ph+hmeo=mJ3-+mnBpZux237dvsjZHMfE0FxfUrQ9Njg@mail.gmail.com>
+
+I noticed that the aggregate issue which I raised
+has been fixed in the latest development version of R.  Just
+wanted to comment on key points that were missed in this discussion on
+bugs.r-project.org.
+
+1. Given that it has been known for years that
+generics and methods should have consistent arguments yet
+until now has remained unaddressed in the core of R I figured it would
+stand a better chance of being adopted  if the suggested change involved no
+code changes, just an export.
+
+I would have suggested that the formula method and generic of aggregate
+be made compatible if I had thought anyone would be willing to implement that
+but It looks like someone has been willing after all.
+
+2. This is really part of a larger issue that pipes and lapply can expose and
+perhaps if aggregate is fixed an effort could be made to find whether
+other instances
+of conflicting methods and generics in the core exist and make those
+consistent too.
+
+3. There is also a discussion there of the use of function(x)... or
+\(x)... to avoid
+limitations of pipes but this gives rise to a large number of parentheses
+e.g. 0 |> (\(x) sin(x) + cos(x))()
+I find this too ugly and unreadable to be a reasonable solution.  In
+such cases I would
+either not use base pipes or if I did then define a function prior to the pipe:
+e.g. this seems more readable
+       sincos <- function(x) sin(x) + cos(x)
+       0 |> sincos()
+
+
+On Wed, Jan 26, 2022 at 9:48 AM Gabor Grothendieck
+<ggrothendieck at gmail.com> wrote:
+>
+> Because aggregate.formula has a formula argument but the generic
+> has an x argument neither of these work:
+>
+>   mtcars |> aggregate(x = mpg ~ cyl, FUN = mean)
+>   mtcars |> aggregate(formula = mpg ~ cyl, FUN = mean)
+>
+> This does work:
+>
+>   mtcars |> stats:::aggregate.formula(formula = mpg ~ cyl, FUN = mean)
+>
+> Suggest that aggregate.formula be exported.
+>
+> --
+> Statistics & Software Consulting
+> GKX Group, GKX Associates Inc.
+> tel: 1-877-GKX-GROUP
+> email: ggrothendieck at gmail.com
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+
+From c@@rd|@g@bor @end|ng |rom gm@||@com  Tue Feb  8 15:15:05 2022
+From: c@@rd|@g@bor @end|ng |rom gm@||@com (=?UTF-8?B?R8OhYm9yIENzw6FyZGk=?=)
+Date: Tue, 8 Feb 2022 15:15:05 +0100
+Subject: [Rd] S4 class name conflicts
+Message-ID: <CABtg=KmbgbS7rxQyTn++ytLD8S+apAv3zCC1rz3eYtqPPo-thw@mail.gmail.com>
+
+The RNeXML CRAN package currently has some check warnings, originating
+from an S4 class name conflict.
+
+RNeXML sets the S4 class "tree". A dependency of the package now
+depends on the cli package, which calls setOldClass() on an S3 "tree"
+class.
+
+This causes two potential issues. One is that RNeXML maybe ends up
+using cli's class internally, because this is what we see at install
+time:
+
+** byte-compile and prepare package for lazy loading
+Found more than one class "tree" in cache; using the first, from namespace 'cli'
+Also defined by ?RNeXML?
+
+The second issue is an error when RNeXML is unloaded:
+
+? unloadNamespace("RNeXML")
+Error in .mergeMethodsTable(generic, mtable, tt, attach) :
+  trying to get slot "defined" from an object of a basic class
+("environment") with no slots
+
+This makes R CMD check fail as well.
+
+Is cli doing something wrong here? Or is this a bug in base R? Or is
+it a known limitation? If the latter, would it make sense for the
+RNeXML installation to fail instead of creating a broken package. (If
+it is a broken package at all.)
+
+Gabor
+
+
+From c@@rd|@g@bor @end|ng |rom gm@||@com  Tue Feb  8 18:07:31 2022
+From: c@@rd|@g@bor @end|ng |rom gm@||@com (=?UTF-8?B?R8OhYm9yIENzw6FyZGk=?=)
+Date: Tue, 8 Feb 2022 18:07:31 +0100
+Subject: [Rd] S4 class name conflicts
+In-Reply-To: <CAOQ5Nyd5mJFo6yYHVh8X1OTQNh2u3GHQtTVaUuOxbwBTc3XcGA@mail.gmail.com>
+References: <CABtg=KmbgbS7rxQyTn++ytLD8S+apAv3zCC1rz3eYtqPPo-thw@mail.gmail.com>
+ <CAOQ5Nyd5mJFo6yYHVh8X1OTQNh2u3GHQtTVaUuOxbwBTc3XcGA@mail.gmail.com>
+Message-ID: <CABtg=K=0-j86zTErM08uS1j9v6BfjESygvEVEQCfauEGDKsQew@mail.gmail.com>
+
+Hi Michael,
+
+you only need the CRAN versions. You probably need a recent version of
+pillar, to
+create the name conflict with its dependency:
+
+install.packages("pillar")
+install.packages("cli")
+install.packages("RNeXML", type = "source")
+
+This will already give you:
+** byte-compile and prepare package for lazy loading
+Found more than one class "tree" in cache; using the first, from namespace 'cli'
+Also defined by ?RNeXML?
+
+and then:
+
+library(RNeXML)
+unloadNamespace("RNeXML")
+
+Error in .mergeMethodsTable(generic, mtable, tt, attach) :
+  trying to get slot "defined" from an object of a basic class
+("environment") with no slots
+
+This is macOS arm64, but looking at the CRAN check page, that should not matter.
+
+Let me know if this does not work, and the I'll create a Docker
+container or something more reproducible.
+
+Thanks,
+Gabor
+
+On Tue, Feb 8, 2022 at 5:53 PM Michael Lawrence
+<lawrence.michael at gene.com> wrote:
+>
+> Hi Gabor,
+>
+> Thanks for reporting this issue. Would you be able to help me
+> reproduce it? I'm guessing this depends on some combination of git
+> checkouts, so it would be helpful to know which.
+>
+> Michael
+>
+> On Tue, Feb 8, 2022 at 6:32 AM G?bor Cs?rdi <csardi.gabor at gmail.com> wrote:
+> >
+> > The RNeXML CRAN package currently has some check warnings, originating
+> > from an S4 class name conflict.
+> >
+> > RNeXML sets the S4 class "tree". A dependency of the package now
+> > depends on the cli package, which calls setOldClass() on an S3 "tree"
+> > class.
+> >
+> > This causes two potential issues. One is that RNeXML maybe ends up
+> > using cli's class internally, because this is what we see at install
+> > time:
+> >
+> > ** byte-compile and prepare package for lazy loading
+> > Found more than one class "tree" in cache; using the first, from namespace 'cli'
+> > Also defined by ?RNeXML?
+> >
+> > The second issue is an error when RNeXML is unloaded:
+> >
+> > ? unloadNamespace("RNeXML")
+> > Error in .mergeMethodsTable(generic, mtable, tt, attach) :
+> >   trying to get slot "defined" from an object of a basic class
+> > ("environment") with no slots
+> >
+> > This makes R CMD check fail as well.
+> >
+> > Is cli doing something wrong here? Or is this a bug in base R? Or is
+> > it a known limitation? If the latter, would it make sense for the
+> > RNeXML installation to fail instead of creating a broken package. (If
+> > it is a broken package at all.)
+> >
+> > Gabor
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+>
+>
+> --
+> Michael Lawrence
+> Principal Scientist, Director of Data Science and Statistical Computing
+> Genentech, A Member of the Roche Group
+> Office +1 (650) 225-7760
+> michafla at gene.com
+>
+> Join Genentech on LinkedIn | Twitter | Facebook | Instagram | YouTube
+
+
+From |@wrence@m|ch@e| @end|ng |rom gene@com  Tue Feb  8 17:52:56 2022
+From: |@wrence@m|ch@e| @end|ng |rom gene@com (Michael Lawrence)
+Date: Tue, 8 Feb 2022 08:52:56 -0800
+Subject: [Rd] S4 class name conflicts
+In-Reply-To: <CABtg=KmbgbS7rxQyTn++ytLD8S+apAv3zCC1rz3eYtqPPo-thw@mail.gmail.com>
+References: <CABtg=KmbgbS7rxQyTn++ytLD8S+apAv3zCC1rz3eYtqPPo-thw@mail.gmail.com>
+Message-ID: <CAOQ5Nyd5mJFo6yYHVh8X1OTQNh2u3GHQtTVaUuOxbwBTc3XcGA@mail.gmail.com>
+
+Hi Gabor,
+
+Thanks for reporting this issue. Would you be able to help me
+reproduce it? I'm guessing this depends on some combination of git
+checkouts, so it would be helpful to know which.
+
+Michael
+
+On Tue, Feb 8, 2022 at 6:32 AM G?bor Cs?rdi <csardi.gabor at gmail.com> wrote:
+>
+> The RNeXML CRAN package currently has some check warnings, originating
+> from an S4 class name conflict.
+>
+> RNeXML sets the S4 class "tree". A dependency of the package now
+> depends on the cli package, which calls setOldClass() on an S3 "tree"
+> class.
+>
+> This causes two potential issues. One is that RNeXML maybe ends up
+> using cli's class internally, because this is what we see at install
+> time:
+>
+> ** byte-compile and prepare package for lazy loading
+> Found more than one class "tree" in cache; using the first, from namespace 'cli'
+> Also defined by ?RNeXML?
+>
+> The second issue is an error when RNeXML is unloaded:
+>
+> ? unloadNamespace("RNeXML")
+> Error in .mergeMethodsTable(generic, mtable, tt, attach) :
+>   trying to get slot "defined" from an object of a basic class
+> ("environment") with no slots
+>
+> This makes R CMD check fail as well.
+>
+> Is cli doing something wrong here? Or is this a bug in base R? Or is
+> it a known limitation? If the latter, would it make sense for the
+> RNeXML installation to fail instead of creating a broken package. (If
+> it is a broken package at all.)
+>
+> Gabor
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+
+-- 
+Michael Lawrence
+Principal Scientist, Director of Data Science and Statistical Computing
+Genentech, A Member of the Roche Group
+Office +1 (650) 225-7760
+michafla at gene.com
+
+Join Genentech on LinkedIn | Twitter | Facebook | Instagram | YouTube
+
+
+From |@wrence@m|ch@e| @end|ng |rom gene@com  Wed Feb  9 00:53:15 2022
+From: |@wrence@m|ch@e| @end|ng |rom gene@com (Michael Lawrence)
+Date: Tue, 8 Feb 2022 15:53:15 -0800
+Subject: [Rd] S4 class name conflicts
+In-Reply-To: <CABtg=K=0-j86zTErM08uS1j9v6BfjESygvEVEQCfauEGDKsQew@mail.gmail.com>
+References: <CABtg=KmbgbS7rxQyTn++ytLD8S+apAv3zCC1rz3eYtqPPo-thw@mail.gmail.com>
+ <CAOQ5Nyd5mJFo6yYHVh8X1OTQNh2u3GHQtTVaUuOxbwBTc3XcGA@mail.gmail.com>
+ <CABtg=K=0-j86zTErM08uS1j9v6BfjESygvEVEQCfauEGDKsQew@mail.gmail.com>
+Message-ID: <CAOQ5NycrYt8_mLWfz6XMwHjhjogjcm-upQ_hQM3kXCt3myG88g@mail.gmail.com>
+
+Great, thanks. I have fixed both issues and will commit after more testing.
+
+Michael
+
+On Tue, Feb 8, 2022 at 9:07 AM G?bor Cs?rdi <csardi.gabor at gmail.com> wrote:
+>
+> Hi Michael,
+>
+> you only need the CRAN versions. You probably need a recent version of
+> pillar, to
+> create the name conflict with its dependency:
+>
+> install.packages("pillar")
+> install.packages("cli")
+> install.packages("RNeXML", type = "source")
+>
+> This will already give you:
+> ** byte-compile and prepare package for lazy loading
+> Found more than one class "tree" in cache; using the first, from namespace 'cli'
+> Also defined by ?RNeXML?
+>
+> and then:
+>
+> library(RNeXML)
+> unloadNamespace("RNeXML")
+>
+> Error in .mergeMethodsTable(generic, mtable, tt, attach) :
+>   trying to get slot "defined" from an object of a basic class
+> ("environment") with no slots
+>
+> This is macOS arm64, but looking at the CRAN check page, that should not matter.
+>
+> Let me know if this does not work, and the I'll create a Docker
+> container or something more reproducible.
+>
+> Thanks,
+> Gabor
+>
+> On Tue, Feb 8, 2022 at 5:53 PM Michael Lawrence
+> <lawrence.michael at gene.com> wrote:
+> >
+> > Hi Gabor,
+> >
+> > Thanks for reporting this issue. Would you be able to help me
+> > reproduce it? I'm guessing this depends on some combination of git
+> > checkouts, so it would be helpful to know which.
+> >
+> > Michael
+> >
+> > On Tue, Feb 8, 2022 at 6:32 AM G?bor Cs?rdi <csardi.gabor at gmail.com> wrote:
+> > >
+> > > The RNeXML CRAN package currently has some check warnings, originating
+> > > from an S4 class name conflict.
+> > >
+> > > RNeXML sets the S4 class "tree". A dependency of the package now
+> > > depends on the cli package, which calls setOldClass() on an S3 "tree"
+> > > class.
+> > >
+> > > This causes two potential issues. One is that RNeXML maybe ends up
+> > > using cli's class internally, because this is what we see at install
+> > > time:
+> > >
+> > > ** byte-compile and prepare package for lazy loading
+> > > Found more than one class "tree" in cache; using the first, from namespace 'cli'
+> > > Also defined by ?RNeXML?
+> > >
+> > > The second issue is an error when RNeXML is unloaded:
+> > >
+> > > ? unloadNamespace("RNeXML")
+> > > Error in .mergeMethodsTable(generic, mtable, tt, attach) :
+> > >   trying to get slot "defined" from an object of a basic class
+> > > ("environment") with no slots
+> > >
+> > > This makes R CMD check fail as well.
+> > >
+> > > Is cli doing something wrong here? Or is this a bug in base R? Or is
+> > > it a known limitation? If the latter, would it make sense for the
+> > > RNeXML installation to fail instead of creating a broken package. (If
+> > > it is a broken package at all.)
+> > >
+> > > Gabor
+> > >
+> > > ______________________________________________
+> > > R-devel at r-project.org mailing list
+> > > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+> >
+> >
+> > --
+> > Michael Lawrence
+> > Principal Scientist, Director of Data Science and Statistical Computing
+> > Genentech, A Member of the Roche Group
+> > Office +1 (650) 225-7760
+> > michafla at gene.com
+> >
+> > Join Genentech on LinkedIn | Twitter | Facebook | Instagram | YouTube
+
+
+
+-- 
+Michael Lawrence
+Principal Scientist, Director of Data Science and Statistical Computing
+Genentech, A Member of the Roche Group
+Office +1 (650) 225-7760
+michafla at gene.com
+
+Join Genentech on LinkedIn | Twitter | Facebook | Instagram | YouTube
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Feb  9 11:36:00 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 9 Feb 2022 11:36:00 +0100
+Subject: [Rd] Bug in rbind.data.frame?
+In-Reply-To: <25079.40418.973003.506232@hornik.net>
+References: <6244c3b8-0750-c675-9353-92fc78cfd02f@gmail.com>
+ <90da4fd6-2e80-1b7b-4e36-5895138fa42b@gmail.com>
+ <25079.40418.973003.506232@hornik.net>
+Message-ID: <25091.39184.290122.386634@stat.math.ethz.ch>
+
+>>>>> Kurt Hornik 
+>>>>>     on Mon, 31 Jan 2022 09:29:22 +0100 writes:
+
+>>>>> Duncan Murdoch writes:
+    >> Okay, I spotted it.  This is intentional.  From ?rbind.data.frame:
+    >> "The rbind data frame method first drops all zero-column and zero-row 
+    >> arguments."
+
+    > Hmm.  "As documented", but still surprising too me as well ...
+
+    > We also say
+
+    > For ?rbind? column names are taken from the first argument with
+    > appropriate names: colnames for a matrix, or names for a vector of
+    > length the number of columns of the result.
+
+    > Of course, one could argue that "The rbind data frame method first drops
+    > all zero-column and zero-row arguments." implies that "first argument
+    > ..." should be taken after dropping, but then
+
+    R> m <- matrix(0, 0, 2, dimnames = list(NULL, c("a", "b")))
+    R> rbind(m, c(3, 4))
+    >      a b
+    > [1,] 3 4
+
+    > which is not consistent with the data frame case.
+
+(I agree and I think we should even consider to change
+ rbind.data.frame() there  ... )
+
+    > Btw, whereas
+
+    R> rbind(c(1, 2), c(3, 4, 5))
+    > Warning in rbind(c(1, 2), c(3, 4, 5)) :
+    > number of columns of result is not a multiple of vector length (arg 1)
+    >      [,1] [,2] [,3]
+    > [1,]    1    2    1
+    > [2,]    3    4    5
+
+    > "as documented", 
+
+    R> df <- data.frame(a = 1, b = 2)
+    > rbind(df, c(3, 4, 5))
+    >   a b
+    > 1 1 2
+    > 2 3 4
+
+    > with is a bit worrying (and not as documented)?
+
+Kurt and I have continued to talk about this,
+and  few minutes ago, I've committed a change to R-devel's
+rbind.data.frame()
+
+which now gives
+
+> rbind(data.frame(a = 1, b = 2), c(3, 4, 5))
+  a b
+1 1 2
+2 3 4
+Warning message:
+In rbind(deparse.level, ...) :
+  number of columns of result, 2, is not a multiple of vector length 3 of arg 2
+> 
+
+i.e., the same result, but *with* an informative warning,
+analogously to the warning that has been produce "forever" in
+the matrix case.
+
+Martin
+
+
+From net|kj@ @end|ng |rom gm@||@com  Thu Feb 10 16:53:04 2022
+From: net|kj@ @end|ng |rom gm@||@com (=?UTF-8?Q?Jan_Net=C3=ADk?=)
+Date: Thu, 10 Feb 2022 16:53:04 +0100
+Subject: [Rd] rtools40 curl cannot handle -w variables
+Message-ID: <CA+6hu7dGcmGHAGf4LwTb0M3ssgMXyEiph1DAUGLn1UcVNcC0KA@mail.gmail.com>
+
+Hi,
+
+I get different results when using Windows curl and curl shipped with
+rtools40.
+
+curl -Ls -o nul -w %{url_effective} --connect-timeout 30 --max-time 30
+> https://mirror.ctan.org
+
+
+returns %url_effective when in fact it shoud return the actual URL. With
+Windows curl, it works just fine.
+
+It could be due to old curl shipped with rtools40: curl 7.64.1
+(x86_64-pc-msys) libcurl/7.64.1 OpenSSL/1.1.1k zlib/1.2.11, Windows
+uses curl 7.79.1 (Windows) libcurl/7.79.1 Schannel.
+
+It seems that system2() uses rtools40 curl and this renders many things
+erroneous. Any thoughts on this?
+
+Best regards
+Jan
+
+	[[alternative HTML version deleted]]
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Thu Feb 10 17:54:25 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Thu, 10 Feb 2022 17:54:25 +0100
+Subject: [Rd] localeToCharset()
+In-Reply-To: <143B435C-3E84-4B29-A06E-FDBFC487962C@uni-due.de>
+References: <68F1ECBC-E65A-443B-928B-94889F183D03@uni-due.de>
+ <20220131143201.10e183dc@Tarkus>
+ <E5C802F0-1943-4CF4-AE64-9545207B285C@uni-due.de>
+ <7d32a02d-e03f-11e6-0f92-9826bd4e96b6@gmail.com>
+ <143B435C-3E84-4B29-A06E-FDBFC487962C@uni-due.de>
+Message-ID: <c2dfedc7-325f-f2aa-1cef-ce7eeeb1a0ae@gmail.com>
+
+Thanks to Ivan for the patch to support C.UTF-8 in localeToCharset, I've 
+added it to R-devel.
+
+On 1/31/22 14:08, Bl?tte, Andreas wrote:
+> Dear Tomas,
+>
+> thanks a lot. I do understand the explanation of Simon - I was not aware of the standardization issue. My conclusion is that I should rely on another approach to detect the session charset, and your suggestions are my first option.
+>
+> My final thought: For users who do not know the POSIX standards and recent aberrations , a warning might be helpful, something such as:
+> If (startsWith(locale, "C.")) warning (sprintf("%s is a non-standard locale", locale))
+
+Dear Andreas, "C" and "POSIX" (and "") are the only two locales with 
+standard names (defined by POSIX), so people necessarily have to rely on 
+the non-standard ones and when new ones are introduced, such as in this 
+case, we need to update localeToCharset() to support them. Thanks for 
+your report.
+
+Best
+Tomas
+
+
+>
+> As far as I am concerned, I take away a lot from this discussion! Thank you!
+>
+> Kind regards
+> Andreas
+>   
+>
+> ?Am 31.01.22, 13:32 schrieb "Tomas Kalibera" <tomas.kalibera at gmail.com>:
+>
+>      Hi Andreas,
+>
+>      is there still any higher-level problem left you need to solve? Ideally
+>      one wouldn't need to query what is the native encoding, but directly use
+>      iconv() or indirectly other R functions to convert the data from/to the
+>      native encoding. iconv() will find out internally what is the native
+>      encoding (via data that is available also by l10n_info(), but with care
+>      for differences between OSes).
+>
+>      Best
+>      Tomas
+>
+>      On 1/31/22 12:38, Bl?tte, Andreas wrote:
+>      > Dear Ivan,
+>      >
+>      > this is a very helpful explanation!  I think it is important to make output of localeToCharset() more predictable. My problem is essentially not to set the locale such that things will work after all. I think the problem is that you see unexpected results.  I guess I owe a suggestion how to improve the code, but your suggestion looks like a very good starting point.
+>      >
+>      > Andreas
+>      >
+>      > Am 31.01.22, 12:32 schrieb "Ivan Krylov" <krylov.r00t at gmail.com>:
+>      >
+>      >      On Mon, 31 Jan 2022 09:56:27 +0000
+>      >      "Bl?tte, Andreas" <andreas.blaette at uni-due.de> wrote:
+>      >
+>      >      > After starting R with a re-defined locale (`env LC_CTYPE=en_US.UTF-8
+>      >      > R`,  the output of `localeToCharset()` is:
+>      >      > [1] "UTF-8"     "ISO8859-1"
+>      >
+>      >      > why ISO8859-1 might be a fallback option here?
+>      >
+>      >      ISO8859-1 seems to be offered because it covers the alphabet of
+>      >      American English. Obviously, this doesn't guarantee that the guess is
+>      >      correct. For example, I could symlink the ru_RU.KOI8-R locale on my
+>      >      system to name it "ru_RU", and localeToCharset() would return
+>      >      "ISO8859-5", not knowing the correct answer. ??????, anyone?
+>      >
+>      >      > Part of my analysis of the code of `localeToCharset()` is that it
+>      >      > targets special scenarios on Windows and macOS, but not on Linux.
+>      >
+>      >      Well, it almost does the right thing. GNU/Linux locales are typically
+>      >      named like <language>_<country>.<encoding>, and localeToCharset()
+>      >      respects the <encoding> part, but only if the language and the country
+>      >      are specified. A quick fix for that would be to add one final case:
+>      >
+>      >      Index: src/library/utils/R/iconv.R
+>      >      ===================================================================
+>      >      --- src/library/utils/R/iconv.R (revision 81596)
+>      >      +++ src/library/utils/R/iconv.R (working copy)
+>      >      @@ -135,6 +135,7 @@
+>      >                   if(enc == "utf8") return(c("UTF-8", guess(ll)))
+>      >                   else return(guess(ll))
+>      >               }
+>      >      +        if (enc == "utf8") return("UTF-8") # fallback for ???.UTF-8
+>      >               return(NA_character_)
+>      >           }
+>      >       }
+>      >
+>      >      (Non-UTF-8 encodings on POSIX are handled above, in the if(nzchar(enc)
+>      >      && enc != "utf8") branch.)
+>      >
+>      >      Maybe a better fix would be to restructure the code a bit, to always
+>      >      take the encoding hint and then also try to guess if the locale looks
+>      >      like it provides a language code.
+>      >
+>      >      --
+>      >      Best regards,
+>      >      Ivan
+>      >
+>      > ______________________________________________
+>      > R-devel at r-project.org mailing list
+>      > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Thu Feb 10 17:59:43 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Thu, 10 Feb 2022 08:59:43 -0800
+Subject: [Rd] rtools40 curl cannot handle -w variables
+In-Reply-To: <CA+6hu7dGcmGHAGf4LwTb0M3ssgMXyEiph1DAUGLn1UcVNcC0KA@mail.gmail.com>
+References: <CA+6hu7dGcmGHAGf4LwTb0M3ssgMXyEiph1DAUGLn1UcVNcC0KA@mail.gmail.com>
+Message-ID: <CAHqSRuQWKJx0s9FCuE=As5U81RUXFk6CNV4qHh2tD2adTPsjpg@mail.gmail.com>
+
+If you wrap -w's argument in double quotes then it works in both versions
+of curl.
+
+C:\Users\willi>C:\WINDOWS\system32\curl.exe -w %{url_effective}
+https://mirror.ctan.org | tail -1
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time
+ Current
+                                 Dload  Upload   Total   Spent    Left
+ Speed
+100   298  100   298    0     0    393      0 --:--:-- --:--:-- --:--:--
+394
+https://mirror.ctan.org/
+C:\Users\willi>C:\WINDOWS\system32\curl.exe -w "%{url_effective}"
+https://mirror.ctan.org | tail -1
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time
+ Current
+                                 Dload  Upload   Total   Spent    Left
+ Speed
+100   295  100   295    0     0    396      0 --:--:-- --:--:-- --:--:--
+397
+https://mirror.ctan.org/
+C:\Users\willi>
+C:\Users\willi>C:\rtools40\usr\bin\curl.exe -w %{url_effective}
+https://mirror.ctan.org | tail -1
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time
+ Current
+                                 Dload  Upload   Total   Spent    Left
+ Speed
+100   309  100   309    0     0    390      0 --:--:-- --:--:-- --:--:--
+389
+%url_effective
+C:\Users\willi>C:\rtools40\usr\bin\curl.exe -w "%{url_effective}"
+https://mirror.ctan.org | tail -1
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time
+ Current
+                                 Dload  Upload   Total   Spent    Left
+ Speed
+100   310  100   310    0     0    405      0 --:--:-- --:--:-- --:--:--
+405
+https://mirror.ctan.org
+
+-Bill
+
+
+On Thu, Feb 10, 2022 at 7:53 AM Jan Net?k <netikja at gmail.com> wrote:
+
+> Hi,
+>
+> I get different results when using Windows curl and curl shipped with
+> rtools40.
+>
+> curl -Ls -o nul -w %{url_effective} --connect-timeout 30 --max-time 30
+> > https://mirror.ctan.org
+>
+>
+> returns %url_effective when in fact it shoud return the actual URL. With
+> Windows curl, it works just fine.
+>
+> It could be due to old curl shipped with rtools40: curl 7.64.1
+> (x86_64-pc-msys) libcurl/7.64.1 OpenSSL/1.1.1k zlib/1.2.11, Windows
+> uses curl 7.79.1 (Windows) libcurl/7.79.1 Schannel.
+>
+> It seems that system2() uses rtools40 curl and this renders many things
+> erroneous. Any thoughts on this?
+>
+> Best regards
+> Jan
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Thu Feb 10 18:21:11 2022
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Thu, 10 Feb 2022 18:21:11 +0100
+Subject: [Rd] license.db Bug Report (FSF field for CC 4.0 licenses)
+In-Reply-To: <CAMigB8EVR0nSafhmTOhr+AdNNqYu8pTrT19xUcfULDhqg6BDFw@mail.gmail.com>
+References: <CAMigB8EVR0nSafhmTOhr+AdNNqYu8pTrT19xUcfULDhqg6BDFw@mail.gmail.com>
+Message-ID: <25093.18823.749178.299497@hornik.net>
+
+>>>>> Trevor Davis writes:
+
+Thanks: now updated in R-devel.
+
+We dropped the obsolete and unused CC 2.0 and 3.0 entries, and
+simplified the OSI and FSF tags to what is needed for the FOSS tag.
+
+Best
+-k
+
+> Hi,
+> I noticed some errors in the `FSF` fields in `share/licenses/license.db`
+> for some Creative Commons licenses:
+
+> `license.db` should be corrected to:
+
+> ```
+> Name: Creative Commons Attribution-ShareAlike 2.0 Generic License
+> Abbrev: CC BY-SA 2.0
+> FSF: free_and_GPLv3_incompatible
+
+> Name: Creative Commons Attribution 4.0 International License
+> Abbrev: CC BY 4.0
+> FSF: free_and_GPLv3_compatible (
+> https://www.gnu.org/licenses/license-list.html#ccby)
+
+> Name: Creative Commons Attribution-ShareAlike 4.0 International License
+> Abbrev: CC BY-SA 4.0
+> FSF: free_and_GPLv3_compatible (
+> https://www.gnu.org/licenses/license-list.html#ccbysa)
+> ```
+
+> * According to the current version of
+> https://www.gnu.org/licenses/license-list.html the FSF considers the CC BY
+> 4.0 license "compatible with all versions of the GNU GPL" and the CC BY-SA
+> 4.0 license "one-way compatible with the GNU GPL version 3: this means you
+> may license your modified versions of CC BY-SA 4.0 materials under GNU GPL
+> version 3".
+> * Note Creative Commons explicitly declared GPL-3 a "BY-SA Compatible
+> License" for version 4.0 on October 8th, 2015:
+> https://creativecommons.org/share-your-work/licensing-considerations/compatible-licenses
+> * In a previous version of the FSF license website available on web
+> archives (e.g.
+> http://web.archive.org/web/20150124042152/https://www.gnu.org/licenses/license-list.html#OtherLicenses)
+> the FSF explicitly considered the earlier CC BY 2.0 and CC BY-SA 2.0
+> licenses incompatible with the GNU GPL licenses.
+
+>   I'm unsure whether the URL for the `FSF` field for the CC BY-SA 2.0
+> license should point to such a Web Archived link or simply be stripped as I
+> suggested above.  However the current version of
+> https://www.gnu.org/licenses/license-list.html#ccbysa no longer mentions
+> the CC BY-SA 2.0 license nor its incompatibility with the GPL license and
+> hence it should be updated in some fashion.
+
+> Best,
+
+> Trevor
+
+> 	[[alternative HTML version deleted]]
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From tim@t@yior m@iii@g oii hidde@eieph@@ts@co@uk  Thu Feb 10 23:51:28 2022
+From: tim@t@yior m@iii@g oii hidde@eieph@@ts@co@uk (tim@t@yior m@iii@g oii hidde@eieph@@ts@co@uk)
+Date: Thu, 10 Feb 2022 22:51:28 +0000 (GMT)
+Subject: [Rd] Recent list2DF changes
+Message-ID: <1376574877.27168.1644533488936@office.mailbox.org>
+
+I noticed list2DF has recently been altered in R-devel to no longer replicate elements to the same length (instead giving an error). If useful, I *think* the following alternative would give the same performance improvements but maintain the current (4.1.2) recycling behaviour.
+
+list2DF2 <- function (x = list(), nrow = NULL)
+{
+    stopifnot(is.list(x), is.null(nrow) || nrow >= 0L)
+    if (n <- length(x)) {
+        nn <- lengths(x)
+        if (is.null(nrow))
+            nrow <- max(nn, 0L)
+        if (!all(nn==nrow))
+            x <- lapply(x, rep_len, nrow)
+    }
+    else {
+        if (is.null(nrow))
+            nrow <- 0L
+    }
+    if (is.null(names(x)))
+        names(x) <- character(n)
+    class(x) <- "data.frame"
+    attr(x, "row.names") <- .set_row_names(nrow)
+    x
+}
+
+Tim
+
+
+From d|pter|x@w@ng @end|ng |rom gm@||@com  Fri Feb 11 12:55:44 2022
+From: d|pter|x@w@ng @end|ng |rom gm@||@com (Dipterix Wang)
+Date: Fri, 11 Feb 2022 06:55:44 -0500
+Subject: [Rd] str2lang throws error when the string is empty
+Message-ID: <3D923E32-CF64-4AC5-BE66-61048A30A55B@gmail.com>
+
+Hi, 
+
+str2lang("") raises an error in current version. Would it be good if it returns a missing value expression? One use-case would be to build an expression that subsets an array:
+
+# Expected: x[index1, ]
+as.call(list(quote(`[`), quote(x), quote(index1), str2lang("")))
+
+Right now I'm using the following, which is ugly
+as.call(list(quote(`[`), quote(x), quote(index1), alist(x=)[[1]]))
+
+Thanks,
+- Dipterix
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Sat Feb 12 10:58:05 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Sat, 12 Feb 2022 10:58:05 +0100
+Subject: [Rd] str2lang throws error when the string is empty
+In-Reply-To: <3D923E32-CF64-4AC5-BE66-61048A30A55B@gmail.com>
+References: <3D923E32-CF64-4AC5-BE66-61048A30A55B@gmail.com>
+Message-ID: <25095.33965.301976.460342@stat.math.ethz.ch>
+
+>>>>> Dipterix Wang 
+>>>>>     on Fri, 11 Feb 2022 06:55:44 -0500 writes:
+
+    > Hi,
+
+    > str2lang("") raises an error in current version. 
+
+on purpose.
+
+    > Would it
+    > be good if it returns a missing value expression? 
+
+Well, others may be able to better explain why "the empty name"
+aka your "missing value expression" or just "the missing"   is a
+"dangerous" object  and ideally it would not be available at all
+on the R level.  OTOH, it is available e.g. via alist(), maybe
+slightly "less ugly" as    alist(.=)$.
+
+but I don't think there are really good use cases.
+(see below)
+
+    > One use-case would be to build an expression that subsets an
+    > array:
+
+    > # Expected: x[index1, ] 
+    > as.call(list(quote(`[`), quote(x), quote(index1), str2lang("")))
+
+    > Right now I'm using the following, which is ugly
+    > as.call(list(quote(`[`), quote(x), quote(index1), alist(x=)[[1]]))
+
+Well, in such cases, much less ugly than both your version is to
+use  substitute(),
+here e.g.,
+
+  > substitute(x[I,], list(I = quote(index1)))
+  x[index1, ]
+  >
+
+    > Thanks, - Dipterix
+
+You are welcome,
+Martin
+
+
+
+{Please, for next time do use  text/plain  e-mail : }
+
+    > [[alternative HTML version deleted]]
+
+
+From e@ @end|ng |rom enr|co@chum@nn@net  Tue Feb 15 10:27:59 2022
+From: e@ @end|ng |rom enr|co@chum@nn@net (Enrico Schumann)
+Date: Tue, 15 Feb 2022 10:27:59 +0100
+Subject: [Rd] Cholesky/Choleski
+Message-ID: <87v8xgxyw0.fsf@enricoschumann.net>
+
+Dear all,
+
+R docs differ in how the name Cholesky/Choleski is written.
+Wikipedia at least has "Cholesky" (
+https://en.wikipedia.org/wiki/Andr%C3%A9-Louis_Cholesky );
+and this is also the only form that I have seen in the
+literature (e.g. Golub/Van Loan)
+
+The form "Choleski" comes up in chol.Rd, solve.Rd and
+chol2inv.Rd (plus in a number of comments in C-code):
+
+  src/library/stats/src/splines.c
+  38: *   Choleski is more efficient.
+  60: *   equations to determine them.  Either Choleski or Gaussian
+  279:    /* Choleski decomposition */
+  
+  src/library/base/man/chol.Rd
+  9:\title{The Choleski Decomposition}
+  11:  Compute the Choleski factorization of a real symmetric
+  28:  The upper triangular factor of the Choleski decomposition, i.e., the
+  45:  If \code{pivot = TRUE}, then the Choleski decomposition of a positive
+  
+  src/library/base/man/solve.Rd
+  68:  \code{\link{chol2inv}} for inverting from the Choleski factor
+  
+  src/library/base/man/chol2inv.Rd
+  8:\title{Inverse from Choleski (or QR) Decomposition}
+  10:  Invert a symmetric, positive definite square matrix from its Choleski
+  19:    contain the Choleski decomposition of the matrix to be inverted.}
+  21:    Choleski decomposition.}
+  26:  The inverse of the matrix whose Choleski decomposition was given.
+  
+  src/appl/uncmin.c
+  42: * CC--- choldc(nr,n,a,diagmx,tol,addmax)     is ``choleski + tolerance''
+
+
+thank you & kind regards
+    Enrico
+
+-- 
+Enrico Schumann
+Lucerne, Switzerland
+http://enricoschumann.net
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Tue Feb 15 16:08:02 2022
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Tue, 15 Feb 2022 16:08:02 +0100
+Subject: [Rd] Cholesky/Choleski
+In-Reply-To: <87v8xgxyw0.fsf@enricoschumann.net>
+References: <87v8xgxyw0.fsf@enricoschumann.net>
+Message-ID: <25099.49618.60965.638990@hornik.net>
+
+>>>>> Enrico Schumann writes:
+
+Thanks for spotting this: changed now in the trunk.
+
+Best
+-k
+
+> Dear all,
+> R docs differ in how the name Cholesky/Choleski is written.
+> Wikipedia at least has "Cholesky" (
+> https://en.wikipedia.org/wiki/Andr%C3%A9-Louis_Cholesky );
+> and this is also the only form that I have seen in the
+> literature (e.g. Golub/Van Loan)
+
+> The form "Choleski" comes up in chol.Rd, solve.Rd and
+> chol2inv.Rd (plus in a number of comments in C-code):
+
+>   src/library/stats/src/splines.c
+>   38: *   Choleski is more efficient.
+>   60: *   equations to determine them.  Either Choleski or Gaussian
+>   279:    /* Choleski decomposition */
+  
+>   src/library/base/man/chol.Rd
+>   9:\title{The Choleski Decomposition}
+>   11:  Compute the Choleski factorization of a real symmetric
+>   28:  The upper triangular factor of the Choleski decomposition, i.e., the
+>   45:  If \code{pivot = TRUE}, then the Choleski decomposition of a positive
+  
+>   src/library/base/man/solve.Rd
+>   68:  \code{\link{chol2inv}} for inverting from the Choleski factor
+  
+>   src/library/base/man/chol2inv.Rd
+>   8:\title{Inverse from Choleski (or QR) Decomposition}
+>   10:  Invert a symmetric, positive definite square matrix from its Choleski
+>   19:    contain the Choleski decomposition of the matrix to be inverted.}
+>   21:    Choleski decomposition.}
+>   26:  The inverse of the matrix whose Choleski decomposition was given.
+  
+>   src/appl/uncmin.c
+>   42: * CC--- choldc(nr,n,a,diagmx,tol,addmax)     is ``choleski + tolerance''
+
+
+> thank you & kind regards
+>     Enrico
+
+> -- 
+> Enrico Schumann
+> Lucerne, Switzerland
+> http://enricoschumann.net
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From pd@|gd @end|ng |rom gm@||@com  Fri Feb 18 11:33:11 2022
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Fri, 18 Feb 2022 11:33:11 +0100
+Subject: [Rd] R 4.1.3 scheduled for March 10
+In-Reply-To: <7BC92570-396C-47AD-A035-6558E1FEEAC0@gmail.com>
+References: <7BC92570-396C-47AD-A035-6558E1FEEAC0@gmail.com>
+Message-ID: <A66F6B8E-DDFD-4220-B281-571B8FE0B705@gmail.com>
+
+Schedule will appear on developer.r-project.org when it gets updated from SVN.
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From j@g@nmn2 @end|ng |rom gm@||@com  Fri Feb 18 20:49:33 2022
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Fri, 18 Feb 2022 14:49:33 -0500
+Subject: [Rd] Parser oddity with <- and =
+In-Reply-To: <mailman.52344.3.1644058802.8346.r-devel@r-project.org>
+References: <mailman.52344.3.1644058802.8346.r-devel@r-project.org>
+Message-ID: <2231e177-c172-8828-00d1-46e910bedc07@gmail.com>
+
+The `<-` operator has higher precedence than the `=` operator,
+so it makes sense to me that `a <- b = c` would be parsed as
+
+call("=", call("<-", quote(a), quote(b)), quote(c))
+
+For `a <- b = c` to be parsed instead as
+
+call("<-", quote(a), call("=", quote(b), quote(c)))
+
+R would need to assign equal precedence to `<-` and `=`, but
+I'm guessing that `=` _needs_ to have lower precedence than `<-`
+for calls with named arguments to be parsed in a sensible way.
+
+Mikael
+
+> Sorry, I wrote in a sloppy way.  The parsing I see is just what you saw.
+>    It's the evaluation of that expression that tries to call `<-<-`:
+> 
+>   > a <- 1
+>   > a <- b = c
+> Error in a <- b = c : could not find function "<-<-"
+> 
+> This happens because R is trying to make an assignment using = with a
+> LHS that is the function call a <- b.
+> 
+> Duncan Murdoch
+> 
+> 
+> On 04/02/2022 3:28 p.m., Bill Dunlap wrote:
+>> In R-4.1.2 and R-devel from two weeks ago I do not get the `<-<-`:
+>>
+>>       > str.language(parse(text = "a <- b = c"))
+>>      expression: structure(expression(a <- b = c), sr ...
+>>       ? language: a <- b = c
+>>       ? ? symbol: =
+>>       ? ? language: a <- b
+>>       ? ? ? symbol: <-
+>>       ? ? ? symbol: a
+>>       ? ? ? symbol: b
+>>       ? ? symbol: c
+>>       > identical(parse(text = "a <- b = c")[[1]], parse(text = "`=`(
+>>      `<-`(a, b), c)")[[1]])
+>>      [1] TRUE
+>>
+>> str.language() is a rudimentary parse tree displayer:
+>>
+>>      str.language <- function(expr, name = "", indent = 0)
+>>      {
+>>       ? ? trim... <- function(string, width.cutoff) {
+>>       ? ? ? ? if (nchar(string) > width.cutoff) {
+>>       ? ? ? ? ? ? string <- sprintf("%.*s ...", width.cutoff-4, string)
+>>       ? ? ? ? }
+>>       ? ? ? ? string
+>>       ? ? }
+>>       ? ? cat(sep="", rep(" ?", indent), typeof(expr), ": ",
+>>       ? ? ? ? if(length(name)==1 && nzchar(name)) { paste0(name, " = ") },
+>>       ? ? ? ? trim...(deparse1(expr, width.cutoff=40), width.cutoff=40),
+>>       ? ? ? ? "\n")
+>>       ? ? if (is.function(expr)) {
+>>       ? ? ? ? str.language(formals(expr), name="[formals]", indent =
+>>      indent + 1)
+>>       ? ? ? ? str.language(body(expr), name="[body]", indent = indent + 1)
+>>       ? ? } else if (is.recursive(expr)) {
+>>       ? ? ? ? expr <- as.list(expr)
+>>       ? ? ? ? nms <- names(expr)
+>>       ? ? ? ? for (i in seq_along(expr)) {
+>>       ? ? ? ? ? ? str.language(expr[[i]], name=nms[[i]], indent = indent + 1)
+>>       ? ? ? ? }
+>>       ? ? }
+>>       ? ? invisible(expr)
+>>      }
+>>
+>>
+>> -Bill
+>>
+>> On Fri, Feb 4, 2022 at 9:34 AM Duncan Murdoch <murdoch.duncan at gmail.com
+>> <mailto:murdoch.duncan at gmail.com>> wrote:
+>>
+>>      Here's an odd parse:
+>>
+>>       ? ? a <- b = 1
+>>
+>>      This appears to be parsed as
+>>
+>>       ? ? `<-<-`(a, b, 1)
+>>
+>>      instead of being equivalent to
+>>
+>>       ? ? a <- b <- 1
+>>
+>>      I wonder if that's intentional?
+>>
+>>      (This showed up at https://stackoverflow.com/q/70989067/2554330
+>>      <https://stackoverflow.com/q/70989067/2554330>, where
+>>      it caused a lot of confusion.? I think the original intent was that `a`
+>>      would be a macro holding `b = 1`, but I'm not sure of that.)
+>>
+>>      Duncan Murdoch
+>>
+>>      ______________________________________________
+>>      R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list
+>>      https://stat.ethz.ch/mailman/listinfo/r-devel
+>>      <https://stat.ethz.ch/mailman/listinfo/r-devel>
+>>
+
+
+From c@@rd|@g@bor @end|ng |rom gm@||@com  Mon Feb 21 11:33:30 2022
+From: c@@rd|@g@bor @end|ng |rom gm@||@com (=?UTF-8?B?R8OhYm9yIENzw6FyZGk=?=)
+Date: Mon, 21 Feb 2022 11:33:30 +0100
+Subject: [Rd] deparse() and UTF-8 strings
+Message-ID: <CABtg=K=_w9rqqua5V-dqB7w7wiQpXaMub7MknNpzbU+rP_8fPQ@mail.gmail.com>
+
+I am wondering if it would make sense to produce \u escaped strings in
+deparse() for UTF-8 input. Currently we have (in R-devel):
+
+x <- "G\u00e1bor"
+Sys.setlocale("LC_ALL", "C")
+#> [1] "C/C/C/C/C/en_US.UTF-8"
+
+deparse(x)
+#> [1] "\"G<U+00E1>bor\""
+
+charToRaw(deparse(x))
+#> [1] 22 47 3c 55 2b 30 30 45 31 3e 62 6f 72 22
+
+Is there a reason why this is preferable instead of returning
+
+"\"G\\u00e1bor\""
+
+i.e.
+
+charToRaw("\"G\\u00e1bor\"")
+#>  [1] 22 47 5c 75 30 30 65 31 62 6f 72 22
+
+Returning the \u escaped form would make deparse() the inverse of
+parse(), at least in this respect.
+
+Thank you,
+Gabor
+
+
+From brod|e@g@@|@m @end|ng |rom y@hoo@com  Mon Feb 21 14:17:49 2022
+From: brod|e@g@@|@m @end|ng |rom y@hoo@com (Brodie Gaslam)
+Date: Mon, 21 Feb 2022 08:17:49 -0500
+Subject: [Rd] deparse() and UTF-8 strings
+In-Reply-To: <CABtg=K=_w9rqqua5V-dqB7w7wiQpXaMub7MknNpzbU+rP_8fPQ@mail.gmail.com>
+References: <CABtg=K=_w9rqqua5V-dqB7w7wiQpXaMub7MknNpzbU+rP_8fPQ@mail.gmail.com>
+Message-ID: <09bb1994-832e-df11-168f-158fbfec073a@yahoo.com>
+
+I'm not R-core, but happen to have run into this issue.
+
+I think this makes sense conceptually, and have had the same thought 
+myself.  One implementation challenge is that the parser has a special 
+branch for Unicode escape strings (e.g. "G\u00e1bor") that limits such 
+input to 10K wide characters, so the parser would need to be modified in 
+order to make this a general solution:
+
+ > parse(text=sprintf('"%s"', strrep("G\\u00e1bor", 2000)))
+Error in parse(text = sprintf("\"%s\"", strrep("G\\u00e1bor", 2000))) :
+   string at line 1 containing Unicode escapes not in this locale
+is too long (max 10000 chars)
+
+Such strings are rare so maybe an interim solution is just to allow it 
+for deparsing of shorter strings.  The parser modification itself would 
+also have the benefit of speeding up parsing of strings without Unicode 
+escapes.
+
+Best,
+
+B.
+
+
+On 2/21/22 5:33 AM, G?bor Cs?rdi wrote:
+> I am wondering if it would make sense to produce \u escaped strings in
+> deparse() for UTF-8 input. Currently we have (in R-devel):
+> 
+> x <- "G\u00e1bor"
+> Sys.setlocale("LC_ALL", "C")
+> #> [1] "C/C/C/C/C/en_US.UTF-8"
+> 
+> deparse(x)
+> #> [1] "\"G<U+00E1>bor\""
+> 
+> charToRaw(deparse(x))
+> #> [1] 22 47 3c 55 2b 30 30 45 31 3e 62 6f 72 22
+> 
+> Is there a reason why this is preferable instead of returning
+> 
+> "\"G\\u00e1bor\""
+> 
+> i.e.
+> 
+> charToRaw("\"G\\u00e1bor\"")
+> #>  [1] 22 47 5c 75 30 30 65 31 62 6f 72 22
+> 
+> Returning the \u escaped form would make deparse() the inverse of
+> parse(), at least in this respect.
+> 
+> Thank you,
+> Gabor
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From c@@rd|@g@bor @end|ng |rom gm@||@com  Tue Feb 22 10:53:33 2022
+From: c@@rd|@g@bor @end|ng |rom gm@||@com (=?UTF-8?B?R8OhYm9yIENzw6FyZGk=?=)
+Date: Tue, 22 Feb 2022 10:53:33 +0100
+Subject: [Rd] deparse() and UTF-8 strings
+In-Reply-To: <09bb1994-832e-df11-168f-158fbfec073a@yahoo.com>
+References: <CABtg=K=_w9rqqua5V-dqB7w7wiQpXaMub7MknNpzbU+rP_8fPQ@mail.gmail.com>
+ <09bb1994-832e-df11-168f-158fbfec073a@yahoo.com>
+Message-ID: <CABtg=K=dg8mGzaCfABsWk00V=+uBhBfwYiZQoiVWZPQTm8eqRQ@mail.gmail.com>
+
+I just saw a commit accidentally that adds iconv() support for the c99
+\u escapes, which might or might not be accidental:
+https://github.com/wch/r-source/commit/f19b4ae7715eea1b18ef8368b4c2849a578ade07
+
+In any case, this is great, and very useful to have cross-platform for
+it. Thank you!
+
+Would it make sense to generate braced 4-digit \uxxxx sequences, to
+make sure that they don't mix with the surrounding text?
+I.e. \u{xxxx}? (Plus update the 6 to 8 twice.)
+https://github.com/wch/r-source/commit/f19b4ae7715eea1b18ef8368b4c2849a578ade07#diff-9a906ea3803721bf2aa8b802e98786c3b096727d87f1c423826e3bba4c112d76R746-R747
+
+Also, it seems that we need a capital \U for the 8-digit sequences here:
+https://github.com/wch/r-source/commit/f19b4ae7715eea1b18ef8368b4c2849a578ade07#diff-9a906ea3803721bf2aa8b802e98786c3b096727d87f1c423826e3bba4c112d76R753
+
+Thank you again,
+Gabor
+
+On Mon, Feb 21, 2022 at 2:17 PM Brodie Gaslam <brodie.gaslam at yahoo.com> wrote:
+>
+> I'm not R-core, but happen to have run into this issue.
+>
+> I think this makes sense conceptually, and have had the same thought
+> myself.  One implementation challenge is that the parser has a special
+> branch for Unicode escape strings (e.g. "G\u00e1bor") that limits such
+> input to 10K wide characters, so the parser would need to be modified in
+> order to make this a general solution:
+>
+>  > parse(text=sprintf('"%s"', strrep("G\\u00e1bor", 2000)))
+> Error in parse(text = sprintf("\"%s\"", strrep("G\\u00e1bor", 2000))) :
+>    string at line 1 containing Unicode escapes not in this locale
+> is too long (max 10000 chars)
+>
+> Such strings are rare so maybe an interim solution is just to allow it
+> for deparsing of shorter strings.  The parser modification itself would
+> also have the benefit of speeding up parsing of strings without Unicode
+> escapes.
+>
+> Best,
+>
+> B.
+>
+>
+> On 2/21/22 5:33 AM, G?bor Cs?rdi wrote:
+> > I am wondering if it would make sense to produce \u escaped strings in
+> > deparse() for UTF-8 input. Currently we have (in R-devel):
+> >
+> > x <- "G\u00e1bor"
+> > Sys.setlocale("LC_ALL", "C")
+> > #> [1] "C/C/C/C/C/en_US.UTF-8"
+> >
+> > deparse(x)
+> > #> [1] "\"G<U+00E1>bor\""
+> >
+> > charToRaw(deparse(x))
+> > #> [1] 22 47 3c 55 2b 30 30 45 31 3e 62 6f 72 22
+> >
+> > Is there a reason why this is preferable instead of returning
+> >
+> > "\"G\\u00e1bor\""
+> >
+> > i.e.
+> >
+> > charToRaw("\"G\\u00e1bor\"")
+> > #>  [1] 22 47 5c 75 30 30 65 31 62 6f 72 22
+> >
+> > Returning the \u escaped form would make deparse() the inverse of
+> > parse(), at least in this respect.
+> >
+> > Thank you,
+> > Gabor
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Tue Feb 22 19:29:15 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Tue, 22 Feb 2022 13:29:15 -0500
+Subject: [Rd] Attributes of a vector element?
+Message-ID: <c2ac4edc-fd53-bcea-89d6-09d4fc874ef8@gmail.com>
+
+I'm sending this to r-devel rather than r-help as I suspect I'm pushing the boundaries
+of the R language. In that I get no errors but things don't "work", I may have revealed
+a gap in the attributes structure.
+
+In displaying results of some optimization calculations (in the optimx package I maintain),
+I'd like to add indicators F(ree), L(ower) and U(pper) to indicate if parameters returned are
+on bounds. I've got my optimr() routine to put the character indicators in the list() structure of
+the answer to each individual solver result. However, when I collect these into a data frame
+for the results of several solvers (run by the opm() function), it seems that attributes
+can't be carried through.
+
+Here is a small example.
+
+pp<-c(1,2)
+attr(pp[1], "trial")<-"first"
+attributes(pp)
+attributes(pp[1])
+attr(pp[1],"trial")
+pp[1]
+pp[2]
+attr(pp, "name")<-"rubbish"
+attributes(pp)
+str(pp)
+
+The output is:
+
+ > pp<-c(1,2)
+
+ > attr(pp[1], "trial")<-"first"  ## APPEARS TO ACCEPT ATTRIBUTE
+
+ > attributes(pp)
+NULL
+
+ > attributes(pp[1])
+NULL
+
+ > attr(pp[1],"trial")            ## FAILS TO FIND ATTRIBUTE
+NULL
+
+ > pp[1]
+[1] 1
+
+ > pp[2]
+[1] 2
+
+ > attr(pp, "name")<-"rubbish"
+
+ > attributes(pp)
+$name
+[1] "rubbish"
+
+
+ > str(pp)
+  num [1:2] 1 2
+  - attr(*, "name")= chr "rubbish"
+
+Similarly,
+
+pl<-list(one=1, two=2)
+attr(pl[1],"trial")<- "lfirst"
+attr(pl[1], "trial")
+attributes(pl)
+attributes(pl[1])
+attributes(pl$one)
+str(pl)
+
+This also fails.
+
+Am I doing something silly?
+
+Thanks in advance for any pointers.
+
+JN
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Feb 22 19:45:21 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 22 Feb 2022 21:45:21 +0300
+Subject: [Rd] Attributes of a vector element?
+In-Reply-To: <c2ac4edc-fd53-bcea-89d6-09d4fc874ef8@gmail.com>
+References: <c2ac4edc-fd53-bcea-89d6-09d4fc874ef8@gmail.com>
+Message-ID: <20220222214521.16141146@Tarkus>
+
+On Tue, 22 Feb 2022 13:29:15 -0500
+J C Nash <profjcnash at gmail.com> wrote:
+
+> pp<-c(1,2)
+> attr(pp[1], "trial")<-"first"
+
+I don't have a solid proof for this with a link to the R Language
+Definition, but my understanding of the attributes is that they belong
+to the whole vector (and that elements of a vector don't usually exist
+as separate entities in R). Maybe this explains why the attribute of a
+temporary value is lost in this assignment.
+
+> pl<-list(one=1, two=2)
+> attr(pl[1],"trial")<- "lfirst"
+
+However, this could be made to work, if attributes were assigned on the
+list element instead of the list slice:
+
+attr(pl[[1]],"trial")<- "lfirst"
+attr(pl[[1]],"trial")
+# [1] "lfirst"
+
+Same goes for data.frame columns:
+
+str(data.frame(x = 1:10, y = structure(1:10, attr = 'val')))
+# 'data.frame':   10 obs. of  2 variables:
+#  $ x: int  1 2 3 4 5 6 7 8 9 10
+#  $ y: atomic  1 2 3 4 5 6 7 8 9 10
+#   ..- attr(*, "attr")= chr "val"   # <-- attribute preserved
+
+If you need to tag rows of a data frame, your best bet would likely be
+to assign a vector as an attribute of the data frame itself.
+
+-- 
+Best regards,
+Ivan
+
+
+From |uc@r @end|ng |rom |edor@project@org  Tue Feb 22 19:46:44 2022
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Tue, 22 Feb 2022 19:46:44 +0100
+Subject: [Rd] Attributes of a vector element?
+In-Reply-To: <c2ac4edc-fd53-bcea-89d6-09d4fc874ef8@gmail.com>
+References: <c2ac4edc-fd53-bcea-89d6-09d4fc874ef8@gmail.com>
+Message-ID: <CALEXWq2xxxPMM2u3yWyxf=HrXA5zZ7owrzfMaYZ-qwLuHXKvvw@mail.gmail.com>
+
+On Tue, 22 Feb 2022 at 19:29, J C Nash <profjcnash at gmail.com> wrote:
+>
+> I'm sending this to r-devel rather than r-help as I suspect I'm pushing the boundaries
+> of the R language. In that I get no errors but things don't "work", I may have revealed
+> a gap in the attributes structure.
+>
+> In displaying results of some optimization calculations (in the optimx package I maintain),
+> I'd like to add indicators F(ree), L(ower) and U(pper) to indicate if parameters returned are
+> on bounds. I've got my optimr() routine to put the character indicators in the list() structure of
+> the answer to each individual solver result. However, when I collect these into a data frame
+> for the results of several solvers (run by the opm() function), it seems that attributes
+> can't be carried through.
+>
+> Here is a small example.
+>
+> pp<-c(1,2)
+> attr(pp[1], "trial")<-"first"
+> attributes(pp)
+> attributes(pp[1])
+> attr(pp[1],"trial")
+> pp[1]
+> pp[2]
+> attr(pp, "name")<-"rubbish"
+> attributes(pp)
+> str(pp)
+>
+> The output is:
+>
+>  > pp<-c(1,2)
+>
+>  > attr(pp[1], "trial")<-"first"  ## APPEARS TO ACCEPT ATTRIBUTE
+>
+>  > attributes(pp)
+> NULL
+>
+>  > attributes(pp[1])
+> NULL
+>
+>  > attr(pp[1],"trial")            ## FAILS TO FIND ATTRIBUTE
+> NULL
+>
+>  > pp[1]
+> [1] 1
+>
+>  > pp[2]
+> [1] 2
+>
+>  > attr(pp, "name")<-"rubbish"
+>
+>  > attributes(pp)
+> $name
+> [1] "rubbish"
+>
+>
+>  > str(pp)
+>   num [1:2] 1 2
+>   - attr(*, "name")= chr "rubbish"
+>
+> Similarly,
+>
+> pl<-list(one=1, two=2)
+> attr(pl[1],"trial")<- "lfirst"
+> attr(pl[1], "trial")
+> attributes(pl)
+> attributes(pl[1])
+> attributes(pl$one)
+> str(pl)
+>
+> This also fails.
+>
+> Am I doing something silly?
+>
+> Thanks in advance for any pointers.
+
+In short, this is not how it works. In both cases, you are assigning
+an attribute to a temporary subset that is immediately destroyed,
+because it's not assigned to anything. So you are doing this:
+
+pp<-c(1,2)
+tmp <- pp[1]
+attr(tmp, "trial")<-"first"
+rm(tmp)
+
+The assignment of course succeeds, but that's not what you want. What
+you can do is to add a data.frame of size length(pp) as an attribute
+to pp, with as many columns as you need (lower, upper...).
+
+-- 
+I?aki ?car
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Feb 22 19:52:18 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 22 Feb 2022 13:52:18 -0500
+Subject: [Rd] Attributes of a vector element?
+In-Reply-To: <20220222214521.16141146@Tarkus>
+References: <c2ac4edc-fd53-bcea-89d6-09d4fc874ef8@gmail.com>
+ <20220222214521.16141146@Tarkus>
+Message-ID: <04f7c8ca-2df2-9749-9959-52bf2f01d764@gmail.com>
+
+On 22/02/2022 1:45 p.m., Ivan Krylov wrote:
+> On Tue, 22 Feb 2022 13:29:15 -0500
+> J C Nash <profjcnash at gmail.com> wrote:
+> 
+>> pp<-c(1,2)
+>> attr(pp[1], "trial")<-"first"
+> 
+> I don't have a solid proof for this with a link to the R Language
+> Definition, but my understanding of the attributes is that they belong
+> to the whole vector (and that elements of a vector don't usually exist
+> as separate entities in R). Maybe this explains why the attribute of a
+> temporary value is lost in this assignment.
+
+That's true for atomic vectors.  lists are also vectors, and they can 
+accept attributes on the list as a whole or on the individual elements, 
+but it would be done using
+
+    attr(pp[[1]], "trial")<-"first"
+
+(as I just noticed you found below).
+
+I suspect it's an oversight that attr(pp[1], "trial") <- "first" didn't 
+trigger an error.  It says to assign the attribute on the subvector 
+containing just the first element, but in general such things wouldn't 
+be inherited by the full vector.
+
+> 
+>> pl<-list(one=1, two=2)
+>> attr(pl[1],"trial")<- "lfirst"
+> 
+> However, this could be made to work, if attributes were assigned on the
+> list element instead of the list slice:
+> 
+> attr(pl[[1]],"trial")<- "lfirst"
+> attr(pl[[1]],"trial")
+> # [1] "lfirst"
+> 
+> Same goes for data.frame columns:
+> 
+> str(data.frame(x = 1:10, y = structure(1:10, attr = 'val')))
+> # 'data.frame':   10 obs. of  2 variables:
+> #  $ x: int  1 2 3 4 5 6 7 8 9 10
+> #  $ y: atomic  1 2 3 4 5 6 7 8 9 10
+> #   ..- attr(*, "attr")= chr "val"   # <-- attribute preserved
+> 
+> If you need to tag rows of a data frame, your best bet would likely be
+> to assign a vector as an attribute of the data frame itself.
+> 
+
+Yes, you could do
+
+   attr(pp, "trials")[1] <- "someval"
+
+if you already had a "trials" attribute on pp.
+
+Duncan Murdoch
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Tue Feb 22 20:00:35 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Tue, 22 Feb 2022 14:00:35 -0500
+Subject: [Rd] Attributes of a vector element?
+In-Reply-To: <04f7c8ca-2df2-9749-9959-52bf2f01d764@gmail.com>
+References: <c2ac4edc-fd53-bcea-89d6-09d4fc874ef8@gmail.com>
+ <20220222214521.16141146@Tarkus>
+ <04f7c8ca-2df2-9749-9959-52bf2f01d764@gmail.com>
+Message-ID: <5b202145-9013-e757-d3ee-aee47e2c6e73@gmail.com>
+
+Thanks for the responses. Looks like I can make something work if I pay appropriate
+attention to detail.
+
+Duncan: Should I try to submit a bug report for the missed error message? If so, do you
+have suggestions for keywords?
+
+Best, JN
+
+
+On 2022-02-22 13:52, Duncan Murdoch wrote:
+> On 22/02/2022 1:45 p.m., Ivan Krylov wrote:
+>> On Tue, 22 Feb 2022 13:29:15 -0500
+>> J C Nash <profjcnash at gmail.com> wrote:
+>>
+>>> pp<-c(1,2)
+>>> attr(pp[1], "trial")<-"first"
+>>
+>> I don't have a solid proof for this with a link to the R Language
+>> Definition, but my understanding of the attributes is that they belong
+>> to the whole vector (and that elements of a vector don't usually exist
+>> as separate entities in R). Maybe this explains why the attribute of a
+>> temporary value is lost in this assignment.
+> 
+> That's true for atomic vectors.? lists are also vectors, and they can accept attributes on the list as a whole or on the 
+> individual elements, but it would be done using
+> 
+>  ?? attr(pp[[1]], "trial")<-"first"
+> 
+> (as I just noticed you found below).
+> 
+> I suspect it's an oversight that attr(pp[1], "trial") <- "first" didn't trigger an error.? It says to assign the 
+> attribute on the subvector containing just the first element, but in general such things wouldn't be inherited by the 
+> full vector.
+> 
+>>
+>>> pl<-list(one=1, two=2)
+>>> attr(pl[1],"trial")<- "lfirst"
+>>
+>> However, this could be made to work, if attributes were assigned on the
+>> list element instead of the list slice:
+>>
+>> attr(pl[[1]],"trial")<- "lfirst"
+>> attr(pl[[1]],"trial")
+>> # [1] "lfirst"
+>>
+>> Same goes for data.frame columns:
+>>
+>> str(data.frame(x = 1:10, y = structure(1:10, attr = 'val')))
+>> # 'data.frame':?? 10 obs. of? 2 variables:
+>> #? $ x: int? 1 2 3 4 5 6 7 8 9 10
+>> #? $ y: atomic? 1 2 3 4 5 6 7 8 9 10
+>> #?? ..- attr(*, "attr")= chr "val"?? # <-- attribute preserved
+>>
+>> If you need to tag rows of a data frame, your best bet would likely be
+>> to assign a vector as an attribute of the data frame itself.
+>>
+> 
+> Yes, you could do
+> 
+>  ? attr(pp, "trials")[1] <- "someval"
+> 
+> if you already had a "trials" attribute on pp.
+> 
+> Duncan Murdoch
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Feb 22 20:54:53 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 22 Feb 2022 14:54:53 -0500
+Subject: [Rd] Attributes of a vector element?
+In-Reply-To: <5b202145-9013-e757-d3ee-aee47e2c6e73@gmail.com>
+References: <c2ac4edc-fd53-bcea-89d6-09d4fc874ef8@gmail.com>
+ <20220222214521.16141146@Tarkus>
+ <04f7c8ca-2df2-9749-9959-52bf2f01d764@gmail.com>
+ <5b202145-9013-e757-d3ee-aee47e2c6e73@gmail.com>
+Message-ID: <309c2429-0d43-ae09-21bd-18a102b64844@gmail.com>
+
+On 22/02/2022 2:00 p.m., J C Nash wrote:
+> Thanks for the responses. Looks like I can make something work if I pay appropriate
+> attention to detail.
+> 
+> Duncan: Should I try to submit a bug report for the missed error message? If so, do you
+> have suggestions for keywords?
+
+Actually I think it's not an R bug.  Maybe someone else can express an 
+opinion.
+
+A simpler example is:
+
+   x <- 1:2
+   names(x[1]) <- "a"
+
+This is quite similar to the example in the Language Def,
+
+   names(x)[3] <- "Three"
+
+but with the order of calling `names<-` and `[<-` reversed, so I think
+
+   names(x[1]) <- "a"
+
+should be equivalent to
+
+   `*tmp*` <- x
+   x <- "[<-"(`*tmp*`, 1, value="names<-"(`*tmp*`[1], value="a"))
+   rm(`*tmp*`)
+
+Now the default "[<-" method doesn't copy names, but there's no reason 
+why it couldn't for some special class, e.g.
+
+
+   # This is what you saw:
+   x <- 1:2
+   names(x[1]) <- "a"
+   x
+   # [1] 1 2
+
+   # This could work:
+   class(x) <- "foo"
+
+   `[<-.foo` <- function(x, i, value) {
+     x <- unclass(x)
+     x[i] <- value
+     names(x)[i] <- names(value)
+     class(x) <- "foo"
+     x
+   }
+
+   names(x[1]) <- "a"
+   x
+   #   a <NA>
+   #   1    2
+   # attr(,"class")
+   # [1] "foo"
+
+So instead of an R bug, this is just a bug in your code, because you 
+tried to do something on a class that didn't handle it the way you wanted.
+
+Duncan
+
+
+From no@h@gre||er @end|ng |rom gm@||@com  Wed Feb 23 17:21:18 2022
+From: no@h@gre||er @end|ng |rom gm@||@com (Noah Greifer)
+Date: Wed, 23 Feb 2022 11:21:18 -0500
+Subject: [Rd] Inconsistent behavior of stats::bw.nrd() and stats::bw.nrd0()
+Message-ID: <CAPhhD8nx4tFcWdgZysGXr=FnV1pxF7zKoUzqBn9LN3+ukxVXDA@mail.gmail.com>
+
+Hello R-devel,
+
+I noticed an inconsistency in stats::bw.nrd() and stats::bw.nrd0, two
+functions used to compute the bandwidth for densities. According to the
+documentation,
+
+"bw.nrd0 implements a rule-of-thumb for choosing the bandwidth of a
+Gaussian kernel density estimator. It defaults to 0.9 times the minimum of
+the standard deviation and the interquartile range divided by 1.34 times
+the sample size to the negative one-fifth power (= Silverman's ?rule of
+thumb?, Silverman (1986, page 48, eqn (3.31))) unless the quartiles
+coincide when a positive result will be guaranteed.
+
+bw.nrd is the more common variation given by Scott (1992), using factor
+1.06."
+
+This implies the result of bw.nrd() should simply be 1.06/.9 times the
+result of bw.nrd0(). However, these functions are coded quite differently
+and, in particular, respond to situations where the data has an IQR of 0
+differently. The source of bw.nrd0 is
+
+function (x)
+{
+    if (length(x) < 2L)
+        stop("need at least 2 data points")
+    hi <- sd(x)
+    if (!(lo <- min(hi, IQR(x)/1.34)))
+        (lo <- hi) || (lo <- abs(x[1L])) || (lo <- 1)
+    0.9 * lo * length(x)^(-0.2)
+}
+
+and the source of bw.nrd is
+
+function (x)
+{
+    if (length(x) < 2L)
+        stop("need at least 2 data points")
+    r <- quantile(x, c(0.25, 0.75))
+    h <- (r[2L] - r[1L])/1.34
+    1.06 * min(sqrt(var(x)), h) * length(x)^(-1/5)
+}
+
+Importantly, when the IQR of the input is 0, bw.nrd0() falls back onto the
+standard deviation, guaranteeing the positive result described in the
+documentation. Whereas, bw.nrd() produces a result of 0. I am not sure
+which result is more desirable, but it would seem to me that they should at
+least be consistent. See examples below:
+
+> x <- c(1,1,1,1,1000)
+> stats::bw.nrd(x)
+[1] 0
+> stats::bw.nrd0(x)
+[1] 291.4265
+
+- Noah Greifer
+
+	[[alternative HTML version deleted]]
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Thu Feb 24 03:58:00 2022
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Wed, 23 Feb 2022 18:58:00 -0800
+Subject: [Rd] DOCS/BUG?: opts <- base::.Options is *not* a copy
+Message-ID: <CAFDcVCTGvrJQ0rp5fMvBAuvqrznpgGAJNrY1M8q5HkmhZ5V7Jg@mail.gmail.com>
+
+Hi, is the following a non-documented feature or a bug:
+
+$ R --quiet --vanilla
+opts <- base::.Options
+opts[["abc"]]
+#> NULL
+options(abc = 42)
+opts[["abc"]]
+#> [1] 42
+
+I would have expected that 'opts' would be a *copy* of base::.Options
+that is not affected by later changes to base::.Options.  FWIW, the
+same happens if we try with:
+
+opts <- .BaseNamespaceEnv[[".Options"]]
+
+I don't think lazy evaluation is involved, because I evaluate
+opts[["abc"]] above.
+
+The only thing help(".Options") says is:
+
+Note:
+For compatibility with S there is a visible object .Options whose
+value is a pairlist containing the current options() (in no particular
+order). Assigning to it will make a local copy and not change the
+original. (Using it however is faster than calling options()).
+
+This behavior goes back to at least R 2.15.0.
+
+/Henrik
+
+
+From r|p|ey @end|ng |rom @t@t@@ox@@c@uk  Thu Feb 24 07:12:16 2022
+From: r|p|ey @end|ng |rom @t@t@@ox@@c@uk (Prof Brian Ripley)
+Date: Thu, 24 Feb 2022 06:12:16 +0000
+Subject: [Rd] deparse() and UTF-8 strings
+In-Reply-To: <CABtg=K=dg8mGzaCfABsWk00V=+uBhBfwYiZQoiVWZPQTm8eqRQ@mail.gmail.com>
+References: <CABtg=K=_w9rqqua5V-dqB7w7wiQpXaMub7MknNpzbU+rP_8fPQ@mail.gmail.com>
+ <09bb1994-832e-df11-168f-158fbfec073a@yahoo.com>
+ <CABtg=K=dg8mGzaCfABsWk00V=+uBhBfwYiZQoiVWZPQTm8eqRQ@mail.gmail.com>
+Message-ID: <124b53a4-085c-6440-9c55-ef2735a725a8@stats.ox.ac.uk>
+
+On 22/02/2022 09:53, G?bor Cs?rdi wrote:
+> I just saw a commit accidentally that adds iconv() support for the c99
+> \u escapes, which might or might not be accidental:
+> https://github.com/wch/r-source/commit/f19b4ae7715eea1b18ef8368b4c2849a578ade07
+
+Calling my work 'accidental' felt very rude.  It is work in progress, 
+not least as the test suite is unfinished.  Part of that test is to 
+ensure it does the same thing as GNU libiconv, where the name and idea 
+came from.
+
+> In any case, this is great, and very useful to have cross-platform for
+> it. Thank you!
+> 
+> Would it make sense to generate braced 4-digit \uxxxx sequences, to
+> make sure that they don't mix with the surrounding text?
+> I.e. \u{xxxx}? (Plus update the 6 to 8 twice.)
+> https://github.com/wch/r-source/commit/f19b4ae7715eea1b18ef8368b4c2849a578ade07#diff-9a906ea3803721bf2aa8b802e98786c3b096727d87f1c423826e3bba4c112d76R746-R747
+
+But that is not what C99 defines, is it?  (In ?6.4.3.)  As \u is always 
+followed by 4 hex digits and \U by 8, there is no ambiguity.
+
+> 
+> Also, it seems that we need a capital \U for the 8-digit sequences here:
+> https://github.com/wch/r-source/commit/f19b4ae7715eea1b18ef8368b4c2849a578ade07#diff-9a906ea3803721bf2aa8b802e98786c3b096727d87f1c423826e3bba4c112d76R753
+> 
+> Thank you again,
+> Gabor
+> 
+> On Mon, Feb 21, 2022 at 2:17 PM Brodie Gaslam <brodie.gaslam at yahoo.com> wrote:
+>>
+>> I'm not R-core, but happen to have run into this issue.
+>>
+>> I think this makes sense conceptually, and have had the same thought
+>> myself.  One implementation challenge is that the parser has a special
+>> branch for Unicode escape strings (e.g. "G\u00e1bor") that limits such
+>> input to 10K wide characters, so the parser would need to be modified in
+>> order to make this a general solution:
+>>
+>>   > parse(text=sprintf('"%s"', strrep("G\\u00e1bor", 2000)))
+>> Error in parse(text = sprintf("\"%s\"", strrep("G\\u00e1bor", 2000))) :
+>>     string at line 1 containing Unicode escapes not in this locale
+>> is too long (max 10000 chars)
+>>
+>> Such strings are rare so maybe an interim solution is just to allow it
+>> for deparsing of shorter strings.  The parser modification itself would
+>> also have the benefit of speeding up parsing of strings without Unicode
+>> escapes.
+>>
+>> Best,
+>>
+>> B.
+>>
+>>
+>> On 2/21/22 5:33 AM, G?bor Cs?rdi wrote:
+>>> I am wondering if it would make sense to produce \u escaped strings in
+>>> deparse() for UTF-8 input. Currently we have (in R-devel):
+>>>
+>>> x <- "G\u00e1bor"
+>>> Sys.setlocale("LC_ALL", "C")
+>>> #> [1] "C/C/C/C/C/en_US.UTF-8"
+>>>
+>>> deparse(x)
+>>> #> [1] "\"G<U+00E1>bor\""
+>>>
+>>> charToRaw(deparse(x))
+>>> #> [1] 22 47 3c 55 2b 30 30 45 31 3e 62 6f 72 22
+>>>
+>>> Is there a reason why this is preferable instead of returning
+>>>
+>>> "\"G\\u00e1bor\""
+>>>
+>>> i.e.
+>>>
+>>> charToRaw("\"G\\u00e1bor\"")
+>>> #>  [1] 22 47 5c 75 30 30 65 31 62 6f 72 22
+>>>
+>>> Returning the \u escaped form would make deparse() the inverse of
+>>> parse(), at least in this respect.
+>>>
+>>> Thank you,
+>>> Gabor
+>>>
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+-- 
+Brian D. Ripley,                  ripley at stats.ox.ac.uk
+Emeritus Professor of Applied Statistics, University of Oxford
+
+
+From ht @end|ng |rom he@therturner@net  Thu Feb 24 08:50:54 2022
+From: ht @end|ng |rom he@therturner@net (Heather Turner)
+Date: Thu, 24 Feb 2022 07:50:54 +0000
+Subject: [Rd] Google Season of Docs 2022
+In-Reply-To: <a9526ce4-0cea-46fc-b1e9-4bfced56aadf@www.fastmail.com>
+References: <a9526ce4-0cea-46fc-b1e9-4bfced56aadf@www.fastmail.com>
+Message-ID: <a6c2a79a-90a5-44d3-926b-9f1e630d9672@www.fastmail.com>
+
+Dear All,
+
+Further to this, we have had some discussion regarding supporting greater use of HTML vignettes (https://github.com/rstats-gsod/gsod2022/issues/5). The initial motivation was accessibility (PDF vignettes are not so accessible to users of screen readers or other accessibility tools e.g. browser apps that change the font or switch to dark mode). However, many users prefer HTML as it is easier to browse online and integrates with IDEs like RStudio. Search engines can work with them more effectively, helping people to find relevant packages. About a third of packages on CRAN use HTML vignettes (have "knitr" or "rmarkdown" in the VignetteBuilder field).
+
+As discussed on this issue, some work can be done at the grass-roots level, to encourage wider use of HTML vignettes. However, it would help to have a core tool for creating HTML vignettes. An issue with rmarkdown is the number of dependencies (apparently 18 non-core or recommended packages). However, Yihui Xie is highly interested in  developing a much leaner package depending only on commonmark and is willing to put this on his agenda if people are really interested in it, especially if R core can consider making it a recommended package.
+
+I realize that R core are keen to reduce rather than increase the number of recommended packages. But this does seem to be a desirable core functionality. Might R core consider integrating such a package in future?
+
+Best wishes,
+Heather
+
+On Fri, Feb 4, 2022, at 8:02 PM, Heather Turner wrote:
+> Dear All,
+>
+> Yesterday Google announced Season of Docs 2022: 
+> https://opensource.googleblog.com/2022/02/Announcing%20Season%20of%20Docs%202022.html.
+>
+> You may know that the R project participated for the first time last 
+> year with a project related to useR! and there is interest in us 
+> offering a project again this year.
+>
+> Organization applications open at the end of February, so now is the 
+> time for us to explore ideas for projects and line up potential 
+> mentors. 
+>
+> Organization of GSoD is done on GitHub: 
+> https://github.com/rstats-gsod/gsod2022 and I have added a number of 
+> issues with ideas drawn from discussions on the R Contribution Working 
+> Group, R-Devel Slack, Forwards taskforce, and R Consortium Repositories 
+> Working Group. Feel free to comment on these issues or add your own 
+> suggestions.
+>
+> For more general discussion of GSoD, you can reply here, on the R-Devel 
+> Slack or at the next R Contribution Working Group (see the R 
+> Contribution Site for details of the Slack/working group: 
+> https://contributor.r-project.org/).
+>
+> Best wishes,
+> Heather
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Feb 24 11:44:26 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 24 Feb 2022 11:44:26 +0100
+Subject: [Rd] 
+ Inconsistent behavior of stats::bw.nrd() and stats::bw.nrd0()
+In-Reply-To: <CAPhhD8nx4tFcWdgZysGXr=FnV1pxF7zKoUzqBn9LN3+ukxVXDA@mail.gmail.com>
+References: <CAPhhD8nx4tFcWdgZysGXr=FnV1pxF7zKoUzqBn9LN3+ukxVXDA@mail.gmail.com>
+Message-ID: <25111.24970.438906.621299@stat.math.ethz.ch>
+
+>>>>> Noah Greifer 
+>>>>>     on Wed, 23 Feb 2022 11:21:18 -0500 writes:
+
+    > Hello R-devel,
+
+    > I noticed an inconsistency in stats::bw.nrd() and stats::bw.nrd0, two
+    > functions used to compute the bandwidth for densities. According to the
+    > documentation,
+
+    > "bw.nrd0 implements a rule-of-thumb for choosing the bandwidth of a
+    > Gaussian kernel density estimator. It defaults to 0.9 times the minimum of
+    > the standard deviation and the interquartile range divided by 1.34 times
+    > the sample size to the negative one-fifth power (= Silverman's ?rule of
+    > thumb?, Silverman (1986, page 48, eqn (3.31))) unless the quartiles
+    > coincide when a positive result will be guaranteed.
+
+    > bw.nrd is the more common variation given by Scott (1992), using factor
+    > 1.06."
+
+    > This implies the result of bw.nrd() should simply be 1.06/.9 times the
+    > result of bw.nrd0(). However, these functions are coded quite differently
+    > and, in particular, respond to situations where the data has an IQR of 0
+    > differently. The source of bw.nrd0 is
+
+    > function (x)
+    > {
+    >     if (length(x) < 2L)
+    >         stop("need at least 2 data points")
+    >     hi <- sd(x)
+    >     if (!(lo <- min(hi, IQR(x)/1.34)))
+    >         (lo <- hi) || (lo <- abs(x[1L])) || (lo <- 1)
+    >     0.9 * lo * length(x)^(-0.2)
+    > }
+    > 
+    > and the source of bw.nrd is
+    > 
+    > function (x)
+    > {
+    >     if (length(x) < 2L)
+    >         stop("need at least 2 data points")
+    >     r <- quantile(x, c(0.25, 0.75))
+    >     h <- (r[2L] - r[1L])/1.34
+    >     1.06 * min(sqrt(var(x)), h) * length(x)^(-1/5)
+    > }
+    > 
+
+> Importantly, when the IQR of the input is 0, bw.nrd0() falls back onto the
+> standard deviation, guaranteeing the positive result described in the
+> documentation. Whereas, bw.nrd() produces a result of 0. I am not sure
+> which result is more desirable, but it would seem to me that they should at
+> least be consistent. See examples below:
+
+> > x <- c(1,1,1,1,1000)
+> > stats::bw.nrd(x)
+> [1] 0
+> > stats::bw.nrd0(x)
+> [1] 291.4265
+
+> Noah Greifer
+
+This is for historical (and copyright?) reasons only/mostly:
+
+At the time  R 1.0.0 was released (on Feb. 29, 2000 -- a date not
+       	       	     	 	   existing in MS Windows 3.11)
+there were no bw.*() functions
+and density() already contained
+
+    if (missing(bw))
+      bw <-
+        if(missing(width)) {
+            hi <- sd(x)
+            if(!(lo <- min(hi, IQR(x)/1.34)))# qnorm(.75) - qnorm(.25) = 1.34898
+                (lo <- hi) || (lo <- abs(x[1])) || (lo <- 1.)
+            adjust * 0.9 * lo * N^(-0.2)
+        } else 0.25 * width
+
+whereas in Nov 1999, it still was
+
+    if (missing(bw))
+	bw <-
+	    if(missing(width))
+		adjust * 0.9 * min(sd (x), IQR(x)/1.34) * N^(-0.2)
+	    else 0.25 * width
+
+(which actually *was* Silverman's rule of thumb): He, as Scott
+ and all math-statisticians who ever published about the
+ problem, was/were never interested in the fact that a good algorithm
+ must even work in extreme cases ..)
+
+As a matter of fact, svn trunk rev 6994 (Dec 11, 1999) was a
+large "branch update" which changed the 'bw' computation to the
+more robust one (never giving 0, BTW, even when sd(x) == 0, not
+just IQR(.) == 0).
+
+So, we had already made sure that the default bandwidth 'bw' was
+really numerically robust and would always give a positive result.
+
+Then, about 2 years later, with svn r16938, 2001-11-28
+by Prof Brian Ripley with message  'add bandwidth-selectors to density()'
+he brought in all (I think) of the current bw.*() choices
+actually from the MASS book's S/R code by Venables & Ripley,
+including the most traditional  bw.nrd() one, as they were
+already described in the book;
+and kept the default bw for density() as previously,
+now modularized in the bw.nrd0() function.
+
+Also note that the documentation (the help page) is more or less
+precise here, since as I said above, Scott did neither consider
+dealing with the not so uncommon case of IQR() == 0.
+
+But you are right that the help page could be more precise here
+and make sure that the robustness applies only to the nrd0, not
+to nrd.
+I'd  think we'd accept a patch proposal for the
+src/library/stats/man/bandwidth.Rd  help file, making this more
+unambigous.
+
+Best,
+Martin
+
+
+Martin Maechler
+ETH Zurich  and  R Core team
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Thu Feb 24 14:22:54 2022
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Thu, 24 Feb 2022 07:22:54 -0600 (CST)
+Subject: [Rd] 
+ [External]  DOCS/BUG?: opts <- base::.Options is *not* a copy
+In-Reply-To: <CAFDcVCTGvrJQ0rp5fMvBAuvqrznpgGAJNrY1M8q5HkmhZ5V7Jg@mail.gmail.com>
+References: <CAFDcVCTGvrJQ0rp5fMvBAuvqrznpgGAJNrY1M8q5HkmhZ5V7Jg@mail.gmail.com>
+Message-ID: <e763ac16-22af-f620-f5af-9bcb111562ac@uiowa.edu>
+
+On Thu, 24 Feb 2022, Henrik Bengtsson wrote:
+
+> Hi, is the following a non-documented feature or a bug:
+>
+> $ R --quiet --vanilla
+> opts <- base::.Options
+> opts[["abc"]]
+> #> NULL
+> options(abc = 42)
+> opts[["abc"]]
+> #> [1] 42
+>
+> I would have expected that 'opts' would be a *copy* of base::.Options
+> that is not affected by later changes to base::.Options.  FWIW, the
+> same happens if we try with:
+>
+> opts <- .BaseNamespaceEnv[[".Options"]]
+>
+> I don't think lazy evaluation is involved, because I evaluate
+> opts[["abc"]] above.
+>
+> The only thing help(".Options") says is:
+>
+> Note:
+> For compatibility with S there is a visible object .Options whose
+> value is a pairlist containing the current options() (in no particular
+> order). Assigning to it will make a local copy and not change the
+> original. (Using it however is faster than calling options()).
+
+You are misreading what this says. As with any assignment to an object
+that has other references, the assignment will create a local copy
+before mutating. It does not say that referencing the object makes a
+copy. So there is no inconsistency.
+
+That options() modifies the value of an object with multiple
+references is not ideal, but changing that while maintaining .Object
+as a regular variable is probably more trouble than it is worth. It is
+probably time to work towards deprecating .Options (maybe turning it
+into an active binding that does make a copy). At the very least
+discouraging its use in the help file.
+
+Other that changing the docs I doubt this will ever get high enough on
+anyone's priority list to get done.
+
+Best,
+
+luke
+
+>
+> This behavior goes back to at least R 2.15.0.
+>
+> /Henrik
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Thu Feb 24 20:21:05 2022
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Thu, 24 Feb 2022 11:21:05 -0800
+Subject: [Rd] 
+ [External]  DOCS/BUG?: opts <- base::.Options is *not* a copy
+In-Reply-To: <e763ac16-22af-f620-f5af-9bcb111562ac@uiowa.edu>
+References: <CAFDcVCTGvrJQ0rp5fMvBAuvqrznpgGAJNrY1M8q5HkmhZ5V7Jg@mail.gmail.com>
+ <e763ac16-22af-f620-f5af-9bcb111562ac@uiowa.edu>
+Message-ID: <CAFDcVCSEXpOMxmS27nOQyHQagPBpPQNQS5aNxOEMCgZrLuCoQg@mail.gmail.com>
+
+On Thu, Feb 24, 2022 at 5:23 AM <luke-tierney at uiowa.edu> wrote:
+>
+> On Thu, 24 Feb 2022, Henrik Bengtsson wrote:
+>
+> > Hi, is the following a non-documented feature or a bug:
+> >
+> > $ R --quiet --vanilla
+> > opts <- base::.Options
+> > opts[["abc"]]
+> > #> NULL
+> > options(abc = 42)
+> > opts[["abc"]]
+> > #> [1] 42
+> >
+> > I would have expected that 'opts' would be a *copy* of base::.Options
+> > that is not affected by later changes to base::.Options.  FWIW, the
+> > same happens if we try with:
+> >
+> > opts <- .BaseNamespaceEnv[[".Options"]]
+> >
+> > I don't think lazy evaluation is involved, because I evaluate
+> > opts[["abc"]] above.
+> >
+> > The only thing help(".Options") says is:
+> >
+> > Note:
+> > For compatibility with S there is a visible object .Options whose
+> > value is a pairlist containing the current options() (in no particular
+> > order). Assigning to it will make a local copy and not change the
+> > original. (Using it however is faster than calling options()).
+>
+> You are misreading what this says. As with any assignment to an object
+> that has other references, the assignment will create a local copy
+> before mutating.
+
+I don't think I misread it; that's exactly how I interpreted it, too.
+I just copied that passage to help the reader see that there's nothing
+in the docs mentioning this behavior.
+
+> It does not say that referencing the object makes a
+> copy. So there is no inconsistency.
+
+I'd argue that this behavior of .Options (because of how options() is
+implemented) is not a standard procedure in R, and that the
+expectation would be to make a copy unless otherwise documented. You
+need to dig into the code to figure out that this is not the case and
+how it works.  For example, my mental model of how this is implemented
+is something like:
+
+.Options <- pairlist()
+options <- function(...) {
+  args <- list(...)
+  old <- new <- .Options
+  for (name in names(args)) new[[name]] <- args[[name]]
+  assignInMyNamespace(".Options", new)
+  invisible(old)
+}
+
+and that does create a copy.
+
+I only discovered this because I added the following to my package tests:
+
+opts <- base::.Options
+call_random_fcn()
+stopifnot(identical(base::.Options, opts))
+
+Turns out it never failed. I use .Options, because it's faster than
+options(), which always sorts elements by their names.  FWIW, the
+workaround is to force a copy using opts <- as.list(base::.Options).
+
+> That options() modifies the value of an object with multiple
+> references is not ideal, but changing that while maintaining .Object
+> as a regular variable is probably more trouble than it is worth. It is
+> probably time to work towards deprecating .Options (maybe turning it
+> into an active binding that does make a copy). At the very least
+> discouraging its use in the help file.
+
+This sounds good to me.
+
+Thanks,
+
+Henrik
+
+>
+> Other that changing the docs I doubt this will ever get high enough on
+> anyone's priority list to get done
+>
+> Best,
+>
+> luke
+>
+> >
+> > This behavior goes back to at least R 2.15.0.
+> >
+> > /Henrik
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+>
+> --
+> Luke Tierney
+> Ralph E. Wareham Professor of Mathematical Sciences
+> University of Iowa                  Phone:             319-335-3386
+> Department of Statistics and        Fax:               319-335-3017
+>     Actuarial Science
+> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Feb 25 09:59:54 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 25 Feb 2022 09:59:54 +0100
+Subject: [Rd] 
+ [External]  DOCS/BUG?: opts <- base::.Options is *not* a copy
+In-Reply-To: <CAFDcVCSEXpOMxmS27nOQyHQagPBpPQNQS5aNxOEMCgZrLuCoQg@mail.gmail.com>
+References: <CAFDcVCTGvrJQ0rp5fMvBAuvqrznpgGAJNrY1M8q5HkmhZ5V7Jg@mail.gmail.com>
+ <e763ac16-22af-f620-f5af-9bcb111562ac@uiowa.edu>
+ <CAFDcVCSEXpOMxmS27nOQyHQagPBpPQNQS5aNxOEMCgZrLuCoQg@mail.gmail.com>
+Message-ID: <25112.39562.94963.865295@stat.math.ethz.ch>
+
+>>>>> Henrik Bengtsson 
+>>>>>     on Thu, 24 Feb 2022 11:21:05 -0800 writes:
+
+    > On Thu, Feb 24, 2022 at 5:23 AM <luke-tierney at uiowa.edu> wrote:
+    >> 
+    >> On Thu, 24 Feb 2022, Henrik Bengtsson wrote:
+    >> 
+    >> > Hi, is the following a non-documented feature or a bug:
+    >> >
+    >> > $ R --quiet --vanilla
+    >> > opts <- base::.Options
+    >> > opts[["abc"]]
+    >> > #> NULL
+    >> > options(abc = 42)
+    >> > opts[["abc"]]
+    >> > #> [1] 42
+    >> >
+    >> > I would have expected that 'opts' would be a *copy* of base::.Options
+    >> > that is not affected by later changes to base::.Options.  FWIW, the
+    >> > same happens if we try with:
+    >> >
+    >> > opts <- .BaseNamespaceEnv[[".Options"]]
+    >> >
+    >> > I don't think lazy evaluation is involved, because I evaluate
+    >> > opts[["abc"]] above.
+    >> >
+    >> > The only thing help(".Options") says is:
+    >> >
+    >> > Note:
+    >> > For compatibility with S there is a visible object .Options whose
+    >> > value is a pairlist containing the current options() (in no particular
+    >> > order). Assigning to it will make a local copy and not change the
+    >> > original. (Using it however is faster than calling options()).
+    >> 
+    >> You are misreading what this says. As with any assignment to an object
+    >> that has other references, the assignment will create a local copy
+    >> before mutating.
+
+    > I don't think I misread it; that's exactly how I interpreted it, too.
+    > I just copied that passage to help the reader see that there's nothing
+    > in the docs mentioning this behavior.
+
+    >> It does not say that referencing the object makes a
+    >> copy. So there is no inconsistency.
+
+    > I'd argue that this behavior of .Options (because of how options() is
+    > implemented) is not a standard procedure in R, and that the
+    > expectation would be to make a copy unless otherwise documented. You
+    > need to dig into the code to figure out that this is not the case and
+    > how it works.  For example, my mental model of how this is implemented
+    > is something like:
+
+    > .Options <- pairlist()
+    > options <- function(...) {
+    > args <- list(...)
+    > old <- new <- .Options
+    > for (name in names(args)) new[[name]] <- args[[name]]
+    > assignInMyNamespace(".Options", new)
+    > invisible(old)
+    > }
+
+    > and that does create a copy.
+
+    > I only discovered this because I added the following to my package tests:
+
+    > opts <- base::.Options
+    > call_random_fcn()
+    > stopifnot(identical(base::.Options, opts))
+
+    > Turns out it never failed. I use .Options, because it's faster than
+    > options(), which always sorts elements by their names.  FWIW, the
+    > workaround is to force a copy using opts <- as.list(base::.Options).
+
+Esthetics only:  I think I'd rather use
+
+   opts <- force(base::.Options)
+
+
+
+    >> That options() modifies the value of an object with multiple
+    >> references is not ideal, but changing that while maintaining .Object
+    >> as a regular variable is probably more trouble than it is worth. It is
+    >> probably time to work towards deprecating .Options (maybe turning it
+    >> into an active binding that does make a copy). At the very least
+    >> discouraging its use in the help file.
+
+    > This sounds good to me.
+
+We might consider  `options()` gaining an optional argument, say
+`sortNames = TRUE`  and  `options(sortNames=FALSE)` would still not
+sort and hence be faster than pure options()
+
+Martin
+
+
+
+    > Thanks,
+
+    > Henrik
+
+    >> 
+    >> Other that changing the docs I doubt this will ever get high enough on
+    >> anyone's priority list to get done
+    >> 
+    >> Best,
+    >> 
+    >> luke
+    >> 
+    >> >
+    >> > This behavior goes back to at least R 2.15.0.
+    >> >
+    >> > /Henrik
+    >> >
+    >> > ______________________________________________
+    >> > R-devel at r-project.org mailing list
+    >> > https://stat.ethz.ch/mailman/listinfo/r-devel
+    >> >
+    >> 
+    >> --
+    >> Luke Tierney
+    >> Ralph E. Wareham Professor of Mathematical Sciences
+    >> University of Iowa                  Phone:             319-335-3386
+    >> Department of Statistics and        Fax:               319-335-3017
+    >> Actuarial Science
+    >> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+    >> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+    > ______________________________________________
+    > R-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Fri Feb 25 14:13:03 2022
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Fri, 25 Feb 2022 07:13:03 -0600 (CST)
+Subject: [Rd] 
+ [External]  DOCS/BUG?: opts <- base::.Options is *not* a copy
+In-Reply-To: <25112.39562.94963.865295@stat.math.ethz.ch>
+References: <CAFDcVCTGvrJQ0rp5fMvBAuvqrznpgGAJNrY1M8q5HkmhZ5V7Jg@mail.gmail.com>
+ <e763ac16-22af-f620-f5af-9bcb111562ac@uiowa.edu>
+ <CAFDcVCSEXpOMxmS27nOQyHQagPBpPQNQS5aNxOEMCgZrLuCoQg@mail.gmail.com>
+ <25112.39562.94963.865295@stat.math.ethz.ch>
+Message-ID: <a3896c9a-e2ff-a9f4-ec67-bf5b1277491@uiowa.edu>
+
+On Fri, 25 Feb 2022, Martin Maechler wrote:
+
+>>>>>> Henrik Bengtsson
+>>>>>>     on Thu, 24 Feb 2022 11:21:05 -0800 writes:
+>
+>    > On Thu, Feb 24, 2022 at 5:23 AM <luke-tierney at uiowa.edu> wrote:
+>    >>
+>    >> On Thu, 24 Feb 2022, Henrik Bengtsson wrote:
+>    >>
+>    >> > Hi, is the following a non-documented feature or a bug:
+>    >> >
+>    >> > $ R --quiet --vanilla
+>    >> > opts <- base::.Options
+>    >> > opts[["abc"]]
+>    >> > #> NULL
+>    >> > options(abc = 42)
+>    >> > opts[["abc"]]
+>    >> > #> [1] 42
+>    >> >
+>    >> > I would have expected that 'opts' would be a *copy* of base::.Options
+>    >> > that is not affected by later changes to base::.Options.  FWIW, the
+>    >> > same happens if we try with:
+>    >> >
+>    >> > opts <- .BaseNamespaceEnv[[".Options"]]
+>    >> >
+>    >> > I don't think lazy evaluation is involved, because I evaluate
+>    >> > opts[["abc"]] above.
+>    >> >
+>    >> > The only thing help(".Options") says is:
+>    >> >
+>    >> > Note:
+>    >> > For compatibility with S there is a visible object .Options whose
+>    >> > value is a pairlist containing the current options() (in no particular
+>    >> > order). Assigning to it will make a local copy and not change the
+>    >> > original. (Using it however is faster than calling options()).
+>    >>
+>    >> You are misreading what this says. As with any assignment to an object
+>    >> that has other references, the assignment will create a local copy
+>    >> before mutating.
+>
+>    > I don't think I misread it; that's exactly how I interpreted it, too.
+>    > I just copied that passage to help the reader see that there's nothing
+>    > in the docs mentioning this behavior.
+>
+>    >> It does not say that referencing the object makes a
+>    >> copy. So there is no inconsistency.
+>
+>    > I'd argue that this behavior of .Options (because of how options() is
+>    > implemented) is not a standard procedure in R, and that the
+>    > expectation would be to make a copy unless otherwise documented. You
+>    > need to dig into the code to figure out that this is not the case and
+>    > how it works.  For example, my mental model of how this is implemented
+>    > is something like:
+>
+>    > .Options <- pairlist()
+>    > options <- function(...) {
+>    > args <- list(...)
+>    > old <- new <- .Options
+>    > for (name in names(args)) new[[name]] <- args[[name]]
+>    > assignInMyNamespace(".Options", new)
+>    > invisible(old)
+>    > }
+>
+>    > and that does create a copy.
+>
+>    > I only discovered this because I added the following to my package tests:
+>
+>    > opts <- base::.Options
+>    > call_random_fcn()
+>    > stopifnot(identical(base::.Options, opts))
+>
+>    > Turns out it never failed. I use .Options, because it's faster than
+>    > options(), which always sorts elements by their names.  FWIW, the
+>    > workaround is to force a copy using opts <- as.list(base::.Options).
+>
+> Esthetics only:  I think I'd rather use
+>
+>   opts <- force(base::.Options)
+
+This doesn't create a copy (you cha check with .Internal(inspect()).
+
+Using as.list creates a VECSXP, which is better anyway as we are
+trying to reduce the use of pairlists at R revel.
+
+>
+>
+>    >> That options() modifies the value of an object with multiple
+>    >> references is not ideal, but changing that while maintaining .Object
+>    >> as a regular variable is probably more trouble than it is worth. It is
+>    >> probably time to work towards deprecating .Options (maybe turning it
+>    >> into an active binding that does make a copy). At the very least
+>    >> discouraging its use in the help file.
+>
+>    > This sounds good to me.
+>
+> We might consider  `options()` gaining an optional argument, say
+> `sortNames = TRUE`  and  `options(sortNames=FALSE)` would still not
+> sort and hence be faster than pure options()
+
+Please don't. Whether or not there is some sorting going on somewhere
+is not something a user should have to worry about. I certainly would
+not want to have to think about it. If there really is a performance
+issue, and that case has not been made, then that can be looked into.
+
+Deprecating .Options is worth considering in principle; converting to
+an active binding that converts the internal pairlist to vector list
+is also worth considering in principle, but again I don't see this as
+having high priority.
+
+Best,
+
+luke
+
+>
+> Martin
+>
+>
+>
+>    > Thanks,
+>
+>    > Henrik
+>
+>    >>
+>    >> Other that changing the docs I doubt this will ever get high enough on
+>    >> anyone's priority list to get done
+>    >>
+>    >> Best,
+>    >>
+>    >> luke
+>    >>
+>    >> >
+>    >> > This behavior goes back to at least R 2.15.0.
+>    >> >
+>    >> > /Henrik
+>    >> >
+>    >> > ______________________________________________
+>    >> > R-devel at r-project.org mailing list
+>    >> > https://stat.ethz.ch/mailman/listinfo/r-devel
+>    >> >
+>    >>
+>    >> --
+>    >> Luke Tierney
+>    >> Ralph E. Wareham Professor of Mathematical Sciences
+>    >> University of Iowa                  Phone:             319-335-3386
+>    >> Department of Statistics and        Fax:               319-335-3017
+>    >> Actuarial Science
+>    >> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+>    >> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+>
+>    > ______________________________________________
+>    > R-devel at r-project.org mailing list
+>    > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+
+From m|ch@|2992 @end|ng |rom gm@||@com  Fri Feb 25 17:31:18 2022
+From: m|ch@|2992 @end|ng |rom gm@||@com (=?UTF-8?Q?Micha=C5=82_Bojanowski?=)
+Date: Fri, 25 Feb 2022 17:31:18 +0100
+Subject: [Rd] Making CRAN memory access checks more accessible?
+Message-ID: <CAByPayEp5sVw1S6mC5Juec9vayGvAsE4V318vRzLLG9d72G0sg@mail.gmail.com>
+
+Dear colleagues,
+
+Two days after successfully submitting a package to CRAN I received a
+message about "additional issues" with the package's C++ code
+(clang-UBSAN to be precise) with a two-week deadline to resolve. While
+attempting to somewhat blind-foldedly fix the problem I was wondering
+whether it is sensible and feasible for base R to:
+
+1. Implement/expose all these memory-related tests (c.f.
+https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-memory-access)
+to package developers e.g. via options to R CMD check, much like
+--use-gct or --use-valgrind are already? Or via a script etc.?
+
+or
+
+2. Expand the chapter
+https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-memory-access
+with unequivocal and straightforward instructions how to setup and run
+these tests locally on different platforms? I believe that the current
+version of the manual is inaccessible to anybody but hardcore C/C++
+developers while there is a broader spectrum of ppl able to write some
+C without the deep understanding of the internals.
+
+While I noticed that a similar problem has triggered some heat on
+Twitter recently I independently decided to write to you all here to
+ask the question above. I believe it might be rather difficult for
+package contributors to adhere to tests which they are unable to
+execute locally (or by a CI service). Alas, in the end it will end-up
+with a developer playing package ping-pong with CRAN maintainers whose
+time is a valuable resource.
+
+Best wishes,
+Michal
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Feb 25 18:27:21 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 25 Feb 2022 12:27:21 -0500
+Subject: [Rd] Making CRAN memory access checks more accessible?
+In-Reply-To: <CAByPayEp5sVw1S6mC5Juec9vayGvAsE4V318vRzLLG9d72G0sg@mail.gmail.com>
+References: <CAByPayEp5sVw1S6mC5Juec9vayGvAsE4V318vRzLLG9d72G0sg@mail.gmail.com>
+Message-ID: <bdd4a70d-e39e-d2a6-47da-63d43b316817@gmail.com>
+
+On 25/02/2022 11:31 a.m., Micha? Bojanowski wrote:
+> Dear colleagues,
+> 
+> Two days after successfully submitting a package to CRAN I received a
+> message about "additional issues" with the package's C++ code
+> (clang-UBSAN to be precise) with a two-week deadline to resolve. While
+> attempting to somewhat blind-foldedly fix the problem I was wondering
+> whether it is sensible and feasible for base R to:
+> 
+> 1. Implement/expose all these memory-related tests (c.f.
+> https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-memory-access)
+> to package developers e.g. via options to R CMD check, much like
+> --use-gct or --use-valgrind are already? Or via a script etc.?
+
+Many users won't be able to run them.
+> 
+> or
+> 
+> 2. Expand the chapter
+> https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-memory-access
+> with unequivocal and straightforward instructions how to setup and run
+> these tests locally on different platforms? I believe that the current
+> version of the manual is inaccessible to anybody but hardcore C/C++
+> developers while there is a broader spectrum of ppl able to write some
+> C without the deep understanding of the internals.
+
+I doubt if the instructions in WRE could be simplified and still work.
+
+
+> 
+> While I noticed that a similar problem has triggered some heat on
+> Twitter recently I independently decided to write to you all here to
+> ask the question above. I believe it might be rather difficult for
+> package contributors to adhere to tests which they are unable to
+> execute locally (or by a CI service). Alas, in the end it will end-up
+> with a developer playing package ping-pong with CRAN maintainers whose
+> time is a valuable resource.
+
+I think R-hub offers UBSAN services.  Have you tried those?
+
+Duncan Murdoch
+
+
+From m|ch@|2992 @end|ng |rom gm@||@com  Sat Feb 26 00:49:10 2022
+From: m|ch@|2992 @end|ng |rom gm@||@com (=?UTF-8?Q?Micha=C5=82_Bojanowski?=)
+Date: Sat, 26 Feb 2022 00:49:10 +0100
+Subject: [Rd] Making CRAN memory access checks more accessible?
+In-Reply-To: <bdd4a70d-e39e-d2a6-47da-63d43b316817@gmail.com>
+References: <CAByPayEp5sVw1S6mC5Juec9vayGvAsE4V318vRzLLG9d72G0sg@mail.gmail.com>
+ <bdd4a70d-e39e-d2a6-47da-63d43b316817@gmail.com>
+Message-ID: <CAByPayEfxi73tSA8MBYs1V5BX_XHb-N9PCEj+ksbPq9jWfi2xg@mail.gmail.com>
+
+Ha! I was not aware of R-hub having this. Thank you!
+
+On Fri, Feb 25, 2022 at 6:27 PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>
+> On 25/02/2022 11:31 a.m., Micha? Bojanowski wrote:
+> > Dear colleagues,
+> >
+> > Two days after successfully submitting a package to CRAN I received a
+> > message about "additional issues" with the package's C++ code
+> > (clang-UBSAN to be precise) with a two-week deadline to resolve. While
+> > attempting to somewhat blind-foldedly fix the problem I was wondering
+> > whether it is sensible and feasible for base R to:
+> >
+> > 1. Implement/expose all these memory-related tests (c.f.
+> > https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-memory-access)
+> > to package developers e.g. via options to R CMD check, much like
+> > --use-gct or --use-valgrind are already? Or via a script etc.?
+>
+> Many users won't be able to run them.
+> >
+> > or
+> >
+> > 2. Expand the chapter
+> > https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-memory-access
+> > with unequivocal and straightforward instructions how to setup and run
+> > these tests locally on different platforms? I believe that the current
+> > version of the manual is inaccessible to anybody but hardcore C/C++
+> > developers while there is a broader spectrum of ppl able to write some
+> > C without the deep understanding of the internals.
+>
+> I doubt if the instructions in WRE could be simplified and still work.
+>
+>
+> >
+> > While I noticed that a similar problem has triggered some heat on
+> > Twitter recently I independently decided to write to you all here to
+> > ask the question above. I believe it might be rather difficult for
+> > package contributors to adhere to tests which they are unable to
+> > execute locally (or by a CI service). Alas, in the end it will end-up
+> > with a developer playing package ping-pong with CRAN maintainers whose
+> > time is a valuable resource.
+>
+> I think R-hub offers UBSAN services.  Have you tried those?
+>
+> Duncan Murdoch
+
+
+From d@b@tr@kou @end|ng |rom gm@||@com  Sat Feb 26 15:36:04 2022
+From: d@b@tr@kou @end|ng |rom gm@||@com (Dzmitry Batrakou)
+Date: Sat, 26 Feb 2022 14:36:04 +0000
+Subject: [Rd] strsplit() and final empty values
+Message-ID: <CAC0O-5f1U2m8ji=4UMWNBFwW7DFU72L1eNyo6nJN0sBpbcCPdw@mail.gmail.com>
+
+Hello,
+
+I would like to suggest changing the behaviour of the strsplit() function
+with multiple trailing empty values. Currently, `strsplit(x = 'value::',
+split = ':')` produces a list of length 2 ('value',''). This behaviour is
+documented in the manual (penultimate example), however, I would argue, is
+illogical and can lead to unexpected parsing results. One example is
+splitting delimited value strings into a table.
+
+Regards,
+Dzmitry
+
+	[[alternative HTML version deleted]]
+
+
+From @eb@@t|@n@kr@ntz @end|ng |rom gr@du@te|n@t|tute@ch  Sat Feb 26 23:12:10 2022
+From: @eb@@t|@n@kr@ntz @end|ng |rom gr@du@te|n@t|tute@ch (Sebastian Martin Krantz)
+Date: Sat, 26 Feb 2022 23:12:10 +0100
+Subject: [Rd] Enhancements in base R: Some Suggestions from the {collapse}
+ and {kit} Packages
+Message-ID: <CAOsNuxD7TaE1ieCU3rxC8RNTd0pJjJLx0V17_f-i5etO=dTCnw@mail.gmail.com>
+
+Dear R Core and Developers,
+
+I have been asked by a user to contribute to base R, which I was hesitant
+about because I think you have better things to do than adding/optimizing C
+code, and also because the objective of my package {collapse} - to
+vectorize grouped statistical operations in R - is for the most part beyond
+the scope of base R. There are however some functions and algorithms
+utilized in {collapse} and also in the {kit} package by Morgan Jacob (with
+variants in {data.table} as well) that could benefit base R, so I'll just
+give you here my 5 cents about those, in the hope that they could be useful
+at some point.
+
+1. Factor Generation in R could be faster, utilizing order(.., method =
+"radix") (for numeric data) and kit::charToFact.
+
+The basic idea for numeric data is to use the fast radix based ordering
+already present in base R, and then do a run-length-type grouping of the
+vector:
+
+fast_num_fact <- function(x) {
+ names(x) <- NULL
+ radixord_core <- function(...) .Internal(radixsort(TRUE, FALSE, TRUE,
+TRUE, ...))
+ o <- radixord_core(x)
+ ends <- attr(o, "ends")
+ f <- collapse::groupid(x, o, na.skip = TRUE, check.o = FALSE)
+ attributes(f) <- NULL
+ attr(f, "levels") <- if(is.character(x)) x[o[ends]] else
+as.character(x[o[ends]])
+ class(f) <- "factor"
+ f
+}
+
+This function will also be faster than a hash table for character data that
+is approximately sorted. The new hash table based implementation
+kit::charToFact is however faster than either match() or radix ordering for
+character data, and could easily be ported into base R. Code:
+https://github.com/2005m/kit/blob/6ee20af14228df3a69cbf594cb6e116a838b5407/src/psort.c
+
+2. Unique values in R could be significantly faster using
+collapse::group(), which utilizes a hash function first developed in {kit}
+in a clever way to achieve very fast first-appearance-order grouping for
+vectors or lists of vectors / data frames. Code examples see
+collapse::funique() for data frames or collapse::qF(..., sort = FALSE)
+which generates factors in first-appearance order of levels. Code:
+https://github.com/SebKrantz/collapse/blob/master/src/kit_dup.c
+
+3. split() could become significantly faster, using collapse::gsplit().
+gsplit() is {collapse}'s version of split() utilizing grouping objects
+(created with collapse::GRP, which utilizes in a more direct way the
+algorithms just outlined), but it also works with factors. Rudimentary
+benchmarks show that lapply(gsplit(x, f), FUN, ...) is comparable to the
+speed that {data.table} applies basic R functions across groups (without
+internal vectorization / GeForce), and could benefit a lot of base R. Code:
+https://github.com/SebKrantz/collapse/blob/master/src/small_helper.c (might
+go to a separate file in the future)
+
+4. Data frame subsetting could become a lot faster: Various faster
+implementations are available in {data.table}, {collapse} (same as
+{data.table} but without parallelism and no overallocation of columns) and
+{kit}.
+
+5. There are many smaller functions in both packages that are useful and
+could be more or less ported directly to base R. These include mathematical
+operations by reference for vectors / matrices / data frames
+(collapse::setop and %+=%, %-=%, %*=%, %/=%), multiple assignment
+(collapse::massign, %=%), or additional parallel statistics functions
+(kit::pmean, psum, pprod, pany, pall), fast ifelse (kit::iif) etc. See
+https://sebkrantz.github.io/collapse/reference/index.html#-memory-efficient-programming
+And code:
+https://github.com/SebKrantz/collapse/blob/master/src/small_helper.c and
+https://github.com/2005m/kit/blob/master/src/psum.c and
+https://github.com/2005m/kit/blob/master/src/iif.c
+
+Those were my 5 cents based on what I have seen and done so far, if they
+are useful for base R development as well I am glad. Otherwise keep up the
+great work you are doing, and we (and many others) will continue to develop
+the {fastverse}.
+
+Best regards,
+
+Sebastian Krantz
+
+	[[alternative HTML version deleted]]
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Feb 28 11:06:17 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 28 Feb 2022 11:06:17 +0100
+Subject: [Rd] Making CRAN memory access checks more accessible?
+In-Reply-To: <CAByPayEfxi73tSA8MBYs1V5BX_XHb-N9PCEj+ksbPq9jWfi2xg@mail.gmail.com>
+References: <CAByPayEp5sVw1S6mC5Juec9vayGvAsE4V318vRzLLG9d72G0sg@mail.gmail.com>
+ <bdd4a70d-e39e-d2a6-47da-63d43b316817@gmail.com>
+ <CAByPayEfxi73tSA8MBYs1V5BX_XHb-N9PCEj+ksbPq9jWfi2xg@mail.gmail.com>
+Message-ID: <1c51885d-3e45-566b-1e17-deb5930672b3@gmail.com>
+
+On 2/26/22 00:49, Micha? Bojanowski wrote:
+> Ha! I was not aware of R-hub having this. Thank you!
+
+If you can't find the cause of the problem from the reports, you can 
+also ask for help e.g. on R-pkg-devel. Others may be able to help 
+identifying the cause in the code or possibly have useful suggestions 
+for cleanups/simplifications, which will eventually lead to fixing also 
+the reported issue.
+
+Tomas
+
+>
+> On Fri, Feb 25, 2022 at 6:27 PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>> On 25/02/2022 11:31 a.m., Micha? Bojanowski wrote:
+>>> Dear colleagues,
+>>>
+>>> Two days after successfully submitting a package to CRAN I received a
+>>> message about "additional issues" with the package's C++ code
+>>> (clang-UBSAN to be precise) with a two-week deadline to resolve. While
+>>> attempting to somewhat blind-foldedly fix the problem I was wondering
+>>> whether it is sensible and feasible for base R to:
+>>>
+>>> 1. Implement/expose all these memory-related tests (c.f.
+>>> https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-memory-access)
+>>> to package developers e.g. via options to R CMD check, much like
+>>> --use-gct or --use-valgrind are already? Or via a script etc.?
+>> Many users won't be able to run them.
+>>> or
+>>>
+>>> 2. Expand the chapter
+>>> https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-memory-access
+>>> with unequivocal and straightforward instructions how to setup and run
+>>> these tests locally on different platforms? I believe that the current
+>>> version of the manual is inaccessible to anybody but hardcore C/C++
+>>> developers while there is a broader spectrum of ppl able to write some
+>>> C without the deep understanding of the internals.
+>> I doubt if the instructions in WRE could be simplified and still work.
+>>
+>>
+>>> While I noticed that a similar problem has triggered some heat on
+>>> Twitter recently I independently decided to write to you all here to
+>>> ask the question above. I believe it might be rather difficult for
+>>> package contributors to adhere to tests which they are unable to
+>>> execute locally (or by a CI service). Alas, in the end it will end-up
+>>> with a developer playing package ping-pong with CRAN maintainers whose
+>>> time is a valuable resource.
+>> I think R-hub offers UBSAN services.  Have you tried those?
+>>
+>> Duncan Murdoch
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From c@@rd|@g@bor @end|ng |rom gm@||@com  Mon Feb 28 11:57:58 2022
+From: c@@rd|@g@bor @end|ng |rom gm@||@com (=?UTF-8?B?R8OhYm9yIENzw6FyZGk=?=)
+Date: Mon, 28 Feb 2022 11:57:58 +0100
+Subject: [Rd] deparse() and UTF-8 strings
+Message-ID: <CABtg=Kn1ZsCOJbxcjfnJ1yEtPfEPnFStQJGwp3yj733dddWqXw@mail.gmail.com>
+
+I am very sorry that it felt rude, that was not my intention at all
+and I apologise.
+
+I will choose my words more carefully in the future.
+
+I wasn't sure if the commit was in response to my email or not,
+considering that there are a lot of UTF-8 related changes in R
+nowadays.
+
+Gabor Csardi
+
+On 22/02/2022 09:53, G?bor Cs?rdi wrote:
+
+I just saw a commit accidentally that adds iconv() support for the c99
+\u escapes, which might or might not be accidental:
+https://github.com/wch/r-source/commit/f19b4ae7715eea1b18ef8368b4c2849a578ade07
+
+
+Calling my work 'accidental' felt very rude. It is work in progress,
+not least as the test suite is unfinished. Part of that test is to
+ensure it does the same thing as GNU libiconv, where the name and idea
+came from.
+
+
+From therne@u @end|ng |rom m@yo@edu  Mon Feb 28 18:08:05 2022
+From: therne@u @end|ng |rom m@yo@edu (Therneau, Terry M., Ph.D.)
+Date: Mon, 28 Feb 2022 11:08:05 -0600
+Subject: [Rd] minor CRAN issue
+Message-ID: <f03410$hgv8ua@ironport10.mayo.edu>
+
+I just bundled up and submitted the survival package, using R Under development (unstable) 
+(2022-02-28 r81833) -- "Unsuffered Consequences"
+The 00-check.log file has a lot of lines like the following:
+
+9a10
+ > > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+75a77,78
+ > > base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), p
+os = "CheckExEnv")
+ > > base::cat("Surv", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptim
+e", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv')
+, append=TRUE, sep="\t")
+81a85
+
+
+One set for every .Rd file.?? I don't see those when I do a diff, however:
+
+tmt%? diff survival.Rcheck/survival-Ex.Rout survival/tests/Examples/survival-Ex.Rout.save
+3926c3926
+< Time elapsed:? 10.328 0.133 10.461 0 0
+---
+ > Time elapsed:? 10.399 0.08 10.48 0 0
+
+Very minor.
+
+-- 
+Terry M Therneau, PhD
+Department of Quantitative Health Sciences
+Mayo Clinic
+therneau at mayo.edu
+
+"TERR-ree THUR-noh"
+
+	[[alternative HTML version deleted]]
+
+
+From r|p|ey @end|ng |rom @t@t@@ox@@c@uk  Mon Feb 28 19:18:32 2022
+From: r|p|ey @end|ng |rom @t@t@@ox@@c@uk (Prof Brian Ripley)
+Date: Mon, 28 Feb 2022 18:18:32 +0000
+Subject: [Rd] minor CRAN issue
+In-Reply-To: <f03410$hgv8ua@ironport10.mayo.edu>
+References: <f03410$hgv8ua@ironport10.mayo.edu>
+Message-ID: <ec393784-1b05-10ca-c33c-8ecefb13877c@stats.ox.ac.uk>
+
+On 28/02/2022 17:08, Therneau, Terry M., Ph.D. via R-devel wrote:
+> I just bundled up and submitted the survival package, using R Under development (unstable)
+> (2022-02-28 r81833) -- "Unsuffered Consequences"
+> The 00-check.log file has a lot of lines like the following:
+> 
+> 9a10
+>   > > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> 75a77,78
+>   > > base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), p
+> os = "CheckExEnv")
+>   > > base::cat("Surv", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptim
+> e", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv')
+> , append=TRUE, sep="\t")
+> 81a85
+> 
+> 
+> One set for every .Rd file.?? I don't see those when I do a diff, however:
+> 
+> tmt%? diff survival.Rcheck/survival-Ex.Rout survival/tests/Examples/survival-Ex.Rout.save
+> 3926c3926
+> < Time elapsed:? 10.328 0.133 10.461 0 0
+> ---
+>   > Time elapsed:? 10.399 0.08 10.48 0 0
+> 
+> Very minor.
+> 
+
+Not a CRAN issue (R CMD check is not from CRAN).  Looks like you did not 
+follow the advice in footnote 21 of the manual:
+
+https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#FOOT21
+
+
+-- 
+Brian D. Ripley,                  ripley at stats.ox.ac.uk
+Emeritus Professor of Applied Statistics, University of Oxford
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Mon Feb 28 20:15:29 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Mon, 28 Feb 2022 11:15:29 -0800
+Subject: [Rd] Making CRAN memory access checks more accessible?
+In-Reply-To: <CAByPayEp5sVw1S6mC5Juec9vayGvAsE4V318vRzLLG9d72G0sg@mail.gmail.com>
+References: <CAByPayEp5sVw1S6mC5Juec9vayGvAsE4V318vRzLLG9d72G0sg@mail.gmail.com>
+Message-ID: <CAHqSRuTwOWmcqDXxy-JgFUFuoRg1PUP2BO=KQ37PPngPCqgZaw@mail.gmail.com>
+
+valgrind will detect some of the memory issues that UBSAN does.  Here is
+how you can use valgrind with the gdb debugger on Linux.  Use apt-get to
+get valgrind and gdb if you have not yet installed them (If you have
+Windows, install Microsoft's 'wsl2' and Ubuntu Linux and do this in Ubuntu
+windows.)
+
+1. Configure your R build for valgrind as described in Writing R Extensions
+section 4.3.2.
+2. Run R with
+    R --debugger=valgrind --debugger-args="--track-origins=yes --vgdb=full
+--vgdb-error=0"
+and any other R command line arguments you like (I often use --quiet and
+--no-save).
+You should see something like the following printed
+  ==238== TO DEBUG THIS PROCESS USING GDB: start GDB like this
+  ==238==   /path/to/gdb /home/bill/R-devel/R-build/bin/exec/R
+  ==238== and then give GDB the following command
+  ==238==   target remote |
+/usr/lib/x86_64-linux-gnu/valgrind/../../bin/vgdb --pid=238
+  ==238== --pid is optional if only one valgrind process is running
+3.  In another window run gdb with that path to .../exec/R as its only
+command line argument.
+4.  On my copy of Ubuntu 20.04, vgdb is not in /usr/lib/... but is in
+/usr/bin so
+   target remote | vgdb
+at the (gdb) prompt generally starts vgdb, valgrind's client for gdb.  Set
+any break points you would like then issue the
+   continue
+command.
+
+At this point R in the first window should start running.  It will break to
+the debugger when valgrind detects a problem or when any of your
+breakpoints are hit.  Control-C in the R window will also break to the
+debugger.
+
+The usual gdb commands will work.  There are some extra "monitor" commands
+supported
+by vgdb.  E.g., at the (gdb) prompt
+   monitor leak-check full
+will describe all the memory leaks detected since the last time you asked
+about them.
+Look in
+
+https://valgrind.org/docs/manual/mc-manual.html#mc-manual.monitor-commands
+for other useful monitor commands.
+
+-Bill
+
+On Fri, Feb 25, 2022 at 8:31 AM Micha? Bojanowski <michal2992 at gmail.com>
+wrote:
+
+> Dear colleagues,
+>
+> Two days after successfully submitting a package to CRAN I received a
+> message about "additional issues" with the package's C++ code
+> (clang-UBSAN to be precise) with a two-week deadline to resolve. While
+> attempting to somewhat blind-foldedly fix the problem I was wondering
+> whether it is sensible and feasible for base R to:
+>
+> 1. Implement/expose all these memory-related tests (c.f.
+>
+> https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-memory-access
+> )
+> to package developers e.g. via options to R CMD check, much like
+> --use-gct or --use-valgrind are already? Or via a script etc.?
+>
+> or
+>
+> 2. Expand the chapter
+>
+> https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Checking-memory-access
+> with unequivocal and straightforward instructions how to setup and run
+> these tests locally on different platforms? I believe that the current
+> version of the manual is inaccessible to anybody but hardcore C/C++
+> developers while there is a broader spectrum of ppl able to write some
+> C without the deep understanding of the internals.
+>
+> While I noticed that a similar problem has triggered some heat on
+> Twitter recently I independently decided to write to you all here to
+> ask the question above. I believe it might be rather difficult for
+> package contributors to adhere to tests which they are unable to
+> execute locally (or by a CI service). Alas, in the end it will end-up
+> with a developer playing package ping-pong with CRAN maintainers whose
+> time is a valuable resource.
+>
+> Best wishes,
+> Michal
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+

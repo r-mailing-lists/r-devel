@@ -1,0 +1,2764 @@
+From trevor@|@d@v|@ @end|ng |rom gm@||@com  Tue Jul  1 20:11:53 2025
+From: trevor@|@d@v|@ @end|ng |rom gm@||@com (Trevor Davis)
+Date: Tue, 1 Jul 2025 11:11:53 -0700
+Subject: [Rd] Newish function `zstdfile()` never mentioned in NEWS
+Message-ID: <CAMigB8H931yjr9nO5OrPq+BGCqiCq18F=4vzU6mjSFmETDM65Q@mail.gmail.com>
+
+FYI: although well documented in `help("connections")` I can't find a
+mention of `zstdfile()` in the NEWS file even though it was introduced
+recently in R 4.5.0:
+https://cran.r-project.org/doc/manuals/r-release/NEWS.html
+
+	[[alternative HTML version deleted]]
+
+
+From @nto|ne@|@br| @end|ng |rom gm@||@com  Tue Jul  8 12:12:42 2025
+From: @nto|ne@|@br| @end|ng |rom gm@||@com (Antoine Fabri)
+Date: Tue, 8 Jul 2025 12:12:42 +0200
+Subject: [Rd] Time to revisit ifelse ?
+Message-ID: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+
+Dear r-devel,
+
+`ifelse()` has a lot of issues, and for these reasons it has been redone in
+`dplyr::if_else()` and `data.table::fifelse()`, which are both great. Yet
+it's an important base R function, it's really hard to program in base R
+without it and scores probably as high as it gets in the most_used *
+most_problematic metric.
+
+Obviously we can't change it without breaking a ton of code, but with all
+the experience we now have with it and the dplyr and data.table alternative
+maybe it might not be absurd to have a good alternative, say `if.else` in
+base R, that we can document on the same page and recommend for future use.
+It would require a common type in yes/no, not return logical() for all zero
+length input, work with dates, datetimes and factors, handle a na condition
+etc. The test suites of dplyr and data.table probably tell us everything
+about the edge cases we want to look at. Maybe the old ifelse could even
+warn when called from the top level, to incite us to work with the new one.
+
+It feels wrong to me to be stuck with ifelse() forever just because it has
+been like this for a long time. I'm sure some of you learnt your way around
+it but I work with R every day and after 10+ years of R it still bites me
+all the time, I'm probably not alone, at least chatGPT called it a
+"footgun", and we don't want that :).
+
+Thanks,
+
+Antoine
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Jul  8 13:25:18 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 8 Jul 2025 07:25:18 -0400
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+References: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+Message-ID: <ddcbc6ce-ef17-4bac-b901-5399d15ef6f4@gmail.com>
+
+Rather than asking others to do this, why don't you create a tiny 
+package containing nothing other than an ifelse() replacement?  I 
+wouldn't want to depend on dplyr or data.table just to get their 
+versions, but depending on your tiny package wouldn't be an issue.
+
+Duncan Murdoch
+
+On 2025-07-08 6:12 a.m., Antoine Fabri wrote:
+> Dear r-devel,
+> 
+> `ifelse()` has a lot of issues, and for these reasons it has been redone in
+> `dplyr::if_else()` and `data.table::fifelse()`, which are both great. Yet
+> it's an important base R function, it's really hard to program in base R
+> without it and scores probably as high as it gets in the most_used *
+> most_problematic metric.
+> 
+> Obviously we can't change it without breaking a ton of code, but with all
+> the experience we now have with it and the dplyr and data.table alternative
+> maybe it might not be absurd to have a good alternative, say `if.else` in
+> base R, that we can document on the same page and recommend for future use.
+> It would require a common type in yes/no, not return logical() for all zero
+> length input, work with dates, datetimes and factors, handle a na condition
+> etc. The test suites of dplyr and data.table probably tell us everything
+> about the edge cases we want to look at. Maybe the old ifelse could even
+> warn when called from the top level, to incite us to work with the new one.
+> 
+> It feels wrong to me to be stuck with ifelse() forever just because it has
+> been like this for a long time. I'm sure some of you learnt your way around
+> it but I work with R every day and after 10+ years of R it still bites me
+> all the time, I'm probably not alone, at least chatGPT called it a
+> "footgun", and we don't want that :).
+> 
+> Thanks,
+> 
+> Antoine
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @nto|ne@|@br| @end|ng |rom gm@||@com  Tue Jul  8 13:36:14 2025
+From: @nto|ne@|@br| @end|ng |rom gm@||@com (Antoine Fabri)
+Date: Tue, 8 Jul 2025 13:36:14 +0200
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <ddcbc6ce-ef17-4bac-b901-5399d15ef6f4@gmail.com>
+References: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+ <ddcbc6ce-ef17-4bac-b901-5399d15ef6f4@gmail.com>
+Message-ID: <CAEKh8uhDN=bfOXz=ZJbJ4E7C_hD4KGCz36b8sNPM0wJb+7S_9A@mail.gmail.com>
+
+It's not about asking others to do it really, that was a harsh assumption.
+I'd be happy to propose a version if it helps, I'd be also very happy if it
+were just a copy of if_else or fifelse (both MIT FWIW).
+It's a low level building block and it's broken, IMO it's way better to
+have it available and documented in base R and incite everyone to use it,
+so not only we don't suffer from it in the code we write, but also in the
+code we use or inherit from.
+
+Le mar. 8 juil. 2025 ? 13:25, Duncan Murdoch <murdoch.duncan at gmail.com> a
+?crit :
+
+> Rather than asking others to do this, why don't you create a tiny
+> package containing nothing other than an ifelse() replacement?  I
+> wouldn't want to depend on dplyr or data.table just to get their
+> versions, but depending on your tiny package wouldn't be an issue.
+>
+> Duncan Murdoch
+>
+> On 2025-07-08 6:12 a.m., Antoine Fabri wrote:
+> > Dear r-devel,
+> >
+> > `ifelse()` has a lot of issues, and for these reasons it has been redone
+> in
+> > `dplyr::if_else()` and `data.table::fifelse()`, which are both great. Yet
+> > it's an important base R function, it's really hard to program in base R
+> > without it and scores probably as high as it gets in the most_used *
+> > most_problematic metric.
+> >
+> > Obviously we can't change it without breaking a ton of code, but with all
+> > the experience we now have with it and the dplyr and data.table
+> alternative
+> > maybe it might not be absurd to have a good alternative, say `if.else` in
+> > base R, that we can document on the same page and recommend for future
+> use.
+> > It would require a common type in yes/no, not return logical() for all
+> zero
+> > length input, work with dates, datetimes and factors, handle a na
+> condition
+> > etc. The test suites of dplyr and data.table probably tell us everything
+> > about the edge cases we want to look at. Maybe the old ifelse could even
+> > warn when called from the top level, to incite us to work with the new
+> one.
+> >
+> > It feels wrong to me to be stuck with ifelse() forever just because it
+> has
+> > been like this for a long time. I'm sure some of you learnt your way
+> around
+> > it but I work with R every day and after 10+ years of R it still bites me
+> > all the time, I'm probably not alone, at least chatGPT called it a
+> > "footgun", and we don't want that :).
+> >
+> > Thanks,
+> >
+> > Antoine
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Tue Jul  8 14:09:41 2025
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Tue, 8 Jul 2025 08:09:41 -0400
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <CAEKh8uhDN=bfOXz=ZJbJ4E7C_hD4KGCz36b8sNPM0wJb+7S_9A@mail.gmail.com>
+References: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+ <ddcbc6ce-ef17-4bac-b901-5399d15ef6f4@gmail.com>
+ <CAEKh8uhDN=bfOXz=ZJbJ4E7C_hD4KGCz36b8sNPM0wJb+7S_9A@mail.gmail.com>
+Message-ID: <f92fdec0-756a-4401-8d66-ecdf4de4595a@gmail.com>
+
+   I think Duncan's point is that R-core are (reasonably) very, very, 
+very conservative about adding things to base R. It would be useful to 
+the community, and would indeed further the discussion, to make a tiny 
+package containing just that function. (Even just copying it from some 
+other package might require some work to disentangle it from 
+dependencies: for example, a quick glance at dplyr::if_else shows that 
+it uses functions from rlang, vctrs, ...)
+
+   I'd be happy to accept a pull request in `gtools`, which is a 
+zero-dependency (except base R) package for small utility functions ...
+
+   cheers
+    Ben Bolker
+
+
+On 7/8/25 07:36, Antoine Fabri wrote:
+> It's not about asking others to do it really, that was a harsh assumption.
+> I'd be happy to propose a version if it helps, I'd be also very happy if it
+> were just a copy of if_else or fifelse (both MIT FWIW).
+> It's a low level building block and it's broken, IMO it's way better to
+> have it available and documented in base R and incite everyone to use it,
+> so not only we don't suffer from it in the code we write, but also in the
+> code we use or inherit from.
+> 
+> Le mar. 8 juil. 2025 ? 13:25, Duncan Murdoch <murdoch.duncan at gmail.com> a
+> ?crit :
+> 
+>> Rather than asking others to do this, why don't you create a tiny
+>> package containing nothing other than an ifelse() replacement?  I
+>> wouldn't want to depend on dplyr or data.table just to get their
+>> versions, but depending on your tiny package wouldn't be an issue.
+>>
+>> Duncan Murdoch
+>>
+>> On 2025-07-08 6:12 a.m., Antoine Fabri wrote:
+>>> Dear r-devel,
+>>>
+>>> `ifelse()` has a lot of issues, and for these reasons it has been redone
+>> in
+>>> `dplyr::if_else()` and `data.table::fifelse()`, which are both great. Yet
+>>> it's an important base R function, it's really hard to program in base R
+>>> without it and scores probably as high as it gets in the most_used *
+>>> most_problematic metric.
+>>>
+>>> Obviously we can't change it without breaking a ton of code, but with all
+>>> the experience we now have with it and the dplyr and data.table
+>> alternative
+>>> maybe it might not be absurd to have a good alternative, say `if.else` in
+>>> base R, that we can document on the same page and recommend for future
+>> use.
+>>> It would require a common type in yes/no, not return logical() for all
+>> zero
+>>> length input, work with dates, datetimes and factors, handle a na
+>> condition
+>>> etc. The test suites of dplyr and data.table probably tell us everything
+>>> about the edge cases we want to look at. Maybe the old ifelse could even
+>>> warn when called from the top level, to incite us to work with the new
+>> one.
+>>>
+>>> It feels wrong to me to be stuck with ifelse() forever just because it
+>> has
+>>> been like this for a long time. I'm sure some of you learnt your way
+>> around
+>>> it but I work with R every day and after 10+ years of R it still bites me
+>>> all the time, I'm probably not alone, at least chatGPT called it a
+>>> "footgun", and we don't want that :).
+>>>
+>>> Thanks,
+>>>
+>>> Antoine
+>>>
+>>>        [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+* E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Tue Jul  8 16:55:07 2025
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Tue, 8 Jul 2025 07:55:07 -0700
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <f92fdec0-756a-4401-8d66-ecdf4de4595a@gmail.com>
+References: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+ <ddcbc6ce-ef17-4bac-b901-5399d15ef6f4@gmail.com>
+ <CAEKh8uhDN=bfOXz=ZJbJ4E7C_hD4KGCz36b8sNPM0wJb+7S_9A@mail.gmail.com>
+ <f92fdec0-756a-4401-8d66-ecdf4de4595a@gmail.com>
+Message-ID: <CAL3ufUKh6KOSkaiDhHVT4tOCb_xKLZ+EtmH6+mgknjkzqs2wQA@mail.gmail.com>
+
+I think the point is not that there needs to be a smaller package for yet
+another if-else (https://xkcd.com/927/). It is that if the R-language, as a
+whole, had a performant if-else in the base of the language would benefit
+**everyone** such that a data.table or dplyr or gtools etc. alternative
+would not be necessary.
+
+On Tue, Jul 8, 2025 at 5:09?AM Ben Bolker <bbolker at gmail.com> wrote:
+
+>    I think Duncan's point is that R-core are (reasonably) very, very,
+> very conservative about adding things to base R. It would be useful to
+> the community, and would indeed further the discussion, to make a tiny
+> package containing just that function. (Even just copying it from some
+> other package might require some work to disentangle it from
+> dependencies: for example, a quick glance at dplyr::if_else shows that
+> it uses functions from rlang, vctrs, ...)
+>
+>    I'd be happy to accept a pull request in `gtools`, which is a
+> zero-dependency (except base R) package for small utility functions ...
+>
+>    cheers
+>     Ben Bolker
+>
+>
+> On 7/8/25 07:36, Antoine Fabri wrote:
+> > It's not about asking others to do it really, that was a harsh
+> assumption.
+> > I'd be happy to propose a version if it helps, I'd be also very happy if
+> it
+> > were just a copy of if_else or fifelse (both MIT FWIW).
+> > It's a low level building block and it's broken, IMO it's way better to
+> > have it available and documented in base R and incite everyone to use it,
+> > so not only we don't suffer from it in the code we write, but also in the
+> > code we use or inherit from.
+> >
+> > Le mar. 8 juil. 2025 ? 13:25, Duncan Murdoch <murdoch.duncan at gmail.com>
+> a
+> > ?crit :
+> >
+> >> Rather than asking others to do this, why don't you create a tiny
+> >> package containing nothing other than an ifelse() replacement?  I
+> >> wouldn't want to depend on dplyr or data.table just to get their
+> >> versions, but depending on your tiny package wouldn't be an issue.
+> >>
+> >> Duncan Murdoch
+> >>
+> >> On 2025-07-08 6:12 a.m., Antoine Fabri wrote:
+> >>> Dear r-devel,
+> >>>
+> >>> `ifelse()` has a lot of issues, and for these reasons it has been
+> redone
+> >> in
+> >>> `dplyr::if_else()` and `data.table::fifelse()`, which are both great.
+> Yet
+> >>> it's an important base R function, it's really hard to program in base
+> R
+> >>> without it and scores probably as high as it gets in the most_used *
+> >>> most_problematic metric.
+> >>>
+> >>> Obviously we can't change it without breaking a ton of code, but with
+> all
+> >>> the experience we now have with it and the dplyr and data.table
+> >> alternative
+> >>> maybe it might not be absurd to have a good alternative, say `if.else`
+> in
+> >>> base R, that we can document on the same page and recommend for future
+> >> use.
+> >>> It would require a common type in yes/no, not return logical() for all
+> >> zero
+> >>> length input, work with dates, datetimes and factors, handle a na
+> >> condition
+> >>> etc. The test suites of dplyr and data.table probably tell us
+> everything
+> >>> about the edge cases we want to look at. Maybe the old ifelse could
+> even
+> >>> warn when called from the top level, to incite us to work with the new
+> >> one.
+> >>>
+> >>> It feels wrong to me to be stuck with ifelse() forever just because it
+> >> has
+> >>> been like this for a long time. I'm sure some of you learnt your way
+> >> around
+> >>> it but I work with R every day and after 10+ years of R it still bites
+> me
+> >>> all the time, I'm probably not alone, at least chatGPT called it a
+> >>> "footgun", and we don't want that :).
+> >>>
+> >>> Thanks,
+> >>>
+> >>> Antoine
+> >>>
+> >>>        [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-devel at r-project.org mailing list
+> >>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> >>
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+> --
+> Dr. Benjamin Bolker
+> Professor, Mathematics & Statistics and Biology, McMaster University
+> Director, School of Computational Science and Engineering
+> * E-mail is sent at my convenience; I don't expect replies outside of
+> working hours.
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Tue Jul  8 17:22:56 2025
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Tue, 8 Jul 2025 11:22:56 -0400
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <CAL3ufUKh6KOSkaiDhHVT4tOCb_xKLZ+EtmH6+mgknjkzqs2wQA@mail.gmail.com>
+References: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+ <ddcbc6ce-ef17-4bac-b901-5399d15ef6f4@gmail.com>
+ <CAEKh8uhDN=bfOXz=ZJbJ4E7C_hD4KGCz36b8sNPM0wJb+7S_9A@mail.gmail.com>
+ <f92fdec0-756a-4401-8d66-ecdf4de4595a@gmail.com>
+ <CAL3ufUKh6KOSkaiDhHVT4tOCb_xKLZ+EtmH6+mgknjkzqs2wQA@mail.gmail.com>
+Message-ID: <CAL6gwn+fMCrw5gi3Uy8xigGZb+mf9n1Q2iFh9Rn5YyiqaNzz2g@mail.gmail.com>
+
+On Tue, Jul 8, 2025 at 10:55?AM Josiah Parry <josiah.parry at gmail.com> wrote:
+>
+> I think the point is not that there needs to be a smaller package for yet
+> another if-else (https://xkcd.com/927/). It is that if the R-language, as a
+> whole, had a performant if-else in the base of the language would benefit
+> **everyone** such that a data.table or dplyr or gtools etc. alternative
+> would not be necessary.
+
+While that may be true, Josiah, R Core's time is very limited.
+Following Duncan's idea, if a small, simple package were created and
+was proven to dominate the performance of standard ifelse without
+causing any issues with the ten thousand plus packages in the R
+environment, that would make R Core's decision much simpler, whether
+or not to use the existing, proved performant code. Asking R Core to
+do the research and testing for something which currently _works_,
+albeit not in the most efficient way possible, is pretty much a
+non-starter. Do as much work as possible for R Core to have even a
+possibility of consideration. For something similar, albeit much less
+core (pun intended) to R's code, see this discussion [1] from June
+2012 on Kendall's tau, where the code already existed but was deemed
+unimportant enough to add to base R.
+
+[1] https://stat.ethz.ch/pipermail/r-devel/2012-June/064351.html
+
+Thanks,
+
+Avi
+
+>
+> On Tue, Jul 8, 2025 at 5:09?AM Ben Bolker <bbolker at gmail.com> wrote:
+>
+> >    I think Duncan's point is that R-core are (reasonably) very, very,
+> > very conservative about adding things to base R. It would be useful to
+> > the community, and would indeed further the discussion, to make a tiny
+> > package containing just that function. (Even just copying it from some
+> > other package might require some work to disentangle it from
+> > dependencies: for example, a quick glance at dplyr::if_else shows that
+> > it uses functions from rlang, vctrs, ...)
+> >
+> >    I'd be happy to accept a pull request in `gtools`, which is a
+> > zero-dependency (except base R) package for small utility functions ...
+> >
+> >    cheers
+> >     Ben Bolker
+> >
+> >
+> > On 7/8/25 07:36, Antoine Fabri wrote:
+> > > It's not about asking others to do it really, that was a harsh
+> > assumption.
+> > > I'd be happy to propose a version if it helps, I'd be also very happy if
+> > it
+> > > were just a copy of if_else or fifelse (both MIT FWIW).
+> > > It's a low level building block and it's broken, IMO it's way better to
+> > > have it available and documented in base R and incite everyone to use it,
+> > > so not only we don't suffer from it in the code we write, but also in the
+> > > code we use or inherit from.
+> > >
+> > > Le mar. 8 juil. 2025 ? 13:25, Duncan Murdoch <murdoch.duncan at gmail.com>
+> > a
+> > > ?crit :
+> > >
+> > >> Rather than asking others to do this, why don't you create a tiny
+> > >> package containing nothing other than an ifelse() replacement?  I
+> > >> wouldn't want to depend on dplyr or data.table just to get their
+> > >> versions, but depending on your tiny package wouldn't be an issue.
+> > >>
+> > >> Duncan Murdoch
+> > >>
+> > >> On 2025-07-08 6:12 a.m., Antoine Fabri wrote:
+> > >>> Dear r-devel,
+> > >>>
+> > >>> `ifelse()` has a lot of issues, and for these reasons it has been
+> > redone
+> > >> in
+> > >>> `dplyr::if_else()` and `data.table::fifelse()`, which are both great.
+> > Yet
+> > >>> it's an important base R function, it's really hard to program in base
+> > R
+> > >>> without it and scores probably as high as it gets in the most_used *
+> > >>> most_problematic metric.
+> > >>>
+> > >>> Obviously we can't change it without breaking a ton of code, but with
+> > all
+> > >>> the experience we now have with it and the dplyr and data.table
+> > >> alternative
+> > >>> maybe it might not be absurd to have a good alternative, say `if.else`
+> > in
+> > >>> base R, that we can document on the same page and recommend for future
+> > >> use.
+> > >>> It would require a common type in yes/no, not return logical() for all
+> > >> zero
+> > >>> length input, work with dates, datetimes and factors, handle a na
+> > >> condition
+> > >>> etc. The test suites of dplyr and data.table probably tell us
+> > everything
+> > >>> about the edge cases we want to look at. Maybe the old ifelse could
+> > even
+> > >>> warn when called from the top level, to incite us to work with the new
+> > >> one.
+> > >>>
+> > >>> It feels wrong to me to be stuck with ifelse() forever just because it
+> > >> has
+> > >>> been like this for a long time. I'm sure some of you learnt your way
+> > >> around
+> > >>> it but I work with R every day and after 10+ years of R it still bites
+> > me
+> > >>> all the time, I'm probably not alone, at least chatGPT called it a
+> > >>> "footgun", and we don't want that :).
+> > >>>
+> > >>> Thanks,
+> > >>>
+> > >>> Antoine
+> > >>>
+> > >>>        [[alternative HTML version deleted]]
+> > >>>
+> > >>> ______________________________________________
+> > >>> R-devel at r-project.org mailing list
+> > >>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> > >>
+> > >>
+> > >
+> > >       [[alternative HTML version deleted]]
+> > >
+> > > ______________________________________________
+> > > R-devel at r-project.org mailing list
+> > > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+> > --
+> > Dr. Benjamin Bolker
+> > Professor, Mathematics & Statistics and Biology, McMaster University
+> > Director, School of Computational Science and Engineering
+> > * E-mail is sent at my convenience; I don't expect replies outside of
+> > working hours.
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Tue Jul  8 18:46:22 2025
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Tue, 8 Jul 2025 09:46:22 -0700
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <CAL6gwn+fMCrw5gi3Uy8xigGZb+mf9n1Q2iFh9Rn5YyiqaNzz2g@mail.gmail.com>
+References: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+ <ddcbc6ce-ef17-4bac-b901-5399d15ef6f4@gmail.com>
+ <CAEKh8uhDN=bfOXz=ZJbJ4E7C_hD4KGCz36b8sNPM0wJb+7S_9A@mail.gmail.com>
+ <f92fdec0-756a-4401-8d66-ecdf4de4595a@gmail.com>
+ <CAL3ufUKh6KOSkaiDhHVT4tOCb_xKLZ+EtmH6+mgknjkzqs2wQA@mail.gmail.com>
+ <CAL6gwn+fMCrw5gi3Uy8xigGZb+mf9n1Q2iFh9Rn5YyiqaNzz2g@mail.gmail.com>
+Message-ID: <CAL3ufUJmXLqDPpj23sEpZUSakvq5s9w5qVBrbqghtmXBiUDqdA@mail.gmail.com>
+
+Avi, appreciate the puns!
+
+I don't think anyone is suggesting R-core dedicate all of their time to
+this problem.
+To me, the thread is about consensus making (as there is no formal way to
+do that).
+
+Quoting OP here:
+
+"It's not about asking others to do it really, that was a harsh assumption.
+
+I'd be happy to propose a version if it helps, I'd be also very happy if it
+
+were just a copy of if_else or fifelse (both MIT FWIW)."
+
+
+The initial email, IMO, was to show that there already are community
+implementations of faster
+and type-safer of ifelse (notably dplyr and data.table and I'd add
+kit::iif, too) and perhaps now
+is the time to add this enhancement to the language.
+
+It is tough to get a sense of total usage of each though but some code
+searching on GitHub:
+
+- data.table::fifelse:
+https://github.com/search?q=%22fifelse%28%22+language%3AR&type=code
+- dplyr::if_else:
+https://github.com/search?q=%22if_else%28%22+language%3AR&type=code
+- kit::iif:
+https://github.com/search?q=%2F%28%3F-i%29iif%5C%28%2F+language%3AR+&type=code
+
+On Tue, Jul 8, 2025 at 8:23?AM Avraham Adler <avraham.adler at gmail.com>
+wrote:
+
+> On Tue, Jul 8, 2025 at 10:55?AM Josiah Parry <josiah.parry at gmail.com>
+> wrote:
+> >
+> > I think the point is not that there needs to be a smaller package for yet
+> > another if-else (https://xkcd.com/927/). It is that if the R-language,
+> as a
+> > whole, had a performant if-else in the base of the language would benefit
+> > **everyone** such that a data.table or dplyr or gtools etc. alternative
+> > would not be necessary.
+>
+> While that may be true, Josiah, R Core's time is very limited.
+> Following Duncan's idea, if a small, simple package were created and
+> was proven to dominate the performance of standard ifelse without
+> causing any issues with the ten thousand plus packages in the R
+> environment, that would make R Core's decision much simpler, whether
+> or not to use the existing, proved performant code. Asking R Core to
+> do the research and testing for something which currently _works_,
+> albeit not in the most efficient way possible, is pretty much a
+> non-starter. Do as much work as possible for R Core to have even a
+> possibility of consideration. For something similar, albeit much less
+> core (pun intended) to R's code, see this discussion [1] from June
+> 2012 on Kendall's tau, where the code already existed but was deemed
+> unimportant enough to add to base R.
+>
+> [1] https://stat.ethz.ch/pipermail/r-devel/2012-June/064351.html
+>
+> Thanks,
+>
+> Avi
+>
+> >
+> > On Tue, Jul 8, 2025 at 5:09?AM Ben Bolker <bbolker at gmail.com> wrote:
+> >
+> > >    I think Duncan's point is that R-core are (reasonably) very, very,
+> > > very conservative about adding things to base R. It would be useful to
+> > > the community, and would indeed further the discussion, to make a tiny
+> > > package containing just that function. (Even just copying it from some
+> > > other package might require some work to disentangle it from
+> > > dependencies: for example, a quick glance at dplyr::if_else shows that
+> > > it uses functions from rlang, vctrs, ...)
+> > >
+> > >    I'd be happy to accept a pull request in `gtools`, which is a
+> > > zero-dependency (except base R) package for small utility functions ...
+> > >
+> > >    cheers
+> > >     Ben Bolker
+> > >
+> > >
+> > > On 7/8/25 07:36, Antoine Fabri wrote:
+> > > > It's not about asking others to do it really, that was a harsh
+> > > assumption.
+> > > > I'd be happy to propose a version if it helps, I'd be also very
+> happy if
+> > > it
+> > > > were just a copy of if_else or fifelse (both MIT FWIW).
+> > > > It's a low level building block and it's broken, IMO it's way better
+> to
+> > > > have it available and documented in base R and incite everyone to
+> use it,
+> > > > so not only we don't suffer from it in the code we write, but also
+> in the
+> > > > code we use or inherit from.
+> > > >
+> > > > Le mar. 8 juil. 2025 ? 13:25, Duncan Murdoch <
+> murdoch.duncan at gmail.com>
+> > > a
+> > > > ?crit :
+> > > >
+> > > >> Rather than asking others to do this, why don't you create a tiny
+> > > >> package containing nothing other than an ifelse() replacement?  I
+> > > >> wouldn't want to depend on dplyr or data.table just to get their
+> > > >> versions, but depending on your tiny package wouldn't be an issue.
+> > > >>
+> > > >> Duncan Murdoch
+> > > >>
+> > > >> On 2025-07-08 6:12 a.m., Antoine Fabri wrote:
+> > > >>> Dear r-devel,
+> > > >>>
+> > > >>> `ifelse()` has a lot of issues, and for these reasons it has been
+> > > redone
+> > > >> in
+> > > >>> `dplyr::if_else()` and `data.table::fifelse()`, which are both
+> great.
+> > > Yet
+> > > >>> it's an important base R function, it's really hard to program in
+> base
+> > > R
+> > > >>> without it and scores probably as high as it gets in the most_used
+> *
+> > > >>> most_problematic metric.
+> > > >>>
+> > > >>> Obviously we can't change it without breaking a ton of code, but
+> with
+> > > all
+> > > >>> the experience we now have with it and the dplyr and data.table
+> > > >> alternative
+> > > >>> maybe it might not be absurd to have a good alternative, say
+> `if.else`
+> > > in
+> > > >>> base R, that we can document on the same page and recommend for
+> future
+> > > >> use.
+> > > >>> It would require a common type in yes/no, not return logical() for
+> all
+> > > >> zero
+> > > >>> length input, work with dates, datetimes and factors, handle a na
+> > > >> condition
+> > > >>> etc. The test suites of dplyr and data.table probably tell us
+> > > everything
+> > > >>> about the edge cases we want to look at. Maybe the old ifelse could
+> > > even
+> > > >>> warn when called from the top level, to incite us to work with the
+> new
+> > > >> one.
+> > > >>>
+> > > >>> It feels wrong to me to be stuck with ifelse() forever just
+> because it
+> > > >> has
+> > > >>> been like this for a long time. I'm sure some of you learnt your
+> way
+> > > >> around
+> > > >>> it but I work with R every day and after 10+ years of R it still
+> bites
+> > > me
+> > > >>> all the time, I'm probably not alone, at least chatGPT called it a
+> > > >>> "footgun", and we don't want that :).
+> > > >>>
+> > > >>> Thanks,
+> > > >>>
+> > > >>> Antoine
+> > > >>>
+> > > >>>        [[alternative HTML version deleted]]
+> > > >>>
+> > > >>> ______________________________________________
+> > > >>> R-devel at r-project.org mailing list
+> > > >>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> > > >>
+> > > >>
+> > > >
+> > > >       [[alternative HTML version deleted]]
+> > > >
+> > > > ______________________________________________
+> > > > R-devel at r-project.org mailing list
+> > > > https://stat.ethz.ch/mailman/listinfo/r-devel
+> > >
+> > > --
+> > > Dr. Benjamin Bolker
+> > > Professor, Mathematics & Statistics and Biology, McMaster University
+> > > Director, School of Computational Science and Engineering
+> > > * E-mail is sent at my convenience; I don't expect replies outside of
+> > > working hours.
+> > >
+> > > ______________________________________________
+> > > R-devel at r-project.org mailing list
+> > > https://stat.ethz.ch/mailman/listinfo/r-devel
+> > >
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ||u|@@rev|||@ @end|ng |rom gm@||@com  Tue Jul  8 19:10:29 2025
+From: ||u|@@rev|||@ @end|ng |rom gm@||@com (=?UTF-8?Q?Llu=C3=ADs_Revilla?=)
+Date: Tue, 8 Jul 2025 19:10:29 +0200
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <CAL6gwn+fMCrw5gi3Uy8xigGZb+mf9n1Q2iFh9Rn5YyiqaNzz2g@mail.gmail.com>
+References: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+ <ddcbc6ce-ef17-4bac-b901-5399d15ef6f4@gmail.com>
+ <CAEKh8uhDN=bfOXz=ZJbJ4E7C_hD4KGCz36b8sNPM0wJb+7S_9A@mail.gmail.com>
+ <f92fdec0-756a-4401-8d66-ecdf4de4595a@gmail.com>
+ <CAL3ufUKh6KOSkaiDhHVT4tOCb_xKLZ+EtmH6+mgknjkzqs2wQA@mail.gmail.com>
+ <CAL6gwn+fMCrw5gi3Uy8xigGZb+mf9n1Q2iFh9Rn5YyiqaNzz2g@mail.gmail.com>
+Message-ID: <CAN+W6_ss2sOnyO2Eqk0uv4aeY3NE5jCAd6XJUiME_XPX9u8FwA@mail.gmail.com>
+
+On Tue, 8 Jul 2025 at 17:23, Avraham Adler <avraham.adler at gmail.com> wrote:
+>
+> On Tue, Jul 8, 2025 at 10:55?AM Josiah Parry <josiah.parry at gmail.com> wrote:
+> >
+> > I think the point is not that there needs to be a smaller package for yet
+> > another if-else (https://xkcd.com/927/). It is that if the R-language, as a
+> > whole, had a performant if-else in the base of the language would benefit
+> > **everyone** such that a data.table or dplyr or gtools etc. alternative
+> > would not be necessary.
+>
+> While that may be true, Josiah, R Core's time is very limited.
+> Following Duncan's idea, if a small, simple package were created and
+> was proven to dominate the performance of standard ifelse without
+> causing any issues with the ten thousand plus packages in the R
+> environment, that would make R Core's decision much simpler, whether
+> or not to use the existing, proved performant code.
+
+I might have missed it but the suggestion wasn't to replace the
+existing ifelse code.
+There are at least two existing proven performant code implementations.
+One on a package (data.table) with no additional dependencies.
+What would another implementation add?
+
+>
+> Asking R Core to
+> do the research and testing for something which currently _works_,
+> albeit not in the most efficient way possible, is pretty much a
+> non-starter. Do as much work as possible for R Core to have even a
+> possibility of consideration. For something similar, albeit much less
+> core (pun intended) to R's code, see this discussion [1] from June
+> 2012 on Kendall's tau, where the code already existed but was deemed
+> unimportant enough to add to base R.
+>
+> [1] https://stat.ethz.ch/pipermail/r-devel/2012-June/064351.html
+
+
+Yet recently it was suggested by one R-core member as a possible
+improvement for R suggesting that patches via bugzilla would be
+appreciated [1]. Of course, this doesn't mean it would be the case for
+this suggestion but seeing the interest of the community and how it
+can help many useRs I think exploring how to integrate such a if.else
+function on base R could be helpful for all (even if it is only added
+to R source later).
+
+[1]: https://github.com/r-devel/r-dev-day/issues/87
+
+
+>
+>
+> Thanks,
+>
+> Avi
+>
+> >
+> > On Tue, Jul 8, 2025 at 5:09?AM Ben Bolker <bbolker at gmail.com> wrote:
+> >
+> > >    I think Duncan's point is that R-core are (reasonably) very, very,
+> > > very conservative about adding things to base R. It would be useful to
+> > > the community, and would indeed further the discussion, to make a tiny
+> > > package containing just that function. (Even just copying it from some
+> > > other package might require some work to disentangle it from
+> > > dependencies: for example, a quick glance at dplyr::if_else shows that
+> > > it uses functions from rlang, vctrs, ...)
+> > >
+> > >    I'd be happy to accept a pull request in `gtools`, which is a
+> > > zero-dependency (except base R) package for small utility functions ...
+> > >
+> > >    cheers
+> > >     Ben Bolker
+> > >
+> > >
+> > > On 7/8/25 07:36, Antoine Fabri wrote:
+> > > > It's not about asking others to do it really, that was a harsh
+> > > assumption.
+> > > > I'd be happy to propose a version if it helps, I'd be also very happy if
+> > > it
+> > > > were just a copy of if_else or fifelse (both MIT FWIW).
+> > > > It's a low level building block and it's broken, IMO it's way better to
+> > > > have it available and documented in base R and incite everyone to use it,
+> > > > so not only we don't suffer from it in the code we write, but also in the
+> > > > code we use or inherit from.
+> > > >
+> > > > Le mar. 8 juil. 2025 ? 13:25, Duncan Murdoch <murdoch.duncan at gmail.com>
+> > > a
+> > > > ?crit :
+> > > >
+> > > >> Rather than asking others to do this, why don't you create a tiny
+> > > >> package containing nothing other than an ifelse() replacement?  I
+> > > >> wouldn't want to depend on dplyr or data.table just to get their
+> > > >> versions, but depending on your tiny package wouldn't be an issue.
+> > > >>
+> > > >> Duncan Murdoch
+> > > >>
+> > > >> On 2025-07-08 6:12 a.m., Antoine Fabri wrote:
+> > > >>> Dear r-devel,
+> > > >>>
+> > > >>> `ifelse()` has a lot of issues, and for these reasons it has been
+> > > redone
+> > > >> in
+> > > >>> `dplyr::if_else()` and `data.table::fifelse()`, which are both great.
+> > > Yet
+> > > >>> it's an important base R function, it's really hard to program in base
+> > > R
+> > > >>> without it and scores probably as high as it gets in the most_used *
+> > > >>> most_problematic metric.
+> > > >>>
+> > > >>> Obviously we can't change it without breaking a ton of code, but with
+> > > all
+> > > >>> the experience we now have with it and the dplyr and data.table
+> > > >> alternative
+> > > >>> maybe it might not be absurd to have a good alternative, say `if.else`
+> > > in
+> > > >>> base R, that we can document on the same page and recommend for future
+> > > >> use.
+> > > >>> It would require a common type in yes/no, not return logical() for all
+> > > >> zero
+> > > >>> length input, work with dates, datetimes and factors, handle a na
+> > > >> condition
+> > > >>> etc. The test suites of dplyr and data.table probably tell us
+> > > everything
+> > > >>> about the edge cases we want to look at. Maybe the old ifelse could
+> > > even
+> > > >>> warn when called from the top level, to incite us to work with the new
+> > > >> one.
+> > > >>>
+> > > >>> It feels wrong to me to be stuck with ifelse() forever just because it
+> > > >> has
+> > > >>> been like this for a long time. I'm sure some of you learnt your way
+> > > >> around
+> > > >>> it but I work with R every day and after 10+ years of R it still bites
+> > > me
+> > > >>> all the time, I'm probably not alone, at least chatGPT called it a
+> > > >>> "footgun", and we don't want that :).
+> > > >>>
+> > > >>> Thanks,
+> > > >>>
+> > > >>> Antoine
+> > > >>>
+> > > >>>        [[alternative HTML version deleted]]
+> > > >>>
+> > > >>> ______________________________________________
+> > > >>> R-devel at r-project.org mailing list
+> > > >>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> > > >>
+> > > >>
+> > > >
+> > > >       [[alternative HTML version deleted]]
+> > > >
+> > > > ______________________________________________
+> > > > R-devel at r-project.org mailing list
+> > > > https://stat.ethz.ch/mailman/listinfo/r-devel
+> > >
+> > > --
+> > > Dr. Benjamin Bolker
+> > > Professor, Mathematics & Statistics and Biology, McMaster University
+> > > Director, School of Computational Science and Engineering
+> > > * E-mail is sent at my convenience; I don't expect replies outside of
+> > > working hours.
+> > >
+> > > ______________________________________________
+> > > R-devel at r-project.org mailing list
+> > > https://stat.ethz.ch/mailman/listinfo/r-devel
+> > >
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Jul  8 21:06:22 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 8 Jul 2025 15:06:22 -0400
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <CAL3ufUJmXLqDPpj23sEpZUSakvq5s9w5qVBrbqghtmXBiUDqdA@mail.gmail.com>
+References: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+ <ddcbc6ce-ef17-4bac-b901-5399d15ef6f4@gmail.com>
+ <CAEKh8uhDN=bfOXz=ZJbJ4E7C_hD4KGCz36b8sNPM0wJb+7S_9A@mail.gmail.com>
+ <f92fdec0-756a-4401-8d66-ecdf4de4595a@gmail.com>
+ <CAL3ufUKh6KOSkaiDhHVT4tOCb_xKLZ+EtmH6+mgknjkzqs2wQA@mail.gmail.com>
+ <CAL6gwn+fMCrw5gi3Uy8xigGZb+mf9n1Q2iFh9Rn5YyiqaNzz2g@mail.gmail.com>
+ <CAL3ufUJmXLqDPpj23sEpZUSakvq5s9w5qVBrbqghtmXBiUDqdA@mail.gmail.com>
+Message-ID: <b8945e3e-33c1-4635-8ab1-b9d5ffff2d37@gmail.com>
+
+Since you and Antoine are volunteering to do the work, why not start in 
+the way I suggested?  Write up a comparison of the known ifelse 
+implementations, and either pick the best one, or choose the best parts 
+of each.  Put the result in a package containing nothing else, and 
+invite comment from the wider community.
+
+My only comment in advance is that the package should have no 
+dependencies other than base packages, for two reasons:
+
+1. The hope is to have it adopted in base R, and for that it can't have 
+any other dependencies.
+
+2. If it's never adopted by R Core, I might still want to use it, but I 
+don't want to add extra dependencies for just one little function.
+
+Duncan Murdoch
+
+On 2025-07-08 12:46 p.m., Josiah Parry wrote:
+> Avi, appreciate the puns!
+> 
+> I don't think anyone is suggesting R-core dedicate all of their time to
+> this problem.
+> To me, the thread is about consensus making (as there is no formal way to
+> do that).
+> 
+> Quoting OP here:
+> 
+> "It's not about asking others to do it really, that was a harsh assumption.
+> 
+> I'd be happy to propose a version if it helps, I'd be also very happy if it
+> 
+> were just a copy of if_else or fifelse (both MIT FWIW)."
+> 
+> 
+> The initial email, IMO, was to show that there already are community
+> implementations of faster
+> and type-safer of ifelse (notably dplyr and data.table and I'd add
+> kit::iif, too) and perhaps now
+> is the time to add this enhancement to the language.
+> 
+> It is tough to get a sense of total usage of each though but some code
+> searching on GitHub:
+> 
+> - data.table::fifelse:
+> https://github.com/search?q=%22fifelse%28%22+language%3AR&type=code
+> - dplyr::if_else:
+> https://github.com/search?q=%22if_else%28%22+language%3AR&type=code
+> - kit::iif:
+> https://github.com/search?q=%2F%28%3F-i%29iif%5C%28%2F+language%3AR+&type=code
+> 
+> On Tue, Jul 8, 2025 at 8:23?AM Avraham Adler <avraham.adler at gmail.com>
+> wrote:
+> 
+>> On Tue, Jul 8, 2025 at 10:55?AM Josiah Parry <josiah.parry at gmail.com>
+>> wrote:
+>>>
+>>> I think the point is not that there needs to be a smaller package for yet
+>>> another if-else (https://xkcd.com/927/). It is that if the R-language,
+>> as a
+>>> whole, had a performant if-else in the base of the language would benefit
+>>> **everyone** such that a data.table or dplyr or gtools etc. alternative
+>>> would not be necessary.
+>>
+>> While that may be true, Josiah, R Core's time is very limited.
+>> Following Duncan's idea, if a small, simple package were created and
+>> was proven to dominate the performance of standard ifelse without
+>> causing any issues with the ten thousand plus packages in the R
+>> environment, that would make R Core's decision much simpler, whether
+>> or not to use the existing, proved performant code. Asking R Core to
+>> do the research and testing for something which currently _works_,
+>> albeit not in the most efficient way possible, is pretty much a
+>> non-starter. Do as much work as possible for R Core to have even a
+>> possibility of consideration. For something similar, albeit much less
+>> core (pun intended) to R's code, see this discussion [1] from June
+>> 2012 on Kendall's tau, where the code already existed but was deemed
+>> unimportant enough to add to base R.
+>>
+>> [1] https://stat.ethz.ch/pipermail/r-devel/2012-June/064351.html
+>>
+>> Thanks,
+>>
+>> Avi
+>>
+>>>
+>>> On Tue, Jul 8, 2025 at 5:09?AM Ben Bolker <bbolker at gmail.com> wrote:
+>>>
+>>>>     I think Duncan's point is that R-core are (reasonably) very, very,
+>>>> very conservative about adding things to base R. It would be useful to
+>>>> the community, and would indeed further the discussion, to make a tiny
+>>>> package containing just that function. (Even just copying it from some
+>>>> other package might require some work to disentangle it from
+>>>> dependencies: for example, a quick glance at dplyr::if_else shows that
+>>>> it uses functions from rlang, vctrs, ...)
+>>>>
+>>>>     I'd be happy to accept a pull request in `gtools`, which is a
+>>>> zero-dependency (except base R) package for small utility functions ...
+>>>>
+>>>>     cheers
+>>>>      Ben Bolker
+>>>>
+>>>>
+>>>> On 7/8/25 07:36, Antoine Fabri wrote:
+>>>>> It's not about asking others to do it really, that was a harsh
+>>>> assumption.
+>>>>> I'd be happy to propose a version if it helps, I'd be also very
+>> happy if
+>>>> it
+>>>>> were just a copy of if_else or fifelse (both MIT FWIW).
+>>>>> It's a low level building block and it's broken, IMO it's way better
+>> to
+>>>>> have it available and documented in base R and incite everyone to
+>> use it,
+>>>>> so not only we don't suffer from it in the code we write, but also
+>> in the
+>>>>> code we use or inherit from.
+>>>>>
+>>>>> Le mar. 8 juil. 2025 ? 13:25, Duncan Murdoch <
+>> murdoch.duncan at gmail.com>
+>>>> a
+>>>>> ?crit :
+>>>>>
+>>>>>> Rather than asking others to do this, why don't you create a tiny
+>>>>>> package containing nothing other than an ifelse() replacement?  I
+>>>>>> wouldn't want to depend on dplyr or data.table just to get their
+>>>>>> versions, but depending on your tiny package wouldn't be an issue.
+>>>>>>
+>>>>>> Duncan Murdoch
+>>>>>>
+>>>>>> On 2025-07-08 6:12 a.m., Antoine Fabri wrote:
+>>>>>>> Dear r-devel,
+>>>>>>>
+>>>>>>> `ifelse()` has a lot of issues, and for these reasons it has been
+>>>> redone
+>>>>>> in
+>>>>>>> `dplyr::if_else()` and `data.table::fifelse()`, which are both
+>> great.
+>>>> Yet
+>>>>>>> it's an important base R function, it's really hard to program in
+>> base
+>>>> R
+>>>>>>> without it and scores probably as high as it gets in the most_used
+>> *
+>>>>>>> most_problematic metric.
+>>>>>>>
+>>>>>>> Obviously we can't change it without breaking a ton of code, but
+>> with
+>>>> all
+>>>>>>> the experience we now have with it and the dplyr and data.table
+>>>>>> alternative
+>>>>>>> maybe it might not be absurd to have a good alternative, say
+>> `if.else`
+>>>> in
+>>>>>>> base R, that we can document on the same page and recommend for
+>> future
+>>>>>> use.
+>>>>>>> It would require a common type in yes/no, not return logical() for
+>> all
+>>>>>> zero
+>>>>>>> length input, work with dates, datetimes and factors, handle a na
+>>>>>> condition
+>>>>>>> etc. The test suites of dplyr and data.table probably tell us
+>>>> everything
+>>>>>>> about the edge cases we want to look at. Maybe the old ifelse could
+>>>> even
+>>>>>>> warn when called from the top level, to incite us to work with the
+>> new
+>>>>>> one.
+>>>>>>>
+>>>>>>> It feels wrong to me to be stuck with ifelse() forever just
+>> because it
+>>>>>> has
+>>>>>>> been like this for a long time. I'm sure some of you learnt your
+>> way
+>>>>>> around
+>>>>>>> it but I work with R every day and after 10+ years of R it still
+>> bites
+>>>> me
+>>>>>>> all the time, I'm probably not alone, at least chatGPT called it a
+>>>>>>> "footgun", and we don't want that :).
+>>>>>>>
+>>>>>>> Thanks,
+>>>>>>>
+>>>>>>> Antoine
+>>>>>>>
+>>>>>>>         [[alternative HTML version deleted]]
+>>>>>>>
+>>>>>>> ______________________________________________
+>>>>>>> R-devel at r-project.org mailing list
+>>>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>>>
+>>>>>>
+>>>>>
+>>>>>        [[alternative HTML version deleted]]
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>
+>>>> --
+>>>> Dr. Benjamin Bolker
+>>>> Professor, Mathematics & Statistics and Biology, McMaster University
+>>>> Director, School of Computational Science and Engineering
+>>>> * E-mail is sent at my convenience; I don't expect replies outside of
+>>>> working hours.
+>>>>
+>>>> ______________________________________________
+>>>> R-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>
+>>>
+>>>          [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Tue Jul  8 22:41:11 2025
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Tue, 8 Jul 2025 16:41:11 -0400
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <b8945e3e-33c1-4635-8ab1-b9d5ffff2d37@gmail.com>
+References: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+ <ddcbc6ce-ef17-4bac-b901-5399d15ef6f4@gmail.com>
+ <CAEKh8uhDN=bfOXz=ZJbJ4E7C_hD4KGCz36b8sNPM0wJb+7S_9A@mail.gmail.com>
+ <f92fdec0-756a-4401-8d66-ecdf4de4595a@gmail.com>
+ <CAL3ufUKh6KOSkaiDhHVT4tOCb_xKLZ+EtmH6+mgknjkzqs2wQA@mail.gmail.com>
+ <CAL6gwn+fMCrw5gi3Uy8xigGZb+mf9n1Q2iFh9Rn5YyiqaNzz2g@mail.gmail.com>
+ <CAL3ufUJmXLqDPpj23sEpZUSakvq5s9w5qVBrbqghtmXBiUDqdA@mail.gmail.com>
+ <b8945e3e-33c1-4635-8ab1-b9d5ffff2d37@gmail.com>
+Message-ID: <004001dbf048$a40145e0$ec03d1a0$@gmail.com>
+
+A package with only one function, what a concept!
+
+But then it becomes tempting to also create a function like if_else_else() and if_else_default() and of course if_not_else() ....
+
+Joking aside, plenty of functionality in extendible languages like R were written long enough ago that they might be done quite differently today. I don't mean just different code, but different arguments it takes and different defaults. Who really wanted you to type stringsAsFactors=TRUE every time, for example.
+
+But it is late enough that making changes now can backfire. Look at the announcement that updating ggplot2 to use S7 objects will break some packages that depend on it including many in the Bioconductor world. I would imagine if R magically had started with S7 and skipped over S3 and S4 and perhaps others that have not been widely used, we might have had more consistency. But that is not how it happened and we likely will be stuck for a long time with both R core and all kinds of packages needing to be able to handle older kinds of objects. And, not to compare, but a language like python made a very different approach to objects long ago so that pretty much everything is an object and there generally is no need to create a new form as you can use all kinds of existing ways to tailor your objects to your needs.
+
+Given the budgets and other constraints we are dealing with, I suspect that there is a long list of possible changes that are currently not being seriously considered and since there are several work-arounds available in existing packages, there is less urgency.
+
+And, there is a reality that although an ifelse() has a certain generality, for specific purposes, it may be trivial enough to fashion your own variant using anything from explicit to implicit loops. But, certainly, if some people work on a variant and show it is compatible and benchmarks suggesting how much faster, then a minimal package with no odd dependencies is a way to go, and might eventually be taken into the core. I would be cautious about naming the package/function as whatever is chosen, ...
+
+Avi  (too)
+
+-----Original Message-----
+From: R-devel <r-devel-bounces at r-project.org> On Behalf Of Duncan Murdoch
+Sent: Tuesday, July 8, 2025 3:06 PM
+To: Josiah Parry <josiah.parry at gmail.com>; Avraham Adler <avraham.adler at gmail.com>
+Cc: r-devel at r-project.org
+Subject: Re: [Rd] Time to revisit ifelse ?
+
+Since you and Antoine are volunteering to do the work, why not start in 
+the way I suggested?  Write up a comparison of the known ifelse 
+implementations, and either pick the best one, or choose the best parts 
+of each.  Put the result in a package containing nothing else, and 
+invite comment from the wider community.
+
+My only comment in advance is that the package should have no 
+dependencies other than base packages, for two reasons:
+
+1. The hope is to have it adopted in base R, and for that it can't have 
+any other dependencies.
+
+2. If it's never adopted by R Core, I might still want to use it, but I 
+don't want to add extra dependencies for just one little function.
+
+Duncan Murdoch
+
+On 2025-07-08 12:46 p.m., Josiah Parry wrote:
+> Avi, appreciate the puns!
+> 
+> I don't think anyone is suggesting R-core dedicate all of their time to
+> this problem.
+> To me, the thread is about consensus making (as there is no formal way to
+> do that).
+> 
+> Quoting OP here:
+> 
+> "It's not about asking others to do it really, that was a harsh assumption.
+> 
+> I'd be happy to propose a version if it helps, I'd be also very happy if it
+> 
+> were just a copy of if_else or fifelse (both MIT FWIW)."
+> 
+> 
+> The initial email, IMO, was to show that there already are community
+> implementations of faster
+> and type-safer of ifelse (notably dplyr and data.table and I'd add
+> kit::iif, too) and perhaps now
+> is the time to add this enhancement to the language.
+> 
+> It is tough to get a sense of total usage of each though but some code
+> searching on GitHub:
+> 
+> - data.table::fifelse:
+> https://github.com/search?q=%22fifelse%28%22+language%3AR&type=code
+> - dplyr::if_else:
+> https://github.com/search?q=%22if_else%28%22+language%3AR&type=code
+> - kit::iif:
+> https://github.com/search?q=%2F%28%3F-i%29iif%5C%28%2F+language%3AR+&type=code
+> 
+> On Tue, Jul 8, 2025 at 8:23?AM Avraham Adler <avraham.adler at gmail.com>
+> wrote:
+> 
+>> On Tue, Jul 8, 2025 at 10:55?AM Josiah Parry <josiah.parry at gmail.com>
+>> wrote:
+>>>
+>>> I think the point is not that there needs to be a smaller package for yet
+>>> another if-else (https://xkcd.com/927/). It is that if the R-language,
+>> as a
+>>> whole, had a performant if-else in the base of the language would benefit
+>>> **everyone** such that a data.table or dplyr or gtools etc. alternative
+>>> would not be necessary.
+>>
+>> While that may be true, Josiah, R Core's time is very limited.
+>> Following Duncan's idea, if a small, simple package were created and
+>> was proven to dominate the performance of standard ifelse without
+>> causing any issues with the ten thousand plus packages in the R
+>> environment, that would make R Core's decision much simpler, whether
+>> or not to use the existing, proved performant code. Asking R Core to
+>> do the research and testing for something which currently _works_,
+>> albeit not in the most efficient way possible, is pretty much a
+>> non-starter. Do as much work as possible for R Core to have even a
+>> possibility of consideration. For something similar, albeit much less
+>> core (pun intended) to R's code, see this discussion [1] from June
+>> 2012 on Kendall's tau, where the code already existed but was deemed
+>> unimportant enough to add to base R.
+>>
+>> [1] https://stat.ethz.ch/pipermail/r-devel/2012-June/064351.html
+>>
+>> Thanks,
+>>
+>> Avi
+>>
+>>>
+>>> On Tue, Jul 8, 2025 at 5:09?AM Ben Bolker <bbolker at gmail.com> wrote:
+>>>
+>>>>     I think Duncan's point is that R-core are (reasonably) very, very,
+>>>> very conservative about adding things to base R. It would be useful to
+>>>> the community, and would indeed further the discussion, to make a tiny
+>>>> package containing just that function. (Even just copying it from some
+>>>> other package might require some work to disentangle it from
+>>>> dependencies: for example, a quick glance at dplyr::if_else shows that
+>>>> it uses functions from rlang, vctrs, ...)
+>>>>
+>>>>     I'd be happy to accept a pull request in `gtools`, which is a
+>>>> zero-dependency (except base R) package for small utility functions ...
+>>>>
+>>>>     cheers
+>>>>      Ben Bolker
+>>>>
+>>>>
+>>>> On 7/8/25 07:36, Antoine Fabri wrote:
+>>>>> It's not about asking others to do it really, that was a harsh
+>>>> assumption.
+>>>>> I'd be happy to propose a version if it helps, I'd be also very
+>> happy if
+>>>> it
+>>>>> were just a copy of if_else or fifelse (both MIT FWIW).
+>>>>> It's a low level building block and it's broken, IMO it's way better
+>> to
+>>>>> have it available and documented in base R and incite everyone to
+>> use it,
+>>>>> so not only we don't suffer from it in the code we write, but also
+>> in the
+>>>>> code we use or inherit from.
+>>>>>
+>>>>> Le mar. 8 juil. 2025 ? 13:25, Duncan Murdoch <
+>> murdoch.duncan at gmail.com>
+>>>> a
+>>>>> ?crit :
+>>>>>
+>>>>>> Rather than asking others to do this, why don't you create a tiny
+>>>>>> package containing nothing other than an ifelse() replacement?  I
+>>>>>> wouldn't want to depend on dplyr or data.table just to get their
+>>>>>> versions, but depending on your tiny package wouldn't be an issue.
+>>>>>>
+>>>>>> Duncan Murdoch
+>>>>>>
+>>>>>> On 2025-07-08 6:12 a.m., Antoine Fabri wrote:
+>>>>>>> Dear r-devel,
+>>>>>>>
+>>>>>>> `ifelse()` has a lot of issues, and for these reasons it has been
+>>>> redone
+>>>>>> in
+>>>>>>> `dplyr::if_else()` and `data.table::fifelse()`, which are both
+>> great.
+>>>> Yet
+>>>>>>> it's an important base R function, it's really hard to program in
+>> base
+>>>> R
+>>>>>>> without it and scores probably as high as it gets in the most_used
+>> *
+>>>>>>> most_problematic metric.
+>>>>>>>
+>>>>>>> Obviously we can't change it without breaking a ton of code, but
+>> with
+>>>> all
+>>>>>>> the experience we now have with it and the dplyr and data.table
+>>>>>> alternative
+>>>>>>> maybe it might not be absurd to have a good alternative, say
+>> `if.else`
+>>>> in
+>>>>>>> base R, that we can document on the same page and recommend for
+>> future
+>>>>>> use.
+>>>>>>> It would require a common type in yes/no, not return logical() for
+>> all
+>>>>>> zero
+>>>>>>> length input, work with dates, datetimes and factors, handle a na
+>>>>>> condition
+>>>>>>> etc. The test suites of dplyr and data.table probably tell us
+>>>> everything
+>>>>>>> about the edge cases we want to look at. Maybe the old ifelse could
+>>>> even
+>>>>>>> warn when called from the top level, to incite us to work with the
+>> new
+>>>>>> one.
+>>>>>>>
+>>>>>>> It feels wrong to me to be stuck with ifelse() forever just
+>> because it
+>>>>>> has
+>>>>>>> been like this for a long time. I'm sure some of you learnt your
+>> way
+>>>>>> around
+>>>>>>> it but I work with R every day and after 10+ years of R it still
+>> bites
+>>>> me
+>>>>>>> all the time, I'm probably not alone, at least chatGPT called it a
+>>>>>>> "footgun", and we don't want that :).
+>>>>>>>
+>>>>>>> Thanks,
+>>>>>>>
+>>>>>>> Antoine
+>>>>>>>
+>>>>>>>         [[alternative HTML version deleted]]
+>>>>>>>
+>>>>>>> ______________________________________________
+>>>>>>> R-devel at r-project.org mailing list
+>>>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>>>
+>>>>>>
+>>>>>
+>>>>>        [[alternative HTML version deleted]]
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>
+>>>> --
+>>>> Dr. Benjamin Bolker
+>>>> Professor, Mathematics & Statistics and Biology, McMaster University
+>>>> Director, School of Computational Science and Engineering
+>>>> * E-mail is sent at my convenience; I don't expect replies outside of
+>>>> working hours.
+>>>>
+>>>> ______________________________________________
+>>>> R-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>
+>>>
+>>>          [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From m|kkm@rt @end|ng |rom protonm@||@com  Wed Jul  9 11:02:38 2025
+From: m|kkm@rt @end|ng |rom protonm@||@com (Mikko Marttila)
+Date: Wed, 09 Jul 2025 09:02:38 +0000
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <004001dbf048$a40145e0$ec03d1a0$@gmail.com>
+References: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+ <ddcbc6ce-ef17-4bac-b901-5399d15ef6f4@gmail.com>
+ <CAEKh8uhDN=bfOXz=ZJbJ4E7C_hD4KGCz36b8sNPM0wJb+7S_9A@mail.gmail.com>
+ <f92fdec0-756a-4401-8d66-ecdf4de4595a@gmail.com>
+ <CAL3ufUKh6KOSkaiDhHVT4tOCb_xKLZ+EtmH6+mgknjkzqs2wQA@mail.gmail.com>
+ <CAL6gwn+fMCrw5gi3Uy8xigGZb+mf9n1Q2iFh9Rn5YyiqaNzz2g@mail.gmail.com>
+ <CAL3ufUJmXLqDPpj23sEpZUSakvq5s9w5qVBrbqghtmXBiUDqdA@mail.gmail.com>
+ <b8945e3e-33c1-4635-8ab1-b9d5ffff2d37@gmail.com>
+ <004001dbf048$a40145e0$ec03d1a0$@gmail.com>
+Message-ID: <3znc9Ny2KoAlUEgqWJBsTpUdfaMXZrhSbrkPUFxQLlX82nfHZE0npbR4eFRpi7rXzjQoWz-hLSaUr9pnX9HYywDzzc3TGRi2FtNNLGFz9IE=@protonmail.com>
+
+Thanks Antoine for starting this discussion. It would indeed be great to see
+an improved `ifelse()` in base R.
+
+I also agree with Duncan's suggestion that the way to proceed would be to
+create a package where the improved version could be drafted, discussed and
+refined so that R Core would have a concrete proposal to consider in the end.
+
+Some initial thoughts on what should be considered:
+
+Performance has been mentioned a few times. While it would of course be nice
+to see improvements there I think the main goal is in the API. The goal for
+performance should rather be that it doesn't deteriorate unacceptably.
+
+While data.table's and dplyr's ifelse variants may serve as a good starting
+point for identifiying the improvements needed, I don't think either is a good
+candidate for simply copying as the base R candidate. A function in base R
+should adhere to the conventions in base R; neither of the packages does that.
+They instead have their own stricter requirements. For example:
+
+* Incompatible lengths: Base R recycles with a warning, both packages error out.
+* Different classes: Base R coerces loosely, dplyr uses stricter coercion rules
+  based on vctrs, and data.table doesn't allow any coercion.
+
+Another point to consider is the handling of attributes for the result.
+data.table copies from the first non-NA input from left to right, while dplyr
+delegates to vctrs again for merging the attributes gracefully. This matters
+for example for factors, where data.table special-cases them to require the
+same levels, wherease dplyr merges them. For a base R solution, it would make
+sense to delegate the attribute handling to `c()` somehow, as that's conceptually
+what should be happening; we're combining values from the `yes` and `no` objects.
+
+I'm sure there are many other points to consider, but as I said this is what
+comes to mind at first. Best of luck with the effort.
+
+Kind regards,
+
+Mikko
+
+
+On Tuesday, 8 July 2025 at 21:41, avi.e.gross at gmail.com <avi.e.gross at gmail.com> wrote:
+
+> A package with only one function, what a concept!
+>
+> But then it becomes tempting to also create a function like if_else_else() and if_else_default() and of course if_not_else() ....
+>
+> Joking aside, plenty of functionality in extendible languages like R were written long enough ago that they might be done quite differently today. I don't mean just different code, but different arguments it takes and different defaults. Who really wanted you to type stringsAsFactors=TRUE every time, for example.
+>
+> But it is late enough that making changes now can backfire. Look at the announcement that updating ggplot2 to use S7 objects will break some packages that depend on it including many in the Bioconductor world. I would imagine if R magically had started with S7 and skipped over S3 and S4 and perhaps others that have not been widely used, we might have had more consistency. But that is not how it happened and we likely will be stuck for a long time with both R core and all kinds of packages needing to be able to handle older kinds of objects. And, not to compare, but a language like python made a very different approach to objects long ago so that pretty much everything is an object and there generally is no need to create a new form as you can use all kinds of existing ways to tailor your objects to your needs.
+>
+> Given the budgets and other constraints we are dealing with, I suspect that there is a long list of possible changes that are currently not being seriously considered and since there are several work-arounds available in existing packages, there is less urgency.
+>
+> And, there is a reality that although an ifelse() has a certain generality, for specific purposes, it may be trivial enough to fashion your own variant using anything from explicit to implicit loops. But, certainly, if some people work on a variant and show it is compatible and benchmarks suggesting how much faster, then a minimal package with no odd dependencies is a way to go, and might eventually be taken into the core. I would be cautious about naming the package/function as whatever is chosen, ...
+>
+> Avi (too)
+>
+> -----Original Message-----
+> From: R-devel r-devel-bounces at r-project.org On Behalf Of Duncan Murdoch
+>
+> Sent: Tuesday, July 8, 2025 3:06 PM
+> To: Josiah Parry josiah.parry at gmail.com; Avraham Adler avraham.adler at gmail.com
+>
+> Cc: r-devel at r-project.org
+> Subject: Re: [Rd] Time to revisit ifelse ?
+>
+> Since you and Antoine are volunteering to do the work, why not start in
+> the way I suggested? Write up a comparison of the known ifelse
+> implementations, and either pick the best one, or choose the best parts
+> of each. Put the result in a package containing nothing else, and
+> invite comment from the wider community.
+>
+> My only comment in advance is that the package should have no
+> dependencies other than base packages, for two reasons:
+>
+> 1. The hope is to have it adopted in base R, and for that it can't have
+> any other dependencies.
+>
+> 2. If it's never adopted by R Core, I might still want to use it, but I
+> don't want to add extra dependencies for just one little function.
+>
+> Duncan Murdoch
+>
+> On 2025-07-08 12:46 p.m., Josiah Parry wrote:
+>
+> > Avi, appreciate the puns!
+> >
+> > I don't think anyone is suggesting R-core dedicate all of their time to
+> > this problem.
+> > To me, the thread is about consensus making (as there is no formal way to
+> > do that).
+> >
+> > Quoting OP here:
+> >
+> > "It's not about asking others to do it really, that was a harsh assumption.
+> >
+> > I'd be happy to propose a version if it helps, I'd be also very happy if it
+> >
+> > were just a copy of if_else or fifelse (both MIT FWIW)."
+> >
+> > The initial email, IMO, was to show that there already are community
+> > implementations of faster
+> > and type-safer of ifelse (notably dplyr and data.table and I'd add
+> > kit::iif, too) and perhaps now
+> > is the time to add this enhancement to the language.
+> >
+> > It is tough to get a sense of total usage of each though but some code
+> > searching on GitHub:
+> >
+> > - data.table::fifelse:
+> > https://github.com/search?q="fifelse("+language%3AR&type=code
+> > - dplyr::if_else:
+> > https://github.com/search?q="if_else("+language%3AR&type=code
+> > - kit::iif:
+> > https://github.com/search?q=%2F(%3F-i)iif\(%2F+language%3AR+&type=code
+> >
+> > On Tue, Jul 8, 2025 at 8:23?AM Avraham Adler avraham.adler at gmail.com
+> > wrote:
+> >
+> > > On Tue, Jul 8, 2025 at 10:55?AM Josiah Parry josiah.parry at gmail.com
+> > > wrote:
+> > >
+> > > > I think the point is not that there needs to be a smaller package for yet
+> > > > another if-else (https://xkcd.com/927/). It is that if the R-language,
+> > > > as a
+> > > > whole, had a performant if-else in the base of the language would benefit
+> > > > everyone such that a data.table or dplyr or gtools etc. alternative
+> > > > would not be necessary.
+> > >
+> > > While that may be true, Josiah, R Core's time is very limited.
+> > > Following Duncan's idea, if a small, simple package were created and
+> > > was proven to dominate the performance of standard ifelse without
+> > > causing any issues with the ten thousand plus packages in the R
+> > > environment, that would make R Core's decision much simpler, whether
+> > > or not to use the existing, proved performant code. Asking R Core to
+> > > do the research and testing for something which currently works,
+> > > albeit not in the most efficient way possible, is pretty much a
+> > > non-starter. Do as much work as possible for R Core to have even a
+> > > possibility of consideration. For something similar, albeit much less
+> > > core (pun intended) to R's code, see this discussion [1] from June
+> > > 2012 on Kendall's tau, where the code already existed but was deemed
+> > > unimportant enough to add to base R.
+> > >
+> > > [1] https://stat.ethz.ch/pipermail/r-devel/2012-June/064351.html
+> > >
+> > > Thanks,
+> > >
+> > > Avi
+> > >
+> > > > On Tue, Jul 8, 2025 at 5:09?AM Ben Bolker bbolker at gmail.com wrote:
+> > > >
+> > > > > I think Duncan's point is that R-core are (reasonably) very, very,
+> > > > > very conservative about adding things to base R. It would be useful to
+> > > > > the community, and would indeed further the discussion, to make a tiny
+> > > > > package containing just that function. (Even just copying it from some
+> > > > > other package might require some work to disentangle it from
+> > > > > dependencies: for example, a quick glance at dplyr::if_else shows that
+> > > > > it uses functions from rlang, vctrs, ...)
+> > > > >
+> > > > > I'd be happy to accept a pull request in `gtools`, which is a
+> > > > > zero-dependency (except base R) package for small utility functions ...
+> > > > >
+> > > > > cheers
+> > > > > Ben Bolker
+> > > > >
+> > > > > On 7/8/25 07:36, Antoine Fabri wrote:
+> > > > >
+> > > > > > It's not about asking others to do it really, that was a harsh
+> > > > > > assumption.
+> > > > > > I'd be happy to propose a version if it helps, I'd be also very
+> > > > > > happy if
+> > > > > > it
+> > > > > > were just a copy of if_else or fifelse (both MIT FWIW).
+> > > > > > It's a low level building block and it's broken, IMO it's way better
+> > > > > > to
+> > > > > > have it available and documented in base R and incite everyone to
+> > > > > > use it,
+> > > > > > so not only we don't suffer from it in the code we write, but also
+> > > > > > in the
+> > > > > > code we use or inherit from.
+> > > > > >
+> > > > > > Le mar. 8 juil. 2025 ? 13:25, Duncan Murdoch <
+> > > > > > murdoch.duncan at gmail.com>
+> > > > > > a
+> > > > > > ?crit :
+> > > > > >
+> > > > > > > Rather than asking others to do this, why don't you create a tiny
+> > > > > > > package containing nothing other than an ifelse() replacement? I
+> > > > > > > wouldn't want to depend on dplyr or data.table just to get their
+> > > > > > > versions, but depending on your tiny package wouldn't be an issue.
+> > > > > > >
+> > > > > > > Duncan Murdoch
+> > > > > > >
+> > > > > > > On 2025-07-08 6:12 a.m., Antoine Fabri wrote:
+> > > > > > >
+> > > > > > > > Dear r-devel,
+> > > > > > > >
+> > > > > > > > `ifelse()` has a lot of issues, and for these reasons it has been
+> > > > > > > > redone
+> > > > > > > > in
+> > > > > > > > `dplyr::if_else()` and `data.table::fifelse()`, which are both
+> > > > > > > > great.
+> > > > > > > > Yet
+> > > > > > > > it's an important base R function, it's really hard to program in
+> > > > > > > > base
+> > > > > > > > R
+> > > > > > > > without it and scores probably as high as it gets in the most_used
+> > > > > > > > *
+> > > > > > > > most_problematic metric.
+> > > > > > > >
+> > > > > > > > Obviously we can't change it without breaking a ton of code, but
+> > > > > > > > with
+> > > > > > > > all
+> > > > > > > > the experience we now have with it and the dplyr and data.table
+> > > > > > > > alternative
+> > > > > > > > maybe it might not be absurd to have a good alternative, say
+> > > > > > > > `if.else`
+> > > > > > > > in
+> > > > > > > > base R, that we can document on the same page and recommend for
+> > > > > > > > future
+> > > > > > > > use.
+> > > > > > > > It would require a common type in yes/no, not return logical() for
+> > > > > > > > all
+> > > > > > > > zero
+> > > > > > > > length input, work with dates, datetimes and factors, handle a na
+> > > > > > > > condition
+> > > > > > > > etc. The test suites of dplyr and data.table probably tell us
+> > > > > > > > everything
+> > > > > > > > about the edge cases we want to look at. Maybe the old ifelse could
+> > > > > > > > even
+> > > > > > > > warn when called from the top level, to incite us to work with the
+> > > > > > > > new
+> > > > > > > > one.
+> > > > > > > >
+> > > > > > > > It feels wrong to me to be stuck with ifelse() forever just
+> > > > > > > > because it
+> > > > > > > > has
+> > > > > > > > been like this for a long time. I'm sure some of you learnt your
+> > > > > > > > way
+> > > > > > > > around
+> > > > > > > > it but I work with R every day and after 10+ years of R it still
+> > > > > > > > bites
+> > > > > > > > me
+> > > > > > > > all the time, I'm probably not alone, at least chatGPT called it a
+> > > > > > > > "footgun", and we don't want that :).
+> > > > > > > >
+> > > > > > > > Thanks,
+> > > > > > > >
+> > > > > > > > Antoine
+> > > > > > > >
+> > > > > > > > [[alternative HTML version deleted]]
+> > > > > > > >
+> > > > > > > > ______________________________________________
+> > > > > > > > R-devel at r-project.org mailing list
+> > > > > > > > https://stat.ethz.ch/mailman/listinfo/r-devel
+> > > > > >
+> > > > > > [[alternative HTML version deleted]]
+> > > > > >
+> > > > > > ______________________________________________
+> > > > > > R-devel at r-project.org mailing list
+> > > > > > https://stat.ethz.ch/mailman/listinfo/r-devel
+> > > > >
+> > > > > --
+> > > > > Dr. Benjamin Bolker
+> > > > > Professor, Mathematics & Statistics and Biology, McMaster University
+> > > > > Director, School of Computational Science and Engineering
+> > > > > * E-mail is sent at my convenience; I don't expect replies outside of
+> > > > > working hours.
+> > > > >
+> > > > > ______________________________________________
+> > > > > R-devel at r-project.org mailing list
+> > > > > https://stat.ethz.ch/mailman/listinfo/r-devel
+> > > >
+> > > > [[alternative HTML version deleted]]
+> > > >
+> > > > ______________________________________________
+> > > > R-devel at r-project.org mailing list
+> > > > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+> > [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Jul  9 12:06:49 2025
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 9 Jul 2025 12:06:49 +0200
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <3znc9Ny2KoAlUEgqWJBsTpUdfaMXZrhSbrkPUFxQLlX82nfHZE0npbR4eFRpi7rXzjQoWz-hLSaUr9pnX9HYywDzzc3TGRi2FtNNLGFz9IE=@protonmail.com>
+References: <CAEKh8uj=szmpFQEYoYt_UNDGYCHMJPpyJ2WSa1gGohzMACA1Eg@mail.gmail.com>
+ <ddcbc6ce-ef17-4bac-b901-5399d15ef6f4@gmail.com>
+ <CAEKh8uhDN=bfOXz=ZJbJ4E7C_hD4KGCz36b8sNPM0wJb+7S_9A@mail.gmail.com>
+ <f92fdec0-756a-4401-8d66-ecdf4de4595a@gmail.com>
+ <CAL3ufUKh6KOSkaiDhHVT4tOCb_xKLZ+EtmH6+mgknjkzqs2wQA@mail.gmail.com>
+ <CAL6gwn+fMCrw5gi3Uy8xigGZb+mf9n1Q2iFh9Rn5YyiqaNzz2g@mail.gmail.com>
+ <CAL3ufUJmXLqDPpj23sEpZUSakvq5s9w5qVBrbqghtmXBiUDqdA@mail.gmail.com>
+ <b8945e3e-33c1-4635-8ab1-b9d5ffff2d37@gmail.com>
+ <004001dbf048$a40145e0$ec03d1a0$@gmail.com>
+ <3znc9Ny2KoAlUEgqWJBsTpUdfaMXZrhSbrkPUFxQLlX82nfHZE0npbR4eFRpi7rXzjQoWz-hLSaUr9pnX9HYywDzzc3TGRi2FtNNLGFz9IE=@protonmail.com>
+Message-ID: <26734.16185.475868.105203@stat.math.ethz.ch>
+
+>>>>> Mikko Marttila via R-devel 
+>>>>>     on Wed, 09 Jul 2025 09:02:38 +0000 writes:
+
+    > Thanks Antoine for starting this discussion. It would indeed be great to see
+    > an improved `ifelse()` in base R.
+
+    > I also agree with Duncan's suggestion that the way to proceed would be to
+    > create a package where the improved version could be drafted, discussed and
+    > refined so that R Core would have a concrete proposal to consider in the end.
+
+    > Some initial thoughts on what should be considered:
+
+    > Performance has been mentioned a few times. While it would of course be nice
+    > to see improvements there I think the main goal is in the API. The goal for
+    > performance should rather be that it doesn't deteriorate unacceptably.
+
+    > While data.table's and dplyr's ifelse variants may serve as a good starting
+    > point for identifiying the improvements needed, I don't think either is a good
+    > candidate for simply copying as the base R candidate. A function in base R
+    > should adhere to the conventions in base R; neither of the packages does that.
+    > They instead have their own stricter requirements. For example:
+
+    > * Incompatible lengths: Base R recycles with a warning, both packages error out.
+    > * Different classes: Base R coerces loosely, dplyr uses stricter coercion rules
+    > based on vctrs, and data.table doesn't allow any coercion.
+
+    > Another point to consider is the handling of attributes for the result.
+    > data.table copies from the first non-NA input from left to right, while dplyr
+    > delegates to vctrs again for merging the attributes gracefully. This matters
+    > for example for factors, where data.table special-cases them to require the
+    > same levels, wherease dplyr merges them. For a base R solution, it would make
+    > sense to delegate the attribute handling to `c()` somehow, as that's conceptually
+    > what should be happening; we're combining values from the `yes` and `no` objects.
+
+    > I'm sure there are many other points to consider, but as I said this is what
+    > comes to mind at first. Best of luck with the effort.
+
+    > Kind regards,
+
+    > Mikko
+
+    [..........]
+
+    >> -----Original Message-----
+    >> From: R-devel r-devel-bounces at r-project.org On Behalf Of Duncan Murdoch
+    >> Sent: Tuesday, July 8, 2025 3:06 PM
+    >> To: Josiah Parry josiah.parry at gmail.com; Avraham Adler avraham.adler at gmail.com
+    >> Cc: r-devel at r-project.org
+    >> Subject: Re: [Rd] Time to revisit ifelse ?
+    >> 
+    >> Since you and Antoine are volunteering to do the work, why not start in
+    >> the way I suggested? Write up a comparison of the known ifelse
+    >> implementations, and either pick the best one, or choose the best parts
+    >> of each. Put the result in a package containing nothing else, and
+    >> invite comment from the wider community.
+    >> 
+    >> My only comment in advance is that the package should have no
+    >> dependencies other than base packages, for two reasons:
+    >> 
+    >> 1. The hope is to have it adopted in base R, and for that it can't have
+    >> any other dependencies.
+    >> 
+    >> 2. If it's never adopted by R Core, I might still want to use it, but I
+    >> don't want to add extra dependencies for just one little function.
+    >> 
+    >> Duncan Murdoch
+
+    [................]
+
+Thank you, Mikko, Antoine, Duncan, etc
+I'm trying to summarize the things I agree / or find important.
+Note that we had ifelse() discussions in the past (on this
+mailing list and/or possibly on R-help); I did get involved and
+spent many hours on coding myself, with no convincing result
+IIRC,  but I do vaguely remember I got very convinced we should
+*not* plan to replace ifelse() but add a second version, say
+if.else() (as  "if_else" is already taken by dplyr).
+
+1) Antoine Fabri proposed that base R should get *another*
+  version of ifelse() *in addition* to ifelse().   The issue
+  hence is *NOT* replacing ifelse() by something incompatible.
+
+2) Duncan Murdoch's points are *very* much to the point, most
+   importantly:
+   
+    Propose (with discussion / RFC / ...) a function in a (single
+    function) package which only depends on R's base package. 
+
+ I'd add to that that you should probably use the GPL-2 licence
+ or are willing to donate it with that licence to R and do say so;
+ e.g., we cannot add MIT-licenced things to R.
+
+3) Ben Bolker's offer to "host" such a function in his 'gtools'
+   package (w/ 0-dependency) would also be acceptable to me,
+   even though it is against DM's "2. If it's never adopted by R Core, .."
+
+Best,
+Martin
+
+--
+Martin Maechler
+ETH Zurich  and  R Core team
+
+
+From j@g@nmn2 @end|ng |rom gm@||@com  Fri Jul 11 10:41:13 2025
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Fri, 11 Jul 2025 04:41:13 -0400
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <mailman.54975.3.1752141602.64845.r-devel@r-project.org>
+References: <mailman.54975.3.1752141602.64845.r-devel@r-project.org>
+Message-ID: <c76b979b-443c-4d21-a1ef-21170cd8da2b@gmail.com>
+
+I don't mind putting together a minimal package with some prototypes, tests,
+comparisons, etc.  But perhaps we should aim for consensus on a few issues
+beforehand.  (Sorry if these have been discussed to death already elsewhere.
+In that case, links to relevant threads would be helpful ...)
+
+     1. Should the type and class attribute of the return value be exactly the
+        type and class attribute of c(yes[0L], no[0L]), independent of 'test'?
+        Or something else?
+
+     2. What should be the attributes of the return value (other than 'class')?
+
+        base::ifelse keeps attributes(test) if 'test' is atomic, which seems
+        like desirable behaviour, though dplyr and data.table seem to think
+        otherwise:
+
+            > x <- diag(TRUE, 4L)
+            > base::ifelse(x, 1, -1)
+                 [,1] [,2] [,3] [,4]
+            [1,]    1   -1   -1   -1
+            [2,]   -1    1   -1   -1
+            [3,]   -1   -1    1   -1
+            [4,]   -1   -1   -1    1
+            > dplyr::if_else(x, 1, -1)
+            Error in if (n_processed == n_conditions && any(are_unused)) { :
+              missing value where TRUE/FALSE needed
+            > data.table::fifelse(x, 1, -1)
+             [1]  1 -1 -1 -1 -1  1 -1 -1 -1 -1  1 -1 -1 -1 -1  1
+
+     3. Should the new function be stricter and/or more verbose?  E.g., should
+        it signal a condition if length(yes) or length(no) is not equal to 1
+        nor length(test)?
+
+     4. Should the most common case, in which neither 'yes' nor 'no' has a
+        'class' attribute, be handled in C?  The remaining cases might rely on
+        method dispatch and thus require a separate "generic" implementation in
+        R.  How much faster/more efficient would the C implementation have to
+        be to justify the cost (more maintenance for R-core, more obfuscation
+        for the average user)?
+
+FWIW, my first (and untested) approximation of an ifelse2 is just this:
+
+     function (test, yes, no)
+     {
+         if (is.atomic(test)) {
+             if (!is.logical(test))
+                 storage.mode(test) <- "logical"
+         }
+         else test <- if (isS4(test)) methods::as(test, "logical") else 
+as.logical(test)
+         nt <- length(test)
+         if (nt == 1L) {
+             ans <-
+                 if (is.na(test))
+                     c(yes[0L], no[0L])[1L]
+                 else if (test)
+                     c(yes[1L], no[0L])
+                 else c(yes[0L], no[1L])
+         } else {
+             ans <- rep(c(yes[0L], no[0L]), length.out = nt)
+             ny <- length(yes)
+             nn <- length( no)
+             jy <- which( test)
+             jn <- which(!test)
+             if (length(jy))
+                 ans[jy] <- if (ny == 1L) yes else if (ny >= nt) yes[jy] else 
+rep(yes, length.out = nt)[jy]
+             if (length(jn))
+                 ans[jn] <- if (nn == 1L)  no else if (nn >= nt)  no[jn] else 
+rep( no, length.out = nt)[jn]
+         }
+         at <- attributes(test)
+         if (!is.null(at)) {
+             at[["class"]] <- oldClass(ans)
+             attributes(ans) <- at
+         }
+         ans
+     }
+
+Mikael
+
+> Date: Wed, 9 Jul 2025 12:06:49 +0200
+> From: Martin Maechler <maechler at stat.math.ethz.ch>
+> 
+>>>>>> Mikko Marttila via R-devel
+>>>>>>      on Wed, 09 Jul 2025 09:02:38 +0000 writes:
+> 
+>      > Thanks Antoine for starting this discussion. It would indeed be great to see
+>      > an improved `ifelse()` in base R.
+> 
+>      > I also agree with Duncan's suggestion that the way to proceed would be to
+>      > create a package where the improved version could be drafted, discussed and
+>      > refined so that R Core would have a concrete proposal to consider in the end.
+> 
+>      > Some initial thoughts on what should be considered:
+> 
+>      > Performance has been mentioned a few times. While it would of course be nice
+>      > to see improvements there I think the main goal is in the API. The goal for
+>      > performance should rather be that it doesn't deteriorate unacceptably.
+> 
+>      > While data.table's and dplyr's ifelse variants may serve as a good starting
+>      > point for identifiying the improvements needed, I don't think either is a good
+>      > candidate for simply copying as the base R candidate. A function in base R
+>      > should adhere to the conventions in base R; neither of the packages does that.
+>      > They instead have their own stricter requirements. For example:
+> 
+>      > * Incompatible lengths: Base R recycles with a warning, both packages error out.
+>      > * Different classes: Base R coerces loosely, dplyr uses stricter coercion rules
+>      > based on vctrs, and data.table doesn't allow any coercion.
+> 
+>      > Another point to consider is the handling of attributes for the result.
+>      > data.table copies from the first non-NA input from left to right, while dplyr
+>      > delegates to vctrs again for merging the attributes gracefully. This matters
+>      > for example for factors, where data.table special-cases them to require the
+>      > same levels, wherease dplyr merges them. For a base R solution, it would make
+>      > sense to delegate the attribute handling to `c()` somehow, as that's conceptually
+>      > what should be happening; we're combining values from the `yes` and `no` objects.
+> 
+>      > I'm sure there are many other points to consider, but as I said this is what
+>      > comes to mind at first. Best of luck with the effort.
+> 
+>      > Kind regards,
+> 
+>      > Mikko
+> 
+>      [..........]
+> 
+>      >> -----Original Message-----
+>      >> From: R-devel r-devel-bounces at r-project.org On Behalf Of Duncan Murdoch
+>      >> Sent: Tuesday, July 8, 2025 3:06 PM
+>      >> To: Josiah Parry josiah.parry at gmail.com; Avraham Adler avraham.adler at gmail.com
+>      >> Cc: r-devel at r-project.org
+>      >> Subject: Re: [Rd] Time to revisit ifelse ?
+>      >>
+>      >> Since you and Antoine are volunteering to do the work, why not start in
+>      >> the way I suggested? Write up a comparison of the known ifelse
+>      >> implementations, and either pick the best one, or choose the best parts
+>      >> of each. Put the result in a package containing nothing else, and
+>      >> invite comment from the wider community.
+>      >>
+>      >> My only comment in advance is that the package should have no
+>      >> dependencies other than base packages, for two reasons:
+>      >>
+>      >> 1. The hope is to have it adopted in base R, and for that it can't have
+>      >> any other dependencies.
+>      >>
+>      >> 2. If it's never adopted by R Core, I might still want to use it, but I
+>      >> don't want to add extra dependencies for just one little function.
+>      >>
+>      >> Duncan Murdoch
+> 
+>      [................]
+> 
+> Thank you, Mikko, Antoine, Duncan, etc
+> I'm trying to summarize the things I agree / or find important.
+> Note that we had ifelse() discussions in the past (on this
+> mailing list and/or possibly on R-help); I did get involved and
+> spent many hours on coding myself, with no convincing result
+> IIRC,  but I do vaguely remember I got very convinced we should
+> *not* plan to replace ifelse() but add a second version, say
+> if.else() (as  "if_else" is already taken by dplyr).
+> 
+> 1) Antoine Fabri proposed that base R should get *another*
+>    version of ifelse() *in addition* to ifelse().   The issue
+>    hence is *NOT* replacing ifelse() by something incompatible.
+> 
+> 2) Duncan Murdoch's points are *very* much to the point, most
+>     importantly:
+>     
+>      Propose (with discussion / RFC / ...) a function in a (single
+>      function) package which only depends on R's base package.
+> 
+>   I'd add to that that you should probably use the GPL-2 licence
+>   or are willing to donate it with that licence to R and do say so;
+>   e.g., we cannot add MIT-licenced things to R.
+> 
+> 3) Ben Bolker's offer to "host" such a function in his 'gtools'
+>     package (w/ 0-dependency) would also be acceptable to me,
+>     even though it is against DM's "2. If it's never adopted by R Core, .."
+> 
+> Best,
+> Martin
+> 
+> --
+> Martin Maechler
+> ETH Zurich  and  R Core team
+>
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Jul 11 22:01:18 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 11 Jul 2025 23:01:18 +0300
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <c76b979b-443c-4d21-a1ef-21170cd8da2b@gmail.com>
+References: <mailman.54975.3.1752141602.64845.r-devel@r-project.org>
+ <c76b979b-443c-4d21-a1ef-21170cd8da2b@gmail.com>
+Message-ID: <20250711230118.1f359ab7@Tarkus>
+
+On Fri, 11 Jul 2025 04:41:13 -0400
+Mikael Jagan <jaganmn2 at gmail.com> wrote:
+
+> But perhaps we should aim for consensus on a few issues beforehand.
+
+Thank you for raising this topic!
+
+> (Sorry if these have been discussed to death already elsewhere. In
+> that case, links to relevant threads would be helpful ...)
+
+The data.table::fifelse issue [1] comes to mind together with the vctrs
+article section about the need for a less strict ifelse() [2]. 
+
+>      1. Should the type and class attribute of the return value be
+> exactly the type and class attribute of c(yes[0L], no[0L]),
+> independent of 'test'? Or something else?
+
+Can we afford an escape hatch for cases when one of the ifelse()
+branches is NA or other special value handled by the '[<-' method
+belonging to the class of the other branch? data.table::fifelse() has a
+not exactly documented special case where it coerces NA_LOGICAL to the
+appropriate type, so that data.table::fifelse(runif(10) < .5,
+Sys.Date(), NA) works as intended, and dplyr::if_else also supports
+this case, but none of the other ifelses I tested do that.
+
+Can we say that if only some of the 'yes' / 'no' / 'na' arguments have
+classes, those must match and they determine the class of the return
+value? It could be convenient, and it also could be a source of bugs.
+
+>      2. What should be the attributes of the return value (other than
+> 'class')?
+
+data.table::fifelse (and kit::iif, which shares a lot of the code) also
+preserve the names, but neither dplyr nor hutils do. I think it would
+be reasonable to preserve the 'dim' attribute and thus the 'dimnames'
+attribute too.
+
+>      3. Should the new function be stricter and/or more verbose?
+> E.g., should it signal a condition if length(yes) or length(no) is
+> not equal to 1 nor length(test)?
+
+Leaning towards yes, but only because I haven't met any uses for
+recycling of non-length-1 inputs myself. An allow.recycle=FALSE option
+is probably overkill, right?
+
+>      4. Should the most common case, in which neither 'yes' nor 'no'
+> has a 'class' attribute, be handled in C?
+
+This could be a very reasonable performance-correctness trade-off.
+
+> FWIW, my first (and untested) approximation of an ifelse2 is just
+> this:
+> 
+>      function (test, yes, no)
+
+I think a widely asked-for feature is a separate 'na' branch.
+
+-- 
+Best regards,
+Ivan
+
+[1] https://github.com/rdatatable/data.table/issues/3657
+
+[2] https://vctrs.r-lib.org/articles/stability.html#ifelse
+
+
+From j@g@nmn2 @end|ng |rom gm@||@com  Sat Jul 12 00:16:35 2025
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Fri, 11 Jul 2025 18:16:35 -0400
+Subject: [Rd] Time to revisit ifelse ?
+In-Reply-To: <20250711230118.1f359ab7@Tarkus>
+References: <mailman.54975.3.1752141602.64845.r-devel@r-project.org>
+ <c76b979b-443c-4d21-a1ef-21170cd8da2b@gmail.com>
+ <20250711230118.1f359ab7@Tarkus>
+Message-ID: <cfc4011c-7c9a-4aee-a8d0-6c4c04f99c42@gmail.com>
+
+Thanks Ivan - I've responded in line.  I'll just add here that I've put
+together a single-function package and placed it in a public repository:
+https://github.com/jaganmn/ifelse
+
+Perhaps we (all) can iterate more there, opening issues as it seems that
+there could be many ... ?
+
+Mikael
+
+On 2025-07-11 4:01 pm, Ivan Krylov wrote:
+> On Fri, 11 Jul 2025 04:41:13 -0400
+> Mikael Jagan <jaganmn2 at gmail.com> wrote:
+> 
+>> But perhaps we should aim for consensus on a few issues beforehand.
+> 
+> Thank you for raising this topic!
+> 
+>> (Sorry if these have been discussed to death already elsewhere. In
+>> that case, links to relevant threads would be helpful ...)
+> 
+> The data.table::fifelse issue [1] comes to mind together with the vctrs
+> article section about the need for a less strict ifelse() [2].
+> 
+>>       1. Should the type and class attribute of the return value be
+>> exactly the type and class attribute of c(yes[0L], no[0L]),
+>> independent of 'test'? Or something else?
+> 
+> Can we afford an escape hatch for cases when one of the ifelse()
+> branches is NA or other special value handled by the '[<-' method
+> belonging to the class of the other branch? data.table::fifelse() has a
+> not exactly documented special case where it coerces NA_LOGICAL to the
+> appropriate type, so that data.table::fifelse(runif(10) < .5,
+> Sys.Date(), NA) works as intended, and dplyr::if_else also supports
+> this case, but none of the other ifelses I tested do that.
+> 
+> Can we say that if only some of the 'yes' / 'no' / 'na' arguments have
+> classes, those must match and they determine the class of the return
+> value? It could be convenient, and it also could be a source of bugs.
+> 
+
+Right, it's quite tricky because 'c' dispatches only on its first argument,
+so class(c(.Date(0), 0)) is "Date" while class(c(0, .Date(0))) is "numeric".
+Hence, indeed, "commutativity" / "symmetry" (which is what users tend to
+expect) would require special handling.
+
+In a way, I like the simplicity of letting methods for 'c' handle all
+coercions and clearly documenting the potential for asymmetry.  The resulting
+code seems easy to understand and maintain.  I am wary of the Pandora's box
+which is comparison of class attributes, but maybe you have something simple
+in mind?
+
+>>       2. What should be the attributes of the return value (other than
+>> 'class')?
+> 
+> data.table::fifelse (and kit::iif, which shares a lot of the code) also
+> preserve the names, but neither dplyr nor hutils do. I think it would
+> be reasonable to preserve the 'dim' attribute and thus the 'dimnames'
+> attribute too.
+> 
+
+I currently do this:
+
+https://github.com/jaganmn/ifelse/blob/b29904f6e0f206abd677f535cd081603c5486d9c/R/ifelse1.R#L32-L47
+
+preserving "new" attributes from 'test' (not limited to 'dim' and 'dimnames'),
+notably with a bit of care where 'test' is a time series object.  Does that
+seem like overkill ... ?
+
+>>       3. Should the new function be stricter and/or more verbose?
+>> E.g., should it signal a condition if length(yes) or length(no) is
+>> not equal to 1 nor length(test)?
+> 
+> Leaning towards yes, but only because I haven't met any uses for
+> recycling of non-length-1 inputs myself. An allow.recycle=FALSE option
+> is probably overkill, right?
+> 
+
+I'm a bit agnostic here.  'diag<-' allows recycling only for length-1 assignment
+values, so there is a precedent.  So far, I have allowed recycling
+unconditionally without signaling anything, but that can easily change.
+
+https://github.com/jaganmn/ifelse/blob/b29904f6e0f206abd677f535cd081603c5486d9c/R/ifelse1.R#L26-L29
+
+>>       4. Should the most common case, in which neither 'yes' nor 'no'
+>> has a 'class' attribute, be handled in C?
+> 
+> This could be a very reasonable performance-correctness trade-off.
+> 
+
+For the purpose of performance testing, you'll see that I've added a basic
+C implementation which can be enabled with a logical argument:
+
+https://github.com/jaganmn/ifelse/blob/b29904f6e0f206abd677f535cd081603c5486d9c/R/ifelse1.R#L9-L10
+
+>> FWIW, my first (and untested) approximation of an ifelse2 is just
+>> this:
+>>
+>>       function (test, yes, no)
+> 
+> I think a widely asked-for feature is a separate 'na' branch.
+> 
+
+Yes, definitely a TODO.
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Sun Jul 13 11:26:15 2025
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Sun, 13 Jul 2025 11:26:15 +0200
+Subject: [Rd] Rprof(): Revisit 'interval' limits?
+Message-ID: <CAFDcVCQRmF6MN_+9MDaM8u-KMZFM6wUNGJ0ZqyigJjw5rT+Tjg@mail.gmail.com>
+
+Rprof() has an argument `interval = 0.02` that controls how frequently
+sampling takes place. On Linux the maximum sampling frequency is once
+every 10 ms and on other platforms its once every 1 ms, per
+help("Rprof"):
+
+"What is feasible is machine-dependent. On Linux, R requires the
+interval to be at least 10ms, on all other platforms at least 1ms.
+Shorter intervals will be rounded up with a warning."
+
+implemented in <https://github.com/r-devel/r-svn/blob/eb498f735e6b592c3db53d6824be3a7c30d4c4d5/src/main/eval.c#L897-L907>:
+
+#if defined(linux) || defined(__linux__)
+    if (dinterval < 0.01) {
+    dinterval = 0.01;
+    warning(_("interval too short for this platform, using '%f'"), dinterval);
+    }
+#else
+    if (dinterval < 0.001) {
+    dinterval = 0.001;
+    warning(_("interval too short, using '%f'"), dinterval);
+    }
+#endif
+
+Q. These limits were introduced on 2022-11-18 (r83369) by Tomas K.
+How were these limits chosen? Is it that the Linux limit of 10 ms
+applies to all Linux distributions, kernels, and hardware, or was this
+limit picked to work on most systems? Do they need to be re-visited
+over time? I would imagine that the limit would depend on hardware and
+the speed on the file system that Rprof() writes too, but I find it a
+bit odd that it would be hardcoded to an absolute walltime period.
+
+FWIW, I just recompiled R-devel on my Ubuntu Linux laptop to allow for
+1 ms, and the collected data look as what I'd expect also at this
+resolution. Without the tweak, a lot of profiled calls clocks in at 10
+ms.
+
+Thanks,
+
+Henrik
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Thu Jul 17 18:59:43 2025
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Thu, 17 Jul 2025 18:59:43 +0200
+Subject: [Rd] Rprof(): Revisit 'interval' limits?
+In-Reply-To: <CAFDcVCQRmF6MN_+9MDaM8u-KMZFM6wUNGJ0ZqyigJjw5rT+Tjg@mail.gmail.com>
+References: <CAFDcVCQRmF6MN_+9MDaM8u-KMZFM6wUNGJ0ZqyigJjw5rT+Tjg@mail.gmail.com>
+Message-ID: <31681c36-44e7-485a-998e-5ee181f9b9e3@gmail.com>
+
+I would only use longer intervals than the allowed minimum to reduce the 
+observer bias: the profiling itself is quite an expensive operation 
+which alters the execution of the program and poses a source of bias to 
+the measurements. Instead, I would ensure the profiled application runs 
+for long enough (by repeating a kernel multiple times, using larger 
+input data, etc) to make sure there is enough samples. That should 
+provide better results and the default 20ms interval should be good for 
+that. It shouldn't matter how long the individual calls in the 
+application take - if even a very short running call is executed very 
+often, it should be visible in the profile.
+
+The limit on Linux comes from the HZ value, which is the frequency at 
+which CPU time is updated. The default is 250 (so 4ms). Those 2+ years 
+ago when we set the limits, I've ran experiments on Linux and other 
+systems to see what the timers support and couldn't get below these 4ms 
+on Linux. On macOS I could get to much smaller intervals and also on 
+Windows (but there it is not CPU time profiling). Anyway, the results 
+one would get from profiling R code any close to those limits would most 
+likely be garbage.
+
+The limits were introduced after a bug report from a user on macOS, who 
+set the intervals way too low, running into a race condition in macOS 
+system (by now worked-around in R) and then running into starvation - 
+when R couldn't make any progress running user code because it spent all 
+the time collecting samples.
+
+The HZ value can be set at kernel configure time and if at some point 
+almost all kernels used by R users would have HZ=1000, we might 
+re-consider the limit for Linux (and possibly make it the same as on 
+other platforms, also to simplify the code). There was a proposal for 
+that to be the new default earlier this year, so maybe it will happen at 
+some point.
+
+Best
+Tomas
+
+
+On 7/13/25 11:26, Henrik Bengtsson wrote:
+> Rprof() has an argument `interval = 0.02` that controls how frequently
+> sampling takes place. On Linux the maximum sampling frequency is once
+> every 10 ms and on other platforms its once every 1 ms, per
+> help("Rprof"):
+>
+> "What is feasible is machine-dependent. On Linux, R requires the
+> interval to be at least 10ms, on all other platforms at least 1ms.
+> Shorter intervals will be rounded up with a warning."
+>
+> implemented in <https://github.com/r-devel/r-svn/blob/eb498f735e6b592c3db53d6824be3a7c30d4c4d5/src/main/eval.c#L897-L907>:
+>
+> #if defined(linux) || defined(__linux__)
+>      if (dinterval < 0.01) {
+>      dinterval = 0.01;
+>      warning(_("interval too short for this platform, using '%f'"), dinterval);
+>      }
+> #else
+>      if (dinterval < 0.001) {
+>      dinterval = 0.001;
+>      warning(_("interval too short, using '%f'"), dinterval);
+>      }
+> #endif
+>
+> Q. These limits were introduced on 2022-11-18 (r83369) by Tomas K.
+> How were these limits chosen? Is it that the Linux limit of 10 ms
+> applies to all Linux distributions, kernels, and hardware, or was this
+> limit picked to work on most systems? Do they need to be re-visited
+> over time? I would imagine that the limit would depend on hardware and
+> the speed on the file system that Rprof() writes too, but I find it a
+> bit odd that it would be hardcoded to an absolute walltime period.
+>
+> FWIW, I just recompiled R-devel on my Ubuntu Linux laptop to allow for
+> 1 ms, and the collected data look as what I'd expect also at this
+> resolution. Without the tweak, a lot of profiled calls clocks in at 10
+> ms.
+>
+> Thanks,
+>
+> Henrik
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From j@g@nmn2 @end|ng |rom gm@||@com  Tue Jul 22 21:04:14 2025
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Tue, 22 Jul 2025 15:04:14 -0400
+Subject: [Rd] RFC: ifelse::ifelse1 as analogue of base::ifelse
+Message-ID: <b956570d-a85c-4f1e-b97a-22ca79d68cf0@gmail.com>
+
+[
+     Partly continued from the thread earlier this month
+         https://stat.ethz.ch/pipermail/r-devel/2025-July/084096.html
+     in turn continued from discussions in 2016
+         https://stat.ethz.ch/pipermail/r-devel/2016-August/072970.html
+         https://stat.ethz.ch/pipermail/r-devel/2016-November/073385.html
+     ...
+]
+
+As I seem to have converged on a (tested, timed, ...) 'ifelse' analogue, I'd
+like to point again to the repository housing it:
+
+     https://github.com/jaganmn/ifelse/
+
+The home page has a "matrix" comparing the behaviours of all of the 'ifelse'
+analogues that I know about, including mine but at the moment excluding ones
+collected by Martin in 2016 ...
+
+     https://gist.github.com/mmaechler/9cfc3219c4b89649313bfe6853d87894
+
+... which I'd not seen until recently.
+
+Besides handling type, class, length, attributes, etc. in a predictable way,
+a nice feature of ifelse::ifelse1 is that it is "generic" in the following
+sense: as long as there are suitable methods for generic functions '[', '[<-',
+'c', and 'length', ifelse::ifelse1 will work for abstract classes of vectors,
+not limited to the "basic" classes raw, logical, integer, etc.
+
+Indeed, generic behaviour was a main point of discussion in 2016, and at the
+time Martin even encapsulated some very nice tests in a function chkIfelse();
+see his GH gist above.  After I tweak the body of chkIfelse() (to reflect
+changes since 2016 in 'base' and 'Matrix'), chkIfelse(ifelse::ifelse1) passes
+with a few exceptions related either to a bug in R itself
+
+     https://bugs.r-project.org/show_bug.cgi?id=18919
+
+or to a case where I have thought that a test *should* fail [*].  See the
+output of
+
+     $ diff -u tests/chkIfelse.R.orig tests/chkIfelse.R
+
+for my changes to chkIfelse() and
+
+     $ R --vanilla -f tests/chkIfelse.R
+
+for an indication of which tests fail.  (You will want to have installed the
+suggested packages Matrix, Rmpfr, and zoo.)
+
+ifelse::ifelse1 is also fast, comparable to single-threaded data.table::fifelse
+in the most common usage where none of the arguments has a class attribute and
+there is no need for method dispatch.  This common usage is handled by a lower
+level function, ifelse::.ifelse1 (with dot), also exported.  Of course, we lose
+this speed if we remove
+
+     if (!(is.object(yes) || is.object(no) || is.object(na)))
+         return(.Call(R_ifelse_ifelse1, ltest, yes, no, na))
+
+from body(ifelse::ifelse1), which we might do because, e.g., it may not be
+desirable for R-core to maintain additional C code.  My tests/timings.Rout
+suggests that the function without .Call would still be nontrivially (though
+not orders of magnitude) faster than base::ifelse in the most common usage.
+
+This RFC asks:
+
+     1. Are there behaviour or API changes that I should consider before possibly
+        submitting the package to CRAN?
+
+     2. Are there comments from R-core about the suitability for 'base'?  I am
+        personally a bit agnostic about it, but I could file a "wish" at Bugzilla
+        on behalf of people who feel strongly.
+
+Grateful for feedback or further testing, comparison, ...
+
+Mikael
+
+
+[*] chkIfelse(FUN) asserts that identical(x, FUN(x != 0, x, x)) is TRUE for 'x'
+     inheriting from virtual class Matrix (from package 'Matrix').
+
+     It is not TRUE when FUN=ifelse::ifelse1, because the class of the return
+     value of ifelse::ifelse1(x != 0, x, x) is the class of c(x[0], x[0]), and
+     x[0] is a traditional vector if 'x' is a Matrix.
+
+     Martin's proposal (the function named 'ifelse2' in his GH gist) adds logic
+     to handle this special case whereas ifelse::ifelse1 does not, on purpose.
+     The logic involves a test of identical(class(yes), class(no)), but that is
+     a bit unsatisfactory to me: in particular, should the behaviour of 'FUN'
+     really differ if class(no) is a simple *subclass* of (hence compatible but
+     not identical to) class(yes)?
+
+     > loadNamespace("Matrix")
+     > x <- new("dsyMatrix", Dim = c(1L, 1L), x = 1)
+     > y <- new("dpoMatrix", Dim = c(1L, 1L), x = 1)
+     > identical(class(x), class(y))
+     [1] FALSE
+     > extends(class(x), class(y))
+     [1] FALSE
+     > extends(class(y), class(x))
+     [1] TRUE
+     > MMgist::ifelse2(x != 0, x, x) # MMgist::<name> is pseudocode
+     1 x 1 Matrix of class "dgeMatrix"
+          [,1]
+     [1,]    1
+     > MMgist::ifelse2(x != 0, x, y)
+     [1] 1
+     > ifelse::ifelse1(x != 0, x, x)
+          [,1]
+     [1,]    1
+     > ifelse::ifelse1(x != 0, x, y)
+          [,1]
+     [1,]    1
+
+     I claim that the consistent behaviour of ifelse::ifelse1 is nicer even if
+     the return value does not preserve inheritance from virtual class Matrix.
+     After all, the *user* can arrange to preserve inheritance *if desired* with:
+
+     > z <- x
+     > z[] <- ifelse::ifelse1(x != 0, x, x)
+     > z
+     1 x 1 Matrix of class "dgeMatrix"
+          [,1]
+     [1,]    1
+
+     For an S3 example, consider time series objects:
+
+     > x <- ts(1)
+     > y <- structure(x, class = c("zzz", class(x)))
+     > identical(class(x), class(y))
+     [1] FALSE
+     > isa(x, class(y))
+     [1] TRUE
+     > isa(y, class(x))
+     [1] FALSE
+     > ifelse2(x != 0, x, x)
+     Time Series:
+     Start = 1
+     End = 1
+     Frequency = 1
+     [1] 1
+     > ifelse2(x != 0, x, y)
+     [1] 1
+     > ifelse::ifelse1(x != 0, x, x)
+     [1] 1
+     > ifelse::ifelse1(x != 0, x, y)
+     [1] 1
+
+     Then:
+
+     > z <- x
+     > z[] <- ifelse::ifelse1(x != 0, x, x)
+     > z
+     Time Series:
+     Start = 1
+     End = 1
+     Frequency = 1
+     [1] 1
+
+     Of course, new logic involving 'extends' and 'isa' could be incorporated.
+     But it seems cleaner to me to leave out such special case logic, which is
+     liable to introduce unintended "discontinuities" in behaviour and make the
+     source code less transparent to non-experts.  Indeed, my preference is to
+     clearly document examples like the above, which are of no concern to 99%
+     of users) and advertise work-arounds like
+         { z <- yes OR no OR na; z[] <- ifelse::ifelse1(test, yes, no, na); z},
+     which gives the remaining 1% a clue as well as a bit more control ...
+
+
+From p@t-@ @end|ng |rom m@||box@org  Sat Jul 26 19:23:40 2025
+From: p@t-@ @end|ng |rom m@||box@org (Patrick Schratz)
+Date: Sat, 26 Jul 2025 19:23:40 +0200
+Subject: [Rd] Using a consistent User Agent header for all available
+ download methods?
+Message-ID: <BE548FA4-3638-4A1C-9E85-B7E846AB8171@mailbox.org>
+
+Dear R-devel,
+
+For a project of mine which aims to improve R package distribution and 
+routing, I came across the fact that the treatment of the User Agent 
+info alongside download requests is not consistent.
+`?download.file` explains this in detail, so I?ll assume this info to 
+be know and just quote the most important bit:
+
+> The default is "R (version platform arch os)" except when 
+> ??libcurl?? is used when it is "libcurl/version" for the 
+> ??libcurl?? version in use.
+
+My question is:
+Why is that? And why is the value of `getOption("HTTPUserAgent?)` not 
+being sent consistently alongside all http(s) requests? Right now, it 
+differs by OS and download method.
+
+In my specific use case, `getOption("HTTPUserAgent?)` would contain 
+some OS information that could be used for dynamic routing of requests.
+Right now, this works for some environments (e.g. most Linux 
+distributions), however, on others, (e.g. macOS), only ?libcurl 
+<version>? is sent, even though `HTTPUserAgent` is defined as an 
+option.
+
+Aside from my specific use case, I?d argue that sending an informative 
+User Agent is a gentle way to identify oneself when making a request.
+The current content of the User Agent info on each platform is again a 
+different topic, but for now I would just like to get some feedback on 
+the topic of sending it in the first place.
+
+Best
+Patrick
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From therne@u @end|ng |rom m@yo@edu  Wed Jul 30 16:04:39 2025
+From: therne@u @end|ng |rom m@yo@edu (Therneau, Terry M., Ph.D.)
+Date: Wed, 30 Jul 2025 09:04:39 -0500
+Subject: [Rd] Depricated to Defunct
+Message-ID: <df8e8a48-e131-4339-9284-7824761b6a48@mayo.edu>
+
+In the survival package the survConcordance function was replaced by concordance a while 
+ago, the latter works for any ordered response (continuous, binary, survival, ...).
+I deprecated the old one a couple of years ago.
+How long should I have this persist before converting it to Defunct and removing the old 
+function?
+
+Terry
+
+-- 
+Terry M Therneau, PhD
+Department of Quantitative Health Sciences
+Mayo Clinic
+therneau at mayo.edu
+
+"TERR-ree THUR-noh"
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Jul 30 16:29:47 2025
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 30 Jul 2025 16:29:47 +0200
+Subject: [Rd] Deprecated to Defunct
+In-Reply-To: <df8e8a48-e131-4339-9284-7824761b6a48@mayo.edu>
+References: <df8e8a48-e131-4339-9284-7824761b6a48@mayo.edu>
+Message-ID: <26762.11355.464339.429379@stat.math.ethz.ch>
+
+>>>>> Therneau, Terry M , Ph D via R-devel 
+>>>>>     on Wed, 30 Jul 2025 09:04:39 -0500 writes:
+
+    > In the survival package the survConcordance function was replaced by concordance a while 
+    > ago, the latter works for any ordered response (continuous, binary, survival, ...).
+
+    > I deprecated the old one a couple of years ago.
+
+    > How long should I have this persist before converting it to Defunct and removing the old 
+    > function?
+
+    > Terry
+
+    > -- 
+    > Terry M Therneau, PhD
+    > Department of Quantitative Health Sciences
+    > Mayo Clinic
+    > therneau at mayo.edu
+
+    > "TERR-ree THUR-noh"
+
+
+Making it defunct is different than removing it.
+You'd replace the old function by a much shorter version
+
+survConcordance <- function(formula, data, weights, subset, na.action) 
+    .Defunct("concordance")
+
+and also update help files, and possibly examples / demos /
+tests.
+
+For such an important and long-history package as `survival`
+I'd then keep this little bit of code and docs  "forever".
+
+If in 20 years, somebody tries to run R code from a script or a
+book that is 30 years old,  they would still be happy to be
+shown why their code calling  survConcordance()  does not run,
+and how they can amend it ..
+
+Martin
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Jul 30 23:51:04 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 31 Jul 2025 00:51:04 +0300
+Subject: [Rd] Depricated to Defunct
+In-Reply-To: <df8e8a48-e131-4339-9284-7824761b6a48@mayo.edu>
+References: <df8e8a48-e131-4339-9284-7824761b6a48@mayo.edu>
+Message-ID: <20250731005104.451cd69a@Tarkus>
+
+On Wed, 30 Jul 2025 09:04:39 -0500
+"Therneau, Terry M., Ph.D. via R-devel" <r-devel at r-project.org> wrote:
+
+> In the survival package the survConcordance function was replaced by
+> concordance a while ago, the latter works for any ordered response
+> (continuous, binary, survival, ...). I deprecated the old one a
+> couple of years ago.
+
+For a less painful switch from Deprecated to Defunct, it should help to
+minimise its use in existing CRAN and Bioconductor packages.
+
+On CRAN, it's still used by the following packages:
+
+ - 'arsenal', one vignette, CRAN version from 2021, last change on
+   GitHub in 2024
+ - 'blockForest', R code, CRAN version from 2023
+ - 'distcomp', R code, CRAN version from 2022
+ - 'grpreg', \link to "survival-deprecated" in documentation
+ - 'MTLR', R code, CRAN version from 2019, last change on GitHub in 2020
+
+(A few remaining search results consist of commented out code and news
+entries about having avoided the deprecation warning.)
+
+On Bioconductor, it's two more packages, 'iNETgrate' and 'messina' (both
+of which seem to be stale imports, not actual uses of the function):
+https://code.bioconductor.org/search/search?q=survConcordance
+
+The maintainers may need some help removing these last few uses of the
+function.
+
+-- 
+Best regards,
+Ivan
+
+

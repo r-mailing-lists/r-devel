@@ -1,0 +1,174 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2026-03",
+  "messages": [
+    {
+      "id": "msg-cc10dbb977ab",
+      "message_id": "<CAMdJUypQMannCBRcSUa79L_unH02XC3YZ=GbiOT_rOBtUBsUUw@mail.gmail.com>",
+      "from_name": "Måns Thulin",
+      "from_email_hash": "a8f7d176b32cbe5ca51e1b5035b31b4cd9cf87e3080b78f377298c70656e13a8",
+      "date": "2026-03-01T13:18:30+01:00",
+      "subject": "[Rd]  Suggestion: Modify common hypothesis tests and models to work better with pipes",
+      "subject_clean": "Suggestion: Modify common hypothesis tests and models to work better with pipes",
+      "in_reply_to": "<CAMdJUypT0-eGfgC-cfTKTkLEdCYncmi=vFqss7FVMyDyxe-ZAg@mail.gmail.com>",
+      "references": [
+        "<CAMdJUypT0-eGfgC-cfTKTkLEdCYncmi=vFqss7FVMyDyxe-ZAg@mail.gmail.com>"
+      ],
+      "body_plain": "Dear R-devel,\n\nSome months ago I posted to this list proposing that common statistical\nfunctions such as t.test, wilcox.test, lm, glm, and aov could benefit from\ndata.frame S3 methods, so that a data frame can be piped into them directly\nwithout the placeholder syntax:\n\n    penguins |>\n      subset(species != \"Gentoo\") |>\n      t.test(bill_len ~ species)\n\nThat post went largely unnoticed. Rather than assume the idea had no merit,\nI decided to implement it and see how it worked in practice.\n\nThe result is pipedreams, a small CRAN-ready package that adds data.frame\nmethods for t.test, wilcox.test, lm, glm, aov, and nls from base R, as well\nas survfit, coxph, and survreg from survival, lmer and glmer from lme4, and\npolr, rlm, lda, and qda from MASS. The implementation is straightforward in\nevery case: the data.frame method simply reorders the arguments and\ndelegates to the existing formula method. No existing behaviour is changed.\n\nThe package is available at: https://github.com/mthulin/pipedreams\n\nHaving lived with this for a while, I am more convinced than before that\nthese changes belong in the packages themselves rather than in a wrapper\npackage. The case for including them in base R (and in survival, lme4, and\nMASS, if the package maintainers are interested) is:\n\n1. These functions predate the pipe. Had they been written today, the data\nargument would almost certainly have come first. The data.frame methods\ncorrect an accidental asymmetry rather than introduce new design.\n\n2. The implementation is small and carries no risk of breaking existing\ncode, since no currently-valid call passes a data frame as the first\npositional argument to any of these functions.\n\n3. Keeping this in a third-party package means users must know to install\nit, documentation is scattered, and the fix is invisible to people who\nencounter the friction in the first place.\n\nFor the base R functions the change amounts to registering a method of the\nform:\n\n    t.test.data.frame <- function(x, formula, ...) {\n      if (!inherits(formula, \"formula\"))\n        stop(\"'formula' must be a formula object\")\n      t.test(formula, data = x, ...)\n    }\n\nFor lm, glm, aov, and nls, which are not currently S3 generics, the change\nwould additionally require promoting them to generics; something the\npipedreams package demonstrates is workable, with default methods that pass\nthrough to the originals.\n\nI recognise that changes to base R go through Bugzilla and require\nconsensus among the core team. I am happy to file a formal feature request,\nprovide a patch, or do whatever is most useful. I would also welcome any\nfeedback on why this approach might be problematic ? the lack of response\nto my earlier post left me uncertain whether the idea was uncontroversial,\nunwanted, or simply missed.\n\nThank you for your time.\nM?ns\n\nOn Tue, Jun 10, 2025 at 8:46?AM M?ns Thulin <gausseliminering at gmail.com>\nwrote:\n\n> To use functions for common statistical tests/models, like t.test,\n> wilcox.test, lm, glm, and aov, we must currently use the pipe placeholder _\n> when using pipes:\n>\n> penguins |>\n>     subset(species != \"Gentoo\") |>\n>     t.test(bill_len ~ species, data = _)\n>\n> The syntax would be cleaner and perhaps more intuitive if we didn't have\n> to add the `data = _` bit:\n>\n> penguins |>\n>     subset(species != \"Gentoo\") |>\n>     t.test(bill_len ~ species)\n>\n> I believe that this is how t.test and the other functions I mentioned\n> would have worked if they'd been written after the base pipe was introduced.\n>\n> Currently, t.test and friends only accept a vector and/or a formula as\n> their first argument. Since there already is a formula method for these\n> functions, a simple way to make the second example above work would be to\n> define a data.frame method like so:\n>\n> t.test.data.frame <- function(x, formula, ...)\n> {\n>     t.test.formula(formula, x, ...)\n> }\n>\n> ...perhaps with a check to make sure that the formula argument actually is\n> a formula.\n>\n> Now, this seems like an easy thing to fix, and it doesn't break any\n> existing functionality of these functions. Since the base pipe was\n> introduced four years ago, I suspect that there might be some reason why\n> this hasn't been implemented already, and I'm curious to find out what that\n> is. Or, if there is support for the idea above, I'd be happy to submit a\n> feature request in Bugzilla and provide code for implementing this.\n>\n> Best regards,\n> M?ns\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear R-devel,\n\nSome months ago I posted to this list proposing that common statistical\nfunctions such as t.test, wilcox.test, lm, glm, and aov could benefit from\ndata.frame S3 methods, so that a data ",
+      "thread_id": "thread-cc10dbb977ab",
+      "thread_depth": 0,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-c52fe43eec01",
+      "message_id": "<C981C64E-7FBA-4F8E-816F-D393B7EC3FEF@gmail.com>",
+      "from_name": "Peter Dalgaard",
+      "from_email_hash": "5d0f61ffffc9a67fd86f4b9a1ea3fac7d731c19e1d8679b6ae315232b22874e8",
+      "date": "2026-03-02T14:37:22+01:00",
+      "subject": "[Rd] Wrong move of NEWS item",
+      "subject_clean": "Wrong move of NEWS item",
+      "in_reply_to": "<630650197.3484737.1772279863294@mail.yahoo.com>",
+      "references": [
+        "<2128797252.1120005.1771732693812.ref@mail.yahoo.com>",
+        "<2128797252.1120005.1771732693812@mail.yahoo.com>",
+        "<fake-VM-id.6d776b3ae1213c9af92fe6df6450ef4a@talos.iv>",
+        "<27036.17696.727900.514006@stat.math.ethz.ch>",
+        "<630650197.3484737.1772279863294@mail.yahoo.com>"
+      ],
+      "body_plain": "I do hope Martin sees this. Code freeze for 4.5.3 is Wednesday @0:02 ...\n \n- Peter\n\n \n> On 28 Feb 2026, at 12.57, Suharto Anggono Suharto Anggono via R-devel <r-devel at r-project.org> wrote:\n> \n> Now that the NEWS item is gone from \"CHANGES IN R 4.5.2 patched\", please also revert the change to 'Ops.ts' in R-4-5-branch, as I have mentioned. In R-4-5-branch, the change makes diff(m) inconsistent with m - lag(m, -1) for 1-row ts matrix m. Previously, neither of them was a matrix.\n> \n> _______\n> On Monday, 23 February 2026 at 07:16:36 pm GMT+7, Martin Maechler <maechler at stat.math.ethz.ch> wrote:\n> \n> \n>>>>>> Suharto Anggono Suharto Anggono via R-devel\n>>>>>>     on Sun, 22 Feb 2026 03:58:13 +0000 (UTC) writes:\n> \n>     > diff(m, lag, dif) for matrix m now still returns\n>     >       matrices, also when lag * dif > nrow(m) (PR#18972, thanks to\n>     >       Mikael Jagan and Suharto Anggono).\n>     >       diff(<ts-matrix>) remains matrix, even when it has length zero.\n> \n>     > The above NEWS item has been moved to \"CHANGES IN R 4.5.2 patched\".\n> \n>     > In fact, in R-4-5-branch, diff(m, lag, dif) for matrix m is still not a matrix when lag * dif > nrow(m) (see https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/diff.R for 'diff.default'; https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/datetime.R for 'diff.POSIXt'; https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/dates.R for 'diff.Date'; https://svn.r-project.org/R/branches/R-4-5-branch/src/library/stats/R/ts.R for 'diff.ts').\n> \n>     > And I suggest keeping it so. Because it has been like that simce the beginning, I think changing it in a patch release is not appropriate.\n> \n> We have ported  bug fixes of \"forever bugs\" to the \"R patched\n> branch\", before,  quite on purpose.\n> Typically they have been really rare use cases and for that\n> reason probably were not detected and reported earlier... and we\n> (R core) still thought these bugs should disappear as quickly as\n> possible.\n> \n> For the above reason(s), I *had* actually planned to port this bug\n> fix also to R \"4.5.2 patched\" ...\n> But then it has become somewhat late to do the port only now,\n> and R 4.5.3 will only be a \"wrap up\" release anyway..\n> \n> Hence, I agree with your opinion  and will now move the NEWS\n> entry instead of porting the bug fix which was the original plan.\n> \n> Martin\n> \n> \n>     > What have been ported to R-4-5-branch are just- replacing 'tsLag' with 'lag' in 'diff.ts'- 'Ops.ts' to return matrix when e1 or e2 is matrix but e1 and e2 are not overlapping\n>     > I suggest reverting the port. A justification of diff(m) for 1-row ts matrix m not being a matrix was that m - lag(m, -1) was not a matrix.\n>     > Replacing 'tsLag' with 'lag' in 'diff.ts' is actually OK, but not necessary.\n> \n> [[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nOffice: A 4.23\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com",
+      "body_snippet": "I do hope Martin sees this. Code freeze for 4.5.3 is Wednesday @0:02 ...\n \n- Peter\n\n \n> On 28 Feb 2026, at 12.57, Suharto Anggono Suharto Anggono via R-devel <r-devel at r-project.org> wrote:\n> \n> Now",
+      "thread_id": "thread-c52fe43eec01",
+      "thread_depth": 0,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-902e11e468a4",
+      "message_id": "<27046.41873.814612.726309@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-03-03T10:02:09+01:00",
+      "subject": "[Rd] Wrong move of NEWS item",
+      "subject_clean": "Wrong move of NEWS item",
+      "in_reply_to": "<fake-VM-id.1e87d2dd26fb615308fceacb50668e83@talos.iv>",
+      "references": [
+        "<2128797252.1120005.1771732693812.ref@mail.yahoo.com>",
+        "<2128797252.1120005.1771732693812@mail.yahoo.com>",
+        "<fake-VM-id.6d776b3ae1213c9af92fe6df6450ef4a@talos.iv>",
+        "<27036.17696.727900.514006@stat.math.ethz.ch>",
+        "<630650197.3484737.1772279863294@mail.yahoo.com>",
+        "<C981C64E-7FBA-4F8E-816F-D393B7EC3FEF@gmail.com>"
+      ],
+      "body_plain": ">>>>> Peter Dalgaard \n>>>>>     on Mon, 2 Mar 2026 14:37:22 +0100 writes:\n\n    > I do hope Martin sees this. Code freeze for 4.5.3 is\n    > Wednesday @0:02 ...  - Peter\n\n \nYes, I did see and think about it, but decided that it was \"too\nlate\" now, *and* not a \"problem\" I think:\n `-` now exhibits the correct behaviour  but the diff()\n     methods do not yet (but do in R-devel etc).\n\nMartin\n\n    >> On 28 Feb 2026, at 12.57, Suharto Anggono Suharto Anggono\n    >> via R-devel <r-devel at r-project.org> wrote:\n    >> \n    >> Now that the NEWS item is gone from \"CHANGES IN R 4.5.2\n    >> patched\", please also revert the change to 'Ops.ts' in\n    >> R-4-5-branch, as I have mentioned. In R-4-5-branch, the\n    >> change makes diff(m) inconsistent with m - lag(m, -1) for\n    >> 1-row ts matrix m. Previously, neither of them was a\n    >> matrix.\n    >> \n    >> _______ On Monday, 23 February 2026 at 07:16:36 pm GMT+7,\n    >> Martin Maechler <maechler at stat.math.ethz.ch> wrote:\n    >> \n    >> \n    >>>>>>> Suharto Anggono Suharto Anggono via R-devel on Sun,\n    >>>>>>> 22 Feb 2026 03:58:13 +0000 (UTC) writes:\n    >> \n    >> > diff(m, lag, dif) for matrix m now still returns >\n    >> matrices, also when lag * dif > nrow(m) (PR#18972, thanks\n    >> to > Mikael Jagan and Suharto Anggono).  >\n    >> diff(<ts-matrix>) remains matrix, even when it has length\n    >> zero.\n    >> \n    >> > The above NEWS item has been moved to \"CHANGES IN R\n    >> 4.5.2 patched\".\n    >> \n    >> > In fact, in R-4-5-branch, diff(m, lag, dif) for matrix\n    >> m is still not a matrix when lag * dif > nrow(m) (see\n    >> https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/diff.R\n    >> for 'diff.default';\n    >> https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/datetime.R\n    >> for 'diff.POSIXt';\n    >> https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/dates.R\n    >> for 'diff.Date';\n    >> https://svn.r-project.org/R/branches/R-4-5-branch/src/library/stats/R/ts.R\n    >> for 'diff.ts').\n    >> \n    >> > And I suggest keeping it so. Because it has been like\n    >> that simce the beginning, I think changing it in a patch\n    >> release is not appropriate.\n    >> \n    >> We have ported bug fixes of \"forever bugs\" to the \"R\n    >> patched branch\", before, quite on purpose.  Typically\n    >> they have been really rare use cases and for that reason\n    >> probably were not detected and reported earlier... and we\n    >> (R core) still thought these bugs should disappear as\n    >> quickly as possible.\n    >> \n    >> For the above reason(s), I *had* actually planned to port\n    >> this bug fix also to R \"4.5.2 patched\" ...  But then it\n    >> has become somewhat late to do the port only now, and R\n    >> 4.5.3 will only be a \"wrap up\" release anyway..\n    >> \n    >> Hence, I agree with your opinion and will now move the\n    >> NEWS entry instead of porting the bug fix which was the\n    >> original plan.\n    >> \n    >> Martin\n    >> \n    >> \n    >> > What have been ported to R-4-5-branch are just-\n    >> replacing 'tsLag' with 'lag' in 'diff.ts'- 'Ops.ts' to\n    >> return matrix when e1 or e2 is matrix but e1 and e2 are\n    >> not overlapping > I suggest reverting the port. A\n    >> justification of diff(m) for 1-row ts matrix m not being\n    >> a matrix was that m - lag(m, -1) was not a matrix.  >\n    >> Replacing 'tsLag' with 'lag' in 'diff.ts' is actually OK,\n    >> but not necessary.\n    >> \n    >> [[alternative HTML version deleted]]\n    >> \n    >> ______________________________________________\n    >> R-devel at r-project.org mailing list\n    >> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n    > -- \n    > Peter Dalgaard, Professor, Center for Statistics,\n    > Copenhagen Business School Solbjerg Plads 3, 2000\n    > Frederiksberg, Denmark Phone: (+45)38153501 Office: A 4.23\n    > Email: pd.mes at cbs.dk Priv: PDalgd at gmail.com",
+      "body_snippet": ">>>>> Peter Dalgaard \n>>>>>     on Mon, 2 Mar 2026 14:37:22 +0100 writes:\n\n    > I do hope Martin sees this. Code freeze for 4.5.3 is\n    > Wednesday @0:02 ...  - Peter\n\n \nYes, I did see and think abo",
+      "thread_id": "thread-c52fe43eec01",
+      "thread_depth": 1,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-3837c10cc292",
+      "message_id": "<1872996678.4809050.1772604318096@mail.yahoo.com>",
+      "from_name": "Suharto Anggono Suharto Anggono",
+      "from_email_hash": "cf6bb82b60d9f86323e0fd295eace70f1208e07944a061b1ed3b3ff9dcf85557",
+      "date": "2026-03-04T06:05:18Z",
+      "subject": "[Rd] Wrong move of NEWS item",
+      "subject_clean": "Wrong move of NEWS item",
+      "in_reply_to": "<27046.41873.814612.726309@stat.math.ethz.ch>",
+      "references": [
+        "<2128797252.1120005.1771732693812.ref@mail.yahoo.com>",
+        "<2128797252.1120005.1771732693812@mail.yahoo.com>",
+        "<fake-VM-id.6d776b3ae1213c9af92fe6df6450ef4a@talos.iv>",
+        "<27036.17696.727900.514006@stat.math.ethz.ch>",
+        "<630650197.3484737.1772279863294@mail.yahoo.com>",
+        "<C981C64E-7FBA-4F8E-816F-D393B7EC3FEF@gmail.com>",
+        "<fake-VM-id.1e87d2dd26fb615308fceacb50668e83@talos.iv>",
+        "<27046.41873.814612.726309@stat.math.ethz.ch>"
+      ],
+      "body_plain": "Then, please announce the change in NEWS. For example:\nThe result of arithmetic and comparison operations of non-overlapping \"ts\" objects where either is a matrix is now a matrix.\n\nIt seems that the statement \"diff(<ts-matrix>) remains matrix, even when it has length zero\" was meant for the change to 'Ops.ts'. But the wording is about diff(<ts-matrix>), which is included in the previous statement.\n\nBut I've just realized this.\nSuppose that\nx <- ts(0)\nWith the change, x - lag(x, -1) and x == lag(x, -1) are NULL.\nIn R 4.5.2, x - lag(x, -1) is integer(0) and x == lag(x, -1) is logical(0).\n\n________\nOn Tuesday, 3 March 2026 at 04:02:14 pm GMT+7, Martin Maechler <maechler at stat.math.ethz.ch> wrote:\n\n\n>>>>> Peter Dalgaard\n>>>>>? ? on Mon, 2 Mar 2026 14:37:22 +0100 writes:\n\n? ? > I do hope Martin sees this. Code freeze for 4.5.3 is\n? ? > Wednesday @0:02 ...? - Peter\n\n\nYes, I did see and think about it, but decided that it was \"too\nlate\" now, *and* not a \"problem\" I think:\n`-` now exhibits the correct behaviour? but the diff()\n? ? methods do not yet (but do in R-devel etc).\n\nMartin\n\n? ? >> On 28 Feb 2026, at 12.57, Suharto Anggono Suharto Anggono\n? ? >> via R-devel <r-devel at r-project.org> wrote:\n? ? >>\n? ? >> Now that the NEWS item is gone from \"CHANGES IN R 4.5.2\n? ? >> patched\", please also revert the change to 'Ops.ts' in\n? ? >> R-4-5-branch, as I have mentioned. In R-4-5-branch, the\n? ? >> change makes diff(m) inconsistent with m - lag(m, -1) for\n? ? >> 1-row ts matrix m. Previously, neither of them was a\n? ? >> matrix.\n? ? >>\n? ? >> _______ On Monday, 23 February 2026 at 07:16:36 pm GMT+7,\n? ? >> Martin Maechler <maechler at stat.math.ethz.ch> wrote:\n? ? >>\n? ? >>\n? ? >>>>>>> Suharto Anggono Suharto Anggono via R-devel on Sun,\n? ? >>>>>>> 22 Feb 2026 03:58:13 +0000 (UTC) writes:\n? ? >>\n? ? >> > diff(m, lag, dif) for matrix m now still returns >\n? ? >> matrices, also when lag * dif > nrow(m) (PR#18972, thanks\n? ? >> to > Mikael Jagan and Suharto Anggono).? >\n? ? >> diff(<ts-matrix>) remains matrix, even when it has length\n? ? >> zero.\n? ? >>\n? ? >> > The above NEWS item has been moved to \"CHANGES IN R\n? ? >> 4.5.2 patched\".\n? ? >>\n? ? >> > In fact, in R-4-5-branch, diff(m, lag, dif) for matrix\n? ? >> m is still not a matrix when lag * dif > nrow(m) (see\n? ? >> https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/diff.R\n? ? >> for 'diff.default';\n? ? >> https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/datetime.R\n? ? >> for 'diff.POSIXt';\n? ? >> https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/dates.R\n? ? >> for 'diff.Date';\n? ? >> https://svn.r-project.org/R/branches/R-4-5-branch/src/library/stats/R/ts.R\n? ? >> for 'diff.ts').\n? ? >>\n? ? >> > And I suggest keeping it so. Because it has been like\n? ? >> that simce the beginning, I think changing it in a patch\n? ? >> release is not appropriate.\n? ? >>\n? ? >> We have ported bug fixes of \"forever bugs\" to the \"R\n? ? >> patched branch\", before, quite on purpose.? Typically\n? ? >> they have been really rare use cases and for that reason\n? ? >> probably were not detected and reported earlier... and we\n? ? >> (R core) still thought these bugs should disappear as\n? ? >> quickly as possible.\n? ? >>\n? ? >> For the above reason(s), I *had* actually planned to port\n? ? >> this bug fix also to R \"4.5.2 patched\" ...? But then it\n? ? >> has become somewhat late to do the port only now, and R\n? ? >> 4.5.3 will only be a \"wrap up\" release anyway..\n? ? >>\n? ? >> Hence, I agree with your opinion and will now move the\n? ? >> NEWS entry instead of porting the bug fix which was the\n? ? >> original plan.\n? ? >>\n? ? >> Martin\n? ? >>\n? ? >>\n? ? >> > What have been ported to R-4-5-branch are just-\n? ? >> replacing 'tsLag' with 'lag' in 'diff.ts'- 'Ops.ts' to\n? ? >> return matrix when e1 or e2 is matrix but e1 and e2 are\n? ? >> not overlapping > I suggest reverting the port. A\n? ? >> justification of diff(m) for 1-row ts matrix m not being\n? ? >> a matrix was that m - lag(m, -1) was not a matrix.? >\n? ? >> Replacing 'tsLag' with 'lag' in 'diff.ts' is actually OK,\n? ? >> but not necessary.\n? ? >>\n? ? >> [[alternative HTML version deleted]]\n? ? >>\n? ? >> ______________________________________________\n? ? >> R-devel at r-project.org mailing list\n? ? >> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n? ? > --\n? ? > Peter Dalgaard, Professor, Center for Statistics,\n? ? > Copenhagen Business School Solbjerg Plads 3, 2000\n? ? > Frederiksberg, Denmark Phone: (+45)38153501 Office: A 4.23\n? ? > Email: pd.mes at cbs.dk Priv: PDalgd at gmail.com  \n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Then, please announce the change in NEWS. For example:\nThe result of arithmetic and comparison operations of non-overlapping \"ts\" objects where either is a matrix is now a matrix.\n\nIt seems that the s",
+      "thread_id": "thread-c52fe43eec01",
+      "thread_depth": 2,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-6fb44c661db0",
+      "message_id": "<27048.6812.306265.880083@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-03-04T12:42:20+01:00",
+      "subject": "[Rd] Wrong move of NEWS item",
+      "subject_clean": "Wrong move of NEWS item",
+      "in_reply_to": "<fake-VM-id.3b83375086f564194404c17c221e1437@talos.iv>",
+      "references": [
+        "<2128797252.1120005.1771732693812.ref@mail.yahoo.com>",
+        "<2128797252.1120005.1771732693812@mail.yahoo.com>",
+        "<fake-VM-id.6d776b3ae1213c9af92fe6df6450ef4a@talos.iv>",
+        "<27036.17696.727900.514006@stat.math.ethz.ch>",
+        "<630650197.3484737.1772279863294@mail.yahoo.com>",
+        "<C981C64E-7FBA-4F8E-816F-D393B7EC3FEF@gmail.com>",
+        "<fake-VM-id.1e87d2dd26fb615308fceacb50668e83@talos.iv>",
+        "<27046.41873.814612.726309@stat.math.ethz.ch>",
+        "<1872996678.4809050.1772604318096@mail.yahoo.com>"
+      ],
+      "body_plain": ">>>>> Suharto Anggono Suharto Anggono \n>>>>>     on Wed, 4 Mar 2026 06:05:18 +0000 (UTC) writes:\n\n    > Then, please announce the change in NEWS. For example:\n    > The result of arithmetic and comparison operations of non-overlapping \"ts\" objects where either is a matrix is now a matrix.\n\n    > It seems that the statement \"diff(<ts-matrix>) remains matrix, even when it has length zero\" was meant for the change to 'Ops.ts'. But the wording is about diff(<ts-matrix>), which is included in the previous statement.\n\n    > But I've just realized this.\n\n    > Suppose that\n    > x <- ts(0)\n\n    > With the change, x - lag(x, -1) and x == lag(x, -1) are NULL.\n    > In R 4.5.2, x - lag(x, -1) is integer(0) and x == lag(x, -1) is logical(0).\n\nIndeed, so we may even have to change R-devel further (for this\nrare boundary case).\n\nBut the R 4.5.2   x - lag(x, -1)  giving integer(0)  is only somewhat better than\ngiving NULL  when in principle the \"truly correct\" answer should\nbe  double(0) and we'd rather get that right in R-devel.\n\nRe NEWS, you are right: I will add a small note, indeed {as it\nis not \"code\" that's frozen}.\n\n\nMartin\n\n\n\n    > ________\n    > On Tuesday, 3 March 2026 at 04:02:14 pm GMT+7, Martin Maechler <maechler at stat.math.ethz.ch> wrote:\n\n\n>>>>> Peter Dalgaard\n    >>>>>> ? ? on Mon, 2 Mar 2026 14:37:22 +0100 writes:\n\n    > ? ? > I do hope Martin sees this. Code freeze for 4.5.3 is\n    > ? ? > Wednesday @0:02 ...? - Peter\n\n\n    > Yes, I did see and think about it, but decided that it was \"too\n    > late\" now, *and* not a \"problem\" I think:\n    > `-` now exhibits the correct behaviour? but the diff()\n    > ? ? methods do not yet (but do in R-devel etc).\n\n    > Martin\n\n    > ? ? >> On 28 Feb 2026, at 12.57, Suharto Anggono Suharto Anggono\n    > ? ? >> via R-devel <r-devel at r-project.org> wrote:\n    > ? ? >>\n    > ? ? >> Now that the NEWS item is gone from \"CHANGES IN R 4.5.2\n    > ? ? >> patched\", please also revert the change to 'Ops.ts' in\n    > ? ? >> R-4-5-branch, as I have mentioned. In R-4-5-branch, the\n    > ? ? >> change makes diff(m) inconsistent with m - lag(m, -1) for\n    > ? ? >> 1-row ts matrix m. Previously, neither of them was a\n    > ? ? >> matrix.\n    > ? ? >>\n    > ? ? >> _______ On Monday, 23 February 2026 at 07:16:36 pm GMT+7,\n    > ? ? >> Martin Maechler <maechler at stat.math.ethz.ch> wrote:\n    > ? ? >>\n    > ? ? >>\n    > ? ? >>>>>>> Suharto Anggono Suharto Anggono via R-devel on Sun,\n    > ? ? >>>>>>> 22 Feb 2026 03:58:13 +0000 (UTC) writes:\n    > ? ? >>\n    > ? ? >> > diff(m, lag, dif) for matrix m now still returns >\n    > ? ? >> matrices, also when lag * dif > nrow(m) (PR#18972, thanks\n    > ? ? >> to > Mikael Jagan and Suharto Anggono).? >\n    > ? ? >> diff(<ts-matrix>) remains matrix, even when it has length\n    > ? ? >> zero.\n    > ? ? >>\n    > ? ? >> > The above NEWS item has been moved to \"CHANGES IN R\n    > ? ? >> 4.5.2 patched\".\n    > ? ? >>\n    > ? ? >> > In fact, in R-4-5-branch, diff(m, lag, dif) for matrix\n    > ? ? >> m is still not a matrix when lag * dif > nrow(m) (see\n    > ? ? >> https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/diff.R\n    > ? ? >> for 'diff.default';\n    > ? ? >> https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/datetime.R\n    > ? ? >> for 'diff.POSIXt';\n    > ? ? >> https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/dates.R\n    > ? ? >> for 'diff.Date';\n    > ? ? >> https://svn.r-project.org/R/branches/R-4-5-branch/src/library/stats/R/ts.R\n    > ? ? >> for 'diff.ts').\n    > ? ? >>\n    > ? ? >> > And I suggest keeping it so. Because it has been like\n    > ? ? >> that simce the beginning, I think changing it in a patch\n    > ? ? >> release is not appropriate.\n    > ? ? >>\n    > ? ? >> We have ported bug fixes of \"forever bugs\" to the \"R\n    > ? ? >> patched branch\", before, quite on purpose.? Typically\n    > ? ? >> they have been really rare use cases and for that reason\n    > ? ? >> probably were not detected and reported earlier... and we\n    > ? ? >> (R core) still thought these bugs should disappear as\n    > ? ? >> quickly as possible.\n    > ? ? >>\n    > ? ? >> For the above reason(s), I *had* actually planned to port\n    > ? ? >> this bug fix also to R \"4.5.2 patched\" ...? But then it\n    > ? ? >> has become somewhat late to do the port only now, and R\n    > ? ? >> 4.5.3 will only be a \"wrap up\" release anyway..\n    > ? ? >>\n    > ? ? >> Hence, I agree with your opinion and will now move the\n    > ? ? >> NEWS entry instead of porting the bug fix which was the\n    > ? ? >> original plan.\n    > ? ? >>\n    > ? ? >> Martin\n    > ? ? >>\n    > ? ? >>\n    > ? ? >> > What have been ported to R-4-5-branch are just-\n    > ? ? >> replacing 'tsLag' with 'lag' in 'diff.ts'- 'Ops.ts' to\n    > ? ? >> return matrix when e1 or e2 is matrix but e1 and e2 are\n    > ? ? >> not overlapping > I suggest reverting the port. A\n    > ? ? >> justification of diff(m) for 1-row ts matrix m not being\n    > ? ? >> a matrix was that m - lag(m, -1) was not a matrix.? >\n    > ? ? >> Replacing 'tsLag' with 'lag' in 'diff.ts' is actually OK,\n    > ? ? >> but not necessary.\n    > ? ? >>\n    > ? ? >> [[alternative HTML version deleted]]\n    > ? ? >>\n    > ? ? >> ______________________________________________\n    > ? ? >> R-devel at r-project.org mailing list\n    > ? ? >> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n    > ? ? > --\n    > ? ? > Peter Dalgaard, Professor, Center for Statistics,\n    > ? ? > Copenhagen Business School Solbjerg Plads 3, 2000\n    > ? ? > Frederiksberg, Denmark Phone: (+45)38153501 Office: A 4.23\n    > ? ? > Email: pd.mes at cbs.dk Priv: PDalgd at gmail.com  \n    > [[alternative HTML version deleted]]",
+      "body_snippet": ">>>>> Suharto Anggono Suharto Anggono \n>>>>>     on Wed, 4 Mar 2026 06:05:18 +0000 (UTC) writes:\n\n    > Then, please announce the change in NEWS. For example:\n    > The result of arithmetic and compar",
+      "thread_id": "thread-c52fe43eec01",
+      "thread_depth": 3,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-77dd8ddd0edc",
+      "message_id": "<27048.7739.470561.910241@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-03-04T12:57:47+01:00",
+      "subject": "[Rd] diff(<ts-matrix>), Ops.ts -- R Bugzilla PR#18972",
+      "subject_clean": "diff(<ts-matrix>), Ops.ts -- R Bugzilla PR#18972",
+      "in_reply_to": "<fake-VM-id.e680667cf19cd4b00410eae2f74abc3a@talos.iv>",
+      "references": [
+        "<2128797252.1120005.1771732693812.ref@mail.yahoo.com>",
+        "<2128797252.1120005.1771732693812@mail.yahoo.com>",
+        "<fake-VM-id.6d776b3ae1213c9af92fe6df6450ef4a@talos.iv>",
+        "<27036.17696.727900.514006@stat.math.ethz.ch>",
+        "<630650197.3484737.1772279863294@mail.yahoo.com>",
+        "<C981C64E-7FBA-4F8E-816F-D393B7EC3FEF@gmail.com>",
+        "<fake-VM-id.1e87d2dd26fb615308fceacb50668e83@talos.iv>",
+        "<27046.41873.814612.726309@stat.math.ethz.ch>",
+        "<1872996678.4809050.1772604318096@mail.yahoo.com>",
+        "<27048.6812.306265.880083@stat.math.ethz.ch>"
+      ],
+      "body_plain": ">>>>> Martin Maechler \n>>>>>     on Wed, 4 Mar 2026 12:42:20 +0100 writes:\n\n>>>>> Suharto Anggono Suharto Anggono \n>>>>>     on Wed, 4 Mar 2026 06:05:18 +0000 (UTC) writes:\n\n    >> Then, please announce the change in NEWS. For example:\n    >> The result of arithmetic and comparison operations of non-overlapping \"ts\" objects where either is a matrix is now a matrix.\n\n    >> It seems that the statement \"diff(<ts-matrix>) remains matrix, even when it has length zero\" was meant for the change to 'Ops.ts'. But the wording is about diff(<ts-matrix>), which is included in the previous statement.\n\n    >> But I've just realized this :\n\n    >> Suppose that\n    >> x <- ts(0)\n\n    >> With the change, x - lag(x, -1) and x == lag(x, -1) are NULL.\n    >> In R 4.5.2, x - lag(x, -1) is integer(0) and x == lag(x, -1) is logical(0).\n\n    > Indeed, so we may even have to change R-devel further (for this\n    > rare boundary case).\n\n    > But the R 4.5.2   x - lag(x, -1)  giving integer(0)  is only somewhat better than\n    > giving NULL  when in principle the \"truly correct\" answer should\n    > be  double(0) and we'd rather get that right in R-devel.\n\n==> So, we should probably reopen R Bugzilla item PR#18972, at\n ---> https://bugs.r-project.org/show_bug.cgi?id=18972\n\nMartin",
+      "body_snippet": ">>>>> Martin Maechler \n>>>>>     on Wed, 4 Mar 2026 12:42:20 +0100 writes:\n\n>>>>> Suharto Anggono Suharto Anggono \n>>>>>     on Wed, 4 Mar 2026 06:05:18 +0000 (UTC) writes:\n\n    >> Then, please announ",
+      "thread_id": "thread-c52fe43eec01",
+      "thread_depth": 4,
+      "month": "2026-03"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-cc10dbb977ab",
+      "subject": "Suggestion: Modify common hypothesis tests and models to work better with pipes",
+      "message_count": 1,
+      "participants": [
+        "Måns Thulin"
+      ],
+      "started": "2026-03-01T13:18:30+01:00",
+      "last_reply": "2026-03-01T13:18:30+01:00",
+      "root_message_id": "msg-cc10dbb977ab"
+    },
+    {
+      "id": "thread-c52fe43eec01",
+      "subject": "Wrong move of NEWS item",
+      "message_count": 5,
+      "participants": [
+        "Martin Maechler",
+        "Peter Dalgaard",
+        "Suharto Anggono Suharto Anggono"
+      ],
+      "started": "2026-03-02T14:37:22+01:00",
+      "last_reply": "2026-03-04T12:57:47+01:00",
+      "root_message_id": "msg-c52fe43eec01"
+    }
+  ]
+}

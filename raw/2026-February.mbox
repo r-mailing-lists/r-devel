@@ -1,0 +1,970 @@
+From bbo|ker @end|ng |rom gm@||@com  Mon Feb  2 02:13:59 2026
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 1 Feb 2026 20:13:59 -0500
+Subject: [Rd] weighted.residuals()
+Message-ID: <39921e44-3afc-4673-83a9-12250f858145@mcmaster.ca>
+
+
+    The weighted.residuals() function has been under development 
+recently: the current version is
+
+## see PR#7961, 
+https://stat.ethz.ch/pipermail/r-devel/2011-January/059642.html
+## (Note, Jan 2026: PR# 7961 suggested use of deviance residuals but 
+then dfbeta et al. are
+## not one-step approximations to leave-one-out coeff.)
+weighted.residuals <- function(obj, drop0 = TRUE)
+{
+#    w <- weights(obj, type="working")
+#    r <- residuals(obj, type="working")
+     w <- naresid(obj$na.action, obj$weights)
+     r <- naresid(obj$na.action, obj$residuals)
+     if (!is.null(w)) r <- r * sqrt(w)
+     if (inherits(obj, "glm")) w <- weights(obj, "prior")
+     if(drop0 && !is.null(w)) {
+         if(is.matrix(r)) r[w != 0, , drop = FALSE] # e.g. mlm fit
+         else r[w != 0]
+     } else r
+}
+
+    The previous version was, as per 
+https://bugs.r-project.org/show_bug.cgi?id=7961,
+
+
+## see PR#7961
+weighted.residuals <- function(obj, drop0 = TRUE)
+{
+     w <- weights(obj)
+     r <- residuals(obj, type="deviance")
+     if(drop0 && !is.null(w)) r[w != 0] else r
+}
+
+    The problem with the current version is that it only works with 
+list-like objects that have $na.action, $weights, and $residuals 
+components. Among other things
+
+   * lme4's merMod objects, which are objects with an S4 class, throw an 
+error (because you can't access an S4 object element with $; even if you 
+used getElement() you'd get an error because those slots don't exist).
+   * glmmTMB objects return NULL (they're list-like but don't have the 
+appropriate elements).
+
+    A robust solution would use na.action(), residuals(), weights() 
+accessor methods.  However, we can't count on working weights being the 
+default type, and some residuals.* or weights.* methods might not have 
+type="working" allowed (an intermediate version of weighted.residuals() 
+used weights(., type = "working"); lme4 throws an error for type = 
+"working" with GLMMs ... glmmTMB takes a type argument but ignores it ...
+
+   Another solution to this would be to make weighted.residuals() an S3 
+method and let other packages provide a method if they liked ...
+
+    Thoughts welcome.
+
+   Ben Bolker
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Mon Feb  2 12:28:38 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Mon, 2 Feb 2026 12:28:38 +0100
+Subject: [Rd] weighted.residuals()
+In-Reply-To: <fake-VM-id.e564ccfbd319e06e275b83d7d8f69fea@talos.iv>
+References: <39921e44-3afc-4673-83a9-12250f858145@mcmaster.ca>
+Message-ID: <27008.35430.140054.673517@stat.math.ethz.ch>
+
+>>>>> Ben Bolker 
+>>>>>     on Sun, 1 Feb 2026 20:13:59 -0500 writes:
+
+    > The weighted.residuals() function has been under development 
+    > recently: 
+
+yes, notably to make the subsequent *uses* of
+weighted.residuals() in the  influence() (*)
+related functions dfbeta() [DEFBETAS in the Belsley, Kuh & Welsch etc}
+see e.g.
+         https://stat.ethz.ch/R-manual/R-devel/library/stats/html/influence.measures.html
+
+--
+*) leave-one-out influence measures, not really robust, but that's another story, ...
+   they are better than no influence measures, and quite widely
+   used ... well at least before ML and A"I" ..
+   
+[read on]
+
+
+    > the current version is
+
+    > ## see PR#7961, 
+    > https://stat.ethz.ch/pipermail/r-devel/2011-January/059642.html
+    > ## (Note, Jan 2026: PR# 7961 suggested use of deviance residuals but 
+    > then dfbeta et al. are
+    > ## not one-step approximations to leave-one-out coeff.)
+    > weighted.residuals <- function(obj, drop0 = TRUE)
+    > {
+    > #    w <- weights(obj, type="working")
+    > #    r <- residuals(obj, type="working")
+    > w <- naresid(obj$na.action, obj$weights)
+    > r <- naresid(obj$na.action, obj$residuals)
+    > if (!is.null(w)) r <- r * sqrt(w)
+    > if (inherits(obj, "glm")) w <- weights(obj, "prior")
+    > if(drop0 && !is.null(w)) {
+    > if(is.matrix(r)) r[w != 0, , drop = FALSE] # e.g. mlm fit
+    > else r[w != 0]
+    > } else r
+    > }
+
+    > The previous version was, as per 
+    > https://bugs.r-project.org/show_bug.cgi?id=7961,
+
+
+    > ## see PR#7961
+    > weighted.residuals <- function(obj, drop0 = TRUE)
+    > {
+    >    w <- weights(obj)
+    >    r <- residuals(obj, type="deviance")
+    >    if(drop0 && !is.null(w)) r[w != 0] else r
+    > }
+
+{not quite, there was one more change later; the previous one
+ being
+
+## see PR#7961, https://stat.ethz.ch/pipermail/r-devel/2011-January/059642.html
+weighted.residuals <- function(obj, drop0 = TRUE)
+{
+    w <- weights(obj)
+    r <- residuals(obj, type="deviance")
+    if(drop0 && !is.null(w)) {
+        if(is.matrix(r)) r[w != 0, , drop = FALSE] # e.g. mlm fit
+        else r[w != 0]
+    } else r
+}
+
+from 
+------------------------------------------------------------------------
+r54046 | ripley | 2011-01-20 | fix weighted.residuals() on a "mlm" object
+------------------------------------------------------------------------
+
+However, the "mlm" related bug fix is not relevant to the
+current subject.
+
+
+
+    > The problem with the current version is that it only works with 
+    > list-like objects that have $na.action, $weights, and $residuals 
+    > components. Among other things
+
+    > * lme4's merMod objects, which are objects with an S4 class, throw an 
+    > error (because you can't access an S4 object element with $; even if you 
+    > used getElement() you'd get an error because those slots don't exist).
+
+    > * glmmTMB objects return NULL (they're list-like but don't have the 
+    > appropriate elements).
+
+    > A robust solution would use na.action(), residuals(), weights() 
+    > accessor methods.  However, we can't count on working weights being the 
+    > default type, and some residuals.* or weights.* methods might not have 
+    > type="working" allowed (an intermediate version of weighted.residuals() 
+    > used weights(., type = "working"); lme4 throws an error for type = 
+    > "working" with GLMMs ... glmmTMB takes a type argument but ignores it ...
+
+As weighted.residuals() did use  weights() and residuals() and
+these are generic,
+I think we should try to cooperate (with the relevant packages
+authors) to agree that weights() and residuals() methods should _obey_  `type = <string>`
+settings in the sense to at least *work* for some  of these.
+{at least such as {glmmTMB}'s which seems to  ignore them ..}
+
+The reasoning would be that at least  GLM-like models (which
+would include some  GLMM , GAM, probably) should provide these,
+and users could use the influence measures (mentioned in the
+above help page) for their models.
+
+
+    > Another solution to this would be to make weighted.residuals() an S3 
+    > method and let other packages provide a method if they liked ...
+
+yes.. that would be an alternative, more modular (but with extra
+hassles, notably not ensuring at all that subsequent use of
+rstudent(), dfbetas(), .... would be valid.
+
+Martin
+
+    > Thoughts welcome.
+
+    > Ben Bolker
+
+
+From pd@|gd @end|ng |rom gm@||@com  Mon Feb  2 14:43:30 2026
+From: pd@|gd @end|ng |rom gm@||@com (Peter Dalgaard)
+Date: Mon, 2 Feb 2026 14:43:30 +0100
+Subject: [Rd] weighted.residuals()
+In-Reply-To: <27008.35430.140054.673517@stat.math.ethz.ch>
+References: <39921e44-3afc-4673-83a9-12250f858145@mcmaster.ca>
+ <27008.35430.140054.673517@stat.math.ethz.ch>
+Message-ID: <8A48C40D-11FA-4A34-AEC8-E471E8CCB1EB@gmail.com>
+
+[Including Achim, since he maintains "ivreg"]
+
+There was an intermediate version, relected in the commented-out lines, but that threw errors on 4 CRAN pakcages because some models have residuals/weights methods that do not know about type="working". More precisely, 3 of them (forecast, ivreg, robustbase) did and the 4th (insight) had a unit test comparing the output to another computation of weighted residuals, which of course is bound to fail if you change one of them.
+
+The underlying issue is that deviance residuals (for glm and other models) are generically a bad idea for the purposes of influence measures (and other forms of model checking). They are not unbiased, and it is fairly easy to find examples where the bias is quite substantial. They specifically do not work in dfbeta() et al. if what you want is to generate the one-step approximation to the leave-one-out quantities.
+
+An alternative would be to ask the authors of the offended packages to figure out what needs to be changed. It looks like it might be fairly easy for "ivreg" and "robustbase", which just have issues in weights() which I think could be updated to understand type="working". 
+
+
+It looks like "forecast" defines a bundle of residuals() methods, but no weights() and the residuals() methods only distinguish between "innovation"/"response"/"deviance". However, it doesn't actually do influence measures, but gets in trouble with its CV() function that calls stats:::deviance.lm() via extractAIC()  which in turn does
+
+sum(weighted.residuals(object)^2, na.rm = TRUE)
+
+This is just plain dumb because it might as well have used deviance residuals directly (it is pretty much the definition of deviance residuals that their sum of squares is the deviance). I had in fact already changed that, so maybe the whole thing already went away for that package.
+
+- Peter
+
+
+> On 2 Feb 2026, at 12.28, Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+> 
+>>>>>> Ben Bolker 
+>>>>>>    on Sun, 1 Feb 2026 20:13:59 -0500 writes:
+> 
+>> The weighted.residuals() function has been under development 
+>> recently: 
+> 
+> yes, notably to make the subsequent *uses* of
+> weighted.residuals() in the  influence() (*)
+> related functions dfbeta() [DEFBETAS in the Belsley, Kuh & Welsch etc}
+> see e.g.
+>         https://stat.ethz.ch/R-manual/R-devel/library/stats/html/influence.measures.html
+> 
+> --
+> *) leave-one-out influence measures, not really robust, but that's another story, ...
+>   they are better than no influence measures, and quite widely
+>   used ... well at least before ML and A"I" ..
+> 
+> [read on]
+> 
+> 
+>> the current version is
+> 
+>> ## see PR#7961, 
+>> https://stat.ethz.ch/pipermail/r-devel/2011-January/059642.html
+>> ## (Note, Jan 2026: PR# 7961 suggested use of deviance residuals but 
+>> then dfbeta et al. are
+>> ## not one-step approximations to leave-one-out coeff.)
+>> weighted.residuals <- function(obj, drop0 = TRUE)
+>> {
+>> #    w <- weights(obj, type="working")
+>> #    r <- residuals(obj, type="working")
+>> w <- naresid(obj$na.action, obj$weights)
+>> r <- naresid(obj$na.action, obj$residuals)
+>> if (!is.null(w)) r <- r * sqrt(w)
+>> if (inherits(obj, "glm")) w <- weights(obj, "prior")
+>> if(drop0 && !is.null(w)) {
+>> if(is.matrix(r)) r[w != 0, , drop = FALSE] # e.g. mlm fit
+>> else r[w != 0]
+>> } else r
+>> }
+> 
+>> The previous version was, as per 
+>> https://bugs.r-project.org/show_bug.cgi?id=7961,
+> 
+> 
+>> ## see PR#7961
+>> weighted.residuals <- function(obj, drop0 = TRUE)
+>> {
+>>   w <- weights(obj)
+>>   r <- residuals(obj, type="deviance")
+>>   if(drop0 && !is.null(w)) r[w != 0] else r
+>> }
+> 
+> {not quite, there was one more change later; the previous one
+> being
+> 
+> ## see PR#7961, https://stat.ethz.ch/pipermail/r-devel/2011-January/059642.html
+> weighted.residuals <- function(obj, drop0 = TRUE)
+> {
+>    w <- weights(obj)
+>    r <- residuals(obj, type="deviance")
+>    if(drop0 && !is.null(w)) {
+>        if(is.matrix(r)) r[w != 0, , drop = FALSE] # e.g. mlm fit
+>        else r[w != 0]
+>    } else r
+> }
+> 
+> from 
+> ------------------------------------------------------------------------
+> r54046 | ripley | 2011-01-20 | fix weighted.residuals() on a "mlm" object
+> ------------------------------------------------------------------------
+> 
+> However, the "mlm" related bug fix is not relevant to the
+> current subject.
+> 
+> 
+> 
+>> The problem with the current version is that it only works with 
+>> list-like objects that have $na.action, $weights, and $residuals 
+>> components. Among other things
+> 
+>> * lme4's merMod objects, which are objects with an S4 class, throw an 
+>> error (because you can't access an S4 object element with $; even if you 
+>> used getElement() you'd get an error because those slots don't exist).
+> 
+>> * glmmTMB objects return NULL (they're list-like but don't have the 
+>> appropriate elements).
+> 
+>> A robust solution would use na.action(), residuals(), weights() 
+>> accessor methods.  However, we can't count on working weights being the 
+>> default type, and some residuals.* or weights.* methods might not have 
+>> type="working" allowed (an intermediate version of weighted.residuals() 
+>> used weights(., type = "working"); lme4 throws an error for type = 
+>> "working" with GLMMs ... glmmTMB takes a type argument but ignores it ...
+> 
+> As weighted.residuals() did use  weights() and residuals() and
+> these are generic,
+> I think we should try to cooperate (with the relevant packages
+> authors) to agree that weights() and residuals() methods should _obey_  `type = <string>`
+> settings in the sense to at least *work* for some  of these.
+> {at least such as {glmmTMB}'s which seems to  ignore them ..}
+> 
+> The reasoning would be that at least  GLM-like models (which
+> would include some  GLMM , GAM, probably) should provide these,
+> and users could use the influence measures (mentioned in the
+> above help page) for their models.
+> 
+> 
+>> Another solution to this would be to make weighted.residuals() an S3 
+>> method and let other packages provide a method if they liked ...
+> 
+> yes.. that would be an alternative, more modular (but with extra
+> hassles, notably not ensuring at all that subsequent use of
+> rstudent(), dfbetas(), .... would be valid.
+> 
+> Martin
+> 
+>> Thoughts welcome.
+> 
+>> Ben Bolker
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From therne@u @end|ng |rom m@yo@edu  Mon Feb  2 15:55:22 2026
+From: therne@u @end|ng |rom m@yo@edu (Therneau, Terry M., Ph.D.)
+Date: Mon, 02 Feb 2026 08:55:22 -0600
+Subject: [Rd] weighted residuals
+Message-ID: <ff0126de-c06c-40f3-aaa1-ab2197a6a7ca@mayo.edu>
+
+The survival package is one of the few with a default of model=FALSE.?? There are a couple 
+of reasons for this, one major one is that I work in medical research and making unnoticed 
+copies of the data is a risk to patient confidentiality, e.g.,? multi-state models all 
+have an "id=" argument.?? (The primary one, however, is probably that I'm stubborn.)
+
+In any case, this would argue for making weighted.residuals an S3 method.? The survival 
+NAMESPACE file currently has 200 S3 methods, so what's one more?
+
+PS. An addition I would like to see in the Writing R Extensions manual would be a 
+discussion of how to find a list of all the S3 methods which one's current package might 
+need, or be useful to add.?? A good fraction of those in the survival package were in 
+response to user email of "why don't you have a method for? XYZ", when I was completely 
+unaware of the existence of S3 method XYZ. At one time I did a search for UseMethod in the 
+R source tree, but that doesn't find things like xtrfm(), which is defined using .Primitive.
+
+
+Terry T.
+
+-- 
+Terry M Therneau, PhD
+Department of Quantitative Health Sciences
+Mayo Clinic
+therneau at mayo.edu
+
+"TERR-ree THUR-noh"
+
+	[[alternative HTML version deleted]]
+
+
+From |vo@we|ch @end|ng |rom uc|@@edu  Fri Feb 13 02:52:29 2026
+From: |vo@we|ch @end|ng |rom uc|@@edu (ivo welch)
+Date: Thu, 12 Feb 2026 17:52:29 -0800
+Subject: [Rd] Rotated Triangles at pch 26 and 27
+Message-ID: <CAJrNScRXSKyBxMZ3vKtOKSBzbd_f8EvrCaL1eAQV-X2Ht-VMkQ@mail.gmail.com>
+
+I believe pch=26 and 27 are not used.
+
+suggestion: low priority but would be nice:  the other symbols are pch
+symmetric.  the triangles do not have 90 degree rotated equivalents.
+
+use case: the triangle makes a nice way, e.g., to indicate a mean (at the
+box bottom) for the x axis pointing upways.  there is no triangle for the
+mean for the y axis to point sideways.
+
+--
+Ivo Welch (ivo.welch at ucla.edu)
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sat Feb 14 12:35:47 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 14 Feb 2026 14:35:47 +0300
+Subject: [Rd] check for \value in R CMD check
+In-Reply-To: <CAL3ufULzgyVaNpdS0SYuAYdWhObc3gDWewqSFROHPJ7Kb1919A@mail.gmail.com>
+References: <CAL3ufULzgyVaNpdS0SYuAYdWhObc3gDWewqSFROHPJ7Kb1919A@mail.gmail.com>
+Message-ID: <20260214143547.1c6a884f@Tarkus>
+
+This was discussed a bit in July 2025:
+https://stat.ethz.ch/pipermail/r-package-devel/2025q3/011824.html
+
+Part of the problem with an automatic check is that it can be easily
+circumvented by adding a one-line value section (as many packages are
+wont to do, "#' @return data.frame" with no further context), so human
+review will still be needed.
+
+It's probably worth adding such a check, initially with a level below
+-1, so that it's not reported by R CMD check by default and doesn't
+blow up CRAN.
+
+-- 
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sun Feb 15 08:30:38 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 15 Feb 2026 10:30:38 +0300
+Subject: [Rd] rep(): Expecting an argument-is-missing error, but ...
+In-Reply-To: <CAFDcVCTsn8yv0bKDO=EfaoCMsZtH0ApG_h_TQSyb5upns94c9w@mail.gmail.com>
+References: <CAFDcVCTsn8yv0bKDO=EfaoCMsZtH0ApG_h_TQSyb5upns94c9w@mail.gmail.com>
+Message-ID: <20260215103038.3380ceca@Tarkus>
+
+? Wed, 10 Dec 2025 22:40:29 -0800
+Henrik Bengtsson <henrik.bengtsson at gmail.com> ?????:
+
+> What's going on here:
+> 
+> $ R --vanilla --quiet
+> > f <- function(n) rep("x", times = n)
+> > f()  
+> [1] "x"
+
+Let's take these R functions:
+
+not_rep <- compiler::cmpfun(\(x, times = 1) invisible(times))
+wrap_not_rep <- compiler::cmpfun(\(times) not_rep(1, times = times))
+
+In a call from wrap_not_rep() to not_rep(1, times = times), the thing
+being matched against the formals is a promise to evaluate 'times' in
+the wrap_not_rep()'s environment, so Rf_matchArgs_NR matches it
+successfully and not_rep() eventually forces the promise and signals an
+argument-is-missing exception.
+
+What about the following function?
+
+wrap_rep <- compiler::cmpfun(\(times) rep(1, times = times))
+
+Being a pritmitive, rep() performs its own argument matching, so in a
+call from wrap_rep() to rep(1, times = times), things happen
+differently.
+
+First, it receives the "raw" arguments, without them being wrapped into
+promises:
+
+(gdb) call R_inspect(args)
+@5555585b2220 02 LISTSXP g1c0 [MARK,REF(2)]
+  @5555585a5700 14 REALSXP g1c1 [MARK,REF(65535)] (len=1, tl=0) 1
+  TAG: @555557d17458 01 SYMSXP g1c0 [MARK,REF(65535)] "times"
+  @555557d17458 01 SYMSXP g1c0 [MARK,REF(65535)] "times"
+
+Then it calls DispatchOrEval(), which evaluates the expressions in the
+call, replacing the "times" symbol with R_MissingArg. Only then it
+calls Rf_matchArgs_NR:
+
+(gdb) call R_inspect(supplied)
+@5555588f74a8 02 LISTSXP g0c0 [STP] 
+  @5555585a5700 14 REALSXP g0c1 [REF(65535)] (len=1, tl=0) 1
+  TAG: @555557d17458 01 SYMSXP g0c0 [REF(65535)] "times"
+  @5555559c6320 01 SYMSXP g0c0 [MARK,REF(7008)] [missing argument]
+
+Rf_matchArgs_NR then faithfully substitutes that missing argument into
+the return value together with other missing arguments that it
+substitutes for every value that wasn't passed at all:
+
+(gdb) call R_inspect(args)
+@5555588fc850 02 LISTSXP g0c0 [STP] 
+  @5555585a5700 14 REALSXP g0c1 [REF(65535)] (len=1, tl=0) 1
+  # this one was passed as missing
+  @5555559c6320 01 SYMSXP g0c0 [MARK,REF(7010)] [missing argument]
+  # the following ones weren't passed at all
+  @5555559c6320 01 SYMSXP g0c0 [MARK,REF(7010)] [missing argument]
+  @5555559c6320 01 SYMSXP g0c0 [MARK,REF(7010)] [missing argument]
+  @5555559c6320 01 SYMSXP g0c0 [MARK,REF(7010)] [missing argument]
+
+There doesn't seem to be a way to distinguish between the two kinds of
+missing arguments in the return value.
+
+In order to cause an argument-is-missing error, rep() would have to
+walk the list of supplied arguments before matching them, replacing the
+R_MissingArg with something else, then match the arguments, then
+complain about the missing argument replacement being matched to a
+non-dots formal argument. "To call this an ugly hack would be to insult
+all existing ugly hacks at large in the world." Is there a better way?
+
+-- 
+Best regards,
+Ivan
+
+
+From @eb@meyer @end|ng |rom |@u@de  Sun Feb 15 17:16:38 2026
+From: @eb@meyer @end|ng |rom |@u@de (Sebastian Meyer)
+Date: Sun, 15 Feb 2026 17:16:38 +0100
+Subject: [Rd] check for \value in R CMD check
+In-Reply-To: <20260214143547.1c6a884f@Tarkus>
+References: <CAL3ufULzgyVaNpdS0SYuAYdWhObc3gDWewqSFROHPJ7Kb1919A@mail.gmail.com>
+ <20260214143547.1c6a884f@Tarkus>
+Message-ID: <abb159cc-c1c1-4050-bf0e-febc449dd95b@fau.de>
+
+Am 14.02.26 um 12:35 schrieb Ivan Krylov via R-devel:
+> This was discussed a bit in July 2025:
+> https://stat.ethz.ch/pipermail/r-package-devel/2025q3/011824.html
+> 
+> Part of the problem with an automatic check is that it can be easily
+> circumvented by adding a one-line value section (as many packages are
+> wont to do, "#' @return data.frame" with no further context), so human
+> review will still be needed.
+> 
+> It's probably worth adding such a check [...]
+> not reported by R CMD check by default
+
+Thanks, I agree. There is no technical requirement for a \value section 
+in Rd files but I suppose package reviewers will have a keen sense of 
+when one is really missing or incomplete. That said, an indication of 
+help pages without a \value section would certainly be useful for 
+developers.
+
+With r89420, there now is an experimental environment variable
+
+     _R_CHECK_RD_CONTENTS_VALUE_
+
+for tools::checkRdContents(), a function also used by R CMD check. If 
+set to a true value, the check results will show (some of the) Rd files 
+without \value.
+
+	Sebastian Meyer
+
+
+From j|nghu@zh@o @end|ng |rom hotm@||@com  Tue Feb 17 20:06:06 2026
+From: j|nghu@zh@o @end|ng |rom hotm@||@com (jinghua zhao)
+Date: Tue, 17 Feb 2026 19:06:06 +0000
+Subject: [Rd] Advice on ASAN for gap 1.9
+In-Reply-To: <336FB7C4-5AA8-46AC-BF01-99ACFA1A2F42@cbs.dk>
+References: <336FB7C4-5AA8-46AC-BF01-99ACFA1A2F42@cbs.dk>
+Message-ID: <PA1P189MB3652F62D02E27FC7F9068802A56DA@PA1P189MB3652.EURP189.PROD.OUTLOOK.COM>
+
+Dear R developers,
+
+I am seeking advice regarding some issues of my package from CRAN check. I have made attempts to identify sources of the errors via customized clang/gcc which may not always yield the same errors. I also tried ~/.valgrindrc and --use-valgrind which would say OK but I suspect my ASAN-scheme is fully working. Brefly, the error tracking information can be seen from here,
+
+  *
+CRAN checks, https://cran.r-project.org/web/checks/check_results_gap.html
+  *
+Current attempt. https://cran.dev/gap
+
+For next steps, I wonder if
+
+  *
+Anyone has a polished pipelines clang/gcc for Fedora 43  which is what I am using so as to reproduce errors / hints for any additional changes to be made, e.g., https://www.stats.ox.ac.uk/pub/bdr/Rconfig/
+  *
+To convert the somewhat legacy C/Fortran codes in the package for more modern implementations.
+
+More importantly, any advices will be greatly appreciated.
+
+Best wishes,
+
+Jing Hua
+
+	[[alternative HTML version deleted]]
+
+
+From benj@m|n@chwe @end|ng |rom gm@||@com  Tue Feb 17 23:27:36 2026
+From: benj@m|n@chwe @end|ng |rom gm@||@com (Benjamin Schwendinger)
+Date: Tue, 17 Feb 2026 23:27:36 +0100
+Subject: [Rd] Advice on ASAN for gap 1.9
+In-Reply-To: <PA1P189MB3652F62D02E27FC7F9068802A56DA@PA1P189MB3652.EURP189.PROD.OUTLOOK.COM>
+References: <336FB7C4-5AA8-46AC-BF01-99ACFA1A2F42@cbs.dk>
+ <PA1P189MB3652F62D02E27FC7F9068802A56DA@PA1P189MB3652.EURP189.PROD.OUTLOOK.COM>
+Message-ID: <CADPy5iHk7NrbEzx0ZSY00doDDeQarmhf+1OnbBCG_ystBu=0bw@mail.gmail.com>
+
+Dear Jing,
+
+you currently have multiple issues.
+
+1st) problem is not directly on your side but lies within ragg as the ASAN
+error correctly pointed out.
+
+Essentially, ragg/src/./agg/include/agg_font_cache_manager.h:176:21.
+
+On the corresponding line we see
+
+std::memcpy(m_fonts, m_fonts + 1, (m_max_fonts - 1) * sizeof(font_cache*));
+
+Hence, we copy from m_fonts+1 to m_fonts with possible multiple bytes,
+which is UB. Simplest solution would be to drop `dev = "ragg_png"` from
+your vignette (as you supposedly also have figured out).
+
+2) You are calling V8 which does not play nicely with the much larger stack
+frames under ASAN/UBSAN. I would recommend precomputing these outputs.
+
+For reproducing errors regarding ASAN and UBSAN I can fully recommend the
+rocker containers (rocker/r-devel-san and rocker/r-devel-ubsan-clang) from
+https://rocker-project.org/images/base/r-devel.html
+
+Best regards,
+Ben
+
+Am Di., 17. Feb. 2026 um 20:06 Uhr schrieb jinghua zhao <
+jinghuazhao at hotmail.com>:
+
+> Dear R developers,
+>
+> I am seeking advice regarding some issues of my package from CRAN check. I
+> have made attempts to identify sources of the errors via customized
+> clang/gcc which may not always yield the same errors. I also tried
+> ~/.valgrindrc and --use-valgrind which would say OK but I suspect my
+> ASAN-scheme is fully working. Brefly, the error tracking information can be
+> seen from here,
+>
+>   *
+> CRAN checks, https://cran.r-project.org/web/checks/check_results_gap.html
+>   *
+> Current attempt. https://cran.dev/gap
+>
+> For next steps, I wonder if
+>
+>   *
+> Anyone has a polished pipelines clang/gcc for Fedora 43  which is what I
+> am using so as to reproduce errors / hints for any additional changes to be
+> made, e.g., https://www.stats.ox.ac.uk/pub/bdr/Rconfig/
+>   *
+> To convert the somewhat legacy C/Fortran codes in the package for more
+> modern implementations.
+>
+> More importantly, any advices will be greatly appreciated.
+>
+> Best wishes,
+>
+> Jing Hua
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From j|nghu@zh@o @end|ng |rom hotm@||@com  Wed Feb 18 00:15:58 2026
+From: j|nghu@zh@o @end|ng |rom hotm@||@com (jinghua zhao)
+Date: Tue, 17 Feb 2026 23:15:58 +0000
+Subject: [Rd] Advice on ASAN for gap 1.9
+In-Reply-To: <CADPy5iHk7NrbEzx0ZSY00doDDeQarmhf+1OnbBCG_ystBu=0bw@mail.gmail.com>
+References: <336FB7C4-5AA8-46AC-BF01-99ACFA1A2F42@cbs.dk>
+ <PA1P189MB3652F62D02E27FC7F9068802A56DA@PA1P189MB3652.EURP189.PROD.OUTLOOK.COM>
+ <CADPy5iHk7NrbEzx0ZSY00doDDeQarmhf+1OnbBCG_ystBu=0bw@mail.gmail.com>
+Message-ID: <PA1P189MB3652551FC1DDE11F38E20CE9A56DA@PA1P189MB3652.EURP189.PROD.OUTLOOK.COM>
+
+Dear Ben,
+
+Thank you very much your advice ? indeed I was warned of the ragg issue and dropped it out in later versions and somewhat confused with V5 as it does render well on CRAN (sounds like a capacity problem since the other .Rmd has no complaint at all). I am unaware of the docker container and should try that. It is a nice idea to precompute them since the issues are essentially due to vignette building however I need to see if it would increase the package size considerably.
+
+Best regards,
+
+
+Jing Hua
+
+________________________________
+From: Benjamin Schwendinger <benjaminschwe at gmail.com>
+Sent: Tuesday, February 17, 2026 22:27
+To: r-devel <r-devel at r-project.org>
+Cc: jinghua zhao <jinghuazhao at hotmail.com>
+Subject: Re: [Rd] Advice on ASAN for gap 1.9
+
+Dear Jing,
+
+you currently have multiple issues.
+
+1st) problem is not directly on your side but lies within ragg as the ASAN error correctly pointed out.
+
+Essentially, ragg/src/./agg/include/agg_font_cache_manager.h:176:21.
+
+On the corresponding line we see
+
+std::memcpy(m_fonts, m_fonts + 1, (m_max_fonts - 1) * sizeof(font_cache*));
+
+Hence, we copy from m_fonts+1 to m_fonts with possible multiple bytes, which is UB. Simplest solution would be to drop `dev = "ragg_png"` from your vignette (as you supposedly also have figured out).
+
+2) You are calling V8 which does not play nicely with the much larger stack frames under ASAN/UBSAN. I would recommend precomputing these outputs.
+
+For reproducing errors regarding ASAN and UBSAN I can fully recommend the rocker containers (rocker/r-devel-san and rocker/r-devel-ubsan-clang) from https://rocker-project.org/images/base/r-devel.html
+
+Best regards,
+Ben
+
+Am Di., 17. Feb. 2026 um 20:06 Uhr schrieb jinghua zhao <jinghuazhao at hotmail.com<mailto:jinghuazhao at hotmail.com>>:
+Dear R developers,
+
+I am seeking advice regarding some issues of my package from CRAN check. I have made attempts to identify sources of the errors via customized clang/gcc which may not always yield the same errors. I also tried ~/.valgrindrc and --use-valgrind which would say OK but I suspect my ASAN-scheme is fully working. Brefly, the error tracking information can be seen from here,
+
+  *
+CRAN checks, https://cran.r-project.org/web/checks/check_results_gap.html
+  *
+Current attempt. https://cran.dev/gap
+
+For next steps, I wonder if
+
+  *
+Anyone has a polished pipelines clang/gcc for Fedora 43  which is what I am using so as to reproduce errors / hints for any additional changes to be made, e.g., https://www.stats.ox.ac.uk/pub/bdr/Rconfig/
+  *
+To convert the somewhat legacy C/Fortran codes in the package for more modern implementations.
+
+More importantly, any advices will be greatly appreciated.
+
+Best wishes,
+
+Jing Hua
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-devel at r-project.org<mailto:R-devel at r-project.org> mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Feb 18 14:46:51 2026
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 18 Feb 2026 08:46:51 -0500
+Subject: [Rd] Typos in Writing R Extensions
+Message-ID: <CA+COutcBRXt-yVoVu5kXMomdrtBuUF_j1fHU=jYQB0p8Srnz_A@mail.gmail.com>
+
+Some of the function names are misspelled (e.g. Rf_iisNull instead of
+Rf_isNull) in WRE in R 4.5.2 and R-devel. This patch fixes them.
+
+Duncan Murdoch
+
+Index: doc/manual/R-exts.texi
+===================================================================
+--- doc/manual/R-exts.texi (revision 89432)
++++ doc/manual/R-exts.texi (working copy)
+@@ -12833,8 +12833,8 @@
+@apifun Rf_isInteger
+@apifun Rf_isString
+Other such functions declared in the header file @file{Rinternals.h}
+-include @code{Rf_iisNull}, @code{Rf_iisSymbol}, @code{Rf_iisLogical},
+- at code{Rf_iisComplex}, @code{Rf_iisExpression}, and
+@code{Rf_iisEnvironment}.
++include @code{Rf_isNull}, @code{Rf_isSymbol}, @code{Rf_isLogical},
++ at code{Rf_isComplex}, @code{Rf_isExpression}, and @code{Rf_isEnvironment}.
+@apifun Rf_isNull
+@apifun Rf_isSymbol
+@apifun Rf_isLogical
+
+	[[alternative HTML version deleted]]
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Wed Feb 18 18:08:03 2026
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Wed, 18 Feb 2026 18:08:03 +0100
+Subject: [Rd] Typos in Writing R Extensions
+In-Reply-To: <CA+COutcBRXt-yVoVu5kXMomdrtBuUF_j1fHU=jYQB0p8Srnz_A@mail.gmail.com>
+References: <CA+COutcBRXt-yVoVu5kXMomdrtBuUF_j1fHU=jYQB0p8Srnz_A@mail.gmail.com>
+Message-ID: <27029.61939.957375.16741@hornik.net>
+
+>>>>> Duncan Murdoch writes:
+
+Thanks: fixed now.
+
+Best
+-k
+
+> Some of the function names are misspelled (e.g. Rf_iisNull instead of
+> Rf_isNull) in WRE in R 4.5.2 and R-devel. This patch fixes them.
+
+> Duncan Murdoch
+
+> Index: doc/manual/R-exts.texi
+> ===================================================================
+> --- doc/manual/R-exts.texi (revision 89432)
+> +++ doc/manual/R-exts.texi (working copy)
+> @@ -12833,8 +12833,8 @@
+> @apifun Rf_isInteger
+> @apifun Rf_isString
+> Other such functions declared in the header file @file{Rinternals.h}
+> -include @code{Rf_iisNull}, @code{Rf_iisSymbol}, @code{Rf_iisLogical},
+> - at code{Rf_iisComplex}, @code{Rf_iisExpression}, and
+> @code{Rf_iisEnvironment}.
+> +include @code{Rf_isNull}, @code{Rf_isSymbol}, @code{Rf_isLogical},
+> + at code{Rf_isComplex}, @code{Rf_isExpression}, and @code{Rf_isEnvironment}.
+> @apifun Rf_isNull
+> @apifun Rf_isSymbol
+> @apifun Rf_isLogical
+
+> 	[[alternative HTML version deleted]]
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @uh@rto_@nggono @end|ng |rom y@hoo@com  Sun Feb 22 04:58:13 2026
+From: @uh@rto_@nggono @end|ng |rom y@hoo@com (Suharto Anggono Suharto Anggono)
+Date: Sun, 22 Feb 2026 03:58:13 +0000 (UTC)
+Subject: [Rd] Wrong move of NEWS item
+References: <2128797252.1120005.1771732693812.ref@mail.yahoo.com>
+Message-ID: <2128797252.1120005.1771732693812@mail.yahoo.com>
+
+diff(m, lag, dif) for matrix m now still returns? ? ? matrices, also when lag * dif > nrow(m) (PR#18972, thanks to? ? ? Mikael Jagan and Suharto Anggono).? ? ? diff(<ts-matrix>) remains matrix, even when it has length zero.
+The above NEWS item has been moved to "CHANGES IN R 4.5.2 patched".
+In fact, in R-4-5-branch, diff(m, lag, dif) for matrix m is still not a matrix when lag * dif > nrow(m) (see https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/diff.R?for 'diff.default';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/datetime.R?for 'diff.POSIXt';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/dates.R?for 'diff.Date';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/stats/R/ts.R?for 'diff.ts').
+And I suggest keeping it so. Because it has been like that simce the beginning, I think changing it in a patch release is not appropriate.
+What have been ported to R-4-5-branch are just- replacing 'tsLag' with 'lag' in 'diff.ts'- 'Ops.ts' to return matrix when e1 or e2 is matrix but e1 and e2 are not overlapping
+I suggest reverting the port. A justification of diff(m) for 1-row ts matrix m not being a matrix was that m - lag(m, -1) was not a matrix.
+Replacing 'tsLag' with 'lag' in 'diff.ts' is actually OK, but not necessary.
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Mon Feb 23 13:16:32 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Mon, 23 Feb 2026 13:16:32 +0100
+Subject: [Rd] Wrong move of NEWS item
+In-Reply-To: <fake-VM-id.6d776b3ae1213c9af92fe6df6450ef4a@talos.iv>
+References: <2128797252.1120005.1771732693812.ref@mail.yahoo.com>
+ <2128797252.1120005.1771732693812@mail.yahoo.com>
+Message-ID: <27036.17696.727900.514006@stat.math.ethz.ch>
+
+>>>>> Suharto Anggono Suharto Anggono via R-devel 
+>>>>>     on Sun, 22 Feb 2026 03:58:13 +0000 (UTC) writes:
+
+    > diff(m, lag, dif) for matrix m now still returns
+    > ? ? ? matrices, also when lag * dif > nrow(m) (PR#18972, thanks to
+    > ? ? ? Mikael Jagan and Suharto Anggono).
+    > ? ? ? diff(<ts-matrix>) remains matrix, even when it has length zero.
+
+    > The above NEWS item has been moved to "CHANGES IN R 4.5.2 patched".
+
+    > In fact, in R-4-5-branch, diff(m, lag, dif) for matrix m is still not a matrix when lag * dif > nrow(m) (see https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/diff.R?for 'diff.default';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/datetime.R?for 'diff.POSIXt';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/dates.R?for 'diff.Date';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/stats/R/ts.R?for 'diff.ts').
+
+    > And I suggest keeping it so. Because it has been like that simce the beginning, I think changing it in a patch release is not appropriate.
+
+We have ported  bug fixes of "forever bugs" to the "R patched
+branch", before,  quite on purpose.
+Typically they have been really rare use cases and for that
+reason probably were not detected and reported earlier... and we
+(R core) still thought these bugs should disappear as quickly as
+possible.
+
+For the above reason(s), I *had* actually planned to port this bug
+fix also to R "4.5.2 patched" ...
+But then it has become somewhat late to do the port only now,
+and R 4.5.3 will only be a "wrap up" release anyway..
+
+Hence, I agree with your opinion  and will now move the NEWS
+entry instead of porting the bug fix which was the original plan.
+
+Martin
+
+
+    > What have been ported to R-4-5-branch are just- replacing 'tsLag' with 'lag' in 'diff.ts'- 'Ops.ts' to return matrix when e1 or e2 is matrix but e1 and e2 are not overlapping
+    > I suggest reverting the port. A justification of diff(m) for 1-row ts matrix m not being a matrix was that m - lag(m, -1) was not a matrix.
+    > Replacing 'tsLag' with 'lag' in 'diff.ts' is actually OK, but not necessary.
+
+
+From pd@me@ @end|ng |rom cb@@dk  Mon Feb 23 15:04:01 2026
+From: pd@me@ @end|ng |rom cb@@dk (Peter Dalgaard)
+Date: Mon, 23 Feb 2026 14:04:01 +0000
+Subject: [Rd] R 4.5.3 scheduled for March 11
+Message-ID: <922F989B-5BFE-4A04-BC94-AE8E94EDAE43@cbs.dk>
+
+Full schedule is available on developer.r-project.org <http://developer.r-project.org/> (...soon; the impatient might try: https://svn.r-project.org/R-dev-web/trunk/index.html).
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @uh@rto_@nggono @end|ng |rom y@hoo@com  Sat Feb 28 12:57:43 2026
+From: @uh@rto_@nggono @end|ng |rom y@hoo@com (Suharto Anggono Suharto Anggono)
+Date: Sat, 28 Feb 2026 11:57:43 +0000 (UTC)
+Subject: [Rd] Wrong move of NEWS item
+In-Reply-To: <27036.17696.727900.514006@stat.math.ethz.ch>
+References: <2128797252.1120005.1771732693812.ref@mail.yahoo.com>
+ <2128797252.1120005.1771732693812@mail.yahoo.com>
+ <fake-VM-id.6d776b3ae1213c9af92fe6df6450ef4a@talos.iv>
+ <27036.17696.727900.514006@stat.math.ethz.ch>
+Message-ID: <630650197.3484737.1772279863294@mail.yahoo.com>
+
+ Now that the NEWS item is gone from "CHANGES IN R 4.5.2 patched", please also revert the change to 'Ops.ts' in R-4-5-branch, as I have mentioned. In R-4-5-branch, the change makes diff(m) inconsistent with m - lag(m, -1) for 1-row ts matrix m. Previously, neither of them was a matrix.
+
+_______
+On Monday, 23 February 2026 at 07:16:36 pm GMT+7, Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+
+
+>>>>> Suharto Anggono Suharto Anggono via R-devel
+>>>>>? ? on Sun, 22 Feb 2026 03:58:13 +0000 (UTC) writes:
+
+? ? > diff(m, lag, dif) for matrix m now still returns
+? ? > ? ? ? matrices, also when lag * dif > nrow(m) (PR#18972, thanks to
+? ? > ? ? ? Mikael Jagan and Suharto Anggono).
+? ? > ? ? ? diff(<ts-matrix>) remains matrix, even when it has length zero.
+
+? ? > The above NEWS item has been moved to "CHANGES IN R 4.5.2 patched".
+
+? ? > In fact, in R-4-5-branch, diff(m, lag, dif) for matrix m is still not a matrix when lag * dif > nrow(m) (see https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/diff.R?for 'diff.default';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/datetime.R?for 'diff.POSIXt';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/dates.R?for 'diff.Date';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/stats/R/ts.R?for 'diff.ts').
+
+? ? > And I suggest keeping it so. Because it has been like that simce the beginning, I think changing it in a patch release is not appropriate.
+
+We have ported? bug fixes of "forever bugs" to the "R patched
+branch", before,? quite on purpose.
+Typically they have been really rare use cases and for that
+reason probably were not detected and reported earlier... and we
+(R core) still thought these bugs should disappear as quickly as
+possible.
+
+For the above reason(s), I *had* actually planned to port this bug
+fix also to R "4.5.2 patched" ...
+But then it has become somewhat late to do the port only now,
+and R 4.5.3 will only be a "wrap up" release anyway..
+
+Hence, I agree with your opinion? and will now move the NEWS
+entry instead of porting the bug fix which was the original plan.
+
+Martin
+
+
+? ? > What have been ported to R-4-5-branch are just- replacing 'tsLag' with 'lag' in 'diff.ts'- 'Ops.ts' to return matrix when e1 or e2 is matrix but e1 and e2 are not overlapping
+? ? > I suggest reverting the port. A justification of diff(m) for 1-row ts matrix m not being a matrix was that m - lag(m, -1) was not a matrix.
+? ? > Replacing 'tsLag' with 'lag' in 'diff.ts' is actually OK, but not necessary.
+  
+	[[alternative HTML version deleted]]
+
+

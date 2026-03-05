@@ -1,0 +1,36 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2006-08",
+  "messages": [
+    {
+      "id": "msg-5c6c5d25ded2",
+      "message_id": "<44F75DA4.6000209@vanderbilt.edu>",
+      "from_name": "Jeffrey Horner",
+      "from_email_hash": "8b91e5b4000682951a703759aaef9fbaa2bc23dc141f7a1ef5c829c7c0d0d0de",
+      "date": "2006-08-31T17:07:32-05:00",
+      "subject": "[Rd] Overriding InitTempDir",
+      "subject_clean": "Overriding InitTempDir",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "For embedded projects, one may want to eliminate the per-session temp \ndirectory created by InitTempDir() and just use a system-specific temp \ndirectory. Here's my solution:\n\nextern char *R_TempDir;\n\nvoid my_InitTempDir()\n{\n     char *tmp;\n\n     if (R_TempDir){\n         if (rmdir(R_TempDir) != 0){\n             perror(\"Fatal Error: could not remove R's TempDir!\");\n             exit(1);\n         }\n     }\n\n     tmp = getenv(\"TMPDIR\");\n     if (tmp == NULL) {\n         tmp = getenv(\"TMP\");\n             if (tmp == NULL) {\n                 tmp = getenv(\"TEMP\");\n                 if (tmp == NULL)\n                     tmp = \"/tmp\";\n             }\n     }\n\n     R_TempDir=tmp;\n\n     if (setenv(\"R_SESSION_TMPDIR\",tmp,1) != 0){\n         perror(\"Fatal Error: couldn't set/replace R_SESSION_TMPDIR!\");\n         exit(1);\n     }\n}\n\nThis function is called after Rf_initEmbeddedR; it's seems like a hack \nbut it works. Does anyone have other solutions?\n\nMaybe InitTempDir could check if R_TempDir was not NULL and then just \nreturn.\n\n-- \nhttp://biostat.mc.vanderbilt.edu/JeffreyHorner",
+      "body_snippet": "For embedded projects, one may want to eliminate the per-session temp \ndirectory created by InitTempDir() and just use a system-specific temp \ndirectory. Here's my solution:\n\nextern char *R_TempDir;\n\n",
+      "thread_id": "thread-5c6c5d25ded2",
+      "thread_depth": 0,
+      "month": "2006-08"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-5c6c5d25ded2",
+      "subject": "Overriding InitTempDir",
+      "message_count": 1,
+      "participants": [
+        "Jeffrey Horner"
+      ],
+      "started": "2006-08-31T17:07:32-05:00",
+      "last_reply": "2006-08-31T17:07:32-05:00",
+      "root_message_id": "msg-5c6c5d25ded2"
+    }
+  ]
+}

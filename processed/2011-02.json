@@ -1,0 +1,96 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2011-02",
+  "messages": [
+    {
+      "id": "msg-09c4c3969eb8",
+      "message_id": "<AANLkTikB4d0NuoEbxR8n1vwGdeWCo=EZCOpZhPFt9iTJ@mail.gmail.com>",
+      "from_name": "Paul Johnson",
+      "from_email_hash": "b96b8a38c7fef12892ac8cae395028a3b39f3acce423d9c564ab27dc864c47b3",
+      "date": "2011-02-28T17:37:18-06:00",
+      "subject": "[Rd] function call overhead",
+      "subject_clean": "function call overhead",
+      "in_reply_to": "<AANLkTikfe2Vq7u_rWbZ3idMrmO7tXEYrF7CDuvPC1G6F@mail.gmail.com>",
+      "references": [
+        "<4d5b98ec.4c02cc0a.13fe.476c@mx.google.com>",
+        "<AANLkTimdA=ExqfGGVuzk703PAs2eMcU_87rj1fydccx-@mail.gmail.com>",
+        "<6441154A9FF1CD4386AF4ABF141A056D21525F40@WMEXOSCD2-N1.bocad.bank-banque-canada.ca>",
+        "<AANLkTi=f0j5TXZ=pu6rsFUXLmrAYHWjdTDOy24MDUZ2w@mail.gmail.com>",
+        "<AANLkTikfe2Vq7u_rWbZ3idMrmO7tXEYrF7CDuvPC1G6F@mail.gmail.com>"
+      ],
+      "body_plain": "Snipping down to bare minimum history before comment:\n\nOn Wed, Feb 16, 2011 at 4:28 PM, Olaf Mersmann\n<olafm at statistik.tu-dortmund.de> wrote:\n> Dear Hadly, dear list,\n>\n> On Wed, Feb 16, 2011 at 9:53 PM, Hadley Wickham <hadley at rice.edu> wrote:\n>\n>>> system.time(replicate(1e4, base::print))\n>> ? user ?system elapsed\n>> ?0.539 ? 0.001 ? 0.541\n>>> system.time(replicate(1e4, print))\n>> ? user ?system elapsed\n>> ?0.013 ? 0.000 ? 0.012\n\n>> library(\"microbenchmark\")\n>> res <- microbenchmark(print, base::print, times=10000)\n>> res\n>> print(res, unit=\"eps\")\n> Unit: evaluations per second\n> ? ? ? ? ? ? ? ? ? ?min ? ? ? ? ?lq ? ? ?median ? ? ? ? ?uq ? ? ? ?max\n> print ? ? ? 17543859.65 15384615.38 14705882.35 14492753.62 20665.8538\n> base::print ? ?23944.64 ? ?23064.33 ? ?22584.32 ? ?20659.88 ? 210.5329\n>\n\nI think it is important to say that this slowdown is not unique to R\nand is unrelated to the fact that is R  interpreted.  The same happens\nin compiled object-oriented languages like C++ or Objective-C. There\nis an inherent cost in the runtime system to find a function or method\nthat is suitable to an object.\n\nIn agent-based modeling simulations, we call it the cost of \"method\nlookup\" because the runtime system has to check for the existence of a\nmethod each time it is called for a given object.   There is a\ntime-saving approach where one can cache the result of the lookup and\nthen call that result directly each time through the loop.\nImplementing this is pretty complicated, however, and it is\ndiscouraged unless you really need it.  It is especially dangerous\nbecause this optimization throws-away the runtime benefit of matching\nthe correct method to the class of the object.  (See\nhttp://www.mulle-kybernetik.com/artikel/Optimization/opti-3.html,\nwhere it shows how one can even cache C library functions to avoid\nlookup overhead. I'm told that the Obj-C 2.0 runtime will try to\noptimize this automatically, I've not tested.)\n\nThe R solution is achieving that exact same kind of speed-up by saving\nthe function lookup in a local variable. The R approach, however, is\nimplemented much more easily than the Objective-C solution. There is\nan obvious danger: if the saved method is not appropriate to an object\nto which it applies, something unpredictable will happen.\n\nThe same is true in C++.  I was fiddling around with the C++ code that\nis included with the R package Siena (awesome package, incidentally)\nlast year and noticed a similar slowdown with method lookup.  In C++,\nI was surprised to find a slowdown inside a class using an instance\nvariable prefixed with  \"this.\".  For an IVAR, \"this.x\" and \"x\" are\nthe same thing, but to the runtime system, well, there's slowdown in\nfinding \"this\" class and getting x, compared to just using  x.  To the\nprogrammer who is trying to be clear and careful, putting \"this.\" on\nthe front of IVAR is tidy, but it also slows down the runtime a lot.\n\nHope this is not more confusing than when I started :)\n\npj\n-- \nPaul E. Johnson\nProfessor, Political Science\n1541 Lilac Lane, Room 504\nUniversity of Kansas",
+      "body_snippet": "Snipping down to bare minimum history before comment:\n\nOn Wed, Feb 16, 2011 at 4:28 PM, Olaf Mersmann\n<olafm at statistik.tu-dortmund.de> wrote:\n> Dear Hadly, dear list,\n>\n> On Wed, Feb 16, 2011 at 9:",
+      "thread_id": "thread-09c4c3969eb8",
+      "thread_depth": 0,
+      "month": "2011-02"
+    },
+    {
+      "id": "msg-2e8ce9769587",
+      "message_id": "<AANLkTimyzxA66nh6pMrvHWCKCOWKpztUVcoCMsKYTBc=@mail.gmail.com>",
+      "from_name": "Dominick Samperi",
+      "from_email_hash": "7f11fd09c9f92a75beb5dad5ded6b00a8c80f5f712032a9d314b96cab3f661dc",
+      "date": "2011-02-28T19:03:24-05:00",
+      "subject": "[Rd] function call overhead",
+      "subject_clean": "function call overhead",
+      "in_reply_to": "<AANLkTikB4d0NuoEbxR8n1vwGdeWCo=EZCOpZhPFt9iTJ@mail.gmail.com>",
+      "references": [
+        "<4d5b98ec.4c02cc0a.13fe.476c@mx.google.com>",
+        "<AANLkTimdA=ExqfGGVuzk703PAs2eMcU_87rj1fydccx-@mail.gmail.com>",
+        "<6441154A9FF1CD4386AF4ABF141A056D21525F40@WMEXOSCD2-N1.bocad.bank-banque-canada.ca>",
+        "<AANLkTi=f0j5TXZ=pu6rsFUXLmrAYHWjdTDOy24MDUZ2w@mail.gmail.com>",
+        "<AANLkTikfe2Vq7u_rWbZ3idMrmO7tXEYrF7CDuvPC1G6F@mail.gmail.com>",
+        "<AANLkTikB4d0NuoEbxR8n1vwGdeWCo=EZCOpZhPFt9iTJ@mail.gmail.com>"
+      ],
+      "body_plain": "On Mon, Feb 28, 2011 at 6:37 PM, Paul Johnson <pauljohn32 at gmail.com> wrote:\n> Snipping down to bare minimum history before comment:\n>\n> On Wed, Feb 16, 2011 at 4:28 PM, Olaf Mersmann\n> <olafm at statistik.tu-dortmund.de> wrote:\n>> Dear Hadly, dear list,\n>>\n>> On Wed, Feb 16, 2011 at 9:53 PM, Hadley Wickham <hadley at rice.edu> wrote:\n>>\n>>>> system.time(replicate(1e4, base::print))\n>>> ? user ?system elapsed\n>>> ?0.539 ? 0.001 ? 0.541\n>>>> system.time(replicate(1e4, print))\n>>> ? user ?system elapsed\n>>> ?0.013 ? 0.000 ? 0.012\n>\n>>> library(\"microbenchmark\")\n>>> res <- microbenchmark(print, base::print, times=10000)\n>>> res\n>>> print(res, unit=\"eps\")\n>> Unit: evaluations per second\n>> ? ? ? ? ? ? ? ? ? ?min ? ? ? ? ?lq ? ? ?median ? ? ? ? ?uq ? ? ? ?max\n>> print ? ? ? 17543859.65 15384615.38 14705882.35 14492753.62 20665.8538\n>> base::print ? ?23944.64 ? ?23064.33 ? ?22584.32 ? ?20659.88 ? 210.5329\n>>\n>\n> I think it is important to say that this slowdown is not unique to R\n> and is unrelated to the fact that is R ?interpreted. ?The same happens\n> in compiled object-oriented languages like C++ or Objective-C. There\n> is an inherent cost in the runtime system to find a function or method\n> that is suitable to an object.\n>\n> In agent-based modeling simulations, we call it the cost of \"method\n> lookup\" because the runtime system has to check for the existence of a\n> method each time it is called for a given object. ? There is a\n> time-saving approach where one can cache the result of the lookup and\n> then call that result directly each time through the loop.\n> Implementing this is pretty complicated, however, and it is\n> discouraged unless you really need it. ?It is especially dangerous\n> because this optimization throws-away the runtime benefit of matching\n> the correct method to the class of the object. ?(See\n> http://www.mulle-kybernetik.com/artikel/Optimization/opti-3.html,\n> where it shows how one can even cache C library functions to avoid\n> lookup overhead. I'm told that the Obj-C 2.0 runtime will try to\n> optimize this automatically, I've not tested.)\n>\n> The R solution is achieving that exact same kind of speed-up by saving\n> the function lookup in a local variable. The R approach, however, is\n> implemented much more easily than the Objective-C solution. There is\n> an obvious danger: if the saved method is not appropriate to an object\n> to which it applies, something unpredictable will happen.\n>\n> The same is true in C++. ?I was fiddling around with the C++ code that\n> is included with the R package Siena (awesome package, incidentally)\n> last year and noticed a similar slowdown with method lookup. ?In C++,\n> I was surprised to find a slowdown inside a class using an instance\n> variable prefixed with ?\"this.\". ?For an IVAR, \"this.x\" and \"x\" are\n> the same thing, but to the runtime system, well, there's slowdown in\n> finding \"this\" class and getting x, compared to just using ?x. ?To the\n> programmer who is trying to be clear and careful, putting \"this.\" on\n> the front of IVAR is tidy, but it also slows down the runtime a lot.\n\nIn the case of namespace qualification (or template\nmetaprogramming) in C++ the qualification is resolved at\ncompile time, so there is no performance hit at runtime.\n\nOn the cost of this.x vs x, this probably becomes very small (or zero)\nwhen a smart optimizer is used (one that knows that they are the same).\n\nThe performance hit results when what appears to be a field access (foo.x)\nis really syntactic sugar for message dispatch (a function call), as is often\nthe case in agent-based modelling (and in languages that follow the Smalltalk\nmodel, or the Actor model).\n\nDominick\n\n> Hope this is not more confusing than when I started :)\n>\n> pj\n> --\n> Paul E. Johnson\n> Professor, Political Science\n> 1541 Lilac Lane, Room 504\n> University of Kansas\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>",
+      "body_snippet": "On Mon, Feb 28, 2011 at 6:37 PM, Paul Johnson <pauljohn32 at gmail.com> wrote:\n> Snipping down to bare minimum history before comment:\n>\n> On Wed, Feb 16, 2011 at 4:28 PM, Olaf Mersmann\n> <olafm at st",
+      "thread_id": "thread-09c4c3969eb8",
+      "thread_depth": 1,
+      "month": "2011-02"
+    },
+    {
+      "id": "msg-341e9239dca6",
+      "message_id": "<AANLkTinzy1JauMW+fadV2O11dY9myCCGU14Nuxdg9KJ5@mail.gmail.com>",
+      "from_name": "Max Kuhn",
+      "from_email_hash": "3588dfda283917c3772455ab1c0353851f9d1c038018811529c94e046489b5cb",
+      "date": "2011-02-28T20:14:40-05:00",
+      "subject": "[Rd] broken link on CRAN",
+      "subject_clean": "broken link on CRAN",
+      "in_reply_to": "<1885A1FE-F3AF-4751-B3D2-54CB5F58C1F5@r-project.org>",
+      "references": [
+        "<AANLkTinr2UguUBOmtdF9Z6Po1RUKJ_MLQeAbgROp81n_@mail.gmail.com>",
+        "<1885A1FE-F3AF-4751-B3D2-54CB5F58C1F5@r-project.org>"
+      ],
+      "body_plain": "Peter and Simon,\n\nThat was the issue. Thanks,\n\nMax\n\nOn Mon, Feb 28, 2011 at 3:48 PM, Simon Urbanek\n<simon.urbanek at r-project.org> wrote:\n>\n> On Feb 28, 2011, at 3:22 PM, Max Kuhn wrote:\n>\n>> The link to\n>>\n>> ? http://cran.r-project.org/bin/macosx/R-2.12.1.pkg\n>>\n>> on the CRAN page\n>>\n>> ? http://cran.r-project.org/bin/macosx/\n>>\n>> is broken.\n>\n> There is no such link on the page - it's R-2.12.2.pkg now - I suspect you have a cached page in your browser - try reloading it.\n>\n> Cheers,\n> Simon\n>\n>\n>> Also, the email address for the webmaster is null (which is\n>> why I'm emailing here).\n>>\n>> Thanks,\n>>\n>> Max\n>>\n>>\n>\n>\n\n\n\n-- \n\nMax",
+      "body_snippet": "Peter and Simon,\n\nThat was the issue. Thanks,\n\nMax\n\nOn Mon, Feb 28, 2011 at 3:48 PM, Simon Urbanek\n<simon.urbanek at r-project.org> wrote:\n>\n> On Feb 28, 2011, at 3:22 PM, Max Kuhn wrote:\n>\n>> The lin",
+      "thread_id": "thread-341e9239dca6",
+      "thread_depth": 0,
+      "month": "2011-02"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-09c4c3969eb8",
+      "subject": "function call overhead",
+      "message_count": 2,
+      "participants": [
+        "Dominick Samperi",
+        "Paul Johnson"
+      ],
+      "started": "2011-02-28T17:37:18-06:00",
+      "last_reply": "2011-02-28T19:03:24-05:00",
+      "root_message_id": "msg-09c4c3969eb8"
+    },
+    {
+      "id": "thread-341e9239dca6",
+      "subject": "broken link on CRAN",
+      "message_count": 1,
+      "participants": [
+        "Max Kuhn"
+      ],
+      "started": "2011-02-28T20:14:40-05:00",
+      "last_reply": "2011-02-28T20:14:40-05:00",
+      "root_message_id": "msg-341e9239dca6"
+    }
+  ]
+}

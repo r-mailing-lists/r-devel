@@ -1,0 +1,1744 @@
+From |kry|ov @end|ng |rom d|@root@org  Tue Jul  2 16:04:44 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 2 Jul 2024 17:04:44 +0300
+Subject: [Rd] Large vector support in data.frames
+In-Reply-To: <b3c5fa5d-1ef0-4c39-a9a9-a86e198059f9@eoos.dds.nl>
+References: <b3c5fa5d-1ef0-4c39-a9a9-a86e198059f9@eoos.dds.nl>
+Message-ID: <20240702170444.5c43761e@arachnoid>
+
+? Wed, 19 Jun 2024 09:52:20 +0200
+Jan van der Laan <rhelp at eoos.dds.nl> ?????:
+
+> What is the status of supporting long vectors in data.frames (e.g. 
+> data.frames with more than 2^31 records)? Is this something that is 
+> being worked on? Is there a time line for this? Is this something I
+> can contribute to?
+
+Apologies if you've already received a better answer off-list.
+
+From from my limited understanding, the problem with supporting
+larger-than-(2^31-1) dimensions has multiple facets:
+
+ - In many parts of R code, there's the assumption that dim() is
+   of integer type. That wouldn't be a problem by itself, except...
+
+ - R currently lacks a native 64-bit integer type. About a year ago
+   Gabe Becker mentioned that Luke Tierney has been considering
+   improvements in this direction, but it's hard to introduce 64-bit
+   integers without making the user worry even more about data types
+   (numeric != integer != 64-bit integer) or introducing a lot of
+   overhead (64-bit integers being twice as large as 32-bit ones and,
+   depending on the workload, frequently redundant).
+
+ - Two-dimensional objects eventually get transformed into matrices and
+   handed to LAPACK for linear algebra operations. Currently, the
+   interface used by R to talk to BLAS and LAPACK only supports 32-bit
+   signed integers for lengths. 64-bit BLASes and LAPACKs do exist
+   (e.g. OpenBLAS can be compiled with 64-bit lengths), but we haven't
+   taught R to use them.
+
+   (This isn't limited to array dimensions, by the way. If you try to
+   svd() a 40000 by 40000 matrix, it'll try to ask for temporary memory
+   with length that overflows a signed 32-bit integer, get a much
+   shorter allocation instead, promptly overflow the buffer and
+   crash the process.)
+
+As you see, it's interconnected; work on one thing will involve the
+other two.
+
+-- 
+Best regards,
+Ivan
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Jul  3 09:22:25 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 3 Jul 2024 09:22:25 +0200
+Subject: [Rd] Large vector support in data.frames
+In-Reply-To: <20240702170444.5c43761e@arachnoid>
+References: <b3c5fa5d-1ef0-4c39-a9a9-a86e198059f9@eoos.dds.nl>
+ <20240702170444.5c43761e@arachnoid>
+Message-ID: <289AC72B-2A0B-4087-B2E7-74C9E61BBB34@R-project.org>
+
+The second point is not really an issue - R already uses numerics for larger-than-32-bit indexing at R level and it works just fine for objects up to ca. 72 petabytes.
+
+However, the first one is a bit more relevant than one would think. At one point I have experimented with allowing data frames with more than 2^31 rows, but it breaks in many places - some quite unexpected. Beside dim() there is also the issue with (non-expanded) row names. Overall, it is a lot more work - some would have to be done in R but some would require changes to packages as well.
+
+(In practice I use sharded data frames for large data which removes the limit and allows parallel processing - but requires support from the methods that will be applied to them).
+
+Cheers,
+Simon
+
+
+
+> On Jul 2, 2024, at 16:04, Ivan Krylov via R-devel <r-devel at r-project.org> wrote:
+> 
+> ? Wed, 19 Jun 2024 09:52:20 +0200
+> Jan van der Laan <rhelp at eoos.dds.nl> ?????:
+> 
+>> What is the status of supporting long vectors in data.frames (e.g. 
+>> data.frames with more than 2^31 records)? Is this something that is 
+>> being worked on? Is there a time line for this? Is this something I
+>> can contribute to?
+> 
+> Apologies if you've already received a better answer off-list.
+> 
+> From from my limited understanding, the problem with supporting
+> larger-than-(2^31-1) dimensions has multiple facets:
+> 
+> - In many parts of R code, there's the assumption that dim() is
+>   of integer type. That wouldn't be a problem by itself, except...
+> 
+> - R currently lacks a native 64-bit integer type. About a year ago
+>   Gabe Becker mentioned that Luke Tierney has been considering
+>   improvements in this direction, but it's hard to introduce 64-bit
+>   integers without making the user worry even more about data types
+>   (numeric != integer != 64-bit integer) or introducing a lot of
+>   overhead (64-bit integers being twice as large as 32-bit ones and,
+>   depending on the workload, frequently redundant).
+> 
+> - Two-dimensional objects eventually get transformed into matrices and
+>   handed to LAPACK for linear algebra operations. Currently, the
+>   interface used by R to talk to BLAS and LAPACK only supports 32-bit
+>   signed integers for lengths. 64-bit BLASes and LAPACKs do exist
+>   (e.g. OpenBLAS can be compiled with 64-bit lengths), but we haven't
+>   taught R to use them.
+> 
+>   (This isn't limited to array dimensions, by the way. If you try to
+>   svd() a 40000 by 40000 matrix, it'll try to ask for temporary memory
+>   with length that overflows a signed 32-bit integer, get a much
+>   shorter allocation instead, promptly overflow the buffer and
+>   crash the process.)
+> 
+> As you see, it's interconnected; work on one thing will involve the
+> other two.
+> 
+> -- 
+> Best regards,
+> Ivan
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+
+
+From rhe|p @end|ng |rom eoo@@dd@@n|  Thu Jul  4 08:38:01 2024
+From: rhe|p @end|ng |rom eoo@@dd@@n| (Jan van der Laan)
+Date: Thu, 4 Jul 2024 08:38:01 +0200
+Subject: [Rd] Large vector support in data.frames
+In-Reply-To: <289AC72B-2A0B-4087-B2E7-74C9E61BBB34@R-project.org>
+References: <b3c5fa5d-1ef0-4c39-a9a9-a86e198059f9@eoos.dds.nl>
+ <20240702170444.5c43761e@arachnoid>
+ <289AC72B-2A0B-4087-B2E7-74C9E61BBB34@R-project.org>
+Message-ID: <628f7453-e37c-484c-aff5-2b72dba8e61d@eoos.dds.nl>
+
+Ivan, Simon,
+
+Thanks for the replies.
+
+I can work around the limitation. I currently either divide the data 
+into shards or use a list with (long) vectors depending on what I am 
+trying to do. But I have to transform between the two representations 
+which takes time and memory and often need more code than I would have 
+if I could have used data.frames.
+
+Being able to create large (> 2^31-1 rows) data.frames and doing some 
+basic things like selecting rows and columns, would already be really 
+nice. That would also allow package maintainers to start supporting 
+these data.frames. I imagine getting large data.frames working in 
+functions like lm, is not trivial and lm might not support this any time 
+soon. However, a package like biglm might.
+
+But from what you are saying, I get the impression that this is not 
+something that is being actively worked on. I must say, my hands a kind 
+of itching to try.
+
+Best,
+Jan
+
+
+
+On 03-07-2024 09:22, Simon Urbanek wrote:
+> The second point is not really an issue - R already uses numerics for larger-than-32-bit indexing at R level and it works just fine for objects up to ca. 72 petabytes.
+> 
+> However, the first one is a bit more relevant than one would think. At one point I have experimented with allowing data frames with more than 2^31 rows, but it breaks in many places - some quite unexpected. Beside dim() there is also the issue with (non-expanded) row names. Overall, it is a lot more work - some would have to be done in R but some would require changes to packages as well.
+> 
+> (In practice I use sharded data frames for large data which removes the limit and allows parallel processing - but requires support from the methods that will be applied to them).
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+>> On Jul 2, 2024, at 16:04, Ivan Krylov via R-devel <r-devel at r-project.org> wrote:
+>>
+>> ? Wed, 19 Jun 2024 09:52:20 +0200
+>> Jan van der Laan <rhelp at eoos.dds.nl> ?????:
+>>
+>>> What is the status of supporting long vectors in data.frames (e.g.
+>>> data.frames with more than 2^31 records)? Is this something that is
+>>> being worked on? Is there a time line for this? Is this something I
+>>> can contribute to?
+>>
+>> Apologies if you've already received a better answer off-list.
+>>
+>>  From from my limited understanding, the problem with supporting
+>> larger-than-(2^31-1) dimensions has multiple facets:
+>>
+>> - In many parts of R code, there's the assumption that dim() is
+>>    of integer type. That wouldn't be a problem by itself, except...
+>>
+>> - R currently lacks a native 64-bit integer type. About a year ago
+>>    Gabe Becker mentioned that Luke Tierney has been considering
+>>    improvements in this direction, but it's hard to introduce 64-bit
+>>    integers without making the user worry even more about data types
+>>    (numeric != integer != 64-bit integer) or introducing a lot of
+>>    overhead (64-bit integers being twice as large as 32-bit ones and,
+>>    depending on the workload, frequently redundant).
+>>
+>> - Two-dimensional objects eventually get transformed into matrices and
+>>    handed to LAPACK for linear algebra operations. Currently, the
+>>    interface used by R to talk to BLAS and LAPACK only supports 32-bit
+>>    signed integers for lengths. 64-bit BLASes and LAPACKs do exist
+>>    (e.g. OpenBLAS can be compiled with 64-bit lengths), but we haven't
+>>    taught R to use them.
+>>
+>>    (This isn't limited to array dimensions, by the way. If you try to
+>>    svd() a 40000 by 40000 matrix, it'll try to ask for temporary memory
+>>    with length that overflows a signed 32-bit integer, get a much
+>>    shorter allocation instead, promptly overflow the buffer and
+>>    crash the process.)
+>>
+>> As you see, it's interconnected; work on one thing will involve the
+>> other two.
+>>
+>> -- 
+>> Best regards,
+>> Ivan
+>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+>
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Jul  4 11:43:06 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 4 Jul 2024 12:43:06 +0300
+Subject: [Rd] R FAQ 2.6, 7.21
+Message-ID: <20240704124306.41fb029f@trisector>
+
+Hello R-devel,
+
+I would like to suggest a couple of updates for the R FAQ.
+
+https://CRAN.R-project.org/bin/linux/suse is currently empty and the
+directory has mtime from 2012, so it probably doesn't help to reference
+it in FAQ 2.6.
+
+There seems to be increased interest in using variables as variable
+names [1,2], so it might be useful to expand 7.21 a little. Can an R
+FAQ entry link to R-intro section 6.1?
+
+Index: doc/manual/R-FAQ.texi
+===================================================================
+--- doc/manual/R-FAQ.texi	(revision 86871)
++++ doc/manual/R-FAQ.texi	(working copy)
+@@ -503,9 +503,6 @@
+ @abbr{RPM}s for @I{RedHat Enterprise Linux} and compatible distributions (e.g.,
+ @I{Centos}, Scientific Linux, Oracle Linux).
+ 
+-See @url{https://CRAN.R-project.org/bin/linux/suse/README.html} for
+-information about @abbr{RPM}s for openSUSE.
+-
+ No other binary distributions are currently publicly available via
+ @CRAN{}.
+ 
+@@ -2624,8 +2621,31 @@
+ @end example
+ 
+ @noindent
+-without any of this messing about.
++without any of this messing about. This becomes especially true if you
++are finding yourself creating and trying to programmatically access
++groups of related variables such as @code{result1}, @code{result2},
++ at code{result3}, and so on: instead of fighting against the language to
++use
+ 
++ at example
++# 'i'th result <- process('i'th dataset)
++assign(paste0("result", i), process(get(paste0("dataset", i))))
++ at end example
++
++it is much easier to put the related variables in lists and use
++
++ at example
++result[[i]] <- process(dataset[[i]])
++ at end example
++
++and, eventually,
++
++ at example
++result <- lapply(dataset, process)
++ at end example
++
++which is easy to replace with @code{parLapply} for parallel processing.
++
+ @node Why do lattice/trellis graphics not work?
+ @section Why do lattice/trellis graphics not work?
+ 
+
+
+-- 
+Best regards,
+Ivan
+
+
+From |uc@r @end|ng |rom |edor@project@org  Thu Jul  4 11:52:35 2024
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Thu, 4 Jul 2024 11:52:35 +0200
+Subject: [Rd] R FAQ 2.6, 7.21
+In-Reply-To: <20240704124306.41fb029f@trisector>
+References: <20240704124306.41fb029f@trisector>
+Message-ID: <CALEXWq3qOGUqkTh2apDR8ZLRmtQH+4MwConcYEs-pqEY=POFrw@mail.gmail.com>
+
+On Thu, 4 Jul 2024 at 11:44, Ivan Krylov via R-devel <r-devel at r-project.org>
+wrote:
+
+> Hello R-devel,
+>
+> I would like to suggest a couple of updates for the R FAQ.
+>
+> https://CRAN.R-project.org/bin/linux/suse is currently empty and the
+> directory has mtime from 2012, so it probably doesn't help to reference
+> it in FAQ 2.6.
+>
+
+And now that we are at it, I would like to suggest also a mention to
+https://cran.r-project.org/bin/linux/fedora/
+
+I?aki
+
+
+> There seems to be increased interest in using variables as variable
+> names [1,2], so it might be useful to expand 7.21 a little. Can an R
+> FAQ entry link to R-intro section 6.1?
+>
+> Index: doc/manual/R-FAQ.texi
+> ===================================================================
+> --- doc/manual/R-FAQ.texi       (revision 86871)
+> +++ doc/manual/R-FAQ.texi       (working copy)
+> @@ -503,9 +503,6 @@
+>  @abbr{RPM}s for @I{RedHat Enterprise Linux} and compatible distributions
+> (e.g.,
+>  @I{Centos}, Scientific Linux, Oracle Linux).
+>
+> -See @url{https://CRAN.R-project.org/bin/linux/suse/README.html} for
+> -information about @abbr{RPM}s for openSUSE.
+> -
+>  No other binary distributions are currently publicly available via
+>  @CRAN{}.
+>
+> @@ -2624,8 +2621,31 @@
+>  @end example
+>
+>  @noindent
+> -without any of this messing about.
+> +without any of this messing about. This becomes especially true if you
+> +are finding yourself creating and trying to programmatically access
+> +groups of related variables such as @code{result1}, @code{result2},
+> + at code{result3}, and so on: instead of fighting against the language to
+> +use
+>
+> + at example
+> +# 'i'th result <- process('i'th dataset)
+> +assign(paste0("result", i), process(get(paste0("dataset", i))))
+> + at end example
+> +
+> +it is much easier to put the related variables in lists and use
+> +
+> + at example
+> +result[[i]] <- process(dataset[[i]])
+> + at end example
+> +
+> +and, eventually,
+> +
+> + at example
+> +result <- lapply(dataset, process)
+> + at end example
+> +
+> +which is easy to replace with @code{parLapply} for parallel processing.
+> +
+>  @node Why do lattice/trellis graphics not work?
+>  @section Why do lattice/trellis graphics not work?
+>
+>
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+
+-- 
+I?aki ?car
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Thu Jul  4 15:35:15 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Thu, 4 Jul 2024 09:35:15 -0400
+Subject: [Rd] Large vector support in data.frames
+In-Reply-To: <628f7453-e37c-484c-aff5-2b72dba8e61d@eoos.dds.nl>
+References: <b3c5fa5d-1ef0-4c39-a9a9-a86e198059f9@eoos.dds.nl>
+ <20240702170444.5c43761e@arachnoid>
+ <289AC72B-2A0B-4087-B2E7-74C9E61BBB34@R-project.org>
+ <628f7453-e37c-484c-aff5-2b72dba8e61d@eoos.dds.nl>
+Message-ID: <002e01dace17$0141f380$03c5da80$@gmail.com>
+
+Unfortunately, as has been noted, some changes require many parties to change at once and can cause huge problems when an unchanged part is reached. If integers are a fixed size, an implementation can be straightforward and you can patch in libraries and parts already used and tested and in languages like C.
+
+Python is an example where they went another way and the built-in integer type has an indefinite length integer. But that can mess with efficiency so some extensions commonly used for their versions of Dataframe often allow you to specify one of several types of fixed length integer for efficiency.
+
+-----Original Message-----
+From: R-devel <r-devel-bounces at r-project.org> On Behalf Of Jan van der Laan
+Sent: Thursday, July 4, 2024 2:38 AM
+To: r-devel at r-project.org
+Subject: Re: [Rd] Large vector support in data.frames
+
+Ivan, Simon,
+
+Thanks for the replies.
+
+I can work around the limitation. I currently either divide the data 
+into shards or use a list with (long) vectors depending on what I am 
+trying to do. But I have to transform between the two representations 
+which takes time and memory and often need more code than I would have 
+if I could have used data.frames.
+
+Being able to create large (> 2^31-1 rows) data.frames and doing some 
+basic things like selecting rows and columns, would already be really 
+nice. That would also allow package maintainers to start supporting 
+these data.frames. I imagine getting large data.frames working in 
+functions like lm, is not trivial and lm might not support this any time 
+soon. However, a package like biglm might.
+
+But from what you are saying, I get the impression that this is not 
+something that is being actively worked on. I must say, my hands a kind 
+of itching to try.
+
+Best,
+Jan
+
+
+
+On 03-07-2024 09:22, Simon Urbanek wrote:
+> The second point is not really an issue - R already uses numerics for larger-than-32-bit indexing at R level and it works just fine for objects up to ca. 72 petabytes.
+> 
+> However, the first one is a bit more relevant than one would think. At one point I have experimented with allowing data frames with more than 2^31 rows, but it breaks in many places - some quite unexpected. Beside dim() there is also the issue with (non-expanded) row names. Overall, it is a lot more work - some would have to be done in R but some would require changes to packages as well.
+> 
+> (In practice I use sharded data frames for large data which removes the limit and allows parallel processing - but requires support from the methods that will be applied to them).
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+>> On Jul 2, 2024, at 16:04, Ivan Krylov via R-devel <r-devel at r-project.org> wrote:
+>>
+>> ? Wed, 19 Jun 2024 09:52:20 +0200
+>> Jan van der Laan <rhelp at eoos.dds.nl> ?????:
+>>
+>>> What is the status of supporting long vectors in data.frames (e.g.
+>>> data.frames with more than 2^31 records)? Is this something that is
+>>> being worked on? Is there a time line for this? Is this something I
+>>> can contribute to?
+>>
+>> Apologies if you've already received a better answer off-list.
+>>
+>>  From from my limited understanding, the problem with supporting
+>> larger-than-(2^31-1) dimensions has multiple facets:
+>>
+>> - In many parts of R code, there's the assumption that dim() is
+>>    of integer type. That wouldn't be a problem by itself, except...
+>>
+>> - R currently lacks a native 64-bit integer type. About a year ago
+>>    Gabe Becker mentioned that Luke Tierney has been considering
+>>    improvements in this direction, but it's hard to introduce 64-bit
+>>    integers without making the user worry even more about data types
+>>    (numeric != integer != 64-bit integer) or introducing a lot of
+>>    overhead (64-bit integers being twice as large as 32-bit ones and,
+>>    depending on the workload, frequently redundant).
+>>
+>> - Two-dimensional objects eventually get transformed into matrices and
+>>    handed to LAPACK for linear algebra operations. Currently, the
+>>    interface used by R to talk to BLAS and LAPACK only supports 32-bit
+>>    signed integers for lengths. 64-bit BLASes and LAPACKs do exist
+>>    (e.g. OpenBLAS can be compiled with 64-bit lengths), but we haven't
+>>    taught R to use them.
+>>
+>>    (This isn't limited to array dimensions, by the way. If you try to
+>>    svd() a 40000 by 40000 matrix, it'll try to ask for temporary memory
+>>    with length that overflows a signed 32-bit integer, get a much
+>>    shorter allocation instead, promptly overflow the buffer and
+>>    crash the process.)
+>>
+>> As you see, it's interconnected; work on one thing will involve the
+>> other two.
+>>
+>> -- 
+>> Best regards,
+>> Ivan
+>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+>
+
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From kev|nu@hey @end|ng |rom gm@||@com  Fri Jul  5 09:27:50 2024
+From: kev|nu@hey @end|ng |rom gm@||@com (Kevin Ushey)
+Date: Fri, 5 Jul 2024 15:27:50 +0800
+Subject: [Rd] API for converting LANGSXP to LISTSXP?
+Message-ID: <CAJXgQP3+OucVzfX9fHk+-4rW1Ks1=rwpvb7WM=oSv0H8YQex_Q@mail.gmail.com>
+
+Hi,
+
+A common idiom in the R sources is to convert objects between LANGSXP
+and LISTSXP by using SET_TYPEOF. However, this is soon going to be
+disallowed in packages. From what I can see, there isn't currently a
+direct way to convert between these two object types using the
+available API. At the R level, one can convert calls to pairlists
+with:
+
+> as.call(pairlist(as.symbol("rnorm"), 42))
+rnorm(42)
+
+However, the reverse is not possible:
+
+> as.pairlist(call("rnorm", 42))
+Error in as.pairlist(call("rnorm", 42)) :
+  'language' object cannot be coerced to type 'pairlist'
+
+One can do such a conversion via conversion to e.g. an intermediate R
+list (VECSXP), but that seems wasteful. Would it make sense to permit
+this coercion? Or, is there some other relevant API I'm missing?
+
+For completeness, Rf_coerceVector() also emits the same error above
+since it uses the same code path.
+
+Thanks,
+Kevin
+
+
+From neon|r@ @end|ng |rom gm@||@com  Fri Jul  5 16:30:41 2024
+From: neon|r@ @end|ng |rom gm@||@com (neonira Arinoem)
+Date: Fri, 5 Jul 2024 16:30:41 +0200
+Subject: [Rd] quarto list of figures
+Message-ID: <CAN--Dz3Q0VQXAKMbf96=rc2-koYA+EaKWCoGR=TuDjE21vaePw@mail.gmail.com>
+
+I am struggling to get Quarto producing a list of figures from a Quarto
+book.
+
+Where may I find a working sample to get inspiration from?
+
+	[[alternative HTML version deleted]]
+
+
+From m|ch@|2992 @end|ng |rom gm@||@com  Fri Jul  5 16:47:35 2024
+From: m|ch@|2992 @end|ng |rom gm@||@com (=?UTF-8?Q?Micha=C5=82_Bojanowski?=)
+Date: Fri, 5 Jul 2024 16:47:35 +0200
+Subject: [Rd] quarto list of figures
+In-Reply-To: <CAN--Dz3Q0VQXAKMbf96=rc2-koYA+EaKWCoGR=TuDjE21vaePw@mail.gmail.com>
+References: <CAN--Dz3Q0VQXAKMbf96=rc2-koYA+EaKWCoGR=TuDjE21vaePw@mail.gmail.com>
+Message-ID: <CAByPayFmGwnZHkr3gQveetG1pkWEqHioAmoReSjJ2=8MhMY_Lg@mail.gmail.com>
+
+> I am struggling to get Quarto producing a list of figures from a Quarto
+> book.
+>
+> Where may I find a working sample to get inspiration from?
+
+You will have more luck asking at
+https://github.com/quarto-dev/quarto-cli/discussions
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sat Jul  6 14:10:09 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 6 Jul 2024 15:10:09 +0300
+Subject: [Rd] API for converting LANGSXP to LISTSXP?
+In-Reply-To: <CAJXgQP3+OucVzfX9fHk+-4rW1Ks1=rwpvb7WM=oSv0H8YQex_Q@mail.gmail.com>
+References: <CAJXgQP3+OucVzfX9fHk+-4rW1Ks1=rwpvb7WM=oSv0H8YQex_Q@mail.gmail.com>
+Message-ID: <20240706151009.4071a55b@parabola>
+
+On Fri, 5 Jul 2024 15:27:50 +0800
+Kevin Ushey <kevinushey at gmail.com> wrote:
+
+> A common idiom in the R sources is to convert objects between LANGSXP
+> and LISTSXP by using SET_TYPEOF. However, this is soon going to be
+> disallowed in packages.
+
+Would you mind providing an example where a package needs to take an
+existing LISTSXP and convert it to a LANGSXP (or vice versa)? I think
+that Luke Tierney intended to replace the uses of
+SET_TYPEOF(allocList(...), LANGSXP) with allocLang(...).
+
+At least it's easy to manually convert between the two by replacing the
+head of the list using LCONS(CAR(list), CDR(list)) or CONS(CAR(lang),
+CDR(lang)): in a call, the rest of the arguments are ordinary LISTSXPs.
+
+-- 
+Best regards,
+Ivan
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Sat Jul  6 15:59:11 2024
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Sat, 6 Jul 2024 08:59:11 -0500 (CDT)
+Subject: [Rd] [External]  API for converting LANGSXP to LISTSXP?
+In-Reply-To: <CAJXgQP3+OucVzfX9fHk+-4rW1Ks1=rwpvb7WM=oSv0H8YQex_Q@mail.gmail.com>
+References: <CAJXgQP3+OucVzfX9fHk+-4rW1Ks1=rwpvb7WM=oSv0H8YQex_Q@mail.gmail.com>
+Message-ID: <ba6081a2-4f80-cf8f-f3d9-b925fdc4f117@uiowa.edu>
+
+We have long been discouraging the use of pairlists. So no, we will
+not do anything to facilitate this conversion; if anything the
+opposite. SET_TYPEOF is used more than it should be in the sources.
+It is something I would like us to fix sometime, but isn't high
+priority.
+
+Best,
+
+luke
+
+On Fri, 5 Jul 2024, Kevin Ushey wrote:
+
+> Hi,
+>
+> A common idiom in the R sources is to convert objects between LANGSXP
+> and LISTSXP by using SET_TYPEOF. However, this is soon going to be
+> disallowed in packages. From what I can see, there isn't currently a
+> direct way to convert between these two object types using the
+> available API. At the R level, one can convert calls to pairlists
+> with:
+>
+>> as.call(pairlist(as.symbol("rnorm"), 42))
+> rnorm(42)
+>
+> However, the reverse is not possible:
+>
+>> as.pairlist(call("rnorm", 42))
+> Error in as.pairlist(call("rnorm", 42)) :
+>  'language' object cannot be coerced to type 'pairlist'
+>
+> One can do such a conversion via conversion to e.g. an intermediate R
+> list (VECSXP), but that seems wasteful. Would it make sense to permit
+> this coercion? Or, is there some other relevant API I'm missing?
+>
+> For completeness, Rf_coerceVector() also emits the same error above
+> since it uses the same code path.
+>
+> Thanks,
+> Kevin
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+
+From kev|nu@hey @end|ng |rom gm@||@com  Sun Jul  7 11:45:19 2024
+From: kev|nu@hey @end|ng |rom gm@||@com (Kevin Ushey)
+Date: Sun, 7 Jul 2024 17:45:19 +0800
+Subject: [Rd] API for converting LANGSXP to LISTSXP?
+In-Reply-To: <20240706151009.4071a55b@parabola>
+References: <CAJXgQP3+OucVzfX9fHk+-4rW1Ks1=rwpvb7WM=oSv0H8YQex_Q@mail.gmail.com>
+ <20240706151009.4071a55b@parabola>
+Message-ID: <CAJXgQP1Mtob6fH6LhL3RS1HxmdhFpwX6iEn83kTG18yUO2qv=A@mail.gmail.com>
+
+In this case, Rcpp was internally converting (already-existing)
+LISTSXPs to LANGSXPs using SET_TYPEOF in some places; the goal was to
+allow Rcpp to continue doing this without using SET_TYPEOF just to
+preserve existing behavior in an API-compliant way. I ended up doing
+exactly what you suggested; thanks.
+
+On Sat, Jul 6, 2024 at 8:09?PM Ivan Krylov <ikrylov at disroot.org> wrote:
+>
+> On Fri, 5 Jul 2024 15:27:50 +0800
+> Kevin Ushey <kevinushey at gmail.com> wrote:
+>
+> > A common idiom in the R sources is to convert objects between LANGSXP
+> > and LISTSXP by using SET_TYPEOF. However, this is soon going to be
+> > disallowed in packages.
+>
+> Would you mind providing an example where a package needs to take an
+> existing LISTSXP and convert it to a LANGSXP (or vice versa)? I think
+> that Luke Tierney intended to replace the uses of
+> SET_TYPEOF(allocList(...), LANGSXP) with allocLang(...).
+>
+> At least it's easy to manually convert between the two by replacing the
+> head of the list using LCONS(CAR(list), CDR(list)) or CONS(CAR(lang),
+> CDR(lang)): in a call, the rest of the arguments are ordinary LISTSXPs.
+>
+> --
+> Best regards,
+> Ivan
+
+
+From h||m@r@berger @end|ng |rom gmx@de  Fri Jul 12 17:35:19 2024
+From: h||m@r@berger @end|ng |rom gmx@de (Hilmar Berger)
+Date: Fri, 12 Jul 2024 17:35:19 +0200
+Subject: [Rd] xftrm is more than 100x slower for AsIs than for character
+ vectors
+Message-ID: <557b02ff-7632-4440-9b0b-8373d40a3c0f@gmx.de>
+
+Good evening,
+
+I recently have observed slow merges when combining multiple data frames
+derived from DataFrame and base::data.frame. I observed that the index
+column of intermediate tables was of class <AsIs> (automatically
+converted from character). The problem occurred mainly when using the
+sorted = T option in base::merge.
+
+This can be traced to xtfrm.AsIs being more than 100 times slower than
+the comparable function for character vectors.
+
+x = paste0("A_", 1:1e5)
+system.time({o <- xtfrm(x)})
+
+#? user? system elapsed
+#? 0.325?? 0.005?? 0.332
+
+x <- I(x)
+system.time({o <- xtfrm(x)}) # this calls xtfrm.AsIs
+
+# user? system elapsed
+# 26.153?? 0.016? 26.388
+
+This can be finally traced to base::rank() (called from xtfrm.default),
+where I found that
+
+"NB: rank is not itself generic but xtfrm is, and rank(xtfrm(x), ....)
+will have the desired result if there is a xtfrm method. Otherwise, rank
+will make use of ==, >, is.na and extraction methods for classed
+objects, possibly rather slowly. "
+
+This *sounds* like the existence of xtfrm.AsIs should already be able to
+accelerate the ranking, but this does not seem to work. xtfrm.AsIs does
+not do anything for my case of class(x) == "AsIs" and just delegates to
+xtfrm.default.
+
+As a quick solution (and if there is no other fix), could we possibly
+add a note to the help page of I() that sorting/ordering/ranking of AsIs
+columns will be rather slow?
+
+Thanks a lot!
+
+Best regards
+
+Hilmar
+
+ > sessionInfo()
+R version 4.4.1 (2024-06-14)
+Platform: x86_64-pc-linux-gnu
+Running under: Ubuntu 20.04.6 LTS
+
+Matrix products: default
+BLAS:?? /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3
+LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/liblapack.so.3;?
+LAPACK version 3.9.0
+
+locale:
+ ?[1] LC_CTYPE=en_US.UTF-8?????? LC_NUMERIC=C
+ ?[3] LC_TIME=de_DE.UTF-8??????? LC_COLLATE=en_US.UTF-8
+ ?[5] LC_MONETARY=de_DE.UTF-8??? LC_MESSAGES=en_US.UTF-8
+ ?[7] LC_PAPER=de_DE.UTF-8?????? LC_NAME=C
+ ?[9] LC_ADDRESS=C?????????????? LC_TELEPHONE=C
+[11] LC_MEASUREMENT=de_DE.UTF-8 LC_IDENTIFICATION=C
+
+time zone: Europe/Berlin
+tzcode source: system (glibc)
+
+attached base packages:
+[1] stats???? graphics? grDevices utils???? datasets? methods base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.4.1
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sun Jul 14 11:24:29 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 14 Jul 2024 12:24:29 +0300
+Subject: [Rd] xftrm is more than 100x slower for AsIs than for character
+ vectors
+In-Reply-To: <557b02ff-7632-4440-9b0b-8373d40a3c0f@gmx.de>
+References: <557b02ff-7632-4440-9b0b-8373d40a3c0f@gmx.de>
+Message-ID: <20240714122429.760f4183@trisector>
+
+? Fri, 12 Jul 2024 17:35:19 +0200
+Hilmar Berger via R-devel <r-devel at r-project.org> ?????:
+
+> This can be finally traced to base::rank() (called from
+> xtfrm.default), where I found that
+> 
+> "NB: rank is not itself generic but xtfrm is, and rank(xtfrm(x), ....)
+> will have the desired result if there is a xtfrm method. Otherwise,
+> rank will make use of ==, >, is.na and extraction methods for classed
+> objects, possibly rather slowly. "
+
+The problem is indeed that the vector reaches base::rank in both cases,
+but since it has a class, the function has to construct and evaluate a
+call to .gt every time it wants to compare two elements.
+
+xtfrm.AsIs even tries to remove the 'AsIs' class before continuing the
+method dispatch process:
+
+>> if (length(cl <- class(x)) > 1) oldClass(x) <- cl[-1L]
+
+It doesn't work in the (very contrived) case when 'AsIs' is not the
+first class and it doesn't remove 'AsIs' as the only class (making
+static int equal(...) take the slower branch). What's going to break if
+we allow removing the class attribute altogether? This seems to speed
+up xtfrm(I(x)) and survive LC_ALL=C.UTF-8 make check-devel:
+
+Index: src/library/base/R/sort.R
+===================================================================
+--- src/library/base/R/sort.R	(revision 86895)
++++ src/library/base/R/sort.R	(working copy)
+@@ -297,7 +297,8 @@
+ 
+ xtfrm.AsIs <- function(x)
+ {
+-    if(length(cl <- class(x)) > 1) oldClass(x) <- cl[-1L]
++    cl <- oldClass(x)
++    oldClass(x) <- cl[cl != 'AsIs']
+     NextMethod("xtfrm")
+ }
+ 
+
+-- 
+Best regards,
+Ivan
+
+
+From ju0815nk @end|ng |rom gmx@net  Sun Jul 14 19:09:34 2024
+From: ju0815nk @end|ng |rom gmx@net (HB)
+Date: Sun, 14 Jul 2024 19:09:34 +0200
+Subject: [Rd] xftrm is more than 100x slower for AsIs than for character
+ vectors
+In-Reply-To: <20240714122429.760f4183@trisector>
+References: <557b02ff-7632-4440-9b0b-8373d40a3c0f@gmx.de>
+ <20240714122429.760f4183@trisector>
+Message-ID: <B85D3F49-3EF2-4F56-A0C7-21C044C1FE37@gmx.net>
+
+Dear Ivan, 
+
+thanks for the confirmation and the proposed patch. 
+
+I just wanted to add some notes regarding the relevance of this: base::merge using by.x=0 or by.y=0 (i.e. matching on row.names) will automatically add a column Row.names which is I(row.names(x)) to the corresponding input table (using I() since  revision 39026 to avoid conversion of character to factor). When this column is used for sorting (sort=TRUE by default in merge; should happen at least if all.x=T or all.y=T), this will result in slower execution. 
+
+xtfrm.AsIs is unchanged since its addition in r50992 (likely unrelated to the former). 
+
+So I guess that this just went unnoticed since it will not cause problems on small data frames.
+
+Best regards
+
+Hilmar
+ 
+	[[alternative HTML version deleted]]
+
+
+From peter@|@ng|e|der @end|ng |rom gm@||@com  Mon Jul 15 07:08:01 2024
+From: peter@|@ng|e|der @end|ng |rom gm@||@com (Peter Langfelder)
+Date: Mon, 15 Jul 2024 13:08:01 +0800
+Subject: [Rd] R-patched on CRAN is R-4.3.3
+Message-ID: <CA+hbrhWeSLh+RhrC5FgRhbG396SNrCVbdsY0CfL4Ut387t896Q@mail.gmail.com>
+
+Hi all,
+
+apologies if I missed something here. Just downloaded and compiled
+R-patched from https://stat.ethz.ch/R/daily/ but it reports as R-4.3.3
+(2024-04-09 r86895) -- "Angel Food Cake". The last dated R-patched is
+from 2024-04-09, about 3 months old. Are R-patched not updated
+anymore, am I looking at a wrong directory or even a wrong server? The
+current R Installation and Administration manual
+(https://cran.r-project.org/doc/manuals/r-patched/R-admin.html#Getting-patched-and-development-versions)
+suggests that the current R-patched should be where I looked for it:
+
+A patched version of the current release, ?r-patched?, and the current
+development version, ?r-devel?, are available as daily tarballs and
+via access to the R Subversion repository. (For the two weeks prior to
+the release of a minor (4.x.0) version, ?r-patched? tarballs may refer
+to beta/release candidates of the upcoming release, the patched
+version of the current release being available via Subversion.)
+
+The tarballs are available from https://stat.ethz.ch/R/daily/.
+Download R-patched.tar.gz or R-devel.tar.gz (or the .tar.bz2 versions)
+and unpack as described in the previous section. They are built in
+exactly the same way as distributions of R releases.
+
+Thanks,
+
+Peter
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Jul 15 09:56:53 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 15 Jul 2024 09:56:53 +0200
+Subject: [Rd] R-patched on CRAN is R-4.3.3
+In-Reply-To: <CA+hbrhWeSLh+RhrC5FgRhbG396SNrCVbdsY0CfL4Ut387t896Q@mail.gmail.com>
+References: <CA+hbrhWeSLh+RhrC5FgRhbG396SNrCVbdsY0CfL4Ut387t896Q@mail.gmail.com>
+Message-ID: <f50fcfef-86df-4ca8-9d83-20d472ed8aaf@gmail.com>
+
+
+On 7/15/24 07:08, Peter Langfelder wrote:
+> Hi all,
+>
+> apologies if I missed something here. Just downloaded and compiled
+> R-patched from https://stat.ethz.ch/R/daily/ but it reports as R-4.3.3
+> (2024-04-09 r86895) -- "Angel Food Cake". The last dated R-patched is
+> from 2024-04-09, about 3 months old. Are R-patched not updated
+> anymore, am I looking at a wrong directory or even a wrong server? The
+> current R Installation and Administration manual
+> (https://cran.r-project.org/doc/manuals/r-patched/R-admin.html#Getting-patched-and-development-versions)
+> suggests that the current R-patched should be where I looked for it:
+>
+> A patched version of the current release, ?r-patched?, and the current
+> development version, ?r-devel?, are available as daily tarballs and
+> via access to the R Subversion repository. (For the two weeks prior to
+> the release of a minor (4.x.0) version, ?r-patched? tarballs may refer
+> to beta/release candidates of the upcoming release, the patched
+> version of the current release being available via Subversion.)
+>
+> The tarballs are available from https://stat.ethz.ch/R/daily/.
+> Download R-patched.tar.gz or R-devel.tar.gz (or the .tar.bz2 versions)
+> and unpack as described in the previous section. They are built in
+> exactly the same way as distributions of R releases.
+
+Before this gets resolved, you can get the latest version of R-patched 
+from svn:
+
+https://svn.r-project.org/R/branches/R-4-4-branch
+
+(and the current R release from 
+https://cran.r-project.org/src/base/R-4/R-4.4.1.tar.gz)
+
+Tomas
+
+>
+> Thanks,
+>
+> Peter
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Jul 15 16:31:31 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 15 Jul 2024 17:31:31 +0300
+Subject: [Rd] Minor inconsistencies in tools:::funAPI()
+Message-ID: <20240715173131.0ca30ba5@arachnoid>
+
+Hi all,
+
+I've noticed some peculiarities in the tools:::funAPI output that
+complicate its programmatic use a bit.
+
+ - Is it for remapped symbol names (with Rf_ or the Fortran
+   underscore), or for unmapped names (without Rf_ or the underscore)?
+
+I see that the functions marked in WRE are almost all (except
+Rf_installChar and Rf_installTrChar) unmapped. This makes a lot of
+sense because some of those interfaces (e.g. CONS(), CHAR(),
+NOT_SHARED()) are C preprocessor macros, not functions. I also see that
+installTrChar is not explicitly marked.
+
+Are we allowed to call tools:::unmap(tools:::funAPI()$name) and
+consider the return value to be the list of all unmapped APIs, despite,
+e.g., installTrChar not being explicitly marked?
+
+ - Should R_PV be an @apifun if it's currently caught by checks in
+   sotools.R?
+
+ - Should R_FindSymbol be commented /* Not API */ if it's marked as
+   @apifun in WRE and not caught by sotools.R? It is currently used by 8
+   CRAN packages.
+
+ - The names 'select', 'delztg' from R_ext/Lapack.h are function
+   pointer arguments, not functions or type declarations. They are
+   being found because funcRegexp is written to match incomplete
+   function declarations (e.g. when they end up being split over
+   multiple lines, like in R_ext/Lapack.h), and function pointer
+   argument declarations look sufficiently similar.
+
+A relatively compact (but still brittle) way to match function
+declarations in C header files is shown at the end of this message. I
+have confirmed that compared to tools:::getFunsHdr, the only extraneous
+symbols that it finds in preprocessed headers are "R_SetWin32",
+"user_unif_rand", "user_unif_init", "user_unif_nseed",
+"user_unif_seedloc" "user_norm_rand", which are special-cased in
+tools:::getFunsHdr, and the only symbols it doesn't find are "select"
+and "delztg" in R_ext/Lapack.h, which we should not be finding.
+
+# "Bird's eye" view, gives unmapped names on non-preprocessed headers
+getdecl <- function(file, lines = readLines(file)) {
+	# have to combine to perform multi-line matches
+	lines <- paste(c(lines, ''), collapse = '\n')
+	# first eat the C comments, dotall but non-greedy match
+	lines <- gsub('(?s)/\\*.*?\\*/', '', lines, perl = TRUE)
+	# C++-style comments too, multiline not dotall
+	lines <- gsub('(?m)//.*$', '', lines, perl = TRUE)
+	# drop all preprocessor directives
+	lines <- gsub('(?m)^\\s*#.*$', '', lines, perl = TRUE)
+
+	rx <- r"{(?xs)
+		(?!typedef)(?<!\w) # please no typedefs
+		# return type with attributes
+		(
+			# words followed by whitespace or stars
+			(?: \w+ (?:\s+ | \*)+)+
+		)
+		# function name, assumes no extra whitespace
+		(
+			\w+\(\w+\) # macro call
+			| \(\w+\)  # in parentheses
+			| \w+      # a plain name
+		)
+		# arguments: non-greedy match inside parentheses
+		\s* \( (.*?) \) \s* # using dotall here
+		# will include R_PRINTF_FORMAT(1,2 but we don't care
+		# finally terminated by semicolon
+		;
+	}"
+
+	regmatches(lines, gregexec(rx, lines, perl = TRUE))[[1]][3,]
+}
+
+# Preprocess then extract remapped function names like getFunsHdr
+getdecl2 <- function(file)
+	file |>
+	readLines() |>
+	grep('^\\s*#\\s*error', x = _, value = TRUE, invert = TRUE) |>
+	tools:::ccE() |>
+	getdecl(lines = _)
+
+-- 
+Best regards,
+Ivan
+
+
+From h||m@r@berger @end|ng |rom gmx@de  Tue Jul 16 09:08:18 2024
+From: h||m@r@berger @end|ng |rom gmx@de (Hilmar Berger)
+Date: Tue, 16 Jul 2024 09:08:18 +0200
+Subject: [Rd] I() in merge (was: Re: xftrm is more than 100x slower for AsIs
+ than for character vectors)
+In-Reply-To: <B85D3F49-3EF2-4F56-A0C7-21C044C1FE37@gmx.net>
+References: <557b02ff-7632-4440-9b0b-8373d40a3c0f@gmx.de>
+ <20240714122429.760f4183@trisector>
+ <B85D3F49-3EF2-4F56-A0C7-21C044C1FE37@gmx.net>
+Message-ID: <a539be8b-64a8-4e1b-8676-f79157db3d8d@gmx.de>
+
+Dear all,
+
+actually, it is not clear to me why there is still a protection of the
+added Row.names column in merge using I(). This seems to stem from a
+time when R would automatically convert character vectors to factor in
+data.frame on insert. However, I can't reproduce this behaviour even in
+data.frames generated with stringsAsFactors = T in current versions of
+R. Maybe the I() inserted in r 39026 can be removed altogether?
+
+Best regards
+
+Hilmar
+
+On 14.07.24 19:09, HB via R-devel wrote:
+> Dear Ivan,
+>
+> thanks for the confirmation and the proposed patch.
+>
+> I just wanted to add some notes regarding the relevance of this: base::merge using by.x=0 or by.y=0 (i.e. matching on row.names) will automatically add a column Row.names which is I(row.names(x)) to the corresponding input table (using I() since  revision 39026 to avoid conversion of character to factor). When this column is used for sorting (sort=TRUE by default in merge; should happen at least if all.x=T or all.y=T), this will result in slower execution.
+>
+> xtfrm.AsIs is unchanged since its addition in r50992 (likely unrelated to the former).
+>
+> So I guess that this just went unnoticed since it will not cause problems on small data frames.
+>
+> Best regards
+>
+> Hilmar
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From mu@che|||j2 @end|ng |rom gm@||@com  Thu Jul 18 18:14:27 2024
+From: mu@che|||j2 @end|ng |rom gm@||@com (John Muschelli)
+Date: Thu, 18 Jul 2024 12:14:27 -0400
+Subject: [Rd] Printing digits.secs on data.frame?
+Message-ID: <CAFsq6G9C0ue-mQXv6RLFZAyNcKF6HAUihPY3HnHFXba4-MMCVw@mail.gmail.com>
+
+Is there a way to have printing data.frames with POSIXct to display
+milliseconds if digits.secs is set as a default?
+
+You can use the digits argument in print, such as print(df, digits = 3) to
+get the intended output, but I assumed it was done with the option
+digits.secs set.  Tibbles by default do this printing, which is shown
+below, but I was unsure if digits.secs should affect printing data.frames,
+as we see below it affects printing POSIXct outside of a data.frame.
+
+``` r
+df = structure(list(time = structure(c(1509375600, 1509375600.03333,
+                                       1509375600.06667, 1509375600.1,
+1509375600.13333, 1509375600.16667
+), class = c("POSIXct", "POSIXt"), tzone = "GMT"),
+X = c(0.188,
+      0.18, 0.184, 0.184, 0.184, 0.184),
+Y = c(0.145, 0.125, 0.121,
+      0.121, 0.117, 0.125),
+Z = c(-0.984, -0.988, -0.984, -0.992, -0.988,
+      -0.988)), row.names = c(NA, 6L), class = "data.frame")
+options(digits.secs = NULL)
+getOption("digits.secs")
+#> NULL
+df
+#>                  time     X     Y      Z
+#> 1 2017-10-30 15:00:00 0.188 0.145 -0.984
+#> 2 *2017-10-30 15:00:00* 0.180 0.125 -0.988
+#> 3 2017-10-30 15:00:00 0.184 0.121 -0.984
+#> 4 2017-10-30 15:00:00 0.184 0.121 -0.992
+#> 5 2017-10-30 15:00:00 0.184 0.117 -0.988
+#> 6 2017-10-30 15:00:00 0.184 0.125 -0.988
+print(df)
+#>                  time     X     Y      Z
+#> 1 2017-10-30 15:00:00 0.188 0.145 -0.984
+#> 2 *2017-10-30 15:00:00* 0.180 0.125 -0.988
+#> 3 2017-10-30 15:00:00 0.184 0.121 -0.984
+#> 4 2017-10-30 15:00:00 0.184 0.121 -0.992
+#> 5 2017-10-30 15:00:00 0.184 0.117 -0.988
+#> 6 2017-10-30 15:00:00 0.184 0.125 -0.988
+df$time
+#> [1] "2017-10-30 15:00:00 GMT" "*2017-10-30 15:00:00 GMT*"
+#> [3] "2017-10-30 15:00:00 GMT" "2017-10-30 15:00:00 GMT"
+#> [5] "2017-10-30 15:00:00 GMT" "2017-10-30 15:00:00 GMT"
+
+print(df, digits = 3)
+#>                      time     X     Y      Z
+#> 1 2017-10-30 15:00:00.000 0.188 0.145 -0.984
+#> 2 *2017-10-30 15:00:00.033* 0.180 0.125 -0.988
+#> 3 2017-10-30 15:00:00.066 0.184 0.121 -0.984
+#> 4 2017-10-30 15:00:00.099 0.184 0.121 -0.992
+#> 5 2017-10-30 15:00:00.133 0.184 0.117 -0.988
+#> 6 2017-10-30 15:00:00.166 0.184 0.125 -0.988
+tibble::as_tibble(df)
+#> # A tibble: 6 ? 4
+#>   time                    X     Y      Z
+#>   <dttm>              <dbl> <dbl>  <dbl>
+#> 1 2017-10-30 15:00:00 0.188 0.145 -0.984
+#> 2 *2017-10-30 15:00:00* 0.18  0.125 -0.988
+#> 3 2017-10-30 15:00:00 0.184 0.121 -0.984
+#> 4 2017-10-30 15:00:00 0.184 0.121 -0.992
+#> 5 2017-10-30 15:00:00 0.184 0.117 -0.988
+#> 6 2017-10-30 15:00:00 0.184 0.125 -0.988
+```
+
+We see by default tibbles do this printing
+
+``` r
+options(digits.secs = 3)
+getOption("digits.secs")
+#> [1] 3
+df
+#>                  time     X     Y      Z
+#> 1 2017-10-30 15:00:00 0.188 0.145 -0.984
+#> 2 *2017-10-30 15:00:00* 0.180 0.125 -0.988
+#> 3 2017-10-30 15:00:00 0.184 0.121 -0.984
+#> 4 2017-10-30 15:00:00 0.184 0.121 -0.992
+#> 5 2017-10-30 15:00:00 0.184 0.117 -0.988
+#> 6 2017-10-30 15:00:00 0.184 0.125 -0.988
+print(df)
+#>                  time     X     Y      Z
+#> 1 2017-10-30 15:00:00 0.188 0.145 -0.984
+#> 2* 2017-10-30 15:00:00* 0.180 0.125 -0.988
+#> 3 2017-10-30 15:00:00 0.184 0.121 -0.984
+#> 4 2017-10-30 15:00:00 0.184 0.121 -0.992
+#> 5 2017-10-30 15:00:00 0.184 0.117 -0.988
+#> 6 2017-10-30 15:00:00 0.184 0.125 -0.988
+```
+
+We see that this affects printing POSIXct outside of a data.frame
+
+``` r
+df$time
+#> [1] "2017-10-30 15:00:00.000 GMT" "*2017-10-30 15:00:00.033 GMT*"
+#> [3] "2017-10-30 15:00:00.066 GMT" "2017-10-30 15:00:00.099 GMT"
+#> [5] "2017-10-30 15:00:00.133 GMT" "2017-10-30 15:00:00.166 GMT"
+print(df, digits = 3)
+#>                      time     X     Y      Z
+#> 1 2017-10-30 15:00:00.000 0.188 0.145 -0.984
+#> 2 *2017-10-30 15:00:00.033* 0.180 0.125 -0.988
+#> 3 2017-10-30 15:00:00.066 0.184 0.121 -0.984
+#> 4 2017-10-30 15:00:00.099 0.184 0.121 -0.992
+#> 5 2017-10-30 15:00:00.133 0.184 0.117 -0.988
+#> 6 2017-10-30 15:00:00.166 0.184 0.125 -0.988
+tibble::as_tibble(df)
+#> # A tibble: 6 ? 4
+#>   time                        X     Y      Z
+#>   <dttm>                  <dbl> <dbl>  <dbl>
+#> 1 2017-10-30 15:00:00.000 0.188 0.145 -0.984
+#> 2 *2017-10-30 15:00:00.033* 0.18  0.125 -0.988
+#> 3 2017-10-30 15:00:00.066 0.184 0.121 -0.984
+#> 4 2017-10-30 15:00:00.099 0.184 0.121 -0.992
+#> 5 2017-10-30 15:00:00.133 0.184 0.117 -0.988
+#> 6 2017-10-30 15:00:00.166 0.184 0.125 -0.988
+```
+
+<sup>Created on 2024-07-18 with [reprex v2.1.0](https://reprex.tidyverse.org
+)</sup>
+
+<details style="margin-bottom:10px;">
+<summary>
+Session info
+</summary>
+
+``` r
+sessioninfo::session_info()
+#> ? Session info
+???????????????????????????????????????????????????????????????
+#>  setting  value
+#>  version  R version 4.4.0 (2024-04-24)
+#>  os       macOS Sonoma 14.4.1
+#>  system   x86_64, darwin20
+#>  ui       X11
+#>  language (EN)
+#>  collate  en_US.UTF-8
+#>  ctype    en_US.UTF-8
+#>  tz       America/New_York
+#>  date     2024-07-18
+#>  pandoc   3.2 @ /usr/local/bin/ (via rmarkdown)
+#>
+```
+
+</details>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Thu Jul 18 18:51:47 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 18 Jul 2024 11:51:47 -0500
+Subject: [Rd] Printing digits.secs on data.frame?
+In-Reply-To: <CAFsq6G9C0ue-mQXv6RLFZAyNcKF6HAUihPY3HnHFXba4-MMCVw@mail.gmail.com>
+References: <CAFsq6G9C0ue-mQXv6RLFZAyNcKF6HAUihPY3HnHFXba4-MMCVw@mail.gmail.com>
+Message-ID: <26265.18467.512175.893418@rob.eddelbuettel.com>
+
+
+On 18 July 2024 at 12:14, John Muschelli wrote:
+| Is there a way to have printing data.frames with POSIXct to display
+| milliseconds if digits.secs is set as a default?
+
+I suspect this would require a change to the corresonding print method.
+ 
+| You can use the digits argument in print, such as print(df, digits = 3) to
+| get the intended output, but I assumed it was done with the option
+| digits.secs set.  Tibbles by default do this printing, which is shown
+| below, but I was unsure if digits.secs should affect printing data.frames,
+| as we see below it affects printing POSIXct outside of a data.frame.
+| 
+| ``` r
+| df = structure(list(time = structure(c(1509375600, 1509375600.03333,
+|                                        1509375600.06667, 1509375600.1,
+| 1509375600.13333, 1509375600.16667
+| ), class = c("POSIXct", "POSIXt"), tzone = "GMT"),
+| X = c(0.188,
+|       0.18, 0.184, 0.184, 0.184, 0.184),
+| Y = c(0.145, 0.125, 0.121,
+|       0.121, 0.117, 0.125),
+| Z = c(-0.984, -0.988, -0.984, -0.992, -0.988,
+|       -0.988)), row.names = c(NA, 6L), class = "data.frame")
+
+I like data.table as a (well-behaved) generalisation of data.frame and use it
+in cases like this (and others). It does what you desire (and I also default
+to digits.secs=6 in my startup code, and may have another data.table
+formating option enabled)
+
+> data.table::data.table(df)
+                        time     X     Y      Z
+                      <POSc> <num> <num>  <num>
+1: 2017-10-30 15:00:00.00000 0.188 0.145 -0.984
+2: 2017-10-30 15:00:00.03332 0.180 0.125 -0.988
+3: 2017-10-30 15:00:00.06666 0.184 0.121 -0.984
+4: 2017-10-30 15:00:00.09999 0.184 0.121 -0.992
+5: 2017-10-30 15:00:00.13333 0.184 0.117 -0.988
+6: 2017-10-30 15:00:00.16667 0.184 0.125 -0.988
+>
+
+But I concur that it would be nice to potentially have this for data.frame
+too.  Given the amount of code out there that might be affected a change may
+have to be conditional on another option.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Thu Jul 18 23:14:02 2024
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Thu, 18 Jul 2024 23:14:02 +0200
+Subject: [Rd] xftrm is more than 100x slower for AsIs than for character
+ vectors
+In-Reply-To: <20240714122429.760f4183@trisector>
+References: <557b02ff-7632-4440-9b0b-8373d40a3c0f@gmx.de>
+ <20240714122429.760f4183@trisector>
+Message-ID: <26265.34202.232589.270942@hornik.net>
+
+>>>>> Ivan Krylov via R-devel writes:
+
+Thanks: I just changed xtfrm.AsIs() as suggested.
+
+Best
+-k
+
+> ? Fri, 12 Jul 2024 17:35:19 +0200
+> Hilmar Berger via R-devel <r-devel at r-project.org> ?????:
+
+>> This can be finally traced to base::rank() (called from
+>> xtfrm.default), where I found that
+>> 
+>> "NB: rank is not itself generic but xtfrm is, and rank(xtfrm(x), ....)
+>> will have the desired result if there is a xtfrm method. Otherwise,
+>> rank will make use of ==, >, is.na and extraction methods for classed
+>> objects, possibly rather slowly. "
+
+> The problem is indeed that the vector reaches base::rank in both cases,
+> but since it has a class, the function has to construct and evaluate a
+> call to .gt every time it wants to compare two elements.
+
+> xtfrm.AsIs even tries to remove the 'AsIs' class before continuing the
+> method dispatch process:
+
+>>> if (length(cl <- class(x)) > 1) oldClass(x) <- cl[-1L]
+
+> It doesn't work in the (very contrived) case when 'AsIs' is not the
+> first class and it doesn't remove 'AsIs' as the only class (making
+> static int equal(...) take the slower branch). What's going to break if
+> we allow removing the class attribute altogether? This seems to speed
+> up xtfrm(I(x)) and survive LC_ALL=C.UTF-8 make check-devel:
+
+> Index: src/library/base/R/sort.R
+> ===================================================================
+> --- src/library/base/R/sort.R	(revision 86895)
+> +++ src/library/base/R/sort.R	(working copy)
+> @@ -297,7 +297,8 @@
+ 
+>  xtfrm.AsIs <- function(x)
+>  {
+> -    if(length(cl <- class(x)) > 1) oldClass(x) <- cl[-1L]
+> +    cl <- oldClass(x)
+> +    oldClass(x) <- cl[cl != 'AsIs']
+>      NextMethod("xtfrm")
+>  }
+ 
+
+> -- 
+> Best regards,
+> Ivan
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Thu Jul 18 23:14:29 2024
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Thu, 18 Jul 2024 23:14:29 +0200
+Subject: [Rd] I() in merge (was: Re: xftrm is more than 100x slower for AsIs
+ than for character vectors)
+In-Reply-To: <a539be8b-64a8-4e1b-8676-f79157db3d8d@gmx.de>
+References: <557b02ff-7632-4440-9b0b-8373d40a3c0f@gmx.de>
+ <20240714122429.760f4183@trisector>
+ <B85D3F49-3EF2-4F56-A0C7-21C044C1FE37@gmx.net>
+ <a539be8b-64a8-4e1b-8676-f79157db3d8d@gmx.de>
+Message-ID: <26265.34229.480354.602541@hornik.net>
+
+>>>>> Hilmar Berger via R-devel writes:
+
+Thanks.  I just removed the I() as suggested.
+
+Best
+-k
+
+> Dear all,
+> actually, it is not clear to me why there is still a protection of the
+> added Row.names column in merge using I(). This seems to stem from a
+> time when R would automatically convert character vectors to factor in
+> data.frame on insert. However, I can't reproduce this behaviour even in
+> data.frames generated with stringsAsFactors = T in current versions of
+> R. Maybe the I() inserted in r 39026 can be removed altogether?
+
+> Best regards
+
+> Hilmar
+
+> On 14.07.24 19:09, HB via R-devel wrote:
+>> Dear Ivan,
+>> 
+>> thanks for the confirmation and the proposed patch.
+>> 
+>> I just wanted to add some notes regarding the relevance of this: base::merge using by.x=0 or by.y=0 (i.e. matching on row.names) will automatically add a column Row.names which is I(row.names(x)) to the corresponding input table (using I() since  revision 39026 to avoid conversion of character to factor). When this column is used for sorting (sort=TRUE by default in merge; should happen at least if all.x=T or all.y=T), this will result in slower execution.
+>> 
+>> xtfrm.AsIs is unchanged since its addition in r50992 (likely unrelated to the former).
+>> 
+>> So I guess that this just went unnoticed since it will not cause problems on small data frames.
+>> 
+>> Best regards
+>> 
+>> Hilmar
+>> 
+>> [[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From r-m@||@ @end|ng |rom erez@h@org  Sat Jul 20 14:17:46 2024
+From: r-m@||@ @end|ng |rom erez@h@org (Erez Shomron)
+Date: Sat, 20 Jul 2024 15:17:46 +0300
+Subject: [Rd] Proposal: C API documentation - API index by category
+Message-ID: <380dc996-cfe0-4e83-86d2-c967b26b5b7a@app.fastmail.com>
+
+Hello R Core team,
+
+As someone who working on bindings to the API, having an index of the public API is a very welcome change.
+
+In order to improve the ability for users to explore the API, I would like to propose adding a section of the API Index by category. 
+
+You already have the functions and variables categorized by section, so I would suggest to use sections as the categories, and inside each category sort alphabetically.
+In any case,  whatever sorting strategy you come up with I would probably be fine as long as it's not alphabetical.
+
+While listing everything together in alphabetical order is tolerable, it is easy to get lost when you don't know what you are looking for exactly. Also many functions that serve different purpose all start with (R_* or Rf_*) making alphabetical order more useless.
+
+It would also be nice to have a third column with the declarations, but it would be lower priority for me as by now I'm used to grepping whatever declaration I need from the headers.
+
+I am not familiar with texinfo, so I don't know if this is a trivial or tricky request. Hope it's not.
+
+Thank you, whether you consider this or not.
+
+Best regards,
+- Erez
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Jul 29 02:02:21 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sun, 28 Jul 2024 20:02:21 -0400
+Subject: [Rd] Question about regexp edge case
+Message-ID: <497933d4-d8f5-4242-99aa-3c335d694ebd@gmail.com>
+
+On StackOverflow (here: 
+https://stackoverflow.com/questions/78803652/why-does-gsub-in-r-match-one-character-too-many) 
+there was a question about this result:
+
+ > gsub("^([0-9]{,5}).*","\\1","123456789")
+[1] "123456"
+
+The OP expected "12345" as the result.  Several points were raised:
+
+  - The R docs don't mention the case of {,5} for the default perl = 
+FALSE which uses TRE.
+  - perl = TRUE gives the OP's expected result of "12345".
+  - perl = TRUE does *not* give the documented result on at least one 
+system (which is "123456789", because "{,5}" is documented to not be a 
+quantifier, so it should only match the literal string "{,5}").
+  - Some regexp engines (including Perl and Awk) document that "12345" 
+is correct.
+
+Is any of this worth fixing?
+
+Duncan Murdoch
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Jul 29 09:37:57 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 29 Jul 2024 10:37:57 +0300
+Subject: [Rd] Question about regexp edge case
+In-Reply-To: <497933d4-d8f5-4242-99aa-3c335d694ebd@gmail.com>
+References: <497933d4-d8f5-4242-99aa-3c335d694ebd@gmail.com>
+Message-ID: <20240729103757.11201601@Tarkus>
+
+? Sun, 28 Jul 2024 20:02:21 -0400
+Duncan Murdoch <murdoch.duncan at gmail.com> ?????:
+
+> gsub("^([0-9]{,5}).*","\\1","123456789")  
+> [1] "123456"
+
+This is in TRE itself: for "^([0-9]{,1})" tre_regexecb returns {.rm_so
+= 0, .rm_eo = 1}, matching "1", but for "^([0-9]{,2})" and above it
+returns an off-by-one result, {.rm_so = 0, .rm_eo = 3}.
+
+Compiling with TRE_DEBUG, I see it parsed correctly:
+
+catenation, sub 0, 0 tags
+  assertions: bol
+  iteration {-1, 2}, sub -1, 0 tags, greedy
+    literal (0, 9) (48, 57), pos 0, sub -1, 0 tags
+
+...but after tre_expand_ast I see
+
+catenation, sub 0, 1 tags
+  assertions: bol
+  catenation, sub -1, 1 tags
+    tag 0
+    union, sub -1, 0 tags
+      literal empty
+      catenation, sub -1, 0 tags
+        literal (0, 9) (48, 57), pos 2, sub -1, 0 tags
+        union, sub -1, 0 tags
+          literal empty
+          catenation, sub -1, 0 tags
+            literal (0, 9) (48, 57), pos 1, sub -1, 0 tags
+            union, sub -1, 0 tags
+              literal empty
+              literal (0, 9) (48, 57), pos 0, sub -1, 0 tags
+
+...which has one too many copies of "literal (0,9)". I think it's due
+to the expansion loop on line 942 of src/extra/tre/tre-compile.c being
+
+for (j = iter->min; j < iter->max; j++)
+
+...where 'min' is -1 to denote no minimum. This is further confirmed by
+"{0,3}", "{1,3}", "{2,3}", "{3,3}" all working correctly.
+
+Neither TRE documentation [1] nor POSIX [2] specify the {,n} syntax:
+from my reading, it looks like if the upper boundary is specified, the
+lower boundary must be specified too. But if we do want to fix this, it
+will have to be a special case for iter->min == -1.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://laurikari.net/tre/documentation/regex-syntax/
+
+[2]
+https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap09.html#tag_09_03_06
+
+
+From tdhock5 @end|ng |rom gm@||@com  Mon Jul 29 22:29:42 2024
+From: tdhock5 @end|ng |rom gm@||@com (Toby Hocking)
+Date: Mon, 29 Jul 2024 16:29:42 -0400
+Subject: [Rd] Minor inconsistencies in tools:::funAPI()
+In-Reply-To: <20240715173131.0ca30ba5@arachnoid>
+References: <20240715173131.0ca30ba5@arachnoid>
+Message-ID: <CALK03d0oSaiHQb1iLoJ-=qQ2RqmhE4Pm3Adj-9LHhsTt+SJgWg@mail.gmail.com>
+
+Hi Ivan
+Can you please clarify what input files should be used with your
+proposed function? I tried a few files in r-svn/src/include and one of
+them gave me an error.
+
+> getdecl("~/R/r-svn/src/include/R.h")
+[1] "R_FlushConsole"  "R_ProcessEvents" "R_WaitEvent"
+> getdecl("~/R/r-svn/src/include/Rdefines.h")
+Error in regmatches(lines, gregexec(rx, lines, perl = TRUE))[[1]][3, ] :
+  incorrect number of dimensions
+
+On Mon, Jul 15, 2024 at 10:32?AM Ivan Krylov via R-devel
+<r-devel at r-project.org> wrote:
+>
+> Hi all,
+>
+> I've noticed some peculiarities in the tools:::funAPI output that
+> complicate its programmatic use a bit.
+>
+>  - Is it for remapped symbol names (with Rf_ or the Fortran
+>    underscore), or for unmapped names (without Rf_ or the underscore)?
+>
+> I see that the functions marked in WRE are almost all (except
+> Rf_installChar and Rf_installTrChar) unmapped. This makes a lot of
+> sense because some of those interfaces (e.g. CONS(), CHAR(),
+> NOT_SHARED()) are C preprocessor macros, not functions. I also see that
+> installTrChar is not explicitly marked.
+>
+> Are we allowed to call tools:::unmap(tools:::funAPI()$name) and
+> consider the return value to be the list of all unmapped APIs, despite,
+> e.g., installTrChar not being explicitly marked?
+>
+>  - Should R_PV be an @apifun if it's currently caught by checks in
+>    sotools.R?
+>
+>  - Should R_FindSymbol be commented /* Not API */ if it's marked as
+>    @apifun in WRE and not caught by sotools.R? It is currently used by 8
+>    CRAN packages.
+>
+>  - The names 'select', 'delztg' from R_ext/Lapack.h are function
+>    pointer arguments, not functions or type declarations. They are
+>    being found because funcRegexp is written to match incomplete
+>    function declarations (e.g. when they end up being split over
+>    multiple lines, like in R_ext/Lapack.h), and function pointer
+>    argument declarations look sufficiently similar.
+>
+> A relatively compact (but still brittle) way to match function
+> declarations in C header files is shown at the end of this message. I
+> have confirmed that compared to tools:::getFunsHdr, the only extraneous
+> symbols that it finds in preprocessed headers are "R_SetWin32",
+> "user_unif_rand", "user_unif_init", "user_unif_nseed",
+> "user_unif_seedloc" "user_norm_rand", which are special-cased in
+> tools:::getFunsHdr, and the only symbols it doesn't find are "select"
+> and "delztg" in R_ext/Lapack.h, which we should not be finding.
+>
+> # "Bird's eye" view, gives unmapped names on non-preprocessed headers
+> getdecl <- function(file, lines = readLines(file)) {
+>         # have to combine to perform multi-line matches
+>         lines <- paste(c(lines, ''), collapse = '\n')
+>         # first eat the C comments, dotall but non-greedy match
+>         lines <- gsub('(?s)/\\*.*?\\*/', '', lines, perl = TRUE)
+>         # C++-style comments too, multiline not dotall
+>         lines <- gsub('(?m)//.*$', '', lines, perl = TRUE)
+>         # drop all preprocessor directives
+>         lines <- gsub('(?m)^\\s*#.*$', '', lines, perl = TRUE)
+>
+>         rx <- r"{(?xs)
+>                 (?!typedef)(?<!\w) # please no typedefs
+>                 # return type with attributes
+>                 (
+>                         # words followed by whitespace or stars
+>                         (?: \w+ (?:\s+ | \*)+)+
+>                 )
+>                 # function name, assumes no extra whitespace
+>                 (
+>                         \w+\(\w+\) # macro call
+>                         | \(\w+\)  # in parentheses
+>                         | \w+      # a plain name
+>                 )
+>                 # arguments: non-greedy match inside parentheses
+>                 \s* \( (.*?) \) \s* # using dotall here
+>                 # will include R_PRINTF_FORMAT(1,2 but we don't care
+>                 # finally terminated by semicolon
+>                 ;
+>         }"
+>
+>         regmatches(lines, gregexec(rx, lines, perl = TRUE))[[1]][3,]
+> }
+>
+> # Preprocess then extract remapped function names like getFunsHdr
+> getdecl2 <- function(file)
+>         file |>
+>         readLines() |>
+>         grep('^\\s*#\\s*error', x = _, value = TRUE, invert = TRUE) |>
+>         tools:::ccE() |>
+>         getdecl(lines = _)
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Jul 30 19:10:26 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 30 Jul 2024 20:10:26 +0300
+Subject: [Rd] Minor inconsistencies in tools:::funAPI()
+In-Reply-To: <CALK03d0oSaiHQb1iLoJ-=qQ2RqmhE4Pm3Adj-9LHhsTt+SJgWg@mail.gmail.com>
+References: <20240715173131.0ca30ba5@arachnoid>
+ <CALK03d0oSaiHQb1iLoJ-=qQ2RqmhE4Pm3Adj-9LHhsTt+SJgWg@mail.gmail.com>
+Message-ID: <20240730201026.40c1b2e9@arachnoid>
+
+? Mon, 29 Jul 2024 16:29:42 -0400
+Toby Hocking <tdhock5 at gmail.com> ?????:
+
+> Can you please clarify what input files should be used with your
+> proposed function? I tried a few files in r-svn/src/include and one of
+> them gave me an error.
+
+This is a good illustration of the brittleness of the regexp approach.
+I focused on the header files marked as API: 
+
+> tools:::funAPI()$loc |> unique() |> setdiff('WRE')
+ [1] "R_ext/GraphicsDevice.h" "Rmath.h"
+ [3] "R_ext/GraphicsEngine.h" "R_ext/BLAS.h"
+ [5] "R_ext/Lapack.h"         "R_ext/Linpack.h"
+ [7] "Rembedded.h"            "Rinterface.h"
+ [9] "R_ext/Altrep.h"         "R_ext/Memory.h"
+[11] "R_ext/RStartup.h"       "R_ext/Arith.h"
+[13] "R_ext/Random.h"         "R_ext/Error.h"
+
+I also wanted the function not to crash with Rinternals.h, but getdecl
+/ getdecl2 / tools:::getFunsHdr all give different answers for it.
+
+I think this can be done in a more reliable manner using a recursive
+descent parser, but that would take some screenfuls of R that will need
+to be very carefully written.
+
+Speaking of discrepancies, here are a few functions declared in API
+headers but marked with attribute_hidden:
+
+R_ext/Error.h:NORET void WrongArgCount(const char *);
+R_ext/Memory.h:int      R_gc_running(void);
+
+And some minor headaches for people who would like a full
+programmatic list of entry points:
+
+ - The functions [dpq]norm are unconditionally remapped to dnorm4,
+   pnorm5, qnorm5, and the header file parser only picks up the
+   numbered function names.
+
+ - 'optimfn', 'optimgr', 'integr_fn' are marked in WRE as @apifun
+   despite not directly being functions or symbol names exported by R
+   binaries. May I suggest a separate category for types?
+
+-- 
+Best regards,
+Ivan
+
+
+From t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk  Wed Jul 31 09:42:44 2024
+From: t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk (Tim Taylor)
+Date: Wed, 31 Jul 2024 08:42:44 +0100
+Subject: [Rd] Consider exporting some of the .Rd_get_xxx functions in tools
+Message-ID: <d3ac5cba-903d-43d0-aae8-bc189c645bb9@hiddenelephants.co.uk>
+
+Would R-core consider exporting some of the .Rd_get_ family of functions 
+within tools (e.g. tools:::.Rd_get_section(), tools:::.Rd_get_metadata())?
+
+Whilst these are currently internal there is some use of them within 
+documentation (e.g. help("Rd_db") uses tools:::.Rd_get_metadata() in 
+it's examples) which hopefully gives some justification for exporting.
+
+Best
+
+Tim
+
+

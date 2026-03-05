@@ -1,0 +1,419 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2026-02",
+  "messages": [
+    {
+      "id": "msg-9d92562703b5",
+      "message_id": "<39921e44-3afc-4673-83a9-12250f858145@mcmaster.ca>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2026-02-01T20:13:59-05:00",
+      "subject": "[Rd] weighted.residuals()",
+      "subject_clean": "weighted.residuals()",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "The weighted.residuals() function has been under development \nrecently: the current version is\n\n## see PR#7961, \nhttps://stat.ethz.ch/pipermail/r-devel/2011-January/059642.html\n## (Note, Jan 2026: PR# 7961 suggested use of deviance residuals but \nthen dfbeta et al. are\n## not one-step approximations to leave-one-out coeff.)\nweighted.residuals <- function(obj, drop0 = TRUE)\n{\n#    w <- weights(obj, type=\"working\")\n#    r <- residuals(obj, type=\"working\")\n     w <- naresid(obj$na.action, obj$weights)\n     r <- naresid(obj$na.action, obj$residuals)\n     if (!is.null(w)) r <- r * sqrt(w)\n     if (inherits(obj, \"glm\")) w <- weights(obj, \"prior\")\n     if(drop0 && !is.null(w)) {\n         if(is.matrix(r)) r[w != 0, , drop = FALSE] # e.g. mlm fit\n         else r[w != 0]\n     } else r\n}\n\n    The previous version was, as per \nhttps://bugs.r-project.org/show_bug.cgi?id=7961,\n\n\n## see PR#7961\nweighted.residuals <- function(obj, drop0 = TRUE)\n{\n     w <- weights(obj)\n     r <- residuals(obj, type=\"deviance\")\n     if(drop0 && !is.null(w)) r[w != 0] else r\n}\n\n    The problem with the current version is that it only works with \nlist-like objects that have $na.action, $weights, and $residuals \ncomponents. Among other things\n\n   * lme4's merMod objects, which are objects with an S4 class, throw an \nerror (because you can't access an S4 object element with $; even if you \nused getElement() you'd get an error because those slots don't exist).\n   * glmmTMB objects return NULL (they're list-like but don't have the \nappropriate elements).\n\n    A robust solution would use na.action(), residuals(), weights() \naccessor methods.  However, we can't count on working weights being the \ndefault type, and some residuals.* or weights.* methods might not have \ntype=\"working\" allowed (an intermediate version of weighted.residuals() \nused weights(., type = \"working\"); lme4 throws an error for type = \n\"working\" with GLMMs ... glmmTMB takes a type argument but ignores it ...\n\n   Another solution to this would be to make weighted.residuals() an S3 \nmethod and let other packages provide a method if they liked ...\n\n    Thoughts welcome.\n\n   Ben Bolker",
+      "body_snippet": "The weighted.residuals() function has been under development \nrecently: the current version is\n\n## see PR#7961, \nhttps://stat.ethz.ch/pipermail/r-devel/2011-January/059642.html\n## (Note, Jan 2026: PR#",
+      "thread_id": "thread-9d92562703b5",
+      "thread_depth": 0,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-6d86ce67f495",
+      "message_id": "<27008.35430.140054.673517@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-02-02T12:28:38+01:00",
+      "subject": "[Rd] weighted.residuals()",
+      "subject_clean": "weighted.residuals()",
+      "in_reply_to": "<fake-VM-id.e564ccfbd319e06e275b83d7d8f69fea@talos.iv>",
+      "references": [
+        "<39921e44-3afc-4673-83a9-12250f858145@mcmaster.ca>"
+      ],
+      "body_plain": ">>>>> Ben Bolker \n>>>>>     on Sun, 1 Feb 2026 20:13:59 -0500 writes:\n\n    > The weighted.residuals() function has been under development \n    > recently: \n\nyes, notably to make the subsequent *uses* of\nweighted.residuals() in the  influence() (*)\nrelated functions dfbeta() [DEFBETAS in the Belsley, Kuh & Welsch etc}\nsee e.g.\n         https://stat.ethz.ch/R-manual/R-devel/library/stats/html/influence.measures.html\n\n--\n*) leave-one-out influence measures, not really robust, but that's another story, ...\n   they are better than no influence measures, and quite widely\n   used ... well at least before ML and A\"I\" ..\n   \n[read on]\n\n\n    > the current version is\n\n    > ## see PR#7961, \n    > https://stat.ethz.ch/pipermail/r-devel/2011-January/059642.html\n    > ## (Note, Jan 2026: PR# 7961 suggested use of deviance residuals but \n    > then dfbeta et al. are\n    > ## not one-step approximations to leave-one-out coeff.)\n    > weighted.residuals <- function(obj, drop0 = TRUE)\n    > {\n    > #    w <- weights(obj, type=\"working\")\n    > #    r <- residuals(obj, type=\"working\")\n    > w <- naresid(obj$na.action, obj$weights)\n    > r <- naresid(obj$na.action, obj$residuals)\n    > if (!is.null(w)) r <- r * sqrt(w)\n    > if (inherits(obj, \"glm\")) w <- weights(obj, \"prior\")\n    > if(drop0 && !is.null(w)) {\n    > if(is.matrix(r)) r[w != 0, , drop = FALSE] # e.g. mlm fit\n    > else r[w != 0]\n    > } else r\n    > }\n\n    > The previous version was, as per \n    > https://bugs.r-project.org/show_bug.cgi?id=7961,\n\n\n    > ## see PR#7961\n    > weighted.residuals <- function(obj, drop0 = TRUE)\n    > {\n    >    w <- weights(obj)\n    >    r <- residuals(obj, type=\"deviance\")\n    >    if(drop0 && !is.null(w)) r[w != 0] else r\n    > }\n\n{not quite, there was one more change later; the previous one\n being\n\n## see PR#7961, https://stat.ethz.ch/pipermail/r-devel/2011-January/059642.html\nweighted.residuals <- function(obj, drop0 = TRUE)\n{\n    w <- weights(obj)\n    r <- residuals(obj, type=\"deviance\")\n    if(drop0 && !is.null(w)) {\n        if(is.matrix(r)) r[w != 0, , drop = FALSE] # e.g. mlm fit\n        else r[w != 0]\n    } else r\n}\n\nfrom \n------------------------------------------------------------------------\nr54046 | ripley | 2011-01-20 | fix weighted.residuals() on a \"mlm\" object\n------------------------------------------------------------------------\n\nHowever, the \"mlm\" related bug fix is not relevant to the\ncurrent subject.\n\n\n\n    > The problem with the current version is that it only works with \n    > list-like objects that have $na.action, $weights, and $residuals \n    > components. Among other things\n\n    > * lme4's merMod objects, which are objects with an S4 class, throw an \n    > error (because you can't access an S4 object element with $; even if you \n    > used getElement() you'd get an error because those slots don't exist).\n\n    > * glmmTMB objects return NULL (they're list-like but don't have the \n    > appropriate elements).\n\n    > A robust solution would use na.action(), residuals(), weights() \n    > accessor methods.  However, we can't count on working weights being the \n    > default type, and some residuals.* or weights.* methods might not have \n    > type=\"working\" allowed (an intermediate version of weighted.residuals() \n    > used weights(., type = \"working\"); lme4 throws an error for type = \n    > \"working\" with GLMMs ... glmmTMB takes a type argument but ignores it ...\n\nAs weighted.residuals() did use  weights() and residuals() and\nthese are generic,\nI think we should try to cooperate (with the relevant packages\nauthors) to agree that weights() and residuals() methods should _obey_  `type = <string>`\nsettings in the sense to at least *work* for some  of these.\n{at least such as {glmmTMB}'s which seems to  ignore them ..}\n\nThe reasoning would be that at least  GLM-like models (which\nwould include some  GLMM , GAM, probably) should provide these,\nand users could use the influence measures (mentioned in the\nabove help page) for their models.\n\n\n    > Another solution to this would be to make weighted.residuals() an S3 \n    > method and let other packages provide a method if they liked ...\n\nyes.. that would be an alternative, more modular (but with extra\nhassles, notably not ensuring at all that subsequent use of\nrstudent(), dfbetas(), .... would be valid.\n\nMartin\n\n    > Thoughts welcome.\n\n    > Ben Bolker",
+      "body_snippet": ">>>>> Ben Bolker \n>>>>>     on Sun, 1 Feb 2026 20:13:59 -0500 writes:\n\n    > The weighted.residuals() function has been under development \n    > recently: \n\nyes, notably to make the subsequent *uses* ",
+      "thread_id": "thread-9d92562703b5",
+      "thread_depth": 1,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-173b966bd21b",
+      "message_id": "<8A48C40D-11FA-4A34-AEC8-E471E8CCB1EB@gmail.com>",
+      "from_name": "Peter Dalgaard",
+      "from_email_hash": "5d0f61ffffc9a67fd86f4b9a1ea3fac7d731c19e1d8679b6ae315232b22874e8",
+      "date": "2026-02-02T14:43:30+01:00",
+      "subject": "[Rd] weighted.residuals()",
+      "subject_clean": "weighted.residuals()",
+      "in_reply_to": "<27008.35430.140054.673517@stat.math.ethz.ch>",
+      "references": [
+        "<39921e44-3afc-4673-83a9-12250f858145@mcmaster.ca>",
+        "<27008.35430.140054.673517@stat.math.ethz.ch>"
+      ],
+      "body_plain": "[Including Achim, since he maintains \"ivreg\"]\n\nThere was an intermediate version, relected in the commented-out lines, but that threw errors on 4 CRAN pakcages because some models have residuals/weights methods that do not know about type=\"working\". More precisely, 3 of them (forecast, ivreg, robustbase) did and the 4th (insight) had a unit test comparing the output to another computation of weighted residuals, which of course is bound to fail if you change one of them.\n\nThe underlying issue is that deviance residuals (for glm and other models) are generically a bad idea for the purposes of influence measures (and other forms of model checking). They are not unbiased, and it is fairly easy to find examples where the bias is quite substantial. They specifically do not work in dfbeta() et al. if what you want is to generate the one-step approximation to the leave-one-out quantities.\n\nAn alternative would be to ask the authors of the offended packages to figure out what needs to be changed. It looks like it might be fairly easy for \"ivreg\" and \"robustbase\", which just have issues in weights() which I think could be updated to understand type=\"working\". \n\n\nIt looks like \"forecast\" defines a bundle of residuals() methods, but no weights() and the residuals() methods only distinguish between \"innovation\"/\"response\"/\"deviance\". However, it doesn't actually do influence measures, but gets in trouble with its CV() function that calls stats:::deviance.lm() via extractAIC()  which in turn does\n\nsum(weighted.residuals(object)^2, na.rm = TRUE)\n\nThis is just plain dumb because it might as well have used deviance residuals directly (it is pretty much the definition of deviance residuals that their sum of squares is the deviance). I had in fact already changed that, so maybe the whole thing already went away for that package.\n\n- Peter\n\n\n> On 2 Feb 2026, at 12.28, Martin Maechler <maechler at stat.math.ethz.ch> wrote:\n> \n>>>>>> Ben Bolker \n>>>>>>    on Sun, 1 Feb 2026 20:13:59 -0500 writes:\n> \n>> The weighted.residuals() function has been under development \n>> recently: \n> \n> yes, notably to make the subsequent *uses* of\n> weighted.residuals() in the  influence() (*)\n> related functions dfbeta() [DEFBETAS in the Belsley, Kuh & Welsch etc}\n> see e.g.\n>         https://stat.ethz.ch/R-manual/R-devel/library/stats/html/influence.measures.html\n> \n> --\n> *) leave-one-out influence measures, not really robust, but that's another story, ...\n>   they are better than no influence measures, and quite widely\n>   used ... well at least before ML and A\"I\" ..\n> \n> [read on]\n> \n> \n>> the current version is\n> \n>> ## see PR#7961, \n>> https://stat.ethz.ch/pipermail/r-devel/2011-January/059642.html\n>> ## (Note, Jan 2026: PR# 7961 suggested use of deviance residuals but \n>> then dfbeta et al. are\n>> ## not one-step approximations to leave-one-out coeff.)\n>> weighted.residuals <- function(obj, drop0 = TRUE)\n>> {\n>> #    w <- weights(obj, type=\"working\")\n>> #    r <- residuals(obj, type=\"working\")\n>> w <- naresid(obj$na.action, obj$weights)\n>> r <- naresid(obj$na.action, obj$residuals)\n>> if (!is.null(w)) r <- r * sqrt(w)\n>> if (inherits(obj, \"glm\")) w <- weights(obj, \"prior\")\n>> if(drop0 && !is.null(w)) {\n>> if(is.matrix(r)) r[w != 0, , drop = FALSE] # e.g. mlm fit\n>> else r[w != 0]\n>> } else r\n>> }\n> \n>> The previous version was, as per \n>> https://bugs.r-project.org/show_bug.cgi?id=7961,\n> \n> \n>> ## see PR#7961\n>> weighted.residuals <- function(obj, drop0 = TRUE)\n>> {\n>>   w <- weights(obj)\n>>   r <- residuals(obj, type=\"deviance\")\n>>   if(drop0 && !is.null(w)) r[w != 0] else r\n>> }\n> \n> {not quite, there was one more change later; the previous one\n> being\n> \n> ## see PR#7961, https://stat.ethz.ch/pipermail/r-devel/2011-January/059642.html\n> weighted.residuals <- function(obj, drop0 = TRUE)\n> {\n>    w <- weights(obj)\n>    r <- residuals(obj, type=\"deviance\")\n>    if(drop0 && !is.null(w)) {\n>        if(is.matrix(r)) r[w != 0, , drop = FALSE] # e.g. mlm fit\n>        else r[w != 0]\n>    } else r\n> }\n> \n> from \n> ------------------------------------------------------------------------\n> r54046 | ripley | 2011-01-20 | fix weighted.residuals() on a \"mlm\" object\n> ------------------------------------------------------------------------\n> \n> However, the \"mlm\" related bug fix is not relevant to the\n> current subject.\n> \n> \n> \n>> The problem with the current version is that it only works with \n>> list-like objects that have $na.action, $weights, and $residuals \n>> components. Among other things\n> \n>> * lme4's merMod objects, which are objects with an S4 class, throw an \n>> error (because you can't access an S4 object element with $; even if you \n>> used getElement() you'd get an error because those slots don't exist).\n> \n>> * glmmTMB objects return NULL (they're list-like but don't have the \n>> appropriate elements).\n> \n>> A robust solution would use na.action(), residuals(), weights() \n>> accessor methods.  However, we can't count on working weights being the \n>> default type, and some residuals.* or weights.* methods might not have \n>> type=\"working\" allowed (an intermediate version of weighted.residuals() \n>> used weights(., type = \"working\"); lme4 throws an error for type = \n>> \"working\" with GLMMs ... glmmTMB takes a type argument but ignores it ...\n> \n> As weighted.residuals() did use  weights() and residuals() and\n> these are generic,\n> I think we should try to cooperate (with the relevant packages\n> authors) to agree that weights() and residuals() methods should _obey_  `type = <string>`\n> settings in the sense to at least *work* for some  of these.\n> {at least such as {glmmTMB}'s which seems to  ignore them ..}\n> \n> The reasoning would be that at least  GLM-like models (which\n> would include some  GLMM , GAM, probably) should provide these,\n> and users could use the influence measures (mentioned in the\n> above help page) for their models.\n> \n> \n>> Another solution to this would be to make weighted.residuals() an S3 \n>> method and let other packages provide a method if they liked ...\n> \n> yes.. that would be an alternative, more modular (but with extra\n> hassles, notably not ensuring at all that subsequent use of\n> rstudent(), dfbetas(), .... would be valid.\n> \n> Martin\n> \n>> Thoughts welcome.\n> \n>> Ben Bolker\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nOffice: A 4.23\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com",
+      "body_snippet": "[Including Achim, since he maintains \"ivreg\"]\n\nThere was an intermediate version, relected in the commented-out lines, but that threw errors on 4 CRAN pakcages because some models have residuals/weigh",
+      "thread_id": "thread-9d92562703b5",
+      "thread_depth": 2,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-9477bd1eec1b",
+      "message_id": "<ff0126de-c06c-40f3-aaa1-ab2197a6a7ca@mayo.edu>",
+      "from_name": "Therneau, Terry M., Ph.D.",
+      "from_email_hash": "0df4ba795db07bfdd67dfdaa3c30ef6456663a5b0a916d95386922fedbe8ddbd",
+      "date": "2026-02-02T08:55:22-06:00",
+      "subject": "[Rd] weighted residuals",
+      "subject_clean": "weighted residuals",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "The survival package is one of the few with a default of model=FALSE.?? There are a couple \nof reasons for this, one major one is that I work in medical research and making unnoticed \ncopies of the data is a risk to patient confidentiality, e.g.,? multi-state models all \nhave an \"id=\" argument.?? (The primary one, however, is probably that I'm stubborn.)\n\nIn any case, this would argue for making weighted.residuals an S3 method.? The survival \nNAMESPACE file currently has 200 S3 methods, so what's one more?\n\nPS. An addition I would like to see in the Writing R Extensions manual would be a \ndiscussion of how to find a list of all the S3 methods which one's current package might \nneed, or be useful to add.?? A good fraction of those in the survival package were in \nresponse to user email of \"why don't you have a method for? XYZ\", when I was completely \nunaware of the existence of S3 method XYZ. At one time I did a search for UseMethod in the \nR source tree, but that doesn't find things like xtrfm(), which is defined using .Primitive.\n\n\nTerry T.\n\n-- \nTerry M Therneau, PhD\nDepartment of Quantitative Health Sciences\nMayo Clinic\ntherneau at mayo.edu\n\n\"TERR-ree THUR-noh\"\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "The survival package is one of the few with a default of model=FALSE.?? There are a couple \nof reasons for this, one major one is that I work in medical research and making unnoticed \ncopies of the da",
+      "thread_id": "thread-9477bd1eec1b",
+      "thread_depth": 0,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-1e9ee850245a",
+      "message_id": "<CAJrNScRXSKyBxMZ3vKtOKSBzbd_f8EvrCaL1eAQV-X2Ht-VMkQ@mail.gmail.com>",
+      "from_name": "ivo welch",
+      "from_email_hash": "8ea74ca56018d512ad866f9794c6026c27a0de4553192f3048dc09a03a8f3e3f",
+      "date": "2026-02-12T17:52:29-08:00",
+      "subject": "[Rd] Rotated Triangles at pch 26 and 27",
+      "subject_clean": "Rotated Triangles at pch 26 and 27",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I believe pch=26 and 27 are not used.\n\nsuggestion: low priority but would be nice:  the other symbols are pch\nsymmetric.  the triangles do not have 90 degree rotated equivalents.\n\nuse case: the triangle makes a nice way, e.g., to indicate a mean (at the\nbox bottom) for the x axis pointing upways.  there is no triangle for the\nmean for the y axis to point sideways.\n\n--\nIvo Welch (ivo.welch at ucla.edu)\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I believe pch=26 and 27 are not used.\n\nsuggestion: low priority but would be nice:  the other symbols are pch\nsymmetric.  the triangles do not have 90 degree rotated equivalents.\n\nuse case: the triang",
+      "thread_id": "thread-1e9ee850245a",
+      "thread_depth": 0,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-15116d42049b",
+      "message_id": "<20260214143547.1c6a884f@Tarkus>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2026-02-14T14:35:47+03:00",
+      "subject": "[Rd] check for \\value in R CMD check",
+      "subject_clean": "check for \\value in R CMD check",
+      "in_reply_to": "<CAL3ufULzgyVaNpdS0SYuAYdWhObc3gDWewqSFROHPJ7Kb1919A@mail.gmail.com>",
+      "references": [
+        "<CAL3ufULzgyVaNpdS0SYuAYdWhObc3gDWewqSFROHPJ7Kb1919A@mail.gmail.com>"
+      ],
+      "body_plain": "This was discussed a bit in July 2025:\nhttps://stat.ethz.ch/pipermail/r-package-devel/2025q3/011824.html\n\nPart of the problem with an automatic check is that it can be easily\ncircumvented by adding a one-line value section (as many packages are\nwont to do, \"#' @return data.frame\" with no further context), so human\nreview will still be needed.\n\nIt's probably worth adding such a check, initially with a level below\n-1, so that it's not reported by R CMD check by default and doesn't\nblow up CRAN.\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "This was discussed a bit in July 2025:\nhttps://stat.ethz.ch/pipermail/r-package-devel/2025q3/011824.html\n\nPart of the problem with an automatic check is that it can be easily\ncircumvented by adding a ",
+      "thread_id": "thread-15116d42049b",
+      "thread_depth": 0,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-9414686d47aa",
+      "message_id": "<20260215103038.3380ceca@Tarkus>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2026-02-15T10:30:38+03:00",
+      "subject": "[Rd] rep(): Expecting an argument-is-missing error, but ...",
+      "subject_clean": "rep(): Expecting an argument-is-missing error, but ...",
+      "in_reply_to": "<CAFDcVCTsn8yv0bKDO=EfaoCMsZtH0ApG_h_TQSyb5upns94c9w@mail.gmail.com>",
+      "references": [
+        "<CAFDcVCTsn8yv0bKDO=EfaoCMsZtH0ApG_h_TQSyb5upns94c9w@mail.gmail.com>"
+      ],
+      "body_plain": "? Wed, 10 Dec 2025 22:40:29 -0800\nHenrik Bengtsson <henrik.bengtsson at gmail.com> ?????:\n\n> What's going on here:\n> \n> $ R --vanilla --quiet\n> > f <- function(n) rep(\"x\", times = n)\n> > f()  \n> [1] \"x\"\n\nLet's take these R functions:\n\nnot_rep <- compiler::cmpfun(\\(x, times = 1) invisible(times))\nwrap_not_rep <- compiler::cmpfun(\\(times) not_rep(1, times = times))\n\nIn a call from wrap_not_rep() to not_rep(1, times = times), the thing\nbeing matched against the formals is a promise to evaluate 'times' in\nthe wrap_not_rep()'s environment, so Rf_matchArgs_NR matches it\nsuccessfully and not_rep() eventually forces the promise and signals an\nargument-is-missing exception.\n\nWhat about the following function?\n\nwrap_rep <- compiler::cmpfun(\\(times) rep(1, times = times))\n\nBeing a pritmitive, rep() performs its own argument matching, so in a\ncall from wrap_rep() to rep(1, times = times), things happen\ndifferently.\n\nFirst, it receives the \"raw\" arguments, without them being wrapped into\npromises:\n\n(gdb) call R_inspect(args)\n@5555585b2220 02 LISTSXP g1c0 [MARK,REF(2)]\n  @5555585a5700 14 REALSXP g1c1 [MARK,REF(65535)] (len=1, tl=0) 1\n  TAG: @555557d17458 01 SYMSXP g1c0 [MARK,REF(65535)] \"times\"\n  @555557d17458 01 SYMSXP g1c0 [MARK,REF(65535)] \"times\"\n\nThen it calls DispatchOrEval(), which evaluates the expressions in the\ncall, replacing the \"times\" symbol with R_MissingArg. Only then it\ncalls Rf_matchArgs_NR:\n\n(gdb) call R_inspect(supplied)\n@5555588f74a8 02 LISTSXP g0c0 [STP] \n  @5555585a5700 14 REALSXP g0c1 [REF(65535)] (len=1, tl=0) 1\n  TAG: @555557d17458 01 SYMSXP g0c0 [REF(65535)] \"times\"\n  @5555559c6320 01 SYMSXP g0c0 [MARK,REF(7008)] [missing argument]\n\nRf_matchArgs_NR then faithfully substitutes that missing argument into\nthe return value together with other missing arguments that it\nsubstitutes for every value that wasn't passed at all:\n\n(gdb) call R_inspect(args)\n@5555588fc850 02 LISTSXP g0c0 [STP] \n  @5555585a5700 14 REALSXP g0c1 [REF(65535)] (len=1, tl=0) 1\n  # this one was passed as missing\n  @5555559c6320 01 SYMSXP g0c0 [MARK,REF(7010)] [missing argument]\n  # the following ones weren't passed at all\n  @5555559c6320 01 SYMSXP g0c0 [MARK,REF(7010)] [missing argument]\n  @5555559c6320 01 SYMSXP g0c0 [MARK,REF(7010)] [missing argument]\n  @5555559c6320 01 SYMSXP g0c0 [MARK,REF(7010)] [missing argument]\n\nThere doesn't seem to be a way to distinguish between the two kinds of\nmissing arguments in the return value.\n\nIn order to cause an argument-is-missing error, rep() would have to\nwalk the list of supplied arguments before matching them, replacing the\nR_MissingArg with something else, then match the arguments, then\ncomplain about the missing argument replacement being matched to a\nnon-dots formal argument. \"To call this an ugly hack would be to insult\nall existing ugly hacks at large in the world.\" Is there a better way?\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "? Wed, 10 Dec 2025 22:40:29 -0800\nHenrik Bengtsson <henrik.bengtsson at gmail.com> ?????:\n\n> What's going on here:\n> \n> $ R --vanilla --quiet\n> > f <- function(n) rep(\"x\", times = n)\n> > f()  \n> [1] \"",
+      "thread_id": "thread-9414686d47aa",
+      "thread_depth": 0,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-0c6a28cd5a7e",
+      "message_id": "<abb159cc-c1c1-4050-bf0e-febc449dd95b@fau.de>",
+      "from_name": "Sebastian Meyer",
+      "from_email_hash": "b32c09dd3a31073d640ca6b0e4a9622b24387f298b03dc425beea12447839a33",
+      "date": "2026-02-15T17:16:38+01:00",
+      "subject": "[Rd] check for \\value in R CMD check",
+      "subject_clean": "check for \\value in R CMD check",
+      "in_reply_to": "<20260214143547.1c6a884f@Tarkus>",
+      "references": [
+        "<CAL3ufULzgyVaNpdS0SYuAYdWhObc3gDWewqSFROHPJ7Kb1919A@mail.gmail.com>",
+        "<20260214143547.1c6a884f@Tarkus>"
+      ],
+      "body_plain": "Am 14.02.26 um 12:35 schrieb Ivan Krylov via R-devel:\n> This was discussed a bit in July 2025:\n> https://stat.ethz.ch/pipermail/r-package-devel/2025q3/011824.html\n> \n> Part of the problem with an automatic check is that it can be easily\n> circumvented by adding a one-line value section (as many packages are\n> wont to do, \"#' @return data.frame\" with no further context), so human\n> review will still be needed.\n> \n> It's probably worth adding such a check [...]\n> not reported by R CMD check by default\n\nThanks, I agree. There is no technical requirement for a \\value section \nin Rd files but I suppose package reviewers will have a keen sense of \nwhen one is really missing or incomplete. That said, an indication of \nhelp pages without a \\value section would certainly be useful for \ndevelopers.\n\nWith r89420, there now is an experimental environment variable\n\n     _R_CHECK_RD_CONTENTS_VALUE_\n\nfor tools::checkRdContents(), a function also used by R CMD check. If \nset to a true value, the check results will show (some of the) Rd files \nwithout \\value.\n\n\tSebastian Meyer",
+      "body_snippet": "Am 14.02.26 um 12:35 schrieb Ivan Krylov via R-devel:\n> This was discussed a bit in July 2025:\n> https://stat.ethz.ch/pipermail/r-package-devel/2025q3/011824.html\n> \n> Part of the problem with an auto",
+      "thread_id": "thread-15116d42049b",
+      "thread_depth": 1,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-bd0b7d7754f9",
+      "message_id": "<PA1P189MB3652F62D02E27FC7F9068802A56DA@PA1P189MB3652.EURP189.PROD.OUTLOOK.COM>",
+      "from_name": "jinghua zhao",
+      "from_email_hash": "55f062384cf394fd1c03dd72a8e4ed3bba9cc66529a7d443452e552499a9d598",
+      "date": "2026-02-17T19:06:06Z",
+      "subject": "[Rd] Advice on ASAN for gap 1.9",
+      "subject_clean": "Advice on ASAN for gap 1.9",
+      "in_reply_to": "<336FB7C4-5AA8-46AC-BF01-99ACFA1A2F42@cbs.dk>",
+      "references": [
+        "<336FB7C4-5AA8-46AC-BF01-99ACFA1A2F42@cbs.dk>"
+      ],
+      "body_plain": "Dear R developers,\n\nI am seeking advice regarding some issues of my package from CRAN check. I have made attempts to identify sources of the errors via customized clang/gcc which may not always yield the same errors. I also tried ~/.valgrindrc and --use-valgrind which would say OK but I suspect my ASAN-scheme is fully working. Brefly, the error tracking information can be seen from here,\n\n  *\nCRAN checks, https://cran.r-project.org/web/checks/check_results_gap.html\n  *\nCurrent attempt. https://cran.dev/gap\n\nFor next steps, I wonder if\n\n  *\nAnyone has a polished pipelines clang/gcc for Fedora 43  which is what I am using so as to reproduce errors / hints for any additional changes to be made, e.g., https://www.stats.ox.ac.uk/pub/bdr/Rconfig/\n  *\nTo convert the somewhat legacy C/Fortran codes in the package for more modern implementations.\n\nMore importantly, any advices will be greatly appreciated.\n\nBest wishes,\n\nJing Hua\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear R developers,\n\nI am seeking advice regarding some issues of my package from CRAN check. I have made attempts to identify sources of the errors via customized clang/gcc which may not always yield ",
+      "thread_id": "thread-bd0b7d7754f9",
+      "thread_depth": 0,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-e0b2a120214f",
+      "message_id": "<CADPy5iHk7NrbEzx0ZSY00doDDeQarmhf+1OnbBCG_ystBu=0bw@mail.gmail.com>",
+      "from_name": "Benjamin Schwendinger",
+      "from_email_hash": "8a2b7588fb9de552be561433d2abb4e32655f4c970e4b6bf8397273f95440f11",
+      "date": "2026-02-17T23:27:36+01:00",
+      "subject": "[Rd] Advice on ASAN for gap 1.9",
+      "subject_clean": "Advice on ASAN for gap 1.9",
+      "in_reply_to": "<PA1P189MB3652F62D02E27FC7F9068802A56DA@PA1P189MB3652.EURP189.PROD.OUTLOOK.COM>",
+      "references": [
+        "<336FB7C4-5AA8-46AC-BF01-99ACFA1A2F42@cbs.dk>",
+        "<PA1P189MB3652F62D02E27FC7F9068802A56DA@PA1P189MB3652.EURP189.PROD.OUTLOOK.COM>"
+      ],
+      "body_plain": "Dear Jing,\n\nyou currently have multiple issues.\n\n1st) problem is not directly on your side but lies within ragg as the ASAN\nerror correctly pointed out.\n\nEssentially, ragg/src/./agg/include/agg_font_cache_manager.h:176:21.\n\nOn the corresponding line we see\n\nstd::memcpy(m_fonts, m_fonts + 1, (m_max_fonts - 1) * sizeof(font_cache*));\n\nHence, we copy from m_fonts+1 to m_fonts with possible multiple bytes,\nwhich is UB. Simplest solution would be to drop `dev = \"ragg_png\"` from\nyour vignette (as you supposedly also have figured out).\n\n2) You are calling V8 which does not play nicely with the much larger stack\nframes under ASAN/UBSAN. I would recommend precomputing these outputs.\n\nFor reproducing errors regarding ASAN and UBSAN I can fully recommend the\nrocker containers (rocker/r-devel-san and rocker/r-devel-ubsan-clang) from\nhttps://rocker-project.org/images/base/r-devel.html\n\nBest regards,\nBen\n\nAm Di., 17. Feb. 2026 um 20:06 Uhr schrieb jinghua zhao <\njinghuazhao at hotmail.com>:\n\n> Dear R developers,\n>\n> I am seeking advice regarding some issues of my package from CRAN check. I\n> have made attempts to identify sources of the errors via customized\n> clang/gcc which may not always yield the same errors. I also tried\n> ~/.valgrindrc and --use-valgrind which would say OK but I suspect my\n> ASAN-scheme is fully working. Brefly, the error tracking information can be\n> seen from here,\n>\n>   *\n> CRAN checks, https://cran.r-project.org/web/checks/check_results_gap.html\n>   *\n> Current attempt. https://cran.dev/gap\n>\n> For next steps, I wonder if\n>\n>   *\n> Anyone has a polished pipelines clang/gcc for Fedora 43  which is what I\n> am using so as to reproduce errors / hints for any additional changes to be\n> made, e.g., https://www.stats.ox.ac.uk/pub/bdr/Rconfig/\n>   *\n> To convert the somewhat legacy C/Fortran codes in the package for more\n> modern implementations.\n>\n> More importantly, any advices will be greatly appreciated.\n>\n> Best wishes,\n>\n> Jing Hua\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear Jing,\n\nyou currently have multiple issues.\n\n1st) problem is not directly on your side but lies within ragg as the ASAN\nerror correctly pointed out.\n\nEssentially, ragg/src/./agg/include/agg_font_c",
+      "thread_id": "thread-bd0b7d7754f9",
+      "thread_depth": 1,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-ee2c6758fc54",
+      "message_id": "<PA1P189MB3652551FC1DDE11F38E20CE9A56DA@PA1P189MB3652.EURP189.PROD.OUTLOOK.COM>",
+      "from_name": "jinghua zhao",
+      "from_email_hash": "55f062384cf394fd1c03dd72a8e4ed3bba9cc66529a7d443452e552499a9d598",
+      "date": "2026-02-17T23:15:58Z",
+      "subject": "[Rd] Advice on ASAN for gap 1.9",
+      "subject_clean": "Advice on ASAN for gap 1.9",
+      "in_reply_to": "<CADPy5iHk7NrbEzx0ZSY00doDDeQarmhf+1OnbBCG_ystBu=0bw@mail.gmail.com>",
+      "references": [
+        "<336FB7C4-5AA8-46AC-BF01-99ACFA1A2F42@cbs.dk>",
+        "<PA1P189MB3652F62D02E27FC7F9068802A56DA@PA1P189MB3652.EURP189.PROD.OUTLOOK.COM>",
+        "<CADPy5iHk7NrbEzx0ZSY00doDDeQarmhf+1OnbBCG_ystBu=0bw@mail.gmail.com>"
+      ],
+      "body_plain": "Dear Ben,\n\nThank you very much your advice ? indeed I was warned of the ragg issue and dropped it out in later versions and somewhat confused with V5 as it does render well on CRAN (sounds like a capacity problem since the other .Rmd has no complaint at all). I am unaware of the docker container and should try that. It is a nice idea to precompute them since the issues are essentially due to vignette building however I need to see if it would increase the package size considerably.\n\nBest regards,\n\n\nJing Hua\n\n________________________________\nFrom: Benjamin Schwendinger <benjaminschwe at gmail.com>\nSent: Tuesday, February 17, 2026 22:27\nTo: r-devel <r-devel at r-project.org>\nCc: jinghua zhao <jinghuazhao at hotmail.com>\nSubject: Re: [Rd] Advice on ASAN for gap 1.9\n\nDear Jing,\n\nyou currently have multiple issues.\n\n1st) problem is not directly on your side but lies within ragg as the ASAN error correctly pointed out.\n\nEssentially, ragg/src/./agg/include/agg_font_cache_manager.h:176:21.\n\nOn the corresponding line we see\n\nstd::memcpy(m_fonts, m_fonts + 1, (m_max_fonts - 1) * sizeof(font_cache*));\n\nHence, we copy from m_fonts+1 to m_fonts with possible multiple bytes, which is UB. Simplest solution would be to drop `dev = \"ragg_png\"` from your vignette (as you supposedly also have figured out).\n\n2) You are calling V8 which does not play nicely with the much larger stack frames under ASAN/UBSAN. I would recommend precomputing these outputs.\n\nFor reproducing errors regarding ASAN and UBSAN I can fully recommend the rocker containers (rocker/r-devel-san and rocker/r-devel-ubsan-clang) from https://rocker-project.org/images/base/r-devel.html\n\nBest regards,\nBen\n\nAm Di., 17. Feb. 2026 um 20:06 Uhr schrieb jinghua zhao <jinghuazhao at hotmail.com<mailto:jinghuazhao at hotmail.com>>:\nDear R developers,\n\nI am seeking advice regarding some issues of my package from CRAN check. I have made attempts to identify sources of the errors via customized clang/gcc which may not always yield the same errors. I also tried ~/.valgrindrc and --use-valgrind which would say OK but I suspect my ASAN-scheme is fully working. Brefly, the error tracking information can be seen from here,\n\n  *\nCRAN checks, https://cran.r-project.org/web/checks/check_results_gap.html\n  *\nCurrent attempt. https://cran.dev/gap\n\nFor next steps, I wonder if\n\n  *\nAnyone has a polished pipelines clang/gcc for Fedora 43  which is what I am using so as to reproduce errors / hints for any additional changes to be made, e.g., https://www.stats.ox.ac.uk/pub/bdr/Rconfig/\n  *\nTo convert the somewhat legacy C/Fortran codes in the package for more modern implementations.\n\nMore importantly, any advices will be greatly appreciated.\n\nBest wishes,\n\nJing Hua\n\n        [[alternative HTML version deleted]]\n\n______________________________________________\nR-devel at r-project.org<mailto:R-devel at r-project.org> mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear Ben,\n\nThank you very much your advice ? indeed I was warned of the ragg issue and dropped it out in later versions and somewhat confused with V5 as it does render well on CRAN (sounds like a capa",
+      "thread_id": "thread-bd0b7d7754f9",
+      "thread_depth": 2,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-6c48832de8c0",
+      "message_id": "<CA+COutcBRXt-yVoVu5kXMomdrtBuUF_j1fHU=jYQB0p8Srnz_A@mail.gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2026-02-18T08:46:51-05:00",
+      "subject": "[Rd] Typos in Writing R Extensions",
+      "subject_clean": "Typos in Writing R Extensions",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Some of the function names are misspelled (e.g. Rf_iisNull instead of\nRf_isNull) in WRE in R 4.5.2 and R-devel. This patch fixes them.\n\nDuncan Murdoch\n\nIndex: doc/manual/R-exts.texi\n===================================================================\n--- doc/manual/R-exts.texi (revision 89432)\n+++ doc/manual/R-exts.texi (working copy)\n@@ -12833,8 +12833,8 @@\n@apifun Rf_isInteger\n@apifun Rf_isString\nOther such functions declared in the header file @file{Rinternals.h}\n-include @code{Rf_iisNull}, @code{Rf_iisSymbol}, @code{Rf_iisLogical},\n- at code{Rf_iisComplex}, @code{Rf_iisExpression}, and\n@code{Rf_iisEnvironment}.\n+include @code{Rf_isNull}, @code{Rf_isSymbol}, @code{Rf_isLogical},\n+ at code{Rf_isComplex}, @code{Rf_isExpression}, and @code{Rf_isEnvironment}.\n@apifun Rf_isNull\n@apifun Rf_isSymbol\n@apifun Rf_isLogical\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Some of the function names are misspelled (e.g. Rf_iisNull instead of\nRf_isNull) in WRE in R 4.5.2 and R-devel. This patch fixes them.\n\nDuncan Murdoch\n\nIndex: doc/manual/R-exts.texi\n==================",
+      "thread_id": "thread-6c48832de8c0",
+      "thread_depth": 0,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-ccb9ad682ab1",
+      "message_id": "<27029.61939.957375.16741@hornik.net>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "38d7001af840d889a64ba1cdcb8ec8beb738b8daf9643622801f3acb78b6052a",
+      "date": "2026-02-18T18:08:03+01:00",
+      "subject": "[Rd] Typos in Writing R Extensions",
+      "subject_clean": "Typos in Writing R Extensions",
+      "in_reply_to": "<CA+COutcBRXt-yVoVu5kXMomdrtBuUF_j1fHU=jYQB0p8Srnz_A@mail.gmail.com>",
+      "references": [
+        "<CA+COutcBRXt-yVoVu5kXMomdrtBuUF_j1fHU=jYQB0p8Srnz_A@mail.gmail.com>"
+      ],
+      "body_plain": ">>>>> Duncan Murdoch writes:\n\nThanks: fixed now.\n\nBest\n-k\n\n> Some of the function names are misspelled (e.g. Rf_iisNull instead of\n> Rf_isNull) in WRE in R 4.5.2 and R-devel. This patch fixes them.\n\n> Duncan Murdoch\n\n> Index: doc/manual/R-exts.texi\n> ===================================================================\n> --- doc/manual/R-exts.texi (revision 89432)\n> +++ doc/manual/R-exts.texi (working copy)\n> @@ -12833,8 +12833,8 @@\n> @apifun Rf_isInteger\n> @apifun Rf_isString\n> Other such functions declared in the header file @file{Rinternals.h}\n> -include @code{Rf_iisNull}, @code{Rf_iisSymbol}, @code{Rf_iisLogical},\n> - at code{Rf_iisComplex}, @code{Rf_iisExpression}, and\n> @code{Rf_iisEnvironment}.\n> +include @code{Rf_isNull}, @code{Rf_isSymbol}, @code{Rf_isLogical},\n> + at code{Rf_isComplex}, @code{Rf_isExpression}, and @code{Rf_isEnvironment}.\n> @apifun Rf_isNull\n> @apifun Rf_isSymbol\n> @apifun Rf_isLogical\n\n> \t[[alternative HTML version deleted]]\n\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">>>>> Duncan Murdoch writes:\n\nThanks: fixed now.\n\nBest\n-k\n\n> Some of the function names are misspelled (e.g. Rf_iisNull instead of\n> Rf_isNull) in WRE in R 4.5.2 and R-devel. This patch fixes them.\n\n>",
+      "thread_id": "thread-6c48832de8c0",
+      "thread_depth": 1,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-cf8b4ee2bb6c",
+      "message_id": "<2128797252.1120005.1771732693812@mail.yahoo.com>",
+      "from_name": "Suharto Anggono Suharto Anggono",
+      "from_email_hash": "cf6bb82b60d9f86323e0fd295eace70f1208e07944a061b1ed3b3ff9dcf85557",
+      "date": "2026-02-22T03:58:13Z",
+      "subject": "[Rd] Wrong move of NEWS item",
+      "subject_clean": "Wrong move of NEWS item",
+      "in_reply_to": null,
+      "references": [
+        "<2128797252.1120005.1771732693812.ref@mail.yahoo.com>"
+      ],
+      "body_plain": "diff(m, lag, dif) for matrix m now still returns? ? ? matrices, also when lag * dif > nrow(m) (PR#18972, thanks to? ? ? Mikael Jagan and Suharto Anggono).? ? ? diff(<ts-matrix>) remains matrix, even when it has length zero.\nThe above NEWS item has been moved to \"CHANGES IN R 4.5.2 patched\".\nIn fact, in R-4-5-branch, diff(m, lag, dif) for matrix m is still not a matrix when lag * dif > nrow(m) (see https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/diff.R?for 'diff.default';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/datetime.R?for 'diff.POSIXt';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/dates.R?for 'diff.Date';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/stats/R/ts.R?for 'diff.ts').\nAnd I suggest keeping it so. Because it has been like that simce the beginning, I think changing it in a patch release is not appropriate.\nWhat have been ported to R-4-5-branch are just- replacing 'tsLag' with 'lag' in 'diff.ts'- 'Ops.ts' to return matrix when e1 or e2 is matrix but e1 and e2 are not overlapping\nI suggest reverting the port. A justification of diff(m) for 1-row ts matrix m not being a matrix was that m - lag(m, -1) was not a matrix.\nReplacing 'tsLag' with 'lag' in 'diff.ts' is actually OK, but not necessary.\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "diff(m, lag, dif) for matrix m now still returns? ? ? matrices, also when lag * dif > nrow(m) (PR#18972, thanks to? ? ? Mikael Jagan and Suharto Anggono).? ? ? diff(<ts-matrix>) remains matrix, even w",
+      "thread_id": "thread-cf8b4ee2bb6c",
+      "thread_depth": 0,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-c2e6a0397415",
+      "message_id": "<27036.17696.727900.514006@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-02-23T13:16:32+01:00",
+      "subject": "[Rd] Wrong move of NEWS item",
+      "subject_clean": "Wrong move of NEWS item",
+      "in_reply_to": "<fake-VM-id.6d776b3ae1213c9af92fe6df6450ef4a@talos.iv>",
+      "references": [
+        "<2128797252.1120005.1771732693812.ref@mail.yahoo.com>",
+        "<2128797252.1120005.1771732693812@mail.yahoo.com>"
+      ],
+      "body_plain": ">>>>> Suharto Anggono Suharto Anggono via R-devel \n>>>>>     on Sun, 22 Feb 2026 03:58:13 +0000 (UTC) writes:\n\n    > diff(m, lag, dif) for matrix m now still returns\n    > ? ? ? matrices, also when lag * dif > nrow(m) (PR#18972, thanks to\n    > ? ? ? Mikael Jagan and Suharto Anggono).\n    > ? ? ? diff(<ts-matrix>) remains matrix, even when it has length zero.\n\n    > The above NEWS item has been moved to \"CHANGES IN R 4.5.2 patched\".\n\n    > In fact, in R-4-5-branch, diff(m, lag, dif) for matrix m is still not a matrix when lag * dif > nrow(m) (see https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/diff.R?for 'diff.default';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/datetime.R?for 'diff.POSIXt';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/dates.R?for 'diff.Date';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/stats/R/ts.R?for 'diff.ts').\n\n    > And I suggest keeping it so. Because it has been like that simce the beginning, I think changing it in a patch release is not appropriate.\n\nWe have ported  bug fixes of \"forever bugs\" to the \"R patched\nbranch\", before,  quite on purpose.\nTypically they have been really rare use cases and for that\nreason probably were not detected and reported earlier... and we\n(R core) still thought these bugs should disappear as quickly as\npossible.\n\nFor the above reason(s), I *had* actually planned to port this bug\nfix also to R \"4.5.2 patched\" ...\nBut then it has become somewhat late to do the port only now,\nand R 4.5.3 will only be a \"wrap up\" release anyway..\n\nHence, I agree with your opinion  and will now move the NEWS\nentry instead of porting the bug fix which was the original plan.\n\nMartin\n\n\n    > What have been ported to R-4-5-branch are just- replacing 'tsLag' with 'lag' in 'diff.ts'- 'Ops.ts' to return matrix when e1 or e2 is matrix but e1 and e2 are not overlapping\n    > I suggest reverting the port. A justification of diff(m) for 1-row ts matrix m not being a matrix was that m - lag(m, -1) was not a matrix.\n    > Replacing 'tsLag' with 'lag' in 'diff.ts' is actually OK, but not necessary.",
+      "body_snippet": ">>>>> Suharto Anggono Suharto Anggono via R-devel \n>>>>>     on Sun, 22 Feb 2026 03:58:13 +0000 (UTC) writes:\n\n    > diff(m, lag, dif) for matrix m now still returns\n    > ? ? ? matrices, also when la",
+      "thread_id": "thread-cf8b4ee2bb6c",
+      "thread_depth": 1,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-beb50ec767d6",
+      "message_id": "<922F989B-5BFE-4A04-BC94-AE8E94EDAE43@cbs.dk>",
+      "from_name": "Peter Dalgaard",
+      "from_email_hash": "d9fd91d299a75b5bb12e8fe56282f6e3ab90721fbb5cc61dd67258dc21f7ad2a",
+      "date": "2026-02-23T14:04:01Z",
+      "subject": "[Rd] R 4.5.3 scheduled for March 11",
+      "subject_clean": "R 4.5.3 scheduled for March 11",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Full schedule is available on developer.r-project.org <http://developer.r-project.org/> (...soon; the impatient might try: https://svn.r-project.org/R-dev-web/trunk/index.html).\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nOffice: A 4.23\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com\n\n______________________________________________\nR-devel at r-project.org mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Full schedule is available on developer.r-project.org <http://developer.r-project.org/> (...soon; the impatient might try: https://svn.r-project.org/R-dev-web/trunk/index.html).\n\n-- \nPeter Dalgaard, P",
+      "thread_id": "thread-beb50ec767d6",
+      "thread_depth": 0,
+      "month": "2026-02"
+    },
+    {
+      "id": "msg-d9e1a27c2dda",
+      "message_id": "<630650197.3484737.1772279863294@mail.yahoo.com>",
+      "from_name": "Suharto Anggono Suharto Anggono",
+      "from_email_hash": "cf6bb82b60d9f86323e0fd295eace70f1208e07944a061b1ed3b3ff9dcf85557",
+      "date": "2026-02-28T11:57:43Z",
+      "subject": "[Rd] Wrong move of NEWS item",
+      "subject_clean": "Wrong move of NEWS item",
+      "in_reply_to": "<27036.17696.727900.514006@stat.math.ethz.ch>",
+      "references": [
+        "<2128797252.1120005.1771732693812.ref@mail.yahoo.com>",
+        "<2128797252.1120005.1771732693812@mail.yahoo.com>",
+        "<fake-VM-id.6d776b3ae1213c9af92fe6df6450ef4a@talos.iv>",
+        "<27036.17696.727900.514006@stat.math.ethz.ch>"
+      ],
+      "body_plain": "Now that the NEWS item is gone from \"CHANGES IN R 4.5.2 patched\", please also revert the change to 'Ops.ts' in R-4-5-branch, as I have mentioned. In R-4-5-branch, the change makes diff(m) inconsistent with m - lag(m, -1) for 1-row ts matrix m. Previously, neither of them was a matrix.\n\n_______\nOn Monday, 23 February 2026 at 07:16:36 pm GMT+7, Martin Maechler <maechler at stat.math.ethz.ch> wrote:\n\n\n>>>>> Suharto Anggono Suharto Anggono via R-devel\n>>>>>? ? on Sun, 22 Feb 2026 03:58:13 +0000 (UTC) writes:\n\n? ? > diff(m, lag, dif) for matrix m now still returns\n? ? > ? ? ? matrices, also when lag * dif > nrow(m) (PR#18972, thanks to\n? ? > ? ? ? Mikael Jagan and Suharto Anggono).\n? ? > ? ? ? diff(<ts-matrix>) remains matrix, even when it has length zero.\n\n? ? > The above NEWS item has been moved to \"CHANGES IN R 4.5.2 patched\".\n\n? ? > In fact, in R-4-5-branch, diff(m, lag, dif) for matrix m is still not a matrix when lag * dif > nrow(m) (see https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/diff.R?for 'diff.default';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/datetime.R?for 'diff.POSIXt';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/base/R/dates.R?for 'diff.Date';?https://svn.r-project.org/R/branches/R-4-5-branch/src/library/stats/R/ts.R?for 'diff.ts').\n\n? ? > And I suggest keeping it so. Because it has been like that simce the beginning, I think changing it in a patch release is not appropriate.\n\nWe have ported? bug fixes of \"forever bugs\" to the \"R patched\nbranch\", before,? quite on purpose.\nTypically they have been really rare use cases and for that\nreason probably were not detected and reported earlier... and we\n(R core) still thought these bugs should disappear as quickly as\npossible.\n\nFor the above reason(s), I *had* actually planned to port this bug\nfix also to R \"4.5.2 patched\" ...\nBut then it has become somewhat late to do the port only now,\nand R 4.5.3 will only be a \"wrap up\" release anyway..\n\nHence, I agree with your opinion? and will now move the NEWS\nentry instead of porting the bug fix which was the original plan.\n\nMartin\n\n\n? ? > What have been ported to R-4-5-branch are just- replacing 'tsLag' with 'lag' in 'diff.ts'- 'Ops.ts' to return matrix when e1 or e2 is matrix but e1 and e2 are not overlapping\n? ? > I suggest reverting the port. A justification of diff(m) for 1-row ts matrix m not being a matrix was that m - lag(m, -1) was not a matrix.\n? ? > Replacing 'tsLag' with 'lag' in 'diff.ts' is actually OK, but not necessary.\n  \n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Now that the NEWS item is gone from \"CHANGES IN R 4.5.2 patched\", please also revert the change to 'Ops.ts' in R-4-5-branch, as I have mentioned. In R-4-5-branch, the change makes diff(m) inconsistent",
+      "thread_id": "thread-cf8b4ee2bb6c",
+      "thread_depth": 2,
+      "month": "2026-02"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-9d92562703b5",
+      "subject": "weighted.residuals()",
+      "message_count": 3,
+      "participants": [
+        "Ben Bolker",
+        "Martin Maechler",
+        "Peter Dalgaard"
+      ],
+      "started": "2026-02-01T20:13:59-05:00",
+      "last_reply": "2026-02-02T14:43:30+01:00",
+      "root_message_id": "msg-9d92562703b5"
+    },
+    {
+      "id": "thread-9477bd1eec1b",
+      "subject": "weighted residuals",
+      "message_count": 1,
+      "participants": [
+        "Therneau, Terry M., Ph.D."
+      ],
+      "started": "2026-02-02T08:55:22-06:00",
+      "last_reply": "2026-02-02T08:55:22-06:00",
+      "root_message_id": "msg-9477bd1eec1b"
+    },
+    {
+      "id": "thread-1e9ee850245a",
+      "subject": "Rotated Triangles at pch 26 and 27",
+      "message_count": 1,
+      "participants": [
+        "ivo welch"
+      ],
+      "started": "2026-02-12T17:52:29-08:00",
+      "last_reply": "2026-02-12T17:52:29-08:00",
+      "root_message_id": "msg-1e9ee850245a"
+    },
+    {
+      "id": "thread-15116d42049b",
+      "subject": "check for \\value in R CMD check",
+      "message_count": 2,
+      "participants": [
+        "Ivan Krylov",
+        "Sebastian Meyer"
+      ],
+      "started": "2026-02-14T14:35:47+03:00",
+      "last_reply": "2026-02-15T17:16:38+01:00",
+      "root_message_id": "msg-15116d42049b"
+    },
+    {
+      "id": "thread-9414686d47aa",
+      "subject": "rep(): Expecting an argument-is-missing error, but ...",
+      "message_count": 1,
+      "participants": [
+        "Ivan Krylov"
+      ],
+      "started": "2026-02-15T10:30:38+03:00",
+      "last_reply": "2026-02-15T10:30:38+03:00",
+      "root_message_id": "msg-9414686d47aa"
+    },
+    {
+      "id": "thread-bd0b7d7754f9",
+      "subject": "Advice on ASAN for gap 1.9",
+      "message_count": 3,
+      "participants": [
+        "Benjamin Schwendinger",
+        "jinghua zhao"
+      ],
+      "started": "2026-02-17T19:06:06+00:00",
+      "last_reply": "2026-02-17T23:15:58+00:00",
+      "root_message_id": "msg-bd0b7d7754f9"
+    },
+    {
+      "id": "thread-6c48832de8c0",
+      "subject": "Typos in Writing R Extensions",
+      "message_count": 2,
+      "participants": [
+        "Duncan Murdoch",
+        "Kurt Hornik"
+      ],
+      "started": "2026-02-18T08:46:51-05:00",
+      "last_reply": "2026-02-18T18:08:03+01:00",
+      "root_message_id": "msg-6c48832de8c0"
+    },
+    {
+      "id": "thread-cf8b4ee2bb6c",
+      "subject": "Wrong move of NEWS item",
+      "message_count": 3,
+      "participants": [
+        "Martin Maechler",
+        "Suharto Anggono Suharto Anggono"
+      ],
+      "started": "2026-02-22T03:58:13+00:00",
+      "last_reply": "2026-02-28T11:57:43+00:00",
+      "root_message_id": "msg-cf8b4ee2bb6c"
+    },
+    {
+      "id": "thread-beb50ec767d6",
+      "subject": "R 4.5.3 scheduled for March 11",
+      "message_count": 1,
+      "participants": [
+        "Peter Dalgaard"
+      ],
+      "started": "2026-02-23T14:04:01+00:00",
+      "last_reply": "2026-02-23T14:04:01+00:00",
+      "root_message_id": "msg-beb50ec767d6"
+    }
+  ]
+}

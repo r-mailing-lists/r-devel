@@ -1,0 +1,4125 @@
+From du@@@@dr|@n @end|ng |rom gm@||@com  Thu Jan  4 10:57:15 2024
+From: du@@@@dr|@n @end|ng |rom gm@||@com (=?UTF-8?B?QWRyaWFuIER1yJlh?=)
+Date: Thu, 4 Jan 2024 11:57:15 +0200
+Subject: [Rd] static html vignette
+Message-ID: <CAJ=0CtCZM4AW_obdmipvd_X9pcF_b2JD49qbbNVpX+Z9VnZwGg@mail.gmail.com>
+
+Dear All,
+
+I learned how to include a static pdf vignette into an R package, using a
+dummy .Rnw file to include an already produced "vignette.pdf" file:
+
+\documentclass{article}
+\usepackage{pdfpages}
+\begin{document}
+\includepdf[pages=-, fitpaper=true]{vignette.pdf}
+\end{document}
+
+I wonder if it would be possible to include an html static vignette. Such
+Rmarkdown (to html) vignettes can be produced using package "knitr", which
+users are forced to install (along with dozens of knitr-dependent packages
+from tidyverse) despite having nothing to do with the package itself.
+
+If at all possible, I would like to avoid having users install "knitr" via
+the Suggests field. I love that package, but I don't like its dependency
+chain.
+
+Thank you for any suggestions,
+Adrian
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Jan  4 11:55:48 2024
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 4 Jan 2024 13:55:48 +0300
+Subject: [Rd] static html vignette
+In-Reply-To: <CAJ=0CtCZM4AW_obdmipvd_X9pcF_b2JD49qbbNVpX+Z9VnZwGg@mail.gmail.com>
+References: <CAJ=0CtCZM4AW_obdmipvd_X9pcF_b2JD49qbbNVpX+Z9VnZwGg@mail.gmail.com>
+Message-ID: <20240104135548.03db2b3a@Tarkus>
+
+On Thu, 4 Jan 2024 11:57:15 +0200
+Adrian Du?a <dusa.adrian at gmail.com> wrote:
+
+> I wonder if it would be possible to include an html static vignette. 
+
+This is better suited for R-package-devel, not R-devel.
+
+I would say that static vignettes are against the spirit of vignettes:
+the idea is to provide another layer of unit testing to the package by
+providing a deeper executable example than is possible with just Rd
+examples. I think that Bioconductor will even refuse a package with a
+vignette with no executable code in it.
+
+Still, you can use the R.rsp package to provide static vignettes in
+both PDF and HTML formats:
+https://cran.r-project.org/package=R.rsp/vignettes/R_packages-Static_PDF_and_HTML_vignettes.pdf
+
+This will add 6 packages to your total Suggests budget:
+
+setdiff(
+ unlist(package_dependencies('R.rsp', recursive=TRUE)),
+ unlist(standard_package_names())
+)
+# [1] "R.methodsS3" "R.oo"        "R.utils"     "R.cache"     "digest"  
+
+HTML vignettes currently have much better accessibility than PDF
+vignettes, and the need for a low-dependency-footprint (in terms of
+both R packages and external tools like Pandoc) HTML vignette engine is
+evident <https://github.com/rstats-gsod/gsod2022/issues/5>. It's easy
+to solve this problem ~80% of the way, but making something that ticks
+all the boxes (zero-dependency and/or suitable for inclusion into R
+itself, handles plots *and* math, low-boilerplate, no external
+dependencies like Pandoc or JavaScript CDNs, compact output) is a hard
+problem that's mostly not fun to work on.
+
+The R2HTML package has no non-core hard dependencies and provides an
+HTML Sweave engine, but I'm not sure it can be used in a vignette (and
+it probably needs more maintainer work to be up to modern standards).
+
+The zero-dependency approach will be to bring your own vignette engine
+with you, but that requires lots of additional work (including bug
+workarounds: <https://bugs.r-project.org/show_bug.cgi?id=18191>). I've
+seen CRAN packages that do that, but I cannot find them right now. Yet
+another trick would be to provide a dummy *.Rnw file to trigger the
+vignette-building code and a Makefile in which the real vignette is
+produced (removing the dummy vignette and its intermediate output).
+Again, writing a portable Makefile is non-trivial and only lets you
+work around PR18191.
+
+-- 
+Best regards,
+Ivan
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Sat Jan  6 18:38:06 2024
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Sat, 6 Jan 2024 09:38:06 -0800
+Subject: [Rd] tools::startDynamicHelp(): Randomly prevents R from exiting
+ (on MS Windows)
+Message-ID: <CAFDcVCSYSQ4zWvGuUdZ0PGC7C50GaRJtfAwqTq172vq30fEnQQ@mail.gmail.com>
+
+ISSUE:
+
+On MS Windows, running cmd.exe, calling
+
+Rscript --vanilla -e "port <- tools::startDynamicHelp(); port; port <-
+tools::startDynamicHelp(FALSE); port"
+
+will sometimes stall R at the end, preventing it from existing.  This
+also happens when running R in interactive mode.  It seems to stem
+from calling tools::startDynamicHelp(FALSE).
+
+Before filing a formal bug report, can someone please confirm this
+behavior? You might have to call it multiple times to hit the bug.
+
+DETAILS:
+
+Microsoft Windows [Version 10.0.19045.3803]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Users\hb>R --version
+R version 4.3.2 (2023-10-31 ucrt) -- "Eye Holes"
+Copyright (C) 2023 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under the terms of the
+GNU General Public License versions 2 or 3.
+For more information about these matters see
+https://www.gnu.org/licenses/.
+
+C:\Users\hb> Rscript --vanilla -e "port <- tools::startDynamicHelp();
+port; port <- tools::startDynamicHelp(FALSE); port"
+starting httpd help server ... done
+[1] 18897
+[1] 0
+
+[WORKED]
+
+C:\Users\hb> Rscript --vanilla -e "port <- tools::startDynamicHelp();
+port; port <- tools::startDynamicHelp(FALSE); port"
+starting httpd help server ... done
+[1] 17840
+[1] 0
+
+[STALLED]
+
+Bugwhisperer Bengtsson
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Sun Jan  7 03:13:15 2024
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Sat, 6 Jan 2024 18:13:15 -0800
+Subject: [Rd] 
+ tools::startDynamicHelp(): Randomly prevents R from exiting
+ (on MS Windows)
+In-Reply-To: <-kCL9HFdp7ApJkMOcy3SQa_-wjC2s5EkS2u8QrZqPdD9UUHVc9mtScrUZgVDrrX3CCa5Z8Bu657o4geN9sXutavIkKrHq9WUeQwOGEC8IE4=@protonmail.com>
+References: <CAFDcVCSYSQ4zWvGuUdZ0PGC7C50GaRJtfAwqTq172vq30fEnQQ@mail.gmail.com>
+ <-kCL9HFdp7ApJkMOcy3SQa_-wjC2s5EkS2u8QrZqPdD9UUHVc9mtScrUZgVDrrX3CCa5Z8Bu657o4geN9sXutavIkKrHq9WUeQwOGEC8IE4=@protonmail.com>
+Message-ID: <CAFDcVCTu9rXfeVvTnR5qDMDJMgpH33HEXSYnq+B9SAUD-LmopQ@mail.gmail.com>
+
+Thank you for confirming this. I just filed PR#18650
+(https://bugs.r-project.org/show_bug.cgi?id=18650).
+
+FWIW, I've found two other issues with startDynamicHelp() prior to this:
+
+* https://bugs.r-project.org/show_bug.cgi?id=18645
+* https://bugs.r-project.org/show_bug.cgi?id=18648
+
+/Henrik
+
+On Sat, Jan 6, 2024 at 5:53?PM Steve Martin <marberts at protonmail.com> wrote:
+>
+> Henrik,
+>
+> I was able to reproduce this both with Rscript and interactively using the same version of R you're using (fresh install) and Windows 10.0.22621.2715. It took about a dozen tries.
+>
+> Steve
+>
+>
+>
+>
+>
+>
+> -------- Original Message --------
+> On Jan 6, 2024, 12:38, Henrik Bengtsson < henrik.bengtsson at gmail.com> wrote:
+>
+>
+> ISSUE: On MS Windows, running cmd.exe, calling Rscript --vanilla -e "port <- tools::startDynamicHelp(); port; port <- tools::startDynamicHelp(FALSE); port" will sometimes stall R at the end, preventing it from existing. This also happens when running R in interactive mode. It seems to stem from calling tools::startDynamicHelp(FALSE). Before filing a formal bug report, can someone please confirm this behavior? You might have to call it multiple times to hit the bug. DETAILS: Microsoft Windows [Version 10.0.19045.3803] (c) Microsoft Corporation. All rights reserved. C:\Users\hb>R --version R version 4.3.2 (2023-10-31 ucrt) -- "Eye Holes" Copyright (C) 2023 The R Foundation for Statistical Computing Platform: x86_64-w64-mingw32/x64 (64-bit) R is free software and comes with ABSOLUTELY NO WARRANTY. You are welcome to redistribute it under the terms of the GNU General Public License versions 2 or 3. For more information about these matters see https://www.gnu.org/licenses/. C:\Users\hb> Rscript --vanilla -e "port <- tools::startDynamicHelp(); port; port <- tools::startDynamicHelp(FALSE); port" starting httpd help server ... done [1] 18897 [1] 0 [WORKED] C:\Users\hb> Rscript --vanilla -e "port <- tools::startDynamicHelp(); port; port <- tools::startDynamicHelp(FALSE); port" starting httpd help server ... done [1] 17840 [1] 0 [STALLED] Bugwhisperer Bengtsson ______________________________________________ R-devel at r-project.org mailing list https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From m@rbert@ @end|ng |rom protonm@||@com  Sun Jan  7 02:53:19 2024
+From: m@rbert@ @end|ng |rom protonm@||@com (Steve Martin)
+Date: Sun, 07 Jan 2024 01:53:19 +0000
+Subject: [Rd] 
+ tools::startDynamicHelp(): Randomly prevents R from exiting
+ (on MS Windows)
+In-Reply-To: <CAFDcVCSYSQ4zWvGuUdZ0PGC7C50GaRJtfAwqTq172vq30fEnQQ@mail.gmail.com>
+References: <CAFDcVCSYSQ4zWvGuUdZ0PGC7C50GaRJtfAwqTq172vq30fEnQQ@mail.gmail.com>
+Message-ID: <-kCL9HFdp7ApJkMOcy3SQa_-wjC2s5EkS2u8QrZqPdD9UUHVc9mtScrUZgVDrrX3CCa5Z8Bu657o4geN9sXutavIkKrHq9WUeQwOGEC8IE4=@protonmail.com>
+
+Henrik,
+
+I was able to reproduce this both with Rscript and interactively using the same version of R you're using (fresh install) and Windows 10.0.22621.2715. It took about a dozen tries.
+
+Steve
+
+-------- Original Message --------
+On Jan 6, 2024, 12:38, Henrik Bengtsson wrote:
+
+> ISSUE: On MS Windows, running cmd.exe, calling Rscript --vanilla -e "port R --version R version 4.3.2 (2023-10-31 ucrt) -- "Eye Holes" Copyright (C) 2023 The R Foundation for Statistical Computing Platform: x86_64-w64-mingw32/x64 (64-bit) R is free software and comes with ABSOLUTELY NO WARRANTY. You are welcome to redistribute it under the terms of the GNU General Public License versions 2 or 3. For more information about these matters see https://www.gnu.org/licenses/. C:\Users\hb> Rscript --vanilla -e "port Rscript --vanilla -e "port
+	[[alternative HTML version deleted]]
+
+
+From m@rchywk@ @end|ng |rom hotm@||@com  Tue Jan  9 15:20:17 2024
+From: m@rchywk@ @end|ng |rom hotm@||@com (Mike Marchywka)
+Date: Tue, 9 Jan 2024 14:20:17 +0000
+Subject: [Rd] using Paraview "in-situ" with R?
+Message-ID: <BL3PR11MB6338D814D9A3FF932D7E7F49BE6A2@BL3PR11MB6338.namprd11.prod.outlook.com>
+
+I had previously asked about R interfaces to various "other" visualization
+tools specifically lightweights for monitoring progress of
+various codes. I was working on this,
+
+https://github.com/mmarchywka/mjmdatascope
+
+but in the meantime found out that Paraview has an "in-situ"
+capability for similar objectives. 
+
+https://discourse.paraview.org/t/does-or-can-paraview-support-streaming-input/13637/9
+
+While R does have a lot of plotting features, 
+it seems like an excellent tool to interface to R allowing visualization without
+a bunch of temp files or 
+
+Is anyone aware of anyone doing this interface or reasons its  a boondoggle?
+
+Thanks. 
+
+
+
+?Mike Marchywka?
+44 Crosscreek Trail
+Jasper GA 30143
+was 306 Charles Cox Drive? Canton, GA 30115
+470-758-0799
+404-788-1216?
+
+
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Jan  9 15:35:29 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 9 Jan 2024 17:35:29 +0300
+Subject: [Rd] using Paraview "in-situ" with R?
+In-Reply-To: <BL3PR11MB6338D814D9A3FF932D7E7F49BE6A2@BL3PR11MB6338.namprd11.prod.outlook.com>
+References: <BL3PR11MB6338D814D9A3FF932D7E7F49BE6A2@BL3PR11MB6338.namprd11.prod.outlook.com>
+Message-ID: <20240109173529.7e1ec15b@Tarkus>
+
+? Tue, 9 Jan 2024 14:20:17 +0000
+Mike Marchywka <marchywka at hotmail.com> ?????:
+
+> it seems like an excellent tool to interface to R allowing
+> visualization without a bunch of temp files or 
+> 
+> Is anyone aware of anyone doing this interface or reasons its  a
+> boondoggle?
+
+This sounds like it's better suited for r-package-devel at r-project.org,
+not R-devel itself.
+
+In theory, nothing should prevent you from writing C++ code interfacing
+with ParaView (via its "adios" streaming library) and with R. The Rcpp
+package will likely help you bring the semantics of the two languages
+closer together. (Memory allocation and error handling are the two
+major topics where R and C++ especially disagree.)
+
+On the R side, make an object with reference semantics (i.e. an
+external pointer) and use callbacks to update it with new information
+while R code is running. On the R extension side, translate these
+callbacks into necessary calls to the adios library to transfer the
+data to ParaView.
+
+For more informaion, see Writing R Extensions at
+<https://cran.r-project.org/doc/manuals/R-exts.html> and Rcpp
+documentation at <https://CRAN.R-project.org/package=Rcpp>.
+
+-- 
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Jan 10 20:43:31 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 10 Jan 2024 22:43:31 +0300
+Subject: [Rd] Sys.which() caching path to `which`
+Message-ID: <20240110224331.24ee0edf@Tarkus>
+
+Hello R-devel,
+
+Currently on Unix-like systems, Sys.which incorporates the absolute
+path to the `which` executable, obtained at the configure stage:
+
+>    ## hopefully configure found [/usr]/bin/which
+>    which <- "@WHICH@"
+>    if (!nzchar(which)) {
+>        warning("'which' was not found on this platform")
+
+This poses a problem for the Spack package manager and software
+distribution. In Spack, like in Nix, Guix, and GoboLinux, packages live
+under their own path prefixes, which look like the following:
+
+>> /opt/spack/opt/spack/linux-ubuntu18.04-x86_64_v3/gcc-7.5.0/r-4.3.0-eqteloqhjzix6ta373ruzt5imvvbcesc
+
+Unfortunately, Spack packages are expected to get relocated, changing
+the path prefix and invalidating stored paths, including the path to
+`which`: <https://github.com/spack/spack/issues/41953>.
+
+Harmen Stoppels, who is not subscribed to R-devel but interested in
+making R work in Spack, currently creates a symlink to `which`
+<https://github.com/r-devel/r-svn/pull/151> as part of a patch to R.
+
+What would be the minimally disruptive way to avoid this dependency or
+at least make it easier to fix post-factum, during relocation? What
+would be the pitfall if Sys.which() were to find `which` on the $PATH
+by itself, without remembering the full path?
+
+-- 
+Best regards,
+Ivan
+
+
+From georgeo@t @end|ng |rom gm@||@com  Wed Jan 10 21:06:03 2024
+From: georgeo@t @end|ng |rom gm@||@com (George Ostrouchov)
+Date: Wed, 10 Jan 2024 15:06:03 -0500
+Subject: [Rd] using Paraview "in-situ" with R?
+In-Reply-To: <mailman.53974.3.1704884401.50676.r-devel@r-project.org>
+References: <mailman.53974.3.1704884401.50676.r-devel@r-project.org>
+Message-ID: <450D9456-89A0-4589-B677-F5A524B2928E@gmail.com>
+
+At ORNL, we worked with VisIt (a sibling of Paraview, both funded largely by DOE) around 2016 and made an in situ demo with R. We used packages pbdMPI (on CRAN) and pbdDMAT (on GitHub/RbigData), which were in part built for this purpose. Later also the package hola (on GitHub/RbigData) was built to connect with adios2, which can do buffered in situ connections with various codes.
+
+But the VisIt developers were not interested in R (preferring to roll their own), so that direction fizzled. Paraview is a competetive sibling of VisIt, so I don?t know if they would be interested. The packages we developed are viable for that purpose. There is a lot in R that could benefit Paraview (or VisIt).
+
+George
+
+> 
+> Message: 1
+> Date: Tue, 9 Jan 2024 14:20:17 +0000
+> From: Mike Marchywka <marchywka at hotmail.com>
+> To: R-devel <r-devel at r-project.org>
+> Subject: [Rd] using Paraview "in-situ" with R?
+> Message-ID:
+> 	<BL3PR11MB6338D814D9A3FF932D7E7F49BE6A2 at BL3PR11MB6338.namprd11.prod.outlook.com>
+> 	
+> Content-Type: text/plain; charset="iso-8859-1"
+> 
+> I had previously asked about R interfaces to various "other" visualization
+> tools specifically lightweights for monitoring progress of
+> various codes. I was working on this,
+> 
+> https://github.com/mmarchywka/mjmdatascope
+> 
+> but in the meantime found out that Paraview has an "in-situ"
+> capability for similar objectives. 
+> 
+> https://discourse.paraview.org/t/does-or-can-paraview-support-streaming-input/13637/9
+> 
+> While R does have a lot of plotting features, 
+> it seems like an excellent tool to interface to R allowing visualization without
+> a bunch of temp files or 
+> 
+> Is anyone aware of anyone doing this interface or reasons its  a boondoggle?
+> 
+> Thanks. 
+> 
+> 
+> 
+>  Mike Marchywka 
+> 44 Crosscreek Trail
+> Jasper GA 30143
+> was 306 Charles Cox Drive  Canton, GA 30115
+> 470-758-0799
+> 404-788-1216 
+> 
+
+
+From georgeo@t @end|ng |rom gm@||@com  Wed Jan 10 21:06:03 2024
+From: georgeo@t @end|ng |rom gm@||@com (George Ostrouchov)
+Date: Wed, 10 Jan 2024 15:06:03 -0500
+Subject: [Rd] using Paraview "in-situ" with R?
+In-Reply-To: <mailman.53974.3.1704884401.50676.r-devel@r-project.org>
+References: <mailman.53974.3.1704884401.50676.r-devel@r-project.org>
+Message-ID: <450D9456-89A0-4589-B677-F5A524B2928E@gmail.com>
+
+At ORNL, we worked with VisIt (a sibling of Paraview, both funded largely by DOE) around 2016 and made an in situ demo with R. We used packages pbdMPI (on CRAN) and pbdDMAT (on GitHub/RbigData), which were in part built for this purpose. Later also the package hola (on GitHub/RbigData) was built to connect with adios2, which can do buffered in situ connections with various codes.
+
+But the VisIt developers were not interested in R (preferring to roll their own), so that direction fizzled. Paraview is a competetive sibling of VisIt, so I don?t know if they would be interested. The packages we developed are viable for that purpose. There is a lot in R that could benefit Paraview (or VisIt).
+
+George
+
+> 
+> Message: 1
+> Date: Tue, 9 Jan 2024 14:20:17 +0000
+> From: Mike Marchywka <marchywka at hotmail.com>
+> To: R-devel <r-devel at r-project.org>
+> Subject: [Rd] using Paraview "in-situ" with R?
+> Message-ID:
+> 	<BL3PR11MB6338D814D9A3FF932D7E7F49BE6A2 at BL3PR11MB6338.namprd11.prod.outlook.com>
+> 	
+> Content-Type: text/plain; charset="iso-8859-1"
+> 
+> I had previously asked about R interfaces to various "other" visualization
+> tools specifically lightweights for monitoring progress of
+> various codes. I was working on this,
+> 
+> https://github.com/mmarchywka/mjmdatascope
+> 
+> but in the meantime found out that Paraview has an "in-situ"
+> capability for similar objectives. 
+> 
+> https://discourse.paraview.org/t/does-or-can-paraview-support-streaming-input/13637/9
+> 
+> While R does have a lot of plotting features, 
+> it seems like an excellent tool to interface to R allowing visualization without
+> a bunch of temp files or 
+> 
+> Is anyone aware of anyone doing this interface or reasons its  a boondoggle?
+> 
+> Thanks. 
+> 
+> 
+> 
+>  Mike Marchywka 
+> 44 Crosscreek Trail
+> Jasper GA 30143
+> was 306 Charles Cox Drive  Canton, GA 30115
+> 470-758-0799
+> 404-788-1216 
+> 
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Jan 10 21:30:55 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 11 Jan 2024 09:30:55 +1300
+Subject: [Rd] Sys.which() caching path to `which`
+In-Reply-To: <20240110224331.24ee0edf@Tarkus>
+References: <20240110224331.24ee0edf@Tarkus>
+Message-ID: <F5607414-92E9-4D46-AD93-8100D9ED6997@R-project.org>
+
+Ivan,
+
+I suspect that the `which' case is just the tip of the iceberg - generally, R expects all tools it detects at configure time to be callable, just to list a few from a running session:
+
+PAGER                   /usr/bin/less
+R_BROWSER               /usr/bin/open
+R_BZIPCMD               /usr/bin/bzip2
+R_GZIPCMD               /usr/bin/gzip
+R_PDFVIEWER             /usr/bin/open
+R_QPDF                  /Library/Frameworks/R.framework/Resources/bin/qpdf
+R_TEXI2DVICMD           /usr/local/bin/texi2dvi
+R_UNZIPCMD              /usr/bin/unzip
+R_ZIPCMD                /usr/bin/zip
+SED                     /usr/bin/sed
+TAR                     /usr/bin/tar
+
+I would claim it is not an unreasonable expectation that the user doesn't delete tools after R was built. Obviously it is tedious, but Spack may need to patch all absolute paths if it wants to relocate things (it's not easy as it includes all linker paths as well FWIW) - they must be doing something like that already as even the R start-up script uses absolute paths:
+
+$ grep ^R_ /Library/Frameworks/R.framework/Resources/bin/R 
+R_HOME_DIR=/Library/Frameworks/R.framework/Resources
+R_HOME="${R_HOME_DIR}"
+R_SHARE_DIR=/Library/Frameworks/R.framework/Resources/share
+R_INCLUDE_DIR=/Library/Frameworks/R.framework/Resources/include
+R_DOC_DIR=/Library/Frameworks/R.framework/Resources/doc
+R_binary="${R_HOME}/bin/exec${R_ARCH}/R"
+
+That said, WHICH is a mess - it may make sense to switch to the command -v built-in which is part of POSIX (where available - which is almost everywhere today) which would not require an external tool, but as noted I don't think this is the only problem Spack has... (and that's just core R - even a bigger can of worms with R packages :P).
+
+Cheers,
+Simon
+
+
+> On Jan 11, 2024, at 8:43 AM, Ivan Krylov via R-devel <r-devel at r-project.org> wrote:
+> 
+> Hello R-devel,
+> 
+> Currently on Unix-like systems, Sys.which incorporates the absolute
+> path to the `which` executable, obtained at the configure stage:
+> 
+>>   ## hopefully configure found [/usr]/bin/which
+>>   which <- "@WHICH@"
+>>   if (!nzchar(which)) {
+>>       warning("'which' was not found on this platform")
+> 
+> This poses a problem for the Spack package manager and software
+> distribution. In Spack, like in Nix, Guix, and GoboLinux, packages live
+> under their own path prefixes, which look like the following:
+> 
+>>> /opt/spack/opt/spack/linux-ubuntu18.04-x86_64_v3/gcc-7.5.0/r-4.3.0-eqteloqhjzix6ta373ruzt5imvvbcesc
+> 
+> Unfortunately, Spack packages are expected to get relocated, changing
+> the path prefix and invalidating stored paths, including the path to
+> `which`: <https://github.com/spack/spack/issues/41953>.
+> 
+> Harmen Stoppels, who is not subscribed to R-devel but interested in
+> making R work in Spack, currently creates a symlink to `which`
+> <https://github.com/r-devel/r-svn/pull/151> as part of a patch to R.
+> 
+> What would be the minimally disruptive way to avoid this dependency or
+> at least make it easier to fix post-factum, during relocation? What
+> would be the pitfall if Sys.which() were to find `which` on the $PATH
+> by itself, without remembering the full path?
+> 
+> -- 
+> Best regards,
+> Ivan
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Jan 10 22:49:10 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 11 Jan 2024 10:49:10 +1300
+Subject: [Rd] Sys.which() caching path to `which`
+In-Reply-To: <smSiCiOj6OVa5cU_i6rZFGKxzIKgEwi_KLsJrvUaxhHlgHjO1S2GT8qHbE3F6Zb2p69GpWrDZB3A_nbcetlUNmX8BLoXfVy8gh3FOn-s2gA=@harmenstoppels.nl>
+References: <20240110224331.24ee0edf@Tarkus>
+ <F5607414-92E9-4D46-AD93-8100D9ED6997@R-project.org>
+ <smSiCiOj6OVa5cU_i6rZFGKxzIKgEwi_KLsJrvUaxhHlgHjO1S2GT8qHbE3F6Zb2p69GpWrDZB3A_nbcetlUNmX8BLoXfVy8gh3FOn-s2gA=@harmenstoppels.nl>
+Message-ID: <178F021A-87EA-45B5-A503-406D5BAE105E@R-project.org>
+
+Harmen,
+
+thanks for the additional details, it wasn't exactly clear what this is about. Ivan's post didn't mention that the issue here is the caching, not the path replacement which you are apparently already doing, now it makes more sense.
+
+I still think it is dangerous as you have no way of knowing who else is caching values at installation time since there is no reason to assume that the system will change after installation - technically, it breaks the contract with the application. We are trying to get packages to not hard-code or cache paths, but that typically only applies to the package library location, not to system tools.
+
+Cheers,
+Simon
+
+
+> On Jan 11, 2024, at 10:36 AM, Harmen Stoppels <me at harmenstoppels.nl> wrote:
+> 
+> For context: I don't think Nix and Guix have to relocate anything, cause I think they require absolute paths like /nix/store where all binaries go. Spack on the other hand can install packages w/o sudo to a location of choice, e.g. ~/spack/opt/spack. That's why we have to patch binaries.
+> 
+> However, Spack's relocation stuff is not about creating truly relocatable binaries where everything is referenced by relative paths. We still use absolute paths almost everywhere, it's just that they have to be rewired when the location things are built is different from where they are installed.
+> 
+> I'm sure there are people who would like to have an actually fully relocatable R, but that's not my goal.
+> 
+>> I would claim it is not an unreasonable expectation that the user doesn't delete tools after R was built. Obviously it is tedious, but Spack may need to patch all absolute paths if it wants to relocate things (it's not easy as it includes all linker paths as well FWIW) - they must be doing something like that already as even the R start-up script uses absolute paths
+> 
+> Basically Spack does (a) special handling of the dynamic section of ELF files for Linux / FreeBSD, and load commands of mach-o files for macOS, (b) find & replace of prefixes in text files / scripts and (c) somewhat fancy but still basic replacement of C-strings containing prefixes in binaries.
+> 
+> This works reliably because the package prefixes contain hashes that make false positives unlikely.
+> 
+> It's just that it does not work when the absolute path to be relocated is captured inside serialized bytecode in a zlib-compressed database base.rdb :)
+> 
+> I believe `which` is the only occurrence of this.
+> 
+>> That said, WHICH is a mess - it may make sense to switch to the command -v built-in which is part of POSIX (where available - which is almost everywhere today) which would not require an external tool
+> 
+> That sounds like a decent solution to me, probably `command -v` is more commonly available than `which`.
+> 
+>> I don't think this is the only problem Spack has... (and that's just core R - even a bigger can of worms with R packages :P).
+> 
+> We can deal with most issues, just not with compressed byte code.
+> 
+> 
+
+
+From m|kkm@rt @end|ng |rom protonm@||@com  Thu Jan 11 01:29:58 2024
+From: m|kkm@rt @end|ng |rom protonm@||@com (mikkmart)
+Date: Thu, 11 Jan 2024 00:29:58 +0000
+Subject: [Rd] New syntax for positional-only function parameters?
+In-Reply-To: <754821DB-5E12-4AA7-BAF9-B2388DFC9595@gmail.com>
+References: <w-ucjjtNdxQhl8Zu_e2FPoUCgc_P2TH5EXER3li56cz76Zt6YjohZrns85_ZaNLITdRwiSkqPGN7tPmheYu-N4kZNX0MhRtgE64ysN8C6Zc=@protonmail.com>
+ <754821DB-5E12-4AA7-BAF9-B2388DFC9595@gmail.com>
+Message-ID: <kKmFW-reimfGaOU1E8hJgbAcdp-n2nTZ3XUKakDjUBAaeIbVNG1AHp7etcbCCu37cPzhjMGjoipqNKvT5T50uh1CP3HT8OJaRY3nEW2VCwM=@protonmail.com>
+
+Thanks Aidan and Ivan,
+
+> Could you give a little more detail on this [...]? [...] Typically, the
+> default scoping rules are sufficient to resolve these [...].
+
+I agree these conflicts can be solved when spotted. And certainly more easily
+so if there were a dedicated currying syntax in base R as Ivan mentioned.
+However I think both users and package authors would benefit from being able
+to prevent the collisions altogether.
+
+To collect some data on the prevalence, I analyzed the 387 installed packages
+on my machine, including 23 433 functions. Of those, 2 585 (11%) both accepted
+... and had a "mangled" first argument name (one that did not start with a
+lower case letter), indicating that the function might have benefited from
+the availability of a positional-only parameter syntax.
+
+> This is realistic to implement. In addition to changes in gram.y (or,
+> perhaps, to the declare() special interface for giving extra instructions to
+> the parser that was suggested for declaring arguments for NSE) to mark the
+> formals as positional-only, the argument matching mechanism in
+> src/main/match.c:matchArgs_NR will need to be changed to take the flag
+> into account.
+
+Thanks, Ivan, for the pointers. Following them I was able to put together a...
+let's say proof of concept patch for this, included below. With the patch[1]
+we indeed have for example:
+
+g <- function(x, f, /, ...) match.call()
+g(1, f, x = 2) == quote(g(1, f, x = 2))
+
+Or:
+
+my_lapply <- function(x, f, /, ...) {
+  res <- vector("list", length(x))
+  for (i in seq_along(x)) {
+    res[[i]] <- f(x[[i]], ...)
+  }
+  res
+}
+
+add <- function(x, y) x + y
+my_lapply(1:5, add, x = 1)
+
+Best wishes,
+
+Mikko
+
+[1]: Compiled with `RUN_BISON=1 make all recommended` on Windows, as it took
+  me a painful while to figure out.
+
+Index: src/main/gram.y
+===================================================================
+--- src/main/gram.y     (revision 85797)
++++ src/main/gram.y     (working copy)
+@@ -557,6 +557,7 @@
+ formlist:                                      { $$ = xxnullformal(); }
+        |       SYMBOL                          { $$ = xxfirstformal0($1);      modif_token( &@1, SYMBOL_FORMALS ) ; }
+        |       SYMBOL EQ_ASSIGN expr_or_help   { $$ = xxfirstformal1($1,$3);   modif_token( &@1, SYMBOL_FORMALS ) ; modif_token( &@2, EQ_FORMALS ) ; }
++       |       formlist ',' '/'                { $$ = xxaddformal0($1,$3, &@3);   modif_token( &@3, SYMBOL_FORMALS ) ; }
+        |       formlist ',' SYMBOL             { $$ = xxaddformal0($1,$3, &@3);   modif_token( &@3, SYMBOL_FORMALS ) ; }
+        |       formlist ',' SYMBOL EQ_ASSIGN expr_or_help
+                                                { $$ = xxaddformal1($1,$3,$5,&@3); modif_token( &@3, SYMBOL_FORMALS ) ; modif_token( &@4, EQ_FORMALS ) ;}
+Index: src/main/match.c
+===================================================================
+--- src/main/match.c    (revision 85797)
++++ src/main/match.c    (working copy)
+@@ -185,10 +185,13 @@
+ {
+     Rboolean seendots;
+     int i, arg_i = 0;
++    int nfargposonly = 0;
+     SEXP f, a, b, dots, actuals;
+
+     actuals = R_NilValue;
+     for (f = formals ; f != R_NilValue ; f = CDR(f), arg_i++) {
++       /* Get count of positional-only formal arguments */
++       if (TAG(f) == Rf_install("/")) nfargposonly = arg_i + 1;
+        /* CONS_NR is used since argument lists created here are only
+           used internally and so should not increment reference
+           counts */
+@@ -218,6 +221,7 @@
+     a = actuals;
+     arg_i = 0;
+     while (f != R_NilValue) {
++       if (arg_i >= nfargposonly) {
+       SEXP ftag = TAG(f);
+       const char *ftag_name = CHAR(PRINTNAME(ftag));
+       if (ftag != R_DotsSymbol && ftag != R_NilValue) {
+@@ -241,6 +245,7 @@
+                  }
+              }
+            }
++         }
+        }
+        f = CDR(f);
+        a = CDR(a);
+@@ -257,7 +262,7 @@
+     a = actuals;
+     arg_i = 0;
+     while (f != R_NilValue) {
+-       if (fargused[arg_i] == 0) {
++       if (fargused[arg_i] == 0 && arg_i >= nfargposonly) {
+            if (TAG(f) == R_DotsSymbol && !seendots) {
+                /* Record where ... value goes */
+                dots = a;
+@@ -310,6 +315,10 @@
+            seendots = TRUE;
+            f = CDR(f);
+            a = CDR(a);
++       } else if (TAG(f) == Rf_install("/")) {
++           /* Ignore positional-only marker */
++           f = CDR(f);
++           a = CDR(a);
+        } else if (CAR(a) != R_MissingArg) {
+            /* Already matched by tag */
+            /* skip to next formal */
+Index: src/main/unique.c
+===================================================================
+--- src/main/unique.c   (revision 85797)
++++ src/main/unique.c   (working copy)
+@@ -1919,10 +1919,14 @@
+
+     /* Attach the argument names as tags */
+
+-    for (f = formals, b = rlist; b != R_NilValue; b = CDR(b), f = CDR(f)) {
+-       SET_TAG(b, TAG(f));
++       int nfargposonly = 0, arg_i = 0;
++    for (f = formals ; f != R_NilValue ; f = CDR(f), arg_i++) {
++       if (TAG(f) == Rf_install("/")) nfargposonly = arg_i + 1;
+     }
+
++    for (f = formals, b = rlist, arg_i = 0; b != R_NilValue; b = CDR(b), f = CDR(f), arg_i++) {
++       if (arg_i >= nfargposonly) SET_TAG(b, TAG(f));
++    }
+
+     /* Handle the dots */
+
+
+From me @end|ng |rom h@rmen@toppe|@@n|  Wed Jan 10 22:36:46 2024
+From: me @end|ng |rom h@rmen@toppe|@@n| (Harmen Stoppels)
+Date: Wed, 10 Jan 2024 21:36:46 +0000
+Subject: [Rd] Sys.which() caching path to `which`
+In-Reply-To: <F5607414-92E9-4D46-AD93-8100D9ED6997@R-project.org>
+References: <20240110224331.24ee0edf@Tarkus>
+ <F5607414-92E9-4D46-AD93-8100D9ED6997@R-project.org>
+Message-ID: <smSiCiOj6OVa5cU_i6rZFGKxzIKgEwi_KLsJrvUaxhHlgHjO1S2GT8qHbE3F6Zb2p69GpWrDZB3A_nbcetlUNmX8BLoXfVy8gh3FOn-s2gA=@harmenstoppels.nl>
+
+For context: I don't think Nix and Guix have to relocate anything, cause I think they require absolute paths like /nix/store where all binaries go. Spack on the other hand can install packages w/o sudo to a location of choice, e.g. ~/spack/opt/spack. That's why we have to patch binaries.
+
+However, Spack's relocation stuff is not about creating truly relocatable binaries where everything is referenced by relative paths. We still use absolute paths almost everywhere, it's just that they have to be rewired when the location things are built is different from where they are installed.
+
+I'm sure there are people who would like to have an actually fully relocatable R, but that's not my goal.
+
+> I would claim it is not an unreasonable expectation that the user doesn't delete tools after R was built. Obviously it is tedious, but Spack may need to patch all absolute paths if it wants to relocate things (it's not easy as it includes all linker paths as well FWIW) - they must be doing something like that already as even the R start-up script uses absolute paths
+
+Basically Spack does (a) special handling of the dynamic section of ELF files for Linux / FreeBSD, and load commands of mach-o files for macOS, (b) find & replace of prefixes in text files / scripts and (c) somewhat fancy but still basic replacement of C-strings containing prefixes in binaries.
+
+This works reliably because the package prefixes contain hashes that make false positives unlikely.
+
+It's just that it does not work when the absolute path to be relocated is captured inside serialized bytecode in a zlib-compressed database base.rdb :)
+
+I believe `which` is the only occurrence of this.
+ 
+> That said, WHICH is a mess - it may make sense to switch to the command -v built-in which is part of POSIX (where available - which is almost everywhere today) which would not require an external tool
+
+That sounds like a decent solution to me, probably `command -v` is more commonly available than `which`.
+
+> I don't think this is the only problem Spack has... (and that's just core R - even a bigger can of worms with R packages :P).
+
+We can deal with most issues, just not with compressed byte code.
+
+
+From m@rchywk@ @end|ng |rom hotm@||@com  Thu Jan 11 12:30:43 2024
+From: m@rchywk@ @end|ng |rom hotm@||@com (Mike Marchywka)
+Date: Thu, 11 Jan 2024 11:30:43 +0000
+Subject: [Rd] using Paraview "in-situ" with R?
+In-Reply-To: <450D9456-89A0-4589-B677-F5A524B2928E@gmail.com>
+References: <mailman.53974.3.1704884401.50676.r-devel@r-project.org>
+ <450D9456-89A0-4589-B677-F5A524B2928E@gmail.com>
+Message-ID: <BL3PR11MB63385CEDAE7F3469C6D6189FBE682@BL3PR11MB6338.namprd11.prod.outlook.com>
+
+Thanks. I take it though you see "R" in this role as adding to the capabilities of 
+the viewers, maybe adding some quick model fits over FEM results or something?
+Right now I was imagining working with freefem and rolling my own c++ code
+with supporting use of R code. Ideally I could easily overlay stuff without
+messing around with temp files.  There are a lot of R things, probably
+optimizations etc, that may be nice to view as they progress
+with more than just a figure of merit. 
+Right now I'm just trying to use Runge-Kutta on a simple orbit 
+and the mjmdatascope output is much more useful on-the-fly 
+than text or after the fact.
+
+
+?Mike Marchywka?
+44 Crosscreek Trail
+Jasper GA 30143
+was 306 Charles Cox Drive? Canton, GA 30115
+470-758-0799
+404-788-1216?
+
+
+
+
+________________________________________
+From: George Ostrouchov <georgeost at gmail.com>
+Sent: Wednesday, January 10, 2024 3:06 PM
+To: r-devel at r-project.org
+Cc: Mike Marchywka
+Subject: Re:  [Rd] using Paraview "in-situ" with R?
+
+At ORNL, we worked with VisIt (a sibling of Paraview, both funded largely by DOE) around 2016 and made an in situ demo with R. We used packages pbdMPI (on CRAN) and pbdDMAT (on GitHub/RbigData), which were in part built for this purpose. Later also the package hola (on GitHub/RbigData) was built to connect with adios2, which can do buffered in situ connections with various codes.
+
+But the VisIt developers were not interested in R (preferring to roll their own), so that direction fizzled. Paraview is a competetive sibling of VisIt, so I don?t know if they would be interested. The packages we developed are viable for that purpose. There is a lot in R that could benefit Paraview (or VisIt).
+
+George
+
+>
+> Message: 1
+> Date: Tue, 9 Jan 2024 14:20:17 +0000
+> From: Mike Marchywka <marchywka at hotmail.com>
+> To: R-devel <r-devel at r-project.org>
+> Subject: [Rd] using Paraview "in-situ" with R?
+> Message-ID:
+>       <BL3PR11MB6338D814D9A3FF932D7E7F49BE6A2 at BL3PR11MB6338.namprd11.prod.outlook.com>
+>
+> Content-Type: text/plain; charset="iso-8859-1"
+>
+> I had previously asked about R interfaces to various "other" visualization
+> tools specifically lightweights for monitoring progress of
+> various codes. I was working on this,
+>
+> https://github.com/mmarchywka/mjmdatascope
+>
+> but in the meantime found out that Paraview has an "in-situ"
+> capability for similar objectives.
+>
+> https://discourse.paraview.org/t/does-or-can-paraview-support-streaming-input/13637/9
+>
+> While R does have a lot of plotting features,
+> it seems like an excellent tool to interface to R allowing visualization without
+> a bunch of temp files or
+>
+> Is anyone aware of anyone doing this interface or reasons its  a boondoggle?
+>
+> Thanks.
+>
+>
+>
+>  Mike Marchywka
+> 44 Crosscreek Trail
+> Jasper GA 30143
+> was 306 Charles Cox Drive  Canton, GA 30115
+> 470-758-0799
+> 404-788-1216
+>
+
+
+
+From georgeo@t @end|ng |rom gm@||@com  Thu Jan 11 18:41:05 2024
+From: georgeo@t @end|ng |rom gm@||@com (George Ostrouchov)
+Date: Thu, 11 Jan 2024 12:41:05 -0500
+Subject: [Rd] using Paraview "in-situ" with R?
+In-Reply-To: <BL3PR11MB63385CEDAE7F3469C6D6189FBE682@BL3PR11MB6338.namprd11.prod.outlook.com>
+References: <mailman.53974.3.1704884401.50676.r-devel@r-project.org>
+ <450D9456-89A0-4589-B677-F5A524B2928E@gmail.com>
+ <BL3PR11MB63385CEDAE7F3469C6D6189FBE682@BL3PR11MB6338.namprd11.prod.outlook.com>
+Message-ID: <A7B623F5-9619-4EFF-97C4-7B4AAE8B2A21@gmail.com>
+
+Thanks for adding more explanation. As Ivan Krylov mentioned earlier, this sounds like an idea for developing an R package. The viewers and R largely operate in communities that so far have little interaction and both can benefit from ideas in the other. 
+
+George
+
+> On Jan 11, 2024, at 6:30?AM, Mike Marchywka <marchywka at hotmail.com> wrote:
+> 
+> Thanks. I take it though you see "R" in this role as adding to the capabilities of 
+> the viewers, maybe adding some quick model fits over FEM results or something?
+> Right now I was imagining working with freefem and rolling my own c++ code
+> with supporting use of R code. Ideally I could easily overlay stuff without
+> messing around with temp files.  There are a lot of R things, probably
+> optimizations etc, that may be nice to view as they progress
+> with more than just a figure of merit. 
+> Right now I'm just trying to use Runge-Kutta on a simple orbit 
+> and the mjmdatascope output is much more useful on-the-fly 
+> than text or after the fact.
+> 
+> 
+>  Mike Marchywka 
+> 44 Crosscreek Trail
+> Jasper GA 30143
+> was 306 Charles Cox Drive  Canton, GA 30115
+> 470-758-0799
+> 404-788-1216 
+> 
+> 
+> 
+> 
+> ________________________________________
+> From: George Ostrouchov <georgeost at gmail.com>
+> Sent: Wednesday, January 10, 2024 3:06 PM
+> To: r-devel at r-project.org
+> Cc: Mike Marchywka
+> Subject: Re:  [Rd] using Paraview "in-situ" with R?
+> 
+> At ORNL, we worked with VisIt (a sibling of Paraview, both funded largely by DOE) around 2016 and made an in situ demo with R. We used packages pbdMPI (on CRAN) and pbdDMAT (on GitHub/RbigData), which were in part built for this purpose. Later also the package hola (on GitHub/RbigData) was built to connect with adios2, which can do buffered in situ connections with various codes.
+> 
+> But the VisIt developers were not interested in R (preferring to roll their own), so that direction fizzled. Paraview is a competetive sibling of VisIt, so I don?t know if they would be interested. The packages we developed are viable for that purpose. There is a lot in R that could benefit Paraview (or VisIt).
+> 
+> George
+> 
+>> 
+>> Message: 1
+>> Date: Tue, 9 Jan 2024 14:20:17 +0000
+>> From: Mike Marchywka <marchywka at hotmail.com>
+>> To: R-devel <r-devel at r-project.org>
+>> Subject: [Rd] using Paraview "in-situ" with R?
+>> Message-ID:
+>>      <BL3PR11MB6338D814D9A3FF932D7E7F49BE6A2 at BL3PR11MB6338.namprd11.prod.outlook.com>
+>> 
+>> Content-Type: text/plain; charset="iso-8859-1"
+>> 
+>> I had previously asked about R interfaces to various "other" visualization
+>> tools specifically lightweights for monitoring progress of
+>> various codes. I was working on this,
+>> 
+>> https://github.com/mmarchywka/mjmdatascope
+>> 
+>> but in the meantime found out that Paraview has an "in-situ"
+>> capability for similar objectives.
+>> 
+>> https://discourse.paraview.org/t/does-or-can-paraview-support-streaming-input/13637/9
+>> 
+>> While R does have a lot of plotting features,
+>> it seems like an excellent tool to interface to R allowing visualization without
+>> a bunch of temp files or
+>> 
+>> Is anyone aware of anyone doing this interface or reasons its  a boondoggle?
+>> 
+>> Thanks.
+>> 
+>> 
+>> 
+>> Mike Marchywka
+>> 44 Crosscreek Trail
+>> Jasper GA 30143
+>> was 306 Charles Cox Drive  Canton, GA 30115
+>> 470-758-0799
+>> 404-788-1216
+>> 
+> 
+
+
+From d|pter|x@w@ng @end|ng |rom gm@||@com  Fri Jan 12 06:11:45 2024
+From: d|pter|x@w@ng @end|ng |rom gm@||@com (Dipterix Wang)
+Date: Fri, 12 Jan 2024 00:11:45 -0500
+Subject: [Rd] Choices to remove `srcref` (and its buddies) when serializing
+ objects
+Message-ID: <0FEDCC6B-B07A-48B1-8CF7-E130BEBB0A7D@gmail.com>
+
+Dear R devs,
+
+I was digging into a package issue today when I realized R serialize function not always generate the same results on equivalent objects when users choose to run differently. For example, the following code
+
+serialize(with(new.env(), { function(){} }), NULL, TRUE)
+
+generates different results when I copy-paste into console vs when I use ctrl+shift+enter to source the file in RStudio. 
+
+With a deeper inspect into the cause, I found that function and language get source reference when getOption("keep.source") is TRUE. This means the source reference will make the functions different while in most cases, whether keeping function source might not impact how a function behaves.
+
+While it's OK that function serialize generates different results, functions such as `rlang::hash` and `digest::digest`, which depend on `serialize` might eventually deliver false positives on same inputs. I've checked source code in digest package hoping to get around this issue (for example serialize(..., refhook = ...)). However, my workaround did not work. It seems that the markers to the objects are different even if I used `refhook` to force srcref to be the same. I also tried `removeSource` and `rlang::zap_srcref`. None of them works directly on nested environments with multiple functions. 
+
+I wonder how hard it would be to have options to discard source when serializing R objects? 
+
+Currently my analyses heavily depend on digest function to generate file caches and automatically schedule pipelines (to update cache) when changes are detected. The pipelines save the hashes of source code, inputs, and outputs together so other people can easily verify the calculation without accessing the original data (which could be sensitive), or running hour-long analyses, or having to buy servers. All of these require `serialize` to produce the same results regardless of how users choose to run the code.
+
+It would be great if this feature could be in the future R. Other pipeline packages such as `targets` and `drake` can also benefit from it.
+
+Thanks,
+
+- Dipterix
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Jan 12 09:42:33 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 12 Jan 2024 11:42:33 +0300
+Subject: [Rd] 
+ Choices to remove `srcref` (and its buddies) when serializing
+ objects
+In-Reply-To: <0FEDCC6B-B07A-48B1-8CF7-E130BEBB0A7D@gmail.com>
+References: <0FEDCC6B-B07A-48B1-8CF7-E130BEBB0A7D@gmail.com>
+Message-ID: <20240112114233.553a254e@Tarkus>
+
+? Fri, 12 Jan 2024 00:11:45 -0500
+Dipterix Wang <dipterix.wang at gmail.com> ?????:
+
+> I wonder how hard it would be to have options to discard source when
+> serializing R objects? 
+
+> Currently my analyses heavily depend on digest function to generate
+> file caches and automatically schedule pipelines (to update cache)
+> when changes are detected.
+
+Source references may be the main problem here, but not the only one.
+There are also string encodings and function bytecode (which may or may
+not be present and probably changes between R versions). I've been
+collecting the ways that the objects that are identical() to each other
+can serialize() differently in my package 'depcache'; I'm sure I missed
+a few.
+
+Admittedly, string encodings are less important nowadays (except on
+older Windows and weirdly set up Unix-like systems). Thankfully, the
+digest package already knows to skip the serialization header (which
+contains the current version of R).
+
+serialize() only knows about basic types [*], and source references are
+implemented on top of these as objects of class 'srcref'. Sometimes
+they are attached as attributes to other objects, other times (e.g. in
+quote(function(){}), [**]) just sitting there as arguments to a call.
+
+Sometimes you can hash the output of deparse(x) instead of serialize(x)
+[***]. Text representations aren't without their own problems (e.g.
+IEEE floating-point numbers not being representable as decimal
+fractions), but at least deparsing both ignores the source references
+and punts the encoding problem to the abstraction layer above it:
+deparse() is the same for both '\uff' and iconv('\uff', 'UTF-8',
+'latin1'): just "?".
+
+Unfortunately, this doesn't solve the environment problem. For these,
+you really need a way to canonicalize the reference-semantics objects
+before serializing them without changing the originals, even in cases
+like a <- new.env(); b <- new.env(); a$x <- b; b$x <- a. I'm not sure
+that reference hooks can help with that. In order to implement it
+properly, the fixup process will have to rely on global state and keep
+weak references to the environments it visits and creates shadow copies
+of.
+
+I think it's not impossible to implement
+serialize_to_canonical_representation() for an R package, but it will
+be a lot of work to decide which parts are canonical and which should
+be discarded.
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://cran.r-project.org/doc/manuals/R-ints.html#Serialization-Formats
+
+[**]
+https://bugs.r-project.org/show_bug.cgi?id=18638
+
+[***]
+https://stat.ethz.ch/pipermail/r-devel/2023-March/082505.html
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Jan 12 16:11:25 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 12 Jan 2024 18:11:25 +0300
+Subject: [Rd] Sys.which() caching path to `which`
+In-Reply-To: <F5607414-92E9-4D46-AD93-8100D9ED6997@R-project.org>
+References: <20240110224331.24ee0edf@Tarkus>
+ <F5607414-92E9-4D46-AD93-8100D9ED6997@R-project.org>
+Message-ID: <20240112181125.7616fc6e@arachnoid>
+
+On Thu, 11 Jan 2024 09:30:55 +1300
+Simon Urbanek <simon.urbanek at R-project.org> wrote:
+
+> That said, WHICH is a mess - it may make sense to switch to the
+> command -v built-in which is part of POSIX (where available - which
+> is almost everywhere today) which would not require an external tool
+
+This is a bit tricky to implement. I've prepared the patch at the end
+of this e-mail, tested it on GNU/Linux and tried to test on OpenBSD [*]
+(I cannot test on a Mac), but then I realised one crucial detail:
+unlike `which`, `command -v` returns names of shell builtins if
+something is both an executable and a builtin. So for things like `[`,
+Sys.which would behave differently if changed to use command -v:
+
+$ sh -c 'which ['
+/usr/bin/[
+$ sh -c 'command -v ['
+[
+
+R checks the returned string with file.exists(), so the new
+Sys.which('[') returns an empty string instead of /usr/bin/[. That's
+probably undesirable, isn't it?
+
+Index: configure
+===================================================================
+--- configure	(revision 85802)
++++ configure	(working copy)
+@@ -949,7 +949,6 @@
+ PDFTEX
+ TEX
+ PAGER
+-WHICH
+ SED
+ INSTALL_DATA
+ INSTALL_SCRIPT
+@@ -5390,66 +5389,6 @@
+ done
+ test -n "$SED" || SED="/bin/sed"
+ 
+-
+-## 'which' is not POSIX, and might be a shell builtin or alias
+-##  (but should not be in 'sh')
+-for ac_prog in which
+-do
+-  # Extract the first word of "$ac_prog", so it can be a program name with args.
+-set dummy $ac_prog; ac_word=$2
+-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+-printf %s "checking for $ac_word... " >&6; }
+-if test ${ac_cv_path_WHICH+y}
+-then :
+-  printf %s "(cached) " >&6
+-else $as_nop
+-  case $WHICH in
+-  [\\/]* | ?:[\\/]*)
+-  ac_cv_path_WHICH="$WHICH" # Let the user override the test with a path.
+-  ;;
+-  *)
+-  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+-for as_dir in $PATH
+-do
+-  IFS=$as_save_IFS
+-  case $as_dir in #(((
+-    '') as_dir=./ ;;
+-    */) ;;
+-    *) as_dir=$as_dir/ ;;
+-  esac
+-    for ac_exec_ext in '' $ac_executable_extensions; do
+-  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+-    ac_cv_path_WHICH="$as_dir$ac_word$ac_exec_ext"
+-    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+-    break 2
+-  fi
+-done
+-  done
+-IFS=$as_save_IFS
+-
+-  ;;
+-esac
+-fi
+-WHICH=$ac_cv_path_WHICH
+-if test -n "$WHICH"; then
+-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $WHICH" >&5
+-printf "%s\n" "$WHICH" >&6; }
+-else
+-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+-printf "%s\n" "no" >&6; }
+-fi
+-
+-
+-  test -n "$WHICH" && break
+-done
+-test -n "$WHICH" || WHICH="which"
+-
+-if test "${WHICH}" = which ; then
+-  ## needed to build and run R
+-  ## ends up hard-coded in the utils package
+-  as_fn_error $? "which is required but missing" "$LINENO" 5
+-fi
+-
+ ## Make
+ : ${MAKE=make}
+ 
+Index: configure.ac
+===================================================================
+--- configure.ac	(revision 85802)
++++ configure.ac	(working copy)
+@@ -680,15 +680,6 @@
+ ## we would like a POSIX sed, and need one on Solaris
+ AC_PATH_PROGS(SED, sed, /bin/sed, [/usr/xpg4/bin:$PATH])
+ 
+-## 'which' is not POSIX, and might be a shell builtin or alias
+-##  (but should not be in 'sh')
+-AC_PATH_PROGS(WHICH, which, which)
+-if test "${WHICH}" = which ; then
+-  ## needed to build and run R
+-  ## ends up hard-coded in the utils package
+-  AC_MSG_ERROR([[which is required but missing]])
+-fi
+-
+ ## Make
+ : ${MAKE=make}
+ AC_SUBST(MAKE)
+Index: src/library/base/Makefile.in
+===================================================================
+--- src/library/base/Makefile.in	(revision 85802)
++++ src/library/base/Makefile.in	(working copy)
+@@ -28,7 +28,7 @@
+ all: Makefile DESCRIPTION
+ 	@$(ECHO) "building package '$(pkg)'"
+ 	@$(MKINSTALLDIRS) $(top_builddir)/library/$(pkg)
+-	@WHICH="@WHICH@" $(MAKE) mkRbase mkdesc2 mkdemos2
++	@$(MAKE) mkRbase mkdesc2 mkdemos2
+ 	@$(INSTALL_DATA) $(srcdir)/inst/CITATION $(top_builddir)/library/$(pkg)
+ 
+ include $(top_srcdir)/share/make/basepkg.mk
+@@ -45,12 +45,12 @@
+ mkR: mkRbase
+ 
+ Rsimple:
+-	@WHICH="@WHICH@" $(MAKE) mkRbase mkRsimple
++	@$(MAKE) mkRbase mkRsimple
+ 
+ ## Remove files to allow this to be done repeatedly
+ Rlazy:
+ 	- at rm -f  $(top_builddir)/library/$(pkg)/R/$(pkg)*
+-	@WHICH="@WHICH@" $(MAKE) mkRbase
++	@$(MAKE) mkRbase
+ 	@cat $(srcdir)/makebasedb.R | \
+ 	  R_DEFAULT_PACKAGES=NULL LC_ALL=C $(R_EXE) > /dev/null
+ 	@$(INSTALL_DATA) $(srcdir)/baseloader.R \
+@@ -57,4 +57,4 @@
+ 	  $(top_builddir)/library/$(pkg)/R/$(pkg)
+ 
+ Rlazycomp:
+-	@WHICH="@WHICH@" $(MAKE) mkRbase mklazycomp
++	@$(MAKE) mkRbase mklazycomp
+Index: src/library/base/R/unix/system.unix.R
+===================================================================
+--- src/library/base/R/unix/system.unix.R	(revision 85802)
++++ src/library/base/R/unix/system.unix.R	(working copy)
+@@ -114,23 +114,14 @@
+ Sys.which <- function(names)
+ {
+     res <- character(length(names)); names(res) <- names
+-    ## hopefully configure found [/usr]/bin/which
+-    which <- "@WHICH@"
+-    if (!nzchar(which)) {
+-        warning("'which' was not found on this platform")
+-        return(res)
+-    }
+     for(i in seq_along(names)) {
+         if(is.na(names[i])) {res[i] <- NA; next}
+         ## Quoting was added in 3.0.0
+-        ans <- suppressWarnings(system(paste(which, shQuote(names[i])),
+-                                       intern = TRUE, ignore.stderr = TRUE))
+-        ## Solaris' which gives 'no foo in ...' message on stdout,
+-        ## GNU which does it on stderr
+-        if(grepl("solaris", R.version$os)) {
+-            tmp <- strsplit(ans[1], " ", fixed = TRUE)[[1]]
+-            if(identical(tmp[1:3], c("no", i, "in"))) ans <- ""
+-        }
++        ans <- tryCatch(
++            suppressWarnings(system(paste("command -v", shQuote(names[i])),
++                                          intern = TRUE, ignore.stderr = TRUE)),
++            error = \(e) ""
++        )
+         res[i] <- if(length(ans)) ans[1] else ""
+         ## final check that this is a real path and not an error message
+         if(!file.exists(res[i])) res[i] <- ""
+
+
+-- 
+Best regards,
+Ivan
+
+[*] example(Sys.which()) works, but there are multiple problems
+elsewhere, e.g. tan(1+1000i) returns NaN+1i and Matrix doesn't install
+without gmake
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Fri Jan 12 17:33:30 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Fri, 12 Jan 2024 17:33:30 +0100
+Subject: [Rd] 
+ Choices to remove `srcref` (and its buddies) when serializing
+ objects
+In-Reply-To: <0FEDCC6B-B07A-48B1-8CF7-E130BEBB0A7D@gmail.com>
+References: <0FEDCC6B-B07A-48B1-8CF7-E130BEBB0A7D@gmail.com>
+Message-ID: <577d4e34-7abc-4aa9-b850-09ed71c73bd5@gmail.com>
+
+
+On 1/12/24 06:11, Dipterix Wang wrote:
+> Dear R devs,
+>
+> I was digging into a package issue today when I realized R serialize function not always generate the same results on equivalent objects when users choose to run differently. For example, the following code
+>
+> serialize(with(new.env(), { function(){} }), NULL, TRUE)
+>
+> generates different results when I copy-paste into console vs when I use ctrl+shift+enter to source the file in RStudio.
+>
+> With a deeper inspect into the cause, I found that function and language get source reference when getOption("keep.source") is TRUE. This means the source reference will make the functions different while in most cases, whether keeping function source might not impact how a function behaves.
+>
+> While it's OK that function serialize generates different results, functions such as `rlang::hash` and `digest::digest`, which depend on `serialize` might eventually deliver false positives on same inputs. I've checked source code in digest package hoping to get around this issue (for example serialize(..., refhook = ...)). However, my workaround did not work. It seems that the markers to the objects are different even if I used `refhook` to force srcref to be the same. I also tried `removeSource` and `rlang::zap_srcref`. None of them works directly on nested environments with multiple functions.
+>
+> I wonder how hard it would be to have options to discard source when serializing R objects?
+>
+> Currently my analyses heavily depend on digest function to generate file caches and automatically schedule pipelines (to update cache) when changes are detected. The pipelines save the hashes of source code, inputs, and outputs together so other people can easily verify the calculation without accessing the original data (which could be sensitive), or running hour-long analyses, or having to buy servers. All of these require `serialize` to produce the same results regardless of how users choose to run the code.
+>
+> It would be great if this feature could be in the future R. Other pipeline packages such as `targets` and `drake` can also benefit from it.
+
+I don't think such functionality would belong to serialize(). This 
+function is not meant to produce stable results based on the input, the 
+serialized representation may even differ based on properties not seen 
+by users.
+
+I think an option to ignore source code would belong to a function that 
+computes the hash, as other options of identical().
+
+Tomas
+
+
+> Thanks,
+>
+> - Dipterix
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From z@yne@hunter @end|ng |rom b@u@edu  Fri Jan 12 20:50:29 2024
+From: z@yne@hunter @end|ng |rom b@u@edu (Hunter, Zayne)
+Date: Fri, 12 Jan 2024 19:50:29 +0000
+Subject: [Rd] ADA Compliance
+Message-ID: <D31D66EF-4057-4695-85F0-5EE61D47E100@bsu.edu>
+
+Hello,
+
+
+I am working with Ball State University to obtain a license of R. As part of our requirements for obtaining new software, we must review the VPAT for ADA compliance. Can you provide this information for me?
+
+Thanks,
+
+
+Zayne Hunter
+Technology Advisor & Vendor Relations Manager
+Ball State University
+zayne.hunter at bsu.edu
+(765)285-7853
+
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sat Jan 13 00:14:29 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Fri, 12 Jan 2024 18:14:29 -0500
+Subject: [Rd] ADA Compliance
+In-Reply-To: <D31D66EF-4057-4695-85F0-5EE61D47E100@bsu.edu>
+References: <D31D66EF-4057-4695-85F0-5EE61D47E100@bsu.edu>
+Message-ID: <6c2e35fc-b868-40a6-967a-8fe08f9ec602@gmail.com>
+
+  I would be very surprised if anyone had written up a VPAT 
+<https://www.section508.gov/sell/vpat/> for R.
+
+   It won't help you with the bureaucratic requirements, but R is in 
+fact very accessible to visually impaired users: e.g. see
+
+ 
+https://community.rstudio.com/t/accessibility-of-r-rstudio-compared-to-excel-for-student-that-is-legally-blind/103849/3
+
+ From https://github.com/ajrgodfrey/BrailleR
+
+ > R is perhaps the most blind-friendly statistical software option 
+because all scripts can be written in plain text, using the text editor 
+a user prefers, and all output can be saved in a wide range of file 
+formats. The advent of R markdown and other reproducible research 
+techniques can offer the blind user a degree of efficiency that is not 
+offered in many other statistical software options. In addition, the 
+processed Rmd files are usually HTML which are the best supported files 
+in terms of screen reader development.
+
+   (And there is continued attention to making sure R stays accessible 
+in this way: 
+https://stat.ethz.ch/pipermail/r-devel/2022-December/082180.html; 
+https://stat.ethz.ch/pipermail/r-devel/2023-February/082313.html)
+
+   R is also easy to use without a mouse, which should improve 
+accessibility for users with neuromuscular conditions.
+
+    cheers
+     Ben Bolker
+
+
+
+
+On 2024-01-12 2:50 p.m., Hunter, Zayne via R-devel wrote:
+> Hello,
+> 
+> 
+> I am working with Ball State University to obtain a license of R. As part of our requirements for obtaining new software, we must review the VPAT for ADA compliance. Can you provide this information for me?
+> 
+> Thanks,
+> 
+> 
+> Zayne Hunter
+> Technology Advisor & Vendor Relations Manager
+> Ball State University
+> zayne.hunter at bsu.edu
+> (765)285-7853
+> 
+> 
+> 
+> 
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From pd@|gd @end|ng |rom gm@||@com  Mon Jan 15 13:10:08 2024
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Mon, 15 Jan 2024 13:10:08 +0100
+Subject: [Rd] ADA Compliance
+In-Reply-To: <6c2e35fc-b868-40a6-967a-8fe08f9ec602@gmail.com>
+References: <D31D66EF-4057-4695-85F0-5EE61D47E100@bsu.edu>
+ <6c2e35fc-b868-40a6-967a-8fe08f9ec602@gmail.com>
+Message-ID: <D632C5EB-9DEF-4A3E-8D90-EF6E93348EEC@gmail.com>
+
+Yes,
+
+Jonathon Godfrey, who wrote the r-devel/2022-December mail (and is himself blind), would be my standard go-to guy in matters relating to visual impairment, screen readers and all that.
+
+Peter D.
+
+> On 13 Jan 2024, at 00:14 , Ben Bolker <bbolker at gmail.com> wrote:
+> 
+> I would be very surprised if anyone had written up a VPAT <https://www.section508.gov/sell/vpat/> for R.
+> 
+>  It won't help you with the bureaucratic requirements, but R is in fact very accessible to visually impaired users: e.g. see
+> 
+> https://community.rstudio.com/t/accessibility-of-r-rstudio-compared-to-excel-for-student-that-is-legally-blind/103849/3
+> 
+> From https://github.com/ajrgodfrey/BrailleR
+> 
+> > R is perhaps the most blind-friendly statistical software option because all scripts can be written in plain text, using the text editor a user prefers, and all output can be saved in a wide range of file formats. The advent of R markdown and other reproducible research techniques can offer the blind user a degree of efficiency that is not offered in many other statistical software options. In addition, the processed Rmd files are usually HTML which are the best supported files in terms of screen reader development.
+> 
+>  (And there is continued attention to making sure R stays accessible in this way: https://stat.ethz.ch/pipermail/r-devel/2022-December/082180.html; https://stat.ethz.ch/pipermail/r-devel/2023-February/082313.html)
+> 
+>  R is also easy to use without a mouse, which should improve accessibility for users with neuromuscular conditions.
+> 
+>   cheers
+>    Ben Bolker
+> 
+> 
+> 
+> 
+> On 2024-01-12 2:50 p.m., Hunter, Zayne via R-devel wrote:
+>> Hello,
+>> I am working with Ball State University to obtain a license of R. As part of our requirements for obtaining new software, we must review the VPAT for ADA compliance. Can you provide this information for me?
+>> Thanks,
+>> Zayne Hunter
+>> Technology Advisor & Vendor Relations Manager
+>> Ball State University
+>> zayne.hunter at bsu.edu
+>> (765)285-7853
+>> 	[[alternative HTML version deleted]]
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Mon Jan 15 14:25:51 2024
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Mon, 15 Jan 2024 08:25:51 -0500
+Subject: [Rd] ADA Compliance
+In-Reply-To: <D632C5EB-9DEF-4A3E-8D90-EF6E93348EEC@gmail.com>
+References: <D31D66EF-4057-4695-85F0-5EE61D47E100@bsu.edu>
+ <6c2e35fc-b868-40a6-967a-8fe08f9ec602@gmail.com>
+ <D632C5EB-9DEF-4A3E-8D90-EF6E93348EEC@gmail.com>
+Message-ID: <7ff1e447-e7b9-400f-83a8-f416654b50ab@gmail.com>
+
+Slightly tangential, but about two decades ago I was researching
+how multimedia databases might be reasonably structured. To have a
+concrete test case, I built a database of English Country (Playford)
+dances, which I called Playford's Progeny. (Ben B. will be aware of
+this, too.) This proved rather popular, but around 2010 the busybody
+brigade at uOttawa sent me a demand to prove that the website satisfied
+(name your jurisdiction, I think mine was Ontario provincial something)
+accessibility requirements.
+
+I figured my time to do this was worth $2-3K and simply went out and
+bought service for about $100. It's now hosted on ottawaenglishdance.org.
+Interestingly the main contributor to my site at the time was blind.
+Go figure.
+
+The point I'm getting at is that it may make people feel good to
+legislate about accessibility, but my guess is the old adage of
+catching more flies with honey than vinegar is illustrated here to a
+horrifying degree. I'm afraid I've no practical advice on how to
+satisfy the "rules".
+
+Best of luck getting things available for as many folk as possible,
+no matter their particular disabilities. It's something I support,
+just not a lot of rules.
+
+JN
+
+
+On 2024-01-15 07:10, peter dalgaard wrote:
+> Yes,
+> 
+> Jonathon Godfrey, who wrote the r-devel/2022-December mail (and is himself blind), would be my standard go-to guy in matters relating to visual impairment, screen readers and all that.
+> 
+> Peter D.
+> 
+>> On 13 Jan 2024, at 00:14 , Ben Bolker <bbolker at gmail.com> wrote:
+>>
+>> I would be very surprised if anyone had written up a VPAT <https://www.section508.gov/sell/vpat/> for R.
+>>
+>>   It won't help you with the bureaucratic requirements, but R is in fact very accessible to visually impaired users: e.g. see
+>>
+>> https://community.rstudio.com/t/accessibility-of-r-rstudio-compared-to-excel-for-student-that-is-legally-blind/103849/3
+>>
+>>  From https://github.com/ajrgodfrey/BrailleR
+>>
+>>> R is perhaps the most blind-friendly statistical software option because all scripts can be written in plain text, using the text editor a user prefers, and all output can be saved in a wide range of file formats. The advent of R markdown and other reproducible research techniques can offer the blind user a degree of efficiency that is not offered in many other statistical software options. In addition, the processed Rmd files are usually HTML which are the best supported files in terms of screen reader development.
+>>
+>>   (And there is continued attention to making sure R stays accessible in this way: https://stat.ethz.ch/pipermail/r-devel/2022-December/082180.html; https://stat.ethz.ch/pipermail/r-devel/2023-February/082313.html)
+>>
+>>   R is also easy to use without a mouse, which should improve accessibility for users with neuromuscular conditions.
+>>
+>>    cheers
+>>     Ben Bolker
+>>
+>>
+>>
+>>
+>> On 2024-01-12 2:50 p.m., Hunter, Zayne via R-devel wrote:
+>>> Hello,
+>>> I am working with Ball State University to obtain a license of R. As part of our requirements for obtaining new software, we must review the VPAT for ADA compliance. Can you provide this information for me?
+>>> Thanks,
+>>> Zayne Hunter
+>>> Technology Advisor & Vendor Relations Manager
+>>> Ball State University
+>>> zayne.hunter at bsu.edu
+>>> (765)285-7853
+>>> 	[[alternative HTML version deleted]]
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+
+From @ndre@@@|oe|||er @end|ng |rom gm@||@com  Mon Jan 15 11:51:00 2024
+From: @ndre@@@|oe|||er @end|ng |rom gm@||@com (=?UTF-8?Q?Andreas_L=C3=B6ffler?=)
+Date: Mon, 15 Jan 2024 11:51:00 +0100
+Subject: [Rd] cwilcox - new version
+Message-ID: <CAJS5q+w40p-8KEAPBa1wqH8yo9=vuPxSJTSuQ+ajfh=J2ecqdQ@mail.gmail.com>
+
+I am a newbie to C (although I did some programming in Perl and Pascal) so
+forgive me for the language that follows. I am writing because I have a
+question concerning the *implementation of *(the internal function)*
+cwilcox* in
+https://svn.r-project.org/R/!svn/bc/81274/branches/R-DL/src/nmath/wilcox.c.
+This function is used to determine the test statistics of the
+Wilcoxon-Mann-Whitney U-test.
+
+_______________________________________________________________________________________________________________________________________
+The function `cwilcox` has three inputs: k, m and n. To establish the test
+statistics `cwilcox` determines the number of possible sums of natural
+numbers with the following restrictions:
+- the sum of the elements must be k,
+- the elements (summands) must be in a decreasing (or increasing) order,
+- every element must be less then m and
+- there must be at most n summands.
+
+The problem with the evaluation of this function `cwilcox(k,m,n)` is that
+it requires a recursion where in fact a three-dimensional array has to be
+evaluated (see the code around line 157). This requires a lot of memory and
+takes time and seems still an issue even with newer machines, see the
+warning in the documentation
+https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/wilcox.test
+.
+
+In an old paper I have written a formula where the evaluation can be done
+in a one-dimensional array that uses way less memory and is much faster.
+The paper itself is in German (you find a copy here:
+https://upload.wikimedia.org/wikipedia/commons/f/f5/LoefflerWilcoxonMannWhitneyTest.pdf),
+so I uploaded a translation into English (to be found in
+https://upload.wikimedia.org/wikipedia/de/1/19/MannWhitney_151102.pdf).
+
+I also looked at the code in R and wrote a new version of the code that
+uses my formulae so that a faster implementation is possible (code with
+comments is below). I have several questions regarding the code:
+
+   1. A lot of commands in the original R code are used to handle the
+   memory. I do not know how to do this so I skipped memory handling
+   completely and simply allocated space to an array (see below int
+   cwilcox_distr[(m*n+1)/2];). Since my array is 1-dimensional instead of
+   3-dimensional I think as a first guess that will be ok.
+   2. I read the documentation when and why code in R should be changed. I
+   am not familiar enough with R to understand how this applies here. My code
+   uses less memory - is that enough? Or should another function be defined
+   that uses my code? Or shall it be disregarded?
+   3. I was not able to file my ideas in bugzilla.r-project or the like and
+   I hope that this mailing list is a good address for my question.
+
+I also have written an example of a main function where the original code
+from R is compared to my code. I do not attach this example because this
+email is already very long but I can provide that example if needed.
+
+Maybe we can discuss this further. Best wishes, Andreas L?ffler.
+
+
+```
+#include <stdio.h>
+#include <stdlib.h>
+
+/* The traditional approch to determine the Mann-Whitney statistics uses a
+recursion formular for partitions of natural numbers, namely in the line
+w[i][j][k] = cwilcox(k - j, i - 1, j) + cwilcox(k, i, j - 1);
+(taken from
+https://svn.r-project.org/R/!svn/bc/81274/branches/R-DL/src/nmath/wilcox.c).
+This approach requires a huge number of partitions to be evaluated because
+the second variable (j in the left term) and the third variable (k in the
+left term) in this recursion are not constant but change as well. Hence, a
+three dimensional array is evaluated.
+
+In an old paper a recursion equations was shown that avoids this
+disadvantage. The recursion equation of that paper uses only an array where
+the second as well as the third variable remain constant. This implies
+faster evaluation and less memory used. The original paper is in German and
+can be found in
+https://upload.wikimedia.org/wikipedia/commons/f/f5/LoefflerWilcoxonMannWhitneyTest.pdf
+and the author has uploaded a translation into English in
+https://upload.wikimedia.org/wikipedia/de/1/19/MannWhitney_151102.pdf. This
+function uses this approach. */
+
+static int
+cwilcox_sigma(int k, int m, int n) { /* this relates to the sigma function
+below */
+  int s, d;
+
+  s=0;
+  for (d = 1; d <= m; d++) {
+  if (k%d == 0) {
+  s=s+d;
+  }
+  }
+  for (d = n+1; d <= n+m; d++) {
+  if (k%d == 0) {
+  s=s-d;
+  }
+  }
+  return s;
+}
+
+/* this can replace cwilcox. It runs faster and uses way less memory */
+static double
+cwilcox2(int k, int m, int n){
+
+int cwilcox_distr[(m*n+1)/2]; /* will store (one half of the) distribution
+*/
+int s, i, kk;
+
+if (2*k>m*n){
+k=m*n-k; /* permutation function is symmetric */
+}
+
+for (kk=0; 2*kk<=m*n+1; kk++){
+if (kk==0){
+cwilcox_distr[0]=1; /* by definition 0 has only 1 partition */
+} else {
+s=0;
+for (i = 0; i<kk; i++){
+s=s+cwilcox_distr[i]*cwilcox_sigma(kk-i,m,n); /* recursion formula */
+   }
+   cwilcox_distr[kk]=s/kk;
+   }
+}
+
+return (double) cwilcox_distr[k];
+}
+
+	[[alternative HTML version deleted]]
+
+
+From AHL27 @end|ng |rom p|tt@edu  Mon Jan 15 22:58:38 2024
+From: AHL27 @end|ng |rom p|tt@edu (Lakshman, Aidan H)
+Date: Mon, 15 Jan 2024 21:58:38 +0000
+Subject: [Rd] cwilcox - new version
+In-Reply-To: <CAJS5q+w40p-8KEAPBa1wqH8yo9=vuPxSJTSuQ+ajfh=J2ecqdQ@mail.gmail.com>
+References: <CAJS5q+w40p-8KEAPBa1wqH8yo9=vuPxSJTSuQ+ajfh=J2ecqdQ@mail.gmail.com>
+Message-ID: <BL0PR04MB47068C6B0715EA77AAF30D4CD96C2@BL0PR04MB4706.namprd04.prod.outlook.com>
+
+Hi Andreas,
+
+These are the kinds of suggested improvements that get me really excited. I?m not a part of R-Core, but I am happy to help out as much as I can with optimizing your C code to submit this.
+
+> I was not able to file my ideas in bugzilla.r-project or the like and
+> I hope that this mailing list is a good address for my question.
+
+You should send an email to bug-report-request at r-project.org to get an account. See this link for details: https://www.r-project.org/bugs.html#:~:text=In%20order%20to%20get%20a,the%20report%20isn't%20extraneous.
+
+> I read the documentation when and why code in R should be changed. I
+> am not familiar enough with R to understand how this applies here. My code
+> uses less memory - is that enough? Or should another function be defined
+> that uses my code? Or shall it be disregarded?
+
+It depends a bit on the submission and R-Core, but the first step for something like this is to create a bug report on Bugzilla along with a reproducible example of a situation where your code outperforms the current version. From there, there are typically some discussions around the code itself, leading to a decision on whether or not to incorporate it.
+
+I threw together a quick patch file based on your proposed changes, which I?ve attached here if others would like to look at it and test. I have a feeling the loops in `cwilcox_sigma` can be factored out. The patch file is far from perfect; a final patch would remove some internal calls made obsolete by this method, like `w_free`, `w_init_maybe`, and `wilcox_free`. The current patch just makes `wilcox_free` a noop and comments out calls to the other functions.
+
+In my builds, `pwilcox` / `dwilcox` run much slower and `wilcox.test` runs about equally fast (as the current implementation). I haven?t done any memory benchmarking yet. I think that your version should be faster, so I?m not quite sure where the slowdown is coming from?maybe someone else can weigh in with thoughts. I?ll have more time to work on optimization and tracing down the differences in runtime tomorrow.
+
+I do have to say, I like this implementation better. The code is significantly cleaner (in my opinion), and it doesn?t require use of a static global variable with `on.exit` hooks. If you can find a reproducible example where the current R build crashes/breaks and your version does not, that would be extremely helpful. Some test cases where your version outperforms the existing one would also be helpful.
+
+I?m happy to discuss more and help out with this, including setting up a Bugzilla report if you?d like. There are a lot of people that know more about this than I; hoping to hear their thoughts on this as well.
+
+-Aidan
+
+-----------------------
+Aidan Lakshman (he/him)
+PhD Candidate, Wright Lab
+University of Pittsburgh School of Medicine
+Department of Biomedical Informatics
+www.AHL27.com
+ahl27 at pitt.edu | (724) 612-9940
+
+
+From: R-devel <r-devel-bounces at r-project.org> on behalf of Andreas L?ffler <andreas.loeffler at gmail.com>
+Date: Monday, January 15, 2024 at 13:52
+To: r-devel at r-project.org <r-devel at r-project.org>
+Subject: [Rd] cwilcox - new version
+I am a newbie to C (although I did some programming in Perl and Pascal) so
+forgive me for the language that follows. I am writing because I have a
+question concerning the *implementation of *(the internal function)*
+cwilcox* in
+https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fsvn.r-project.org%2FR%2F!svn%2Fbc%2F81274%2Fbranches%2FR-DL%2Fsrc%2Fnmath%2Fwilcox.c&data=05%7C02%7Cahl27%40pitt.edu%7C2d55e3294f1047e1c0e808dc15fa3cff%7C9ef9f489e0a04eeb87cc3a526112fd0d%7C1%7C0%7C638409415285927560%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C62000%7C%7C%7C&sdata=Yu9u36OOyZWSVjA6%2BTKlYSTLh0VjMzOZKuQN48Ml3S0%3D&reserved=0<https://svn.r-project.org/R/!svn/bc/81274/branches/R-DL/src/nmath/wilcox.c>.
+This function is used to determine the test statistics of the
+Wilcoxon-Mann-Whitney U-test.
+
+_______________________________________________________________________________________________________________________________________
+The function `cwilcox` has three inputs: k, m and n. To establish the test
+statistics `cwilcox` determines the number of possible sums of natural
+numbers with the following restrictions:
+- the sum of the elements must be k,
+- the elements (summands) must be in a decreasing (or increasing) order,
+- every element must be less then m and
+- there must be at most n summands.
+
+The problem with the evaluation of this function `cwilcox(k,m,n)` is that
+it requires a recursion where in fact a three-dimensional array has to be
+evaluated (see the code around line 157). This requires a lot of memory and
+takes time and seems still an issue even with newer machines, see the
+warning in the documentation
+https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwww.rdocumentation.org%2Fpackages%2Fstats%2Fversions%2F3.6.2%2Ftopics%2Fwilcox.test&data=05%7C02%7Cahl27%40pitt.edu%7C2d55e3294f1047e1c0e808dc15fa3cff%7C9ef9f489e0a04eeb87cc3a526112fd0d%7C1%7C0%7C638409415285935895%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C62000%7C%7C%7C&sdata=GAkMVhP1tqf%2FezoLdrTKnU7KoysWzCpsDkpCdxCp5aQ%3D&reserved=0<https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/wilcox.test>
+.
+
+In an old paper I have written a formula where the evaluation can be done
+in a one-dimensional array that uses way less memory and is much faster.
+The paper itself is in German (you find a copy here:
+https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Ff%2Ff5%2FLoefflerWilcoxonMannWhitneyTest.pdf&data=05%7C02%7Cahl27%40pitt.edu%7C2d55e3294f1047e1c0e808dc15fa3cff%7C9ef9f489e0a04eeb87cc3a526112fd0d%7C1%7C0%7C638409415285940564%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C62000%7C%7C%7C&sdata=37lZBA9tQ49Gk8NKsR6OidF3U6nk%2Bv3LVbt21IwGSYk%3D&reserved=0)<https://upload.wikimedia.org/wikipedia/commons/f/f5/LoefflerWilcoxonMannWhitneyTest.pdf>,
+so I uploaded a translation into English (to be found in
+https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fde%2F1%2F19%2FMannWhitney_151102.pdf&data=05%7C02%7Cahl27%40pitt.edu%7C2d55e3294f1047e1c0e808dc15fa3cff%7C9ef9f489e0a04eeb87cc3a526112fd0d%7C1%7C0%7C638409415285945105%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C62000%7C%7C%7C&sdata=MZb7dgk%2Bbt38HuEqz3G9M9UA0dsmjQHLgcDl01RAXsg%3D&reserved=0)<https://upload.wikimedia.org/wikipedia/de/1/19/MannWhitney_151102.pdf>.
+
+I also looked at the code in R and wrote a new version of the code that
+uses my formulae so that a faster implementation is possible (code with
+comments is below). I have several questions regarding the code:
+
+   1. A lot of commands in the original R code are used to handle the
+   memory. I do not know how to do this so I skipped memory handling
+   completely and simply allocated space to an array (see below int
+   cwilcox_distr[(m*n+1)/2];). Since my array is 1-dimensional instead of
+   3-dimensional I think as a first guess that will be ok.
+   2. I read the documentation when and why code in R should be changed. I
+   am not familiar enough with R to understand how this applies here. My code
+   uses less memory - is that enough? Or should another function be defined
+   that uses my code? Or shall it be disregarded?
+   3. I was not able to file my ideas in bugzilla.r-project or the like and
+   I hope that this mailing list is a good address for my question.
+
+I also have written an example of a main function where the original code
+from R is compared to my code. I do not attach this example because this
+email is already very long but I can provide that example if needed.
+
+Maybe we can discuss this further. Best wishes, Andreas L?ffler.
+
+
+```
+#include <stdio.h>
+#include <stdlib.h>
+
+/* The traditional approch to determine the Mann-Whitney statistics uses a
+recursion formular for partitions of natural numbers, namely in the line
+w[i][j][k] = cwilcox(k - j, i - 1, j) + cwilcox(k, i, j - 1);
+(taken from
+https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fsvn.r-project.org%2FR%2F!svn%2Fbc%2F81274%2Fbranches%2FR-DL%2Fsrc%2Fnmath%2Fwilcox.c&data=05%7C02%7Cahl27%40pitt.edu%7C2d55e3294f1047e1c0e808dc15fa3cff%7C9ef9f489e0a04eeb87cc3a526112fd0d%7C1%7C0%7C638409415285949688%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C62000%7C%7C%7C&sdata=pPnCBuSzFfmE0%2FH3nmRmtO9qLLBiHSCcG2cNoI2scw4%3D&reserved=0)<https://svn.r-project.org/R/!svn/bc/81274/branches/R-DL/src/nmath/wilcox.c>.
+This approach requires a huge number of partitions to be evaluated because
+the second variable (j in the left term) and the third variable (k in the
+left term) in this recursion are not constant but change as well. Hence, a
+three dimensional array is evaluated.
+
+In an old paper a recursion equations was shown that avoids this
+disadvantage. The recursion equation of that paper uses only an array where
+the second as well as the third variable remain constant. This implies
+faster evaluation and less memory used. The original paper is in German and
+can be found in
+https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Ff%2Ff5%2FLoefflerWilcoxonMannWhitneyTest.pdf&data=05%7C02%7Cahl27%40pitt.edu%7C2d55e3294f1047e1c0e808dc15fa3cff%7C9ef9f489e0a04eeb87cc3a526112fd0d%7C1%7C0%7C638409415285954898%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C62000%7C%7C%7C&sdata=u7%2FH8geUfv0nwqspn%2FQ0DYGBbmGr9bA180B8vWxKIGc%3D&reserved=0<https://upload.wikimedia.org/wikipedia/commons/f/f5/LoefflerWilcoxonMannWhitneyTest.pdf>
+and the author has uploaded a translation into English in
+https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fde%2F1%2F19%2FMannWhitney_151102.pdf&data=05%7C02%7Cahl27%40pitt.edu%7C2d55e3294f1047e1c0e808dc15fa3cff%7C9ef9f489e0a04eeb87cc3a526112fd0d%7C1%7C0%7C638409415285959440%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C62000%7C%7C%7C&sdata=2nhVTotogBjd%2Fa2qaJD0pJLPB%2FE9FLy2d1fXYyz0BI0%3D&reserved=0<https://upload.wikimedia.org/wikipedia/de/1/19/MannWhitney_151102.pdf>. This
+function uses this approach. */
+
+static int
+cwilcox_sigma(int k, int m, int n) { /* this relates to the sigma function
+below */
+  int s, d;
+
+  s=0;
+  for (d = 1; d <= m; d++) {
+  if (k%d == 0) {
+  s=s+d;
+  }
+  }
+  for (d = n+1; d <= n+m; d++) {
+  if (k%d == 0) {
+  s=s-d;
+  }
+  }
+  return s;
+}
+
+/* this can replace cwilcox. It runs faster and uses way less memory */
+static double
+cwilcox2(int k, int m, int n){
+
+int cwilcox_distr[(m*n+1)/2]; /* will store (one half of the) distribution
+*/
+int s, i, kk;
+
+if (2*k>m*n){
+k=m*n-k; /* permutation function is symmetric */
+}
+
+for (kk=0; 2*kk<=m*n+1; kk++){
+if (kk==0){
+cwilcox_distr[0]=1; /* by definition 0 has only 1 partition */
+} else {
+s=0;
+for (i = 0; i<kk; i++){
+s=s+cwilcox_distr[i]*cwilcox_sigma(kk-i,m,n); /* recursion formula */
+   }
+   cwilcox_distr[kk]=s/kk;
+   }
+}
+
+return (double) cwilcox_distr[k];
+}
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-devel at r-project.org mailing list
+https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-devel&data=05%7C02%7Cahl27%40pitt.edu%7C2d55e3294f1047e1c0e808dc15fa3cff%7C9ef9f489e0a04eeb87cc3a526112fd0d%7C1%7C0%7C638409415285963952%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C62000%7C%7C%7C&sdata=Xl2%2FW6Th506HlCklz2cmUWh5EHJ7E9%2BBcIgHwUVFpFg%3D&reserved=0<https://stat.ethz.ch/mailman/listinfo/r-devel>
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Jan 16 15:36:08 2024
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 16 Jan 2024 17:36:08 +0300
+Subject: [Rd] as.matrix.dist patch (performance)
+In-Reply-To: <c919dc37-e226-3b9c-74a8-455c5dea79af@hiddenelephants.co.uk>
+References: <c919dc37-e226-3b9c-74a8-455c5dea79af@hiddenelephants.co.uk>
+Message-ID: <20240116173608.7ff6e241@arachnoid>
+
+Dear Tim,
+
+? Thu, 10 Aug 2023 22:38:44 +0100
+Tim Taylor <tim.taylor at hiddenelephants.co.uk> ?????:
+
+> Submitting here in the first instance but happy to move to Bugzilla
+> if more appropriate.
+
+It's a fine patch. The 1.7 times speed up from not transposing the
+return value shouldn't be sneezed at. I think it's time to move it to
+Bugzilla so that it won't be completely forgotten.
+
+-- 
+Best regards,
+Ivan
+
+
+From AHL27 @end|ng |rom p|tt@edu  Tue Jan 16 15:47:53 2024
+From: AHL27 @end|ng |rom p|tt@edu (Aidan Lakshman)
+Date: Tue, 16 Jan 2024 09:47:53 -0500
+Subject: [Rd] cwilcox - new version
+In-Reply-To: <CAJS5q+w40p-8KEAPBa1wqH8yo9=vuPxSJTSuQ+ajfh=J2ecqdQ@mail.gmail.com>
+References: <CAJS5q+w40p-8KEAPBa1wqH8yo9=vuPxSJTSuQ+ajfh=J2ecqdQ@mail.gmail.com>
+Message-ID: <09E1CF97-A9CA-4060-94C7-C892FA4754D0@pitt.edu>
+
+New email client, hoping that Outlook won?t continue to HTMLify my emails and mess up my attachments without my consent :/
+
+I?m re-attaching the patch file here, compressed as a .gz in case that was the issue with the previous attachment. Thanks to Ivan for pointing out that my attachment didn?t go through correctly on the first try.
+
+I?ll be working on seeing if I can optimize this to actually improve performance during the day today.
+
+-Aidan
+
+On 15 Jan 2024, at 5:51, Andreas L?ffler wrote:
+
+> I am a newbie to C (although I did some programming in Perl and Pascal) so
+> forgive me for the language that follows. I am writing because I have a
+> question concerning the *implementation of *(the internal function)*
+> cwilcox* in
+> https://svn.r-project.org/R/!svn/bc/81274/branches/R-DL/src/nmath/wilcox.c.
+> This function is used to determine the test statistics of the
+> Wilcoxon-Mann-Whitney U-test.
+>
+> _______________________________________________________________________________________________________________________________________
+> The function `cwilcox` has three inputs: k, m and n. To establish the test
+> statistics `cwilcox` determines the number of possible sums of natural
+> numbers with the following restrictions:
+> - the sum of the elements must be k,
+> - the elements (summands) must be in a decreasing (or increasing) order,
+> - every element must be less then m and
+> - there must be at most n summands.
+>
+> The problem with the evaluation of this function `cwilcox(k,m,n)` is that
+> it requires a recursion where in fact a three-dimensional array has to be
+> evaluated (see the code around line 157). This requires a lot of memory and
+> takes time and seems still an issue even with newer machines, see the
+> warning in the documentation
+> https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/wilcox.test
+> .
+>
+> In an old paper I have written a formula where the evaluation can be done
+> in a one-dimensional array that uses way less memory and is much faster.
+> The paper itself is in German (you find a copy here:
+> https://upload.wikimedia.org/wikipedia/commons/f/f5/LoefflerWilcoxonMannWhitneyTest.pdf),
+> so I uploaded a translation into English (to be found in
+> https://upload.wikimedia.org/wikipedia/de/1/19/MannWhitney_151102.pdf).
+>
+> I also looked at the code in R and wrote a new version of the code that
+> uses my formulae so that a faster implementation is possible (code with
+> comments is below). I have several questions regarding the code:
+>
+>    1. A lot of commands in the original R code are used to handle the
+>    memory. I do not know how to do this so I skipped memory handling
+>    completely and simply allocated space to an array (see below int
+>    cwilcox_distr[(m*n+1)/2];). Since my array is 1-dimensional instead of
+>    3-dimensional I think as a first guess that will be ok.
+>    2. I read the documentation when and why code in R should be changed. I
+>    am not familiar enough with R to understand how this applies here. My code
+>    uses less memory - is that enough? Or should another function be defined
+>    that uses my code? Or shall it be disregarded?
+>    3. I was not able to file my ideas in bugzilla.r-project or the like and
+>    I hope that this mailing list is a good address for my question.
+>
+> I also have written an example of a main function where the original code
+> from R is compared to my code. I do not attach this example because this
+> email is already very long but I can provide that example if needed.
+>
+> Maybe we can discuss this further. Best wishes, Andreas L?ffler.
+>
+>
+> ```
+> #include <stdio.h>
+> #include <stdlib.h>
+>
+> /* The traditional approch to determine the Mann-Whitney statistics uses a
+> recursion formular for partitions of natural numbers, namely in the line
+> w[i][j][k] = cwilcox(k - j, i - 1, j) + cwilcox(k, i, j - 1);
+> (taken from
+> https://svn.r-project.org/R/!svn/bc/81274/branches/R-DL/src/nmath/wilcox.c).
+> This approach requires a huge number of partitions to be evaluated because
+> the second variable (j in the left term) and the third variable (k in the
+> left term) in this recursion are not constant but change as well. Hence, a
+> three dimensional array is evaluated.
+>
+> In an old paper a recursion equations was shown that avoids this
+> disadvantage. The recursion equation of that paper uses only an array where
+> the second as well as the third variable remain constant. This implies
+> faster evaluation and less memory used. The original paper is in German and
+> can be found in
+> https://upload.wikimedia.org/wikipedia/commons/f/f5/LoefflerWilcoxonMannWhitneyTest.pdf
+> and the author has uploaded a translation into English in
+> https://upload.wikimedia.org/wikipedia/de/1/19/MannWhitney_151102.pdf. This
+> function uses this approach. */
+>
+> static int
+> cwilcox_sigma(int k, int m, int n) { /* this relates to the sigma function
+> below */
+>   int s, d;
+>
+>   s=0;
+>   for (d = 1; d <= m; d++) {
+>   if (k%d == 0) {
+>   s=s+d;
+>   }
+>   }
+>   for (d = n+1; d <= n+m; d++) {
+>   if (k%d == 0) {
+>   s=s-d;
+>   }
+>   }
+>   return s;
+> }
+>
+> /* this can replace cwilcox. It runs faster and uses way less memory */
+> static double
+> cwilcox2(int k, int m, int n){
+>
+> int cwilcox_distr[(m*n+1)/2]; /* will store (one half of the) distribution
+> */
+> int s, i, kk;
+>
+> if (2*k>m*n){
+> k=m*n-k; /* permutation function is symmetric */
+> }
+>
+> for (kk=0; 2*kk<=m*n+1; kk++){
+> if (kk==0){
+> cwilcox_distr[0]=1; /* by definition 0 has only 1 partition */
+> } else {
+> s=0;
+> for (i = 0; i<kk; i++){
+> s=s+cwilcox_distr[i]*cwilcox_sigma(kk-i,m,n); /* recursion formula */
+>    }
+>    cwilcox_distr[kk]=s/kk;
+>    }
+> }
+>
+> return (double) cwilcox_distr[k];
+> }
+>
+>     [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: wilcox_patch_draft.gz
+Type: application/x-gzip
+Size: 1707 bytes
+Desc: not available
+URL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20240116/b2822fbd/attachment.bin>
+
+From t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk  Tue Jan 16 16:22:10 2024
+From: t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk (Tim Taylor)
+Date: Tue, 16 Jan 2024 15:22:10 +0000
+Subject: [Rd] as.matrix.dist patch (performance)
+In-Reply-To: <20240116173608.7ff6e241@arachnoid>
+References: <20240116173608.7ff6e241@arachnoid>
+Message-ID: <423D9351-0DA8-4B16-A297-EFBA2312FCB7@hiddenelephants.co.uk>
+
+Cheers Ivan
+
+Heather Turner has improved in it further in the R contributors slack. I?ll take another look and ensure something is added to Bugzilla, with attribution, in the next few days.
+
+Tim
+
+> On 16 Jan 2024, at 14:36, Ivan Krylov <krylov.r00t at gmail.com> wrote:
+> 
+> ?Dear Tim,
+> 
+> ? Thu, 10 Aug 2023 22:38:44 +0100
+> Tim Taylor <tim.taylor at hiddenelephants.co.uk> ?????:
+> 
+>> Submitting here in the first instance but happy to move to Bugzilla
+>> if more appropriate.
+> 
+> It's a fine patch. The 1.7 times speed up from not transposing the
+> return value shouldn't be sneezed at. I think it's time to move it to
+> Bugzilla so that it won't be completely forgotten.
+> 
+> --
+> Best regards,
+> Ivan
+
+
+From d|pter|x@w@ng @end|ng |rom gm@||@com  Tue Jan 16 20:16:19 2024
+From: d|pter|x@w@ng @end|ng |rom gm@||@com (Dipterix Wang)
+Date: Tue, 16 Jan 2024 14:16:19 -0500
+Subject: [Rd] 
+ Choices to remove `srcref` (and its buddies) when serializing
+ objects
+In-Reply-To: <577d4e34-7abc-4aa9-b850-09ed71c73bd5@gmail.com>
+References: <0FEDCC6B-B07A-48B1-8CF7-E130BEBB0A7D@gmail.com>
+ <577d4e34-7abc-4aa9-b850-09ed71c73bd5@gmail.com>
+Message-ID: <03DDB869-9969-44DF-82FC-2A6675D0FE2C@gmail.com>
+
+Could you recommend any packages/functions that compute hash such that the source references and sexpinfo_struct are ignored? Basically a version of `serialize` that convert R objects to raw without storing the ancillary source reference and sexpinfo.
+
+I think most people would think of `digest` but that package uses `serialize` (see discussion https://github.com/eddelbuettel/digest/issues/200#issuecomment-1894289875)
+
+> On Jan 12, 2024, at 11:33?AM, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+> 
+> 
+> On 1/12/24 06:11, Dipterix Wang wrote:
+>> Dear R devs,
+>> 
+>> I was digging into a package issue today when I realized R serialize function not always generate the same results on equivalent objects when users choose to run differently. For example, the following code
+>> 
+>> serialize(with(new.env(), { function(){} }), NULL, TRUE)
+>> 
+>> generates different results when I copy-paste into console vs when I use ctrl+shift+enter to source the file in RStudio.
+>> 
+>> With a deeper inspect into the cause, I found that function and language get source reference when getOption("keep.source") is TRUE. This means the source reference will make the functions different while in most cases, whether keeping function source might not impact how a function behaves.
+>> 
+>> While it's OK that function serialize generates different results, functions such as `rlang::hash` and `digest::digest`, which depend on `serialize` might eventually deliver false positives on same inputs. I've checked source code in digest package hoping to get around this issue (for example serialize(..., refhook = ...)). However, my workaround did not work. It seems that the markers to the objects are different even if I used `refhook` to force srcref to be the same. I also tried `removeSource` and `rlang::zap_srcref`. None of them works directly on nested environments with multiple functions.
+>> 
+>> I wonder how hard it would be to have options to discard source when serializing R objects?
+>> 
+>> Currently my analyses heavily depend on digest function to generate file caches and automatically schedule pipelines (to update cache) when changes are detected. The pipelines save the hashes of source code, inputs, and outputs together so other people can easily verify the calculation without accessing the original data (which could be sensitive), or running hour-long analyses, or having to buy servers. All of these require `serialize` to produce the same results regardless of how users choose to run the code.
+>> 
+>> It would be great if this feature could be in the future R. Other pipeline packages such as `targets` and `drake` can also benefit from it.
+> 
+> I don't think such functionality would belong to serialize(). This function is not meant to produce stable results based on the input, the serialized representation may even differ based on properties not seen by users.
+> 
+> I think an option to ignore source code would belong to a function that computes the hash, as other options of identical().
+> 
+> Tomas
+> 
+> 
+>> Thanks,
+>> 
+>> - Dipterix
+>> 	[[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+	[[alternative HTML version deleted]]
+
+
+From AHL27 @end|ng |rom p|tt@edu  Tue Jan 16 21:29:12 2024
+From: AHL27 @end|ng |rom p|tt@edu (Aidan Lakshman)
+Date: Tue, 16 Jan 2024 15:29:12 -0500
+Subject: [Rd] cwilcox - new version
+In-Reply-To: <09E1CF97-A9CA-4060-94C7-C892FA4754D0@pitt.edu>
+References: <CAJS5q+w40p-8KEAPBa1wqH8yo9=vuPxSJTSuQ+ajfh=J2ecqdQ@mail.gmail.com>
+ <09E1CF97-A9CA-4060-94C7-C892FA4754D0@pitt.edu>
+Message-ID: <B2822054-B1A2-4DE1-8E70-EAD0E341038C@pitt.edu>
+
+I?ve been looking at this for a couple hours--it ended up being trickier than I expected to implement well.
+
+I?ve attached a new patch here. This version scales significantly better than the existing method for both `pwilcox` and `dwilcox`. Examples are included below.
+
+I can?t think of any other ways to improve runtime at this point. That?s not to say there aren?t any, though?I?m hopeful inspection by someone else could identify more ways to save some time.
+
+This version uses Andreas?s algorithm for computing the value of `cwilcox`, but evaluates it lazily and caches results. Memory usage of this should be orders of magnitude less than the current version, and recursion is eliminated. As far as I can tell, the numerical accuracy of the results is unchanged.
+
+Performance statistics are interesting. If we assume the two populations have a total of `m` members, then this implementation runs slightly slower for m < 20, and much slower for 50 < m < 100. However, this implementation works significantly *faster* for m > 200. The breakpoint is precisely when each population has a size of 50; `qwilcox(0.5,50,50)` runs in 8 microseconds in the current version, but `qwilcox(0.5, 50, 51)` runs in 5 milliseconds. The new version runs in roughly 1 millisecond for both. This is probably because of internal logic that requires many more `free/calloc` calls if either population is larger than `WILCOX_MAX`, which is set to 50.
+
+I?m hopeful that this can be optimized to be suitable for inclusion in R. Lower performance for population sizes below 50 is not ideal, since `wilcox.test` switches to non-exact testing for population sizes above 50.
+
+-Aidan
+
+Benchmarking results on my machine using `microbenchmark`:
+(median runtimes over 100 iterations, us=microseconds, ms=milliseconds, s=seconds)
+
+`qwilcox(0.5, n, n)`
+
+              n:     10      25     50     100     200
+    old version:  1.2us   2.9us  9.0us  87.4ms    2.3s
+Andreas version:  2.7us  68.6us  1.1ms  16.9ms 264.3ms
+
+`dwilcox((n*n)%/%2, n, n)`
+              n:     10      25     50     100     200
+    old version:  1.4us   0.9us  0.9us  43.2ms 851.6ms
+Andreas version:  2.3us  53.9us  1.0ms  16.4ms 261.7ms
+
+
+`pwilcox(1:100, 10, 10)`:
+    old version:  62.9us
+Andreas version:  22.9us
+
+
+-----------------------
+Aidan Lakshman (he/him)
+PhD Candidate, Wright Lab
+University of Pittsburgh School of Medicine
+Department of Biomedical Informatics
+http://www.ahl27.com/
+ahl27 at pitt.edu | (724) 612-9940
+
+On 16 Jan 2024, at 9:47, Aidan Lakshman wrote:
+
+> New email client, hoping that Outlook won?t continue to HTMLify my emails and mess up my attachments without my consent :/
+>
+> I?m re-attaching the patch file here, compressed as a .gz in case that was the issue with the previous attachment. Thanks to Ivan for pointing out that my attachment didn?t go through correctly on the first try.
+>
+> I?ll be working on seeing if I can optimize this to actually improve performance during the day today.
+>
+> -Aidan
+>
+> On 15 Jan 2024, at 5:51, Andreas L?ffler wrote:
+>
+>> I am a newbie to C (although I did some programming in Perl and Pascal) so
+>> forgive me for the language that follows. I am writing because I have a
+>> question concerning the *implementation of *(the internal function)*
+>> cwilcox* in
+>> https://svn.r-project.org/R/!svn/bc/81274/branches/R-DL/src/nmath/wilcox.c.
+>> This function is used to determine the test statistics of the
+>> Wilcoxon-Mann-Whitney U-test.
+>>
+>> _______________________________________________________________________________________________________________________________________
+>> The function `cwilcox` has three inputs: k, m and n. To establish the test
+>> statistics `cwilcox` determines the number of possible sums of natural
+>> numbers with the following restrictions:
+>> - the sum of the elements must be k,
+>> - the elements (summands) must be in a decreasing (or increasing) order,
+>> - every element must be less then m and
+>> - there must be at most n summands.
+>>
+>> The problem with the evaluation of this function `cwilcox(k,m,n)` is that
+>> it requires a recursion where in fact a three-dimensional array has to be
+>> evaluated (see the code around line 157). This requires a lot of memory and
+>> takes time and seems still an issue even with newer machines, see the
+>> warning in the documentation
+>> https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/wilcox.test
+>> .
+>>
+>> In an old paper I have written a formula where the evaluation can be done
+>> in a one-dimensional array that uses way less memory and is much faster.
+>> The paper itself is in German (you find a copy here:
+>> https://upload.wikimedia.org/wikipedia/commons/f/f5/LoefflerWilcoxonMannWhitneyTest.pdf),
+>> so I uploaded a translation into English (to be found in
+>> https://upload.wikimedia.org/wikipedia/de/1/19/MannWhitney_151102.pdf).
+>>
+>> I also looked at the code in R and wrote a new version of the code that
+>> uses my formulae so that a faster implementation is possible (code with
+>> comments is below). I have several questions regarding the code:
+>>
+>>    1. A lot of commands in the original R code are used to handle the
+>>    memory. I do not know how to do this so I skipped memory handling
+>>    completely and simply allocated space to an array (see below int
+>>    cwilcox_distr[(m*n+1)/2];). Since my array is 1-dimensional instead of
+>>    3-dimensional I think as a first guess that will be ok.
+>>    2. I read the documentation when and why code in R should be changed. I
+>>    am not familiar enough with R to understand how this applies here. My code
+>>    uses less memory - is that enough? Or should another function be defined
+>>    that uses my code? Or shall it be disregarded?
+>>    3. I was not able to file my ideas in bugzilla.r-project or the like and
+>>    I hope that this mailing list is a good address for my question.
+>>
+>> I also have written an example of a main function where the original code
+>> from R is compared to my code. I do not attach this example because this
+>> email is already very long but I can provide that example if needed.
+>>
+>> Maybe we can discuss this further. Best wishes, Andreas L?ffler.
+>>
+>>
+>> ```
+>> #include <stdio.h>
+>> #include <stdlib.h>
+>>
+>> /* The traditional approch to determine the Mann-Whitney statistics uses a
+>> recursion formular for partitions of natural numbers, namely in the line
+>> w[i][j][k] = cwilcox(k - j, i - 1, j) + cwilcox(k, i, j - 1);
+>> (taken from
+>> https://svn.r-project.org/R/!svn/bc/81274/branches/R-DL/src/nmath/wilcox.c).
+>> This approach requires a huge number of partitions to be evaluated because
+>> the second variable (j in the left term) and the third variable (k in the
+>> left term) in this recursion are not constant but change as well. Hence, a
+>> three dimensional array is evaluated.
+>>
+>> In an old paper a recursion equations was shown that avoids this
+>> disadvantage. The recursion equation of that paper uses only an array where
+>> the second as well as the third variable remain constant. This implies
+>> faster evaluation and less memory used. The original paper is in German and
+>> can be found in
+>> https://upload.wikimedia.org/wikipedia/commons/f/f5/LoefflerWilcoxonMannWhitneyTest.pdf
+>> and the author has uploaded a translation into English in
+>> https://upload.wikimedia.org/wikipedia/de/1/19/MannWhitney_151102.pdf. This
+>> function uses this approach. */
+>>
+>> static int
+>> cwilcox_sigma(int k, int m, int n) { /* this relates to the sigma function
+>> below */
+>>   int s, d;
+>>
+>>   s=0;
+>>   for (d = 1; d <= m; d++) {
+>>   if (k%d == 0) {
+>>   s=s+d;
+>>   }
+>>   }
+>>   for (d = n+1; d <= n+m; d++) {
+>>   if (k%d == 0) {
+>>   s=s-d;
+>>   }
+>>   }
+>>   return s;
+>> }
+>>
+>> /* this can replace cwilcox. It runs faster and uses way less memory */
+>> static double
+>> cwilcox2(int k, int m, int n){
+>>
+>> int cwilcox_distr[(m*n+1)/2]; /* will store (one half of the) distribution
+>> */
+>> int s, i, kk;
+>>
+>> if (2*k>m*n){
+>> k=m*n-k; /* permutation function is symmetric */
+>> }
+>>
+>> for (kk=0; 2*kk<=m*n+1; kk++){
+>> if (kk==0){
+>> cwilcox_distr[0]=1; /* by definition 0 has only 1 partition */
+>> } else {
+>> s=0;
+>> for (i = 0; i<kk; i++){
+>> s=s+cwilcox_distr[i]*cwilcox_sigma(kk-i,m,n); /* recursion formula */
+>>    }
+>>    cwilcox_distr[kk]=s/kk;
+>>    }
+>> }
+>>
+>> return (double) cwilcox_distr[k];
+>> }
+>>
+>>     [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: wilcox_patch_draft_v2.gz
+Type: application/x-gzip
+Size: 2652 bytes
+Desc: not available
+URL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20240116/51c0bd7c/attachment.bin>
+
+From rb@er @end|ng |rom @t@u@edu  Tue Jan 16 23:34:14 2024
+From: rb@er @end|ng |rom @t@u@edu (Robert Baer)
+Date: Tue, 16 Jan 2024 16:34:14 -0600
+Subject: [Rd] ADA Compliance
+In-Reply-To: <D31D66EF-4057-4695-85F0-5EE61D47E100@bsu.edu>
+References: <D31D66EF-4057-4695-85F0-5EE61D47E100@bsu.edu>
+Message-ID: <10f09e24-0497-44eb-9be6-d79ffd16134e@atsu.edu>
+
+On 1/12/2024 1:50 PM, Hunter, Zayne via R-devel wrote:
+> Hello,
+>
+>
+> I am working with Ball State University to obtain a license of R.
+
+R is open source so there really should be no need to "obtain a license 
+for R".? This can hopefully reduce the hoops you must jump through.?? 
+Mostly, I believe you can think of the R license as GPL2/GPL3, but you 
+can read more about other R and R package licenses here: 
+https://www.r-project.org/Licenses/#:~:text=R%20as%20a%20package%20is,%2C%20which%20includes%20GPL%2D3%20.
+
+
+> As part of our requirements for obtaining new software, we must review the VPAT for ADA compliance. Can you provide this information for me?
+>
+> Thanks,
+>
+>
+> Zayne Hunter
+> Technology Advisor & Vendor Relations Manager
+> Ball State University
+> zayne.hunter at bsu.edu
+> (765)285-7853
+>
+>
+>
+>
+>
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Wed Jan 17 10:31:40 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Wed, 17 Jan 2024 10:31:40 +0100
+Subject: [Rd] 
+ Choices to remove `srcref` (and its buddies) when serializing
+ objects
+In-Reply-To: <03DDB869-9969-44DF-82FC-2A6675D0FE2C@gmail.com>
+References: <0FEDCC6B-B07A-48B1-8CF7-E130BEBB0A7D@gmail.com>
+ <577d4e34-7abc-4aa9-b850-09ed71c73bd5@gmail.com>
+ <03DDB869-9969-44DF-82FC-2A6675D0FE2C@gmail.com>
+Message-ID: <0314235b-d9a7-4f37-a14f-d365459a149a@gmail.com>
+
+On 1/16/24 20:16, Dipterix Wang wrote:
+> Could you recommend any packages/functions that compute hash such that 
+> the source references and sexpinfo_struct are ignored? Basically a 
+> version of `serialize` that convert R objects to raw without storing 
+> the ancillary source reference and sexpinfo.
+> I think most people would think of `digest` but that package uses 
+> `serialize` (see discussion 
+> https://github.com/eddelbuettel/digest/issues/200#issuecomment-1894289875)
+
+I think one could implement hashing on the fly without any 
+serialization, similarly to how identical works, but I am not aware of 
+any existing implementation. Again, if that wasn't clear: I don't think 
+trying to compute a hash of an object from its serialized representation 
+is a good idea - it is of course convenient, but has problems like the 
+one you have ran into.
+
+In some applications it may still be good enough: if by various tweaks, 
+such as ensuring source references are off in your case, you achieve a 
+state when false alarms are rare (identical objects have different 
+hashes), and hence say unnecessary re-computation is rare, maybe it is 
+good enough.
+
+Tomas
+
+>
+>> On Jan 12, 2024, at 11:33?AM, Tomas Kalibera 
+>> <tomas.kalibera at gmail.com> wrote:
+>>
+>>
+>> On 1/12/24 06:11, Dipterix Wang wrote:
+>>> Dear R devs,
+>>>
+>>> I was digging into a package issue today when I realized R serialize 
+>>> function not always generate the same results on equivalent objects 
+>>> when users choose to run differently. For example, the following code
+>>>
+>>> serialize(with(new.env(), { function(){} }), NULL, TRUE)
+>>>
+>>> generates different results when I copy-paste into console vs when I 
+>>> use ctrl+shift+enter to source the file in RStudio.
+>>>
+>>> With a deeper inspect into the cause, I found that function and 
+>>> language get source reference when getOption("keep.source") is TRUE. 
+>>> This means the source reference will make the functions different 
+>>> while in most cases, whether keeping function source might not 
+>>> impact how a function behaves.
+>>>
+>>> While it's OK that function serialize generates different results, 
+>>> functions such as `rlang::hash` and `digest::digest`, which depend 
+>>> on `serialize` might eventually deliver false positives on same 
+>>> inputs. I've checked source code in digest package hoping to get 
+>>> around this issue (for example serialize(..., refhook = ...)). 
+>>> However, my workaround did not work. It seems that the markers to 
+>>> the objects are different even if I used `refhook` to force srcref 
+>>> to be the same. I also tried `removeSource` and `rlang::zap_srcref`. 
+>>> None of them works directly on nested environments with multiple 
+>>> functions.
+>>>
+>>> I wonder how hard it would be to have options to discard source when 
+>>> serializing R objects?
+>>>
+>>> Currently my analyses heavily depend on digest function to generate 
+>>> file caches and automatically schedule pipelines (to update cache) 
+>>> when changes are detected. The pipelines save the hashes of source 
+>>> code, inputs, and outputs together so other people can easily verify 
+>>> the calculation without accessing the original data (which could be 
+>>> sensitive), or running hour-long analyses, or having to buy servers. 
+>>> All of these require `serialize` to produce the same results 
+>>> regardless of how users choose to run the code.
+>>>
+>>> It would be great if this feature could be in the future R. Other 
+>>> pipeline packages such as `targets` and `drake` can also benefit 
+>>> from it.
+>>
+>> I don't think such functionality would belong to serialize(). This 
+>> function is not meant to produce stable results based on the input, 
+>> the serialized representation may even differ based on properties not 
+>> seen by users.
+>>
+>> I think an option to ignore source code would belong to a function 
+>> that computes the hash, as other options of identical().
+>>
+>> Tomas
+>>
+>>
+>>> Thanks,
+>>>
+>>> - Dipterix
+>>> [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-devel at r-project.orgmailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+
+From ||one| @end|ng |rom po@|t@co  Wed Jan 17 11:32:59 2024
+From: ||one| @end|ng |rom po@|t@co (Lionel Henry)
+Date: Wed, 17 Jan 2024 11:32:59 +0100
+Subject: [Rd] 
+ Choices to remove `srcref` (and its buddies) when serializing
+ objects
+In-Reply-To: <0314235b-d9a7-4f37-a14f-d365459a149a@gmail.com>
+References: <0FEDCC6B-B07A-48B1-8CF7-E130BEBB0A7D@gmail.com>
+ <577d4e34-7abc-4aa9-b850-09ed71c73bd5@gmail.com>
+ <03DDB869-9969-44DF-82FC-2A6675D0FE2C@gmail.com>
+ <0314235b-d9a7-4f37-a14f-d365459a149a@gmail.com>
+Message-ID: <CAJf4E3pcHtdGKpVX5SPGOKMFGRxQ505ivToTQQuzKxtxZqmmXw@mail.gmail.com>
+
+> I think one could implement hashing on the fly without any
+> serialization, similarly to how identical works, but I am not aware of
+> any existing implementation
+
+We have one in vctrs but it's not exported:
+https://github.com/r-lib/vctrs/blob/main/src/hash.c
+
+The main use is vectorised hashing:
+
+```
+# Non-vectorised
+vctrs:::obj_hash(1:10)
+#> [1] 1e 77 ce 48
+
+# Vectorised
+vctrs:::vec_hash(1L)
+#> [1] 70 a2 85 ef
+vctrs:::vec_hash(1:2)
+#> [1] 70 a2 85 ef bf 3c 2c cf
+
+# vctrs semantics so dfs are vectors of rows
+length(vctrs:::vec_hash(mtcars)) / 4
+#> [1] 32
+nrow(mtcars)
+#> [1] 32
+```
+
+Best,
+Lionel
+
+On Wed, Jan 17, 2024 at 10:32?AM Tomas Kalibera
+<tomas.kalibera at gmail.com> wrote:
+>
+> On 1/16/24 20:16, Dipterix Wang wrote:
+> > Could you recommend any packages/functions that compute hash such that
+> > the source references and sexpinfo_struct are ignored? Basically a
+> > version of `serialize` that convert R objects to raw without storing
+> > the ancillary source reference and sexpinfo.
+> > I think most people would think of `digest` but that package uses
+> > `serialize` (see discussion
+> > https://github.com/eddelbuettel/digest/issues/200#issuecomment-1894289875)
+>
+> I think one could implement hashing on the fly without any
+> serialization, similarly to how identical works, but I am not aware of
+> any existing implementation. Again, if that wasn't clear: I don't think
+> trying to compute a hash of an object from its serialized representation
+> is a good idea - it is of course convenient, but has problems like the
+> one you have ran into.
+>
+> In some applications it may still be good enough: if by various tweaks,
+> such as ensuring source references are off in your case, you achieve a
+> state when false alarms are rare (identical objects have different
+> hashes), and hence say unnecessary re-computation is rare, maybe it is
+> good enough.
+>
+> Tomas
+>
+> >
+> >> On Jan 12, 2024, at 11:33?AM, Tomas Kalibera
+> >> <tomas.kalibera at gmail.com> wrote:
+> >>
+> >>
+> >> On 1/12/24 06:11, Dipterix Wang wrote:
+> >>> Dear R devs,
+> >>>
+> >>> I was digging into a package issue today when I realized R serialize
+> >>> function not always generate the same results on equivalent objects
+> >>> when users choose to run differently. For example, the following code
+> >>>
+> >>> serialize(with(new.env(), { function(){} }), NULL, TRUE)
+> >>>
+> >>> generates different results when I copy-paste into console vs when I
+> >>> use ctrl+shift+enter to source the file in RStudio.
+> >>>
+> >>> With a deeper inspect into the cause, I found that function and
+> >>> language get source reference when getOption("keep.source") is TRUE.
+> >>> This means the source reference will make the functions different
+> >>> while in most cases, whether keeping function source might not
+> >>> impact how a function behaves.
+> >>>
+> >>> While it's OK that function serialize generates different results,
+> >>> functions such as `rlang::hash` and `digest::digest`, which depend
+> >>> on `serialize` might eventually deliver false positives on same
+> >>> inputs. I've checked source code in digest package hoping to get
+> >>> around this issue (for example serialize(..., refhook = ...)).
+> >>> However, my workaround did not work. It seems that the markers to
+> >>> the objects are different even if I used `refhook` to force srcref
+> >>> to be the same. I also tried `removeSource` and `rlang::zap_srcref`.
+> >>> None of them works directly on nested environments with multiple
+> >>> functions.
+> >>>
+> >>> I wonder how hard it would be to have options to discard source when
+> >>> serializing R objects?
+> >>>
+> >>> Currently my analyses heavily depend on digest function to generate
+> >>> file caches and automatically schedule pipelines (to update cache)
+> >>> when changes are detected. The pipelines save the hashes of source
+> >>> code, inputs, and outputs together so other people can easily verify
+> >>> the calculation without accessing the original data (which could be
+> >>> sensitive), or running hour-long analyses, or having to buy servers.
+> >>> All of these require `serialize` to produce the same results
+> >>> regardless of how users choose to run the code.
+> >>>
+> >>> It would be great if this feature could be in the future R. Other
+> >>> pipeline packages such as `targets` and `drake` can also benefit
+> >>> from it.
+> >>
+> >> I don't think such functionality would belong to serialize(). This
+> >> function is not meant to produce stable results based on the input,
+> >> the serialized representation may even differ based on properties not
+> >> seen by users.
+> >>
+> >> I think an option to ignore source code would belong to a function
+> >> that computes the hash, as other options of identical().
+> >>
+> >> Tomas
+> >>
+> >>
+> >>> Thanks,
+> >>>
+> >>> - Dipterix
+> >>> [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-devel at r-project.orgmailing list
+> >>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @ndre@@@|oe|||er @end|ng |rom gm@||@com  Wed Jan 17 11:55:21 2024
+From: @ndre@@@|oe|||er @end|ng |rom gm@||@com (=?UTF-8?Q?Andreas_L=C3=B6ffler?=)
+Date: Wed, 17 Jan 2024 11:55:21 +0100
+Subject: [Rd] cwilcox - new version
+In-Reply-To: <B2822054-B1A2-4DE1-8E70-EAD0E341038C@pitt.edu>
+References: <CAJS5q+w40p-8KEAPBa1wqH8yo9=vuPxSJTSuQ+ajfh=J2ecqdQ@mail.gmail.com>
+ <09E1CF97-A9CA-4060-94C7-C892FA4754D0@pitt.edu>
+ <B2822054-B1A2-4DE1-8E70-EAD0E341038C@pitt.edu>
+Message-ID: <CAJS5q+z5RGikZTb_Zk8QZcCRU8WocNJuzXwvR+LY=-q4b+UcZQ@mail.gmail.com>
+
+>
+>
+> Performance statistics are interesting. If we assume the two populations
+> have a total of `m` members, then this implementation runs slightly slower
+> for m < 20, and much slower for 50 < m < 100. However, this implementation
+> works significantly *faster* for m > 200. The breakpoint is precisely when
+> each population has a size of 50; `qwilcox(0.5,50,50)` runs in 8
+> microseconds in the current version, but `qwilcox(0.5, 50, 51)` runs in 5
+> milliseconds. The new version runs in roughly 1 millisecond for both. This
+> is probably because of internal logic that requires many more `free/calloc`
+> calls if either population is larger than `WILCOX_MAX`, which is set to 50.
+>
+Also because cwilcox_sigma has to be evaluated, and this is slightly more
+demanding since it uses k%d.
+
+There is a tradeoff here between memory usage and time of execution. I am
+not a heavy user of the U test but I think the typical use case does not
+involve several hundreds of tests in a session so execution time (my 2
+cents) is less important. But if R crashes one execution is already
+problematic.
+
+But the takeaway is  probably: we should implement both approaches in the
+code and leave it to the user which one she prefers. If time is important
+and memory not an issue and if m, n are low go for the "traditional
+approach". Otherwise, use my formula?
+
+PS (@Aidan): I have applied for an bugzilla account two days ago and heard
+not back from them. Also Spam is empty. Is that ok or shall I do something?
+
+	[[alternative HTML version deleted]]
+
+
+From me @end|ng |rom h@rmen@toppe|@@n|  Tue Jan 16 20:02:48 2024
+From: me @end|ng |rom h@rmen@toppe|@@n| (Harmen Stoppels)
+Date: Tue, 16 Jan 2024 19:02:48 +0000
+Subject: [Rd] Sys.which() caching path to `which`
+In-Reply-To: <20240112181125.7616fc6e@arachnoid>
+References: <20240110224331.24ee0edf@Tarkus>
+ <F5607414-92E9-4D46-AD93-8100D9ED6997@R-project.org>
+ <20240112181125.7616fc6e@arachnoid>
+Message-ID: <HrQEEygLp_tv6eb1kK4Y7cBF2pUsbZCg1N1dUAgP3nER1bg5ebNG-I4p1ZjojRj-a-0rozKtNHHKQqvdJUm5pPfhPEnTYXhQXf4Jyp9VUK8=@harmenstoppels.nl>
+
+On Friday, January 12th, 2024 at 16:11, Ivan Krylov <ikrylov at disroot.org> wrote:
+
+> unlike `which`, `command -v` returns names of shell builtins if
+> something is both an executable and a builtin. So for things like `[`,
+> Sys.which would behave differently if changed to use command -v
+
+Then can we revisit my simple fix, which refers to `which` through a
+symlink instead of a hard-coded absolute in an R-source file:
+
+>From 3f2b1b6c94460fd4d3e9f03c9f17a25db2d2b473 Mon Sep 17 00:00:00 2001
+From: Harmen Stoppels <me at harmenstoppels.nl>
+Date: Wed, 10 Jan 2024 12:40:40 +0100
+Subject: [PATCH] base: use a symlink for which instead of hard-coded string
+
+---
+ share/make/basepkg.mk                 | 8 ++++----
+ src/library/base/R/unix/system.unix.R | 6 +++---
+ 2 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/share/make/basepkg.mk b/share/make/basepkg.mk
+index c0a69c8a0af..4cf63878709 100644
+--- a/share/make/basepkg.mk
++++ b/share/make/basepkg.mk
+@@ -72,16 +72,16 @@ mkRbase:
+ 	  else \
+ 	    cat $(RSRC) > "$${f}"; \
+ 	  fi; \
+-	  f2=$${TMPDIR:-/tmp}/R2$$$$; \
+-	  sed -e "s:@WHICH@:${WHICH}:" "$${f}" > "$${f2}"; \
+-	  rm -f "$${f}"; \
+-	  $(SHELL) $(top_srcdir)/tools/move-if-change "$${f2}" all.R)
++	  $(SHELL) $(top_srcdir)/tools/move-if-change "$${f}" all.R)
+ 	@if ! test -f $(top_builddir)/library/$(pkg)/R/$(pkg); then \
+ 	  $(INSTALL_DATA) all.R $(top_builddir)/library/$(pkg)/R/$(pkg); \
+ 	else if test all.R -nt $(top_builddir)/library/$(pkg)/R/$(pkg); then \
+ 	  $(INSTALL_DATA) all.R $(top_builddir)/library/$(pkg)/R/$(pkg); \
+ 	  fi \
+ 	fi
++	@if ! test -f $(top_builddir)/library/$(pkg)/R/which; then \
++	  cd $(top_builddir)/library/$(pkg)/R/ && $(LN_S) $(WHICH) which; \
++	fi
+ 
+ mkdesc:
+ 	@if test -f DESCRIPTION; then \
+diff --git a/src/library/base/R/unix/system.unix.R b/src/library/base/R/unix/system.unix.R
+index 3bb7d0cb27c..78271c8c12c 100644
+--- a/src/library/base/R/unix/system.unix.R
++++ b/src/library/base/R/unix/system.unix.R
+@@ -114,9 +114,9 @@ system2 <- function(command, args = character(),
+ Sys.which <- function(names)
+ {
+     res <- character(length(names)); names(res) <- names
+-    ## hopefully configure found [/usr]/bin/which
+-    which <- "@WHICH@"
+-    if (!nzchar(which)) {
++    which <- file.path(R.home(), "library", "base", "R", "which")
++    ## which should be a symlink to the system's which
++    if (!file.exists(which)) {
+         warning("'which' was not found on this platform")
+         return(res)
+     }
+
+
+From AHL27 @end|ng |rom p|tt@edu  Wed Jan 17 16:02:23 2024
+From: AHL27 @end|ng |rom p|tt@edu (Aidan Lakshman)
+Date: Wed, 17 Jan 2024 10:02:23 -0500
+Subject: [Rd] cwilcox - new version
+In-Reply-To: <CAJS5q+z5RGikZTb_Zk8QZcCRU8WocNJuzXwvR+LY=-q4b+UcZQ@mail.gmail.com>
+References: <CAJS5q+w40p-8KEAPBa1wqH8yo9=vuPxSJTSuQ+ajfh=J2ecqdQ@mail.gmail.com>
+ <09E1CF97-A9CA-4060-94C7-C892FA4754D0@pitt.edu>
+ <B2822054-B1A2-4DE1-8E70-EAD0E341038C@pitt.edu>
+ <CAJS5q+z5RGikZTb_Zk8QZcCRU8WocNJuzXwvR+LY=-q4b+UcZQ@mail.gmail.com>
+Message-ID: <CCE4D305-79D5-452F-B613-60958DB705B8@pitt.edu>
+
+Hi everyone,
+
+I?ve opened a Bugzilla report for Andreas with the most recent implementation here: https://bugs.r-project.org/show_bug.cgi?id=18655. Feedback would be greatly appreciated.
+
+
+The most straight forward approach is likely to implement both methods and determine which to use based on population sizes. The cutoff at n=50 is very sharp; it would be a large improvement to just call Andreas?s algorithm when either population is larger than 50, and use the current method otherwise.
+
+For the Bugzilla report I?ve only submitted the new version for benchmarking purposes. I think that if there is a way to improve this algorithm such that it matches the performance of the current version for population sizes under 50, then it would be significantly cleaner than to have two algorithms with an internal switch.
+
+As for remaining performance improvements:
+
+1. cwilcox_sigma is definitely a performance loss. It would improve performance to instead just loop from 1 to min(m, sqrt(k)) and from n+1 to min(m+n, sqrt(k)), since the formula just finds potential factors of k. Maybe there are other ways to improve this, but I think factorization is a notoriously intensive problem, so that further optimzation may be intractable.
+
+2. Calculation of the distribution values has quadratic scaling. Maybe there?s a way to optimize that further? See lines 91-103 in the most recent version.
+
+Regardless of runtime, memory is certainly improved. For calculation on population sizes m,n, the current version has memory complexity O((mn)^2), whereas Andreas?s version has complexity O(mn). Running `qwilcox(0.5,500,500)` crashes my R session with the old version, but runs successfully in about 10s with the new version.
+
+I?ve written up all the information so far on the Bugzilla report, and I?m sure Andreas will add more information if necessary when his account is approved. Thanks again to Andreas for introducing this algorithm?I?m hopeful that this is able to improve performance of the wilcox functions.
+
+-Aidan
+
+
+-----------------------
+Aidan Lakshman (he/him)
+PhD Candidate, Wright Lab
+University of Pittsburgh School of Medicine
+Department of Biomedical Informatics
+www.AHL27.com
+ahl27 at pitt.edu | (724) 612-9940
+
+On 17 Jan 2024, at 5:55, Andreas L?ffler wrote:
+
+>>
+>>
+>> Performance statistics are interesting. If we assume the two populations
+>> have a total of `m` members, then this implementation runs slightly slower
+>> for m < 20, and much slower for 50 < m < 100. However, this implementation
+>> works significantly *faster* for m > 200. The breakpoint is precisely when
+>> each population has a size of 50; `qwilcox(0.5,50,50)` runs in 8
+>> microseconds in the current version, but `qwilcox(0.5, 50, 51)` runs in 5
+>> milliseconds. The new version runs in roughly 1 millisecond for both. This
+>> is probably because of internal logic that requires many more `free/calloc`
+>> calls if either population is larger than `WILCOX_MAX`, which is set to 50.
+>>
+> Also because cwilcox_sigma has to be evaluated, and this is slightly more
+> demanding since it uses k%d.
+>
+> There is a tradeoff here between memory usage and time of execution. I am
+> not a heavy user of the U test but I think the typical use case does not
+> involve several hundreds of tests in a session so execution time (my 2
+> cents) is less important. But if R crashes one execution is already
+> problematic.
+>
+> But the takeaway is  probably: we should implement both approaches in the
+> code and leave it to the user which one she prefers. If time is important
+> and memory not an issue and if m, n are low go for the "traditional
+> approach". Otherwise, use my formula?
+>
+> PS (@Aidan): I have applied for an bugzilla account two days ago and heard
+> not back from them. Also Spam is empty. Is that ok or shall I do something?
+
+
+From @ndrew @end|ng |rom robb|n@@@me  Wed Jan 17 16:02:08 2024
+From: @ndrew @end|ng |rom robb|n@@@me (Andrew Robbins)
+Date: Wed, 17 Jan 2024 10:02:08 -0500
+Subject: [Rd] cwilcox - new version
+In-Reply-To: <CAJS5q+z5RGikZTb_Zk8QZcCRU8WocNJuzXwvR+LY=-q4b+UcZQ@mail.gmail.com>
+References: <CAJS5q+w40p-8KEAPBa1wqH8yo9=vuPxSJTSuQ+ajfh=J2ecqdQ@mail.gmail.com>
+ <09E1CF97-A9CA-4060-94C7-C892FA4754D0@pitt.edu>
+ <B2822054-B1A2-4DE1-8E70-EAD0E341038C@pitt.edu>
+ <CAJS5q+z5RGikZTb_Zk8QZcCRU8WocNJuzXwvR+LY=-q4b+UcZQ@mail.gmail.com>
+Message-ID: <1c4ea766-96bb-43b1-b89b-2e2b4805709f@robbinsa.me>
+
+Hi All,
+
+Figured I'd put my two cents in here as the welch-lab's LIGER package 
+currently uses mann-whitney on datasets much larger than m = 200. Our 
+current version uses a modified PRESTO 
+(https://github.com/immunogenomics/presto) implementation over the 
+inbuilt tests because of the lack of scaling. I stumbled into this 
+thread while working on some improvements for it and would like to make 
+it known that there is absolutely an audience for the high-member use-case.
+
+Best,
+
+-Andrew Robbins
+
+On 1/17/2024 5:55 AM, Andreas L?ffler wrote:
+>>
+>> Performance statistics are interesting. If we assume the two populations
+>> have a total of `m` members, then this implementation runs slightly slower
+>> for m < 20, and much slower for 50 < m < 100. However, this implementation
+>> works significantly *faster* for m > 200. The breakpoint is precisely when
+>> each population has a size of 50; `qwilcox(0.5,50,50)` runs in 8
+>> microseconds in the current version, but `qwilcox(0.5, 50, 51)` runs in 5
+>> milliseconds. The new version runs in roughly 1 millisecond for both. This
+>> is probably because of internal logic that requires many more `free/calloc`
+>> calls if either population is larger than `WILCOX_MAX`, which is set to 50.
+>>
+> Also because cwilcox_sigma has to be evaluated, and this is slightly more
+> demanding since it uses k%d.
+>
+> There is a tradeoff here between memory usage and time of execution. I am
+> not a heavy user of the U test but I think the typical use case does not
+> involve several hundreds of tests in a session so execution time (my 2
+> cents) is less important. But if R crashes one execution is already
+> problematic.
+>
+> But the takeaway is  probably: we should implement both approaches in the
+> code and leave it to the user which one she prefers. If time is important
+> and memory not an issue and if m, n are low go for the "traditional
+> approach". Otherwise, use my formula?
+>
+> PS (@Aidan): I have applied for an bugzilla account two days ago and heard
+> not back from them. Also Spam is empty. Is that ok or shall I do something?
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+-- 
+Andrew Robbins
+Systems Analyst, Welch Lab<https://welch-lab.github.io>
+University of Michigan
+Department of Computational Medicine and Bioinformatics
+
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: OpenPGP_signature.asc
+Type: application/pgp-signature
+Size: 840 bytes
+Desc: OpenPGP digital signature
+URL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20240117/c18b12c1/attachment.sig>
+
+From d|pter|x@w@ng @end|ng |rom gm@||@com  Wed Jan 17 17:35:02 2024
+From: d|pter|x@w@ng @end|ng |rom gm@||@com (Dipterix Wang)
+Date: Wed, 17 Jan 2024 11:35:02 -0500
+Subject: [Rd] 
+ Choices to remove `srcref` (and its buddies) when serializing
+ objects
+In-Reply-To: <CAJf4E3pcHtdGKpVX5SPGOKMFGRxQ505ivToTQQuzKxtxZqmmXw@mail.gmail.com>
+References: <0FEDCC6B-B07A-48B1-8CF7-E130BEBB0A7D@gmail.com>
+ <577d4e34-7abc-4aa9-b850-09ed71c73bd5@gmail.com>
+ <03DDB869-9969-44DF-82FC-2A6675D0FE2C@gmail.com>
+ <0314235b-d9a7-4f37-a14f-d365459a149a@gmail.com>
+ <CAJf4E3pcHtdGKpVX5SPGOKMFGRxQ505ivToTQQuzKxtxZqmmXw@mail.gmail.com>
+Message-ID: <3CF4CA2D-9F72-4C7B-90AA-4D2E9F745430@gmail.com>
+
+
+> 
+> We have one in vctrs but it's not exported:
+> https://github.com/r-lib/vctrs/blob/main/src/hash.c
+> 
+> The main use is vectorised hashing:
+> 
+
+Thanks for showing me this function. I have read the source code. That's a great idea. 
+
+However, I think I might have missed something. When I tried vctrs::obj_hash, I couldn't get identical outputs.
+
+
+``` r
+options(keep.source = TRUE)
+a <- function(){}
+vctrs:::obj_hash(a)
+#> [1] 68 e8 5a 0c
+a <- function(){}
+vctrs:::obj_hash(a)
+#> [1] b2 6a 55 9c
+a <-   function(){}
+vctrs:::obj_hash(a)
+#> [1] 01 a9 bc 30
+options(keep.source = FALSE)
+a <- function(){}
+vctrs:::obj_hash(a)
+#> [1] 93 d7 f2 72
+a <- function(){}
+vctrs:::obj_hash(a)
+#> [1] f3 1d d2 f4
+```
+
+Created on 2024-01-17 with [reprex v2.1.0](https://reprex.tidyverse.org)
+
+> 
+> Best,
+> Lionel
+> 
+> On Wed, Jan 17, 2024 at 10:32?AM Tomas Kalibera
+> <tomas.kalibera at gmail.com> wrote:
+>> 
+>> I think one could implement hashing on the fly without any
+>> serialization, similarly to how identical works, but I am not aware of
+>> any existing implementation. Again, if that wasn't clear: I don't think
+>> trying to compute a hash of an object from its serialized representation
+>> is a good idea - it is of course convenient, but has problems like the
+>> one you have ran into.
+>> 
+>> In some applications it may still be good enough: if by various tweaks,
+>> such as ensuring source references are off in your case, you achieve a
+>> state when false alarms are rare (identical objects have different
+>> hashes), and hence say unnecessary re-computation is rare, maybe it is
+>> good enough.
+
+I really appreciate you answer my questions and solve my puzzles. I went back and read the R internal code for `serialize` and totally agree on this, that serialization is not a good idea for digesting R objects, especially on environments, expressions, and functions. 
+
+What I want is a function that can produce the same and stable hash for identical objects. However, there is no function (given our best knowledge) on the market that can do this. `digest::digest` and `rlang::hash` are the first functions that come into my mind. Both are widely used, but they use serialize. The author of `digest` said:
+	> "As you know,  digest takes and (ahem) "digests" what serialize gives it, so you would have to look into what serialize lets you do."
+
+vctrs:::obj_hash is probably the closest to the implementation of `identical`, but the above examples give different results for identical objects.
+
+The existence of digest:: digest and rlang::hash shows that there is a huge demand for this "ideal" hash function. However, I bet most people are using digest/hash "incorrectly".
+
+>> 
+>> Tomas
+>> 
+
+
+	[[alternative HTML version deleted]]
+
+
+From ||@t@ @end|ng |rom reve||e@net  Thu Jan 18 00:26:40 2024
+From: ||@t@ @end|ng |rom reve||e@net (William Revelle)
+Date: Wed, 17 Jan 2024 17:26:40 -0600
+Subject: [Rd] Determining the size of a package
+Message-ID: <C4838B2F-8839-48AF-8DE3-31909151DE2E@revelle.net>
+
+Dear fellow developers,
+
+Is there an easy way to determine how big my packages  (psych and psychTools)  will be on various versions of CRAN?
+
+I have been running into the dread 'you are bigger than 5 MB" message for some installations of R on CRAN but not others.  The particular problem seems to be some of the mac versions (specifically r-oldrel-macos-arm64 and r-release-macos-X64 )
+
+When I build it on my Mac M1 it is well within the limits, but when pushing to CRAN,  I run into the size message.
+
+Is there a way I can find what the size will be on these various implementations without bothering the nice people at CRAN.
+
+Thanks.
+
+William Revelle            personality-project.org/revelle.html
+Professor                    personality-project.org
+Department of Psychology         www.wcas.northwestern.edu/psych/
+Northwestern University            www.northwestern.edu/
+Use R for psychology                 personality-project.org/r
+It is 90 seconds to midnight    www.thebulletin.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Jan 18 02:55:20 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 18 Jan 2024 14:55:20 +1300
+Subject: [Rd] Determining the size of a package
+In-Reply-To: <C4838B2F-8839-48AF-8DE3-31909151DE2E@revelle.net>
+References: <C4838B2F-8839-48AF-8DE3-31909151DE2E@revelle.net>
+Message-ID: <7E355811-5273-4FDA-BA8F-A01B09427AA8@R-project.org>
+
+William,
+
+the check does not apply to binary installations (such as the Mac builds), because those depend heavily on the static libraries included in the package binary which can be quite big and generally cannot be reduced in size - for example:
+https://www.r-project.org/nosvn/R.check/r-release-macos-arm64/terra-00check.html
+
+Cheers,
+Simon
+
+
+> On Jan 18, 2024, at 12:26 PM, William Revelle <lists at revelle.net> wrote:
+> 
+> Dear fellow developers,
+> 
+> Is there an easy way to determine how big my packages  (psych and psychTools)  will be on various versions of CRAN?
+> 
+> I have been running into the dread 'you are bigger than 5 MB" message for some installations of R on CRAN but not others.  The particular problem seems to be some of the mac versions (specifically r-oldrel-macos-arm64 and r-release-macos-X64 )
+> 
+> When I build it on my Mac M1 it is well within the limits, but when pushing to CRAN,  I run into the size message.
+> 
+> Is there a way I can find what the size will be on these various implementations without bothering the nice people at CRAN.
+> 
+> Thanks.
+> 
+> William Revelle            personality-project.org/revelle.html
+> Professor                    personality-project.org
+> Department of Psychology         www.wcas.northwestern.edu/psych/
+> Northwestern University            www.northwestern.edu/
+> Use R for psychology                 personality-project.org/r
+> It is 90 seconds to midnight    www.thebulletin.org
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Jan 18 16:28:33 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 18 Jan 2024 18:28:33 +0300
+Subject: [Rd] 
+ Choices to remove `srcref` (and its buddies) when serializing
+ objects
+In-Reply-To: <03DDB869-9969-44DF-82FC-2A6675D0FE2C@gmail.com>
+References: <0FEDCC6B-B07A-48B1-8CF7-E130BEBB0A7D@gmail.com>
+ <577d4e34-7abc-4aa9-b850-09ed71c73bd5@gmail.com>
+ <03DDB869-9969-44DF-82FC-2A6675D0FE2C@gmail.com>
+Message-ID: <20240118182833.0dc0103d@arachnoid>
+
+? Tue, 16 Jan 2024 14:16:19 -0500
+Dipterix Wang <dipterix.wang at gmail.com> ?????:
+
+> Could you recommend any packages/functions that compute hash such
+> that the source references and sexpinfo_struct are ignored? Basically
+> a version of `serialize` that convert R objects to raw without
+> storing the ancillary source reference and sexpinfo.
+
+I can show how this can be done, but it's not currently on CRAN or even
+a well-defined package API. I have adapted a copy of R's serialize()
+[*] with the following changes:
+
+ * Function bytecode and flags are ignored:
+
+f <- function() invisible()
+depcache:::hash(f, 2) # This is plain FNV1a-64 of serialize() output
+# [1] "9b7a1af5468deba4"
+.Call(depcache:::C_hash2, f) # This is the new hash
+[1] 91 5f b8 a1 b0 6b cb 40
+f() # called once: function gets the MAYBEJIT_MASK flag
+depcache:::hash(f, 2)
+# [1] "7d30e05546e7a230"
+.Call(depcache:::C_hash2, f)
+# [1] 91 5f b8 a1 b0 6b cb 40
+f() # called twice: function now has bytecode
+depcache:::hash(f, 2)
+# [1] "2a2cba4150e722b8"
+.Call(depcache:::C_hash2, f)
+# [1] 91 5f b8 a1 b0 6b cb 40 # new hash stays the same
+
+ * Source references are ignored:
+
+.Call(depcache:::C_hash2, \( ) invisible( ))
+# [1] 91 5f b8 a1 b0 6b cb 40 # compare vs. above
+
+# For quoted function definitions, source references have to be handled
+# differently 
+.Call(depcache:::C_hash2, quote(function(){}))
+[1] 58 0d 44 8e d4 fd 37 6f
+.Call(depcache:::C_hash2, quote(\( ){      }))
+[1] 58 0d 44 8e d4 fd 37 6f
+
+ * ALTREP is ignored:
+
+identical(1:10, 1:10+0L)
+# [1] TRUE
+identical(serialize(1:10, NULL), serialize(1:10+0L, NULL))
+# [1] FALSE
+identical(
+ .Call(depcache:::C_hash2, 1:10),
+ .Call(depcache:::C_hash2, 1:10+0L)
+)
+# [1] TRUE
+
+ * Strings not marked as bytes are encoded into UTF-8:
+
+identical('\uff', iconv('\uff', 'UTF-8', 'latin1'))
+# [1] TRUE
+identical(
+ serialize('\uff', NULL),
+ serialize(iconv('\uff', 'UTF-8', 'latin1'), NULL)
+)
+# [1] FALSE
+identical(
+ .Call(depcache:::C_hash2, '\uff'),
+ .Call(depcache:::C_hash2, iconv('\uff', 'UTF-8', 'latin1'))
+)
+# [1] TRUE
+
+ * NaNs with different payloads (except NA_numeric_) are replaced by
+   R_NaN.
+
+One of the many downsides to the current approach is that we rely on
+the non-API entry point getPRIMNAME() in order to hash builtins.
+Looking at the source code for identical() is no help here, because it
+uses the private PRIMOFFSET macro.
+
+The bitstream being hashed is also, unfortunately, not exactly
+compatible with R serialization format version 2: I had to ignore the
+LEVELS of the language objects being hashed both because identical()
+seems to ignore those and because I was missing multiple private
+definitions (e.g. the MAYBEJIT flag) to handle them properly.
+
+Then there's also the problem of immediate bindings [**]: I've seen bits
+of vctrs, rstudio, rlang blow up when calling CAR() on SEXP objects that
+are not safe to handle this way, but R_expand_binding_value() (used by
+serialize()) is again a private function that is not accessible from
+packages. identical() won't help here, because it compares reference
+objects (which may or may not contain such immediate bindings) by their
+pointer values instead of digging down into them.
+
+Dropping the (already violated) requirement to be compatible with R
+serialization bitstream will make it possible to simplify the code
+further.
+
+Finally:
+
+a <- new.env()
+b <- new.env()
+a$x <- b$x <- 42
+identical(a, b)
+# [1] FALSE
+.Call(depcache:::C_hash2, a)
+# [1] 44 21 f1 36 5d 92 03 1b
+.Call(depcache:::C_hash2, b)
+# [1] 44 21 f1 36 5d 92 03 1b
+
+...but that's unavoidable when looking at frozen object contents
+instead of their live memory layout.
+
+If you're interested, here's the development version of the package:
+install.packages('depcache',contriburl='https://aitap.github.io/Rpackages')
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://github.com/aitap/depcache/blob/serialize_canonical/src/serialize.c
+
+[**]
+https://svn.r-project.org/R/trunk/doc/notes/immbnd.md
+
+
+From ch@r||e@g@o @end|ng |rom @h|kokuchuo@net  Thu Jan 18 16:39:36 2024
+From: ch@r||e@g@o @end|ng |rom @h|kokuchuo@net (Charlie Gao)
+Date: Thu, 18 Jan 2024 15:39:36 +0000
+Subject: [Rd] 
+ Choices to remove `srcref` (and its buddies) when serializing
+ objects
+In-Reply-To: <mailman.54008.3.1705575601.59959.r-devel@r-project.org>
+References: <mailman.54008.3.1705575601.59959.r-devel@r-project.org>
+Message-ID: <9dcf5c85b11d0b6fd704b0e1a191015fa7758430@shikokuchuo.net>
+
+> ------------------------------
+> 
+> Date: Wed, 17 Jan 2024 11:35:02 -0500
+> 
+> From: Dipterix Wang <dipterix.wang at gmail.com>
+> 
+> To: Lionel Henry <lionel at posit.co>, Tomas Kalibera
+> 
+>  <tomas.kalibera at gmail.com>
+> 
+> Cc: r-devel at r-project.org
+> 
+> Subject: Re: [Rd] Choices to remove `srcref` (and its buddies) when
+> 
+>  serializing objects
+> 
+> Message-ID: <3CF4CA2D-9F72-4C7B-90AA-4D2E9F745430 at gmail.com>
+> 
+> Content-Type: text/plain; charset="utf-8"
+> 
+> > 
+> > 
+> >  
+> > 
+> >  On Wed, Jan 17, 2024 at 10:32 AM Tomas Kalibera
+> > 
+> >  <tomas.kalibera at gmail.com> wrote:
+> > 
+> > > 
+> > > I think one could implement hashing on the fly without any
+> > > 
+> > >  serialization, similarly to how identical works, but I am not aware of
+> > > 
+> > >  any existing implementation. Again, if that wasn't clear: I don't think
+> > > 
+> > >  trying to compute a hash of an object from its serialized representation
+> > > 
+> > >  is a good idea - it is of course convenient, but has problems like the
+> > > 
+> > >  one you have ran into.
+> > > 
+> > >  
+> > > 
+> > >  In some applications it may still be good enough: if by various tweaks,
+> > > 
+> > >  such as ensuring source references are off in your case, you achieve a
+> > > 
+> > >  state when false alarms are rare (identical objects have different
+> > > 
+> > >  hashes), and hence say unnecessary re-computation is rare, maybe it is
+> > > 
+> > >  good enough.
+> > >
+> > 
+> 
+> I really appreciate you answer my questions and solve my puzzles. I went back and read the R internal code for `serialize` and totally agree on this, that serialization is not a good idea for digesting R objects, especially on environments, expressions, and functions. 
+> 
+> What I want is a function that can produce the same and stable hash for identical objects. However, there is no function (given our best knowledge) on the market that can do this. `digest::digest` and `rlang::hash` are the first functions that come into my mind. Both are widely used, but they use serialize. The author of `digest` said:
+> 
+>  > "As you know, digest takes and (ahem) "digests" what serialize gives it, so you would have to look into what serialize lets you do."
+> 
+> vctrs:::obj_hash is probably the closest to the implementation of `identical`, but the above examples give different results for identical objects.
+> 
+> The existence of digest:: digest and rlang::hash shows that there is a huge demand for this "ideal" hash function. However, I bet most people are using digest/hash "incorrectly".
+
+Please read the full discussion to this old bug report: https://bugs.r-project.org/show_bug.cgi?id=18178
+
+Quoting briefly: Serialization is not intended to be used this way. What serialization tries to provide is that x and unserialize(serialize(x, NULL)) will be identical() while preserving internal representation where possible. Two objects that are considered identical() can have very different internal representations, and their serializations will reflect this.
+
+You will see that it is not as simple as just removing the srcref or the bytecode to functions. The issue with the `identical()` function in that context was eventually patched, but the comment by R-Core that serialization is not intended to be used to produce a reliable hash stands. Use of `identical()` or `serialize()` is simply not designed to ensure the same hashable object (in terms of bytes).
+
+This is echoed by Tomas' comment above. But we note that it is 'good enough' in most cases.
+
+Fwiw `nanonext::sha256()` and family directly hashes character strings and raw objects, but uses the same approach as `digest::digest()` elsewhere. So if someone comes up with a canonical binary representation of R objects, it will be able to hash it reliably.
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Thu Jan 18 16:59:31 2024
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Thu, 18 Jan 2024 09:59:31 -0600 (CST)
+Subject: [Rd] 
+ [External] Re: Choices to remove `srcref` (and its buddies)
+ when serializing objects
+In-Reply-To: <20240118182833.0dc0103d@arachnoid>
+References: <0FEDCC6B-B07A-48B1-8CF7-E130BEBB0A7D@gmail.com>
+ <577d4e34-7abc-4aa9-b850-09ed71c73bd5@gmail.com>
+ <03DDB869-9969-44DF-82FC-2A6675D0FE2C@gmail.com>
+ <20240118182833.0dc0103d@arachnoid>
+Message-ID: <3f5f194d-5f16-b4e1-19a-612f9de495eb@uiowa.edu>
+
+On Thu, 18 Jan 2024, Ivan Krylov via R-devel wrote:
+
+> ? Tue, 16 Jan 2024 14:16:19 -0500
+> Dipterix Wang <dipterix.wang at gmail.com> ?????:
+>
+>> Could you recommend any packages/functions that compute hash such
+>> that the source references and sexpinfo_struct are ignored? Basically
+>> a version of `serialize` that convert R objects to raw without
+>> storing the ancillary source reference and sexpinfo.
+>
+> I can show how this can be done, but it's not currently on CRAN or even
+> a well-defined package API. I have adapted a copy of R's serialize()
+> [*] with the following changes:
+>
+> * Function bytecode and flags are ignored:
+>
+> f <- function() invisible()
+> depcache:::hash(f, 2) # This is plain FNV1a-64 of serialize() output
+> # [1] "9b7a1af5468deba4"
+> .Call(depcache:::C_hash2, f) # This is the new hash
+> [1] 91 5f b8 a1 b0 6b cb 40
+> f() # called once: function gets the MAYBEJIT_MASK flag
+> depcache:::hash(f, 2)
+> # [1] "7d30e05546e7a230"
+> .Call(depcache:::C_hash2, f)
+> # [1] 91 5f b8 a1 b0 6b cb 40
+> f() # called twice: function now has bytecode
+> depcache:::hash(f, 2)
+> # [1] "2a2cba4150e722b8"
+> .Call(depcache:::C_hash2, f)
+> # [1] 91 5f b8 a1 b0 6b cb 40 # new hash stays the same
+>
+> * Source references are ignored:
+>
+> .Call(depcache:::C_hash2, \( ) invisible( ))
+> # [1] 91 5f b8 a1 b0 6b cb 40 # compare vs. above
+>
+> # For quoted function definitions, source references have to be handled
+> # differently
+> .Call(depcache:::C_hash2, quote(function(){}))
+> [1] 58 0d 44 8e d4 fd 37 6f
+> .Call(depcache:::C_hash2, quote(\( ){      }))
+> [1] 58 0d 44 8e d4 fd 37 6f
+>
+> * ALTREP is ignored:
+>
+> identical(1:10, 1:10+0L)
+> # [1] TRUE
+> identical(serialize(1:10, NULL), serialize(1:10+0L, NULL))
+> # [1] FALSE
+> identical(
+> .Call(depcache:::C_hash2, 1:10),
+> .Call(depcache:::C_hash2, 1:10+0L)
+> )
+> # [1] TRUE
+>
+> * Strings not marked as bytes are encoded into UTF-8:
+>
+> identical('\uff', iconv('\uff', 'UTF-8', 'latin1'))
+> # [1] TRUE
+> identical(
+> serialize('\uff', NULL),
+> serialize(iconv('\uff', 'UTF-8', 'latin1'), NULL)
+> )
+> # [1] FALSE
+> identical(
+> .Call(depcache:::C_hash2, '\uff'),
+> .Call(depcache:::C_hash2, iconv('\uff', 'UTF-8', 'latin1'))
+> )
+> # [1] TRUE
+>
+> * NaNs with different payloads (except NA_numeric_) are replaced by
+>   R_NaN.
+>
+> One of the many downsides to the current approach is that we rely on
+> the non-API entry point getPRIMNAME() in order to hash builtins.
+> Looking at the source code for identical() is no help here, because it
+> uses the private PRIMOFFSET macro.
+>
+> The bitstream being hashed is also, unfortunately, not exactly
+> compatible with R serialization format version 2: I had to ignore the
+> LEVELS of the language objects being hashed both because identical()
+> seems to ignore those and because I was missing multiple private
+> definitions (e.g. the MAYBEJIT flag) to handle them properly.
+>
+> Then there's also the problem of immediate bindings [**]: I've seen bits
+> of vctrs, rstudio, rlang blow up when calling CAR() on SEXP objects that
+> are not safe to handle this way, but R_expand_binding_value() (used by
+> serialize()) is again a private function that is not accessible from
+> packages. identical() won't help here, because it compares reference
+> objects (which may or may not contain such immediate bindings) by their
+> pointer values instead of digging down into them.
+
+What does 'blow up' mean? If it is anything other than signal a "bad
+binding access" error then it would be good to have more details.
+
+Best,
+
+luke
+
+> Dropping the (already violated) requirement to be compatible with R
+> serialization bitstream will make it possible to simplify the code
+> further.
+>
+> Finally:
+>
+> a <- new.env()
+> b <- new.env()
+> a$x <- b$x <- 42
+> identical(a, b)
+> # [1] FALSE
+> .Call(depcache:::C_hash2, a)
+> # [1] 44 21 f1 36 5d 92 03 1b
+> .Call(depcache:::C_hash2, b)
+> # [1] 44 21 f1 36 5d 92 03 1b
+>
+> ...but that's unavoidable when looking at frozen object contents
+> instead of their live memory layout.
+>
+> If you're interested, here's the development version of the package:
+> install.packages('depcache',contriburl='https://aitap.github.io/Rpackages')
+>
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Jan 18 20:34:49 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 18 Jan 2024 22:34:49 +0300
+Subject: [Rd] 
+ [External] Re: Choices to remove `srcref` (and its buddies)
+ when serializing objects
+In-Reply-To: <3f5f194d-5f16-b4e1-19a-612f9de495eb@uiowa.edu>
+References: <0FEDCC6B-B07A-48B1-8CF7-E130BEBB0A7D@gmail.com>
+ <577d4e34-7abc-4aa9-b850-09ed71c73bd5@gmail.com>
+ <03DDB869-9969-44DF-82FC-2A6675D0FE2C@gmail.com>
+ <20240118182833.0dc0103d@arachnoid>
+ <3f5f194d-5f16-b4e1-19a-612f9de495eb@uiowa.edu>
+Message-ID: <20240118223449.2c8e47cf@Tarkus>
+
+On Thu, 18 Jan 2024 09:59:31 -0600 (CST)
+luke-tierney at uiowa.edu wrote:
+
+> What does 'blow up' mean? If it is anything other than signal a "bad
+> binding access" error then it would be good to have more details.
+
+My apologies for not being precise enough. I meant the "bad binding
+access" error in all such cases.
+
+-- 
+Best regards,
+Ivan
+
+
+From j|r|@c@mor@vec @end|ng |rom gm@||@com  Thu Jan 18 20:51:02 2024
+From: j|r|@c@mor@vec @end|ng |rom gm@||@com (=?UTF-8?B?SmnFmcOtIE1vcmF2ZWM=?=)
+Date: Fri, 19 Jan 2024 08:51:02 +1300
+Subject: [Rd] Should subsetting named vector return named vector including
+ named unmatched elements?
+Message-ID: <9ec19b87-28f2-4de8-81ae-7075b78a6111@gmail.com>
+
+Subsetting vector (including lists) returns the same number of elements 
+as the subsetting vector, including unmatched elements which are 
+reported as `NA` or `NULL` (in case of lists).
+
+Consider:
+
+```
+menu = list(
+ ? "bacon" = "foo",
+ ? "eggs" = "bar",
+ ? "beans" = "baz"
+ ? )
+
+select = c("bacon", "eggs", "spam")
+
+menu[select]
+# $bacon
+# [1] "foo"
+#
+# $eggs
+# [1] "bar"
+#
+# $<NA>
+# NULL
+
+```
+
+Wouldn't it be more logical to return named vector/list including names 
+of unmatched elements when subsetting using names? After all, the 
+unmatched elements are already returned. I.e., the output would look 
+like this:
+
+```
+
+menu[select]
+# $bacon
+# [1] "foo"
+#
+# $eggs
+# [1] "bar"
+#
+# $spam
+# NULL
+
+```
+
+The simple fix `menu[select] |> setNames(select)` solves, but it feels 
+to me like something that could be a default behaviour.
+
+On slightly unrelated note, when I was asking if there is a better 
+solution, the `menu[select]` seems to allocate more memory than 
+`menu_env = list2env(menu); mget(select, envir = menu, ifnotfound = 
+list(NULL)`. Or the sapply solution. Is this a benchmarking artifact?
+
+https://stackoverflow.com/q/77828678/4868692
+
+
+From m@rbert@ @end|ng |rom protonm@||@com  Fri Jan 19 03:41:17 2024
+From: m@rbert@ @end|ng |rom protonm@||@com (Steve Martin)
+Date: Fri, 19 Jan 2024 02:41:17 +0000
+Subject: [Rd] 
+ Should subsetting named vector return named vector including
+ named unmatched elements?
+In-Reply-To: <9ec19b87-28f2-4de8-81ae-7075b78a6111@gmail.com>
+References: <9ec19b87-28f2-4de8-81ae-7075b78a6111@gmail.com>
+Message-ID: <ecfPGkO91zz809LB4x8V2jNFBxvHKo4pJA2PBU13HJBOJ6BSvK_nmxgUfd2ZV1476kFwXjTk1MA889H7cMgCmcqcUr98ZOUhdpN2iqN1JFg=@protonmail.com>
+
+Ji??,
+
+For your first question, the NA names make sense if you think of indexing with a character vector as the same as menu[match(select, names(menu))]. You're not indexing with "beans"; rather, "beans" becomes NA because it's not in the names of menu. (This is how it's documented in ?`[`: "Character vectors will be matched to the names of the object...")
+
+Steve
+
+
+On Thursday, January 18th, 2024 at 2:51 PM, Ji?? Moravec <jiri.c.moravec at gmail.com> wrote:
+
+
+> Subsetting vector (including lists) returns the same number of elements
+> as the subsetting vector, including unmatched elements which are
+> reported as `NA` or `NULL` (in case of lists).
+> 
+> Consider:
+> 
+> ```
+> menu = list(
+> "bacon" = "foo",
+> "eggs" = "bar",
+> "beans" = "baz"
+> )
+> 
+> select = c("bacon", "eggs", "spam")
+> 
+> menu[select]
+> # $bacon
+> # [1] "foo"
+> #
+> # $eggs
+> # [1] "bar"
+> #
+> # $<NA>
+> 
+> # NULL
+> 
+> `Wouldn't it be more logical to return named vector/list including names of unmatched elements when subsetting using names? After all, the unmatched elements are already returned. I.e., the output would look like this:`
+> 
+> menu[select]
+> # $bacon
+> # [1] "foo"
+> #
+> # $eggs
+> # [1] "bar"
+> #
+> # $spam
+> # NULL
+> 
+> ```
+> 
+> The simple fix `menu[select] |> setNames(select)` solves, but it feels
+> 
+> to me like something that could be a default behaviour.
+> 
+> On slightly unrelated note, when I was asking if there is a better
+> solution, the `menu[select]` seems to allocate more memory than
+> `menu_env = list2env(menu); mget(select, envir = menu, ifnotfound = list(NULL)`. Or the sapply solution. Is this a benchmarking artifact?
+> 
+> https://stackoverflow.com/q/77828678/4868692
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From hp@ge@@on@g|thub @end|ng |rom gm@||@com  Fri Jan 19 08:10:39 2024
+From: hp@ge@@on@g|thub @end|ng |rom gm@||@com (=?UTF-8?B?SGVydsOpIFBhZ8Oocw==?=)
+Date: Thu, 18 Jan 2024 23:10:39 -0800
+Subject: [Rd] 
+ Should subsetting named vector return named vector including
+ named unmatched elements?
+In-Reply-To: <9ec19b87-28f2-4de8-81ae-7075b78a6111@gmail.com>
+References: <9ec19b87-28f2-4de8-81ae-7075b78a6111@gmail.com>
+Message-ID: <4bf9573c-1507-452c-92f6-4078514e3fcd@gmail.com>
+
+Never been a big fan of this behavior either but maybe the intention was 
+to make it easier to distinguish between 2 types of NAs in the result: 
+those that were present in the original vector vs those that are 
+introduced by an unmatched subscript. Like in this example:
+
+ ??? x <- setNames(c(101:108, NA), letters[1:9])
+ ??? x
+ ??? # ? a?? b?? c?? d?? e?? f?? g?? h?? i
+ ??? # 101 102 103 104 105 106 107 108? NA
+
+ ??? x[c("g", "k", "a", "i")]
+ ??? #? ? g <NA>??? a??? i
+ ??? #? 107?? NA? 101?? NA
+
+The first NA is the result of an unmatched subscript, while the second 
+one comes from 'x'.
+
+This is of limited interest though. In most real world applications I've 
+worked on, we actually need to "fix" the names of the result.
+
+Best,
+
+H.
+
+On 1/18/24 11:51, Ji?? Moravec wrote:
+> Subsetting vector (including lists) returns the same number of 
+> elements as the subsetting vector, including unmatched elements which 
+> are reported as `NA` or `NULL` (in case of lists).
+>
+> Consider:
+>
+> ```
+> menu = list(
+> ? "bacon" = "foo",
+> ? "eggs" = "bar",
+> ? "beans" = "baz"
+> ? )
+>
+> select = c("bacon", "eggs", "spam")
+>
+> menu[select]
+> # $bacon
+> # [1] "foo"
+> #
+> # $eggs
+> # [1] "bar"
+> #
+> # $<NA>
+> # NULL
+>
+> ```
+>
+> Wouldn't it be more logical to return named vector/list including 
+> names of unmatched elements when subsetting using names? After all, 
+> the unmatched elements are already returned. I.e., the output would 
+> look like this:
+>
+> ```
+>
+> menu[select]
+> # $bacon
+> # [1] "foo"
+> #
+> # $eggs
+> # [1] "bar"
+> #
+> # $spam
+> # NULL
+>
+> ```
+>
+> The simple fix `menu[select] |> setNames(select)` solves, but it feels 
+> to me like something that could be a default behaviour.
+>
+> On slightly unrelated note, when I was asking if there is a better 
+> solution, the `menu[select]` seems to allocate more memory than 
+> `menu_env = list2env(menu); mget(select, envir = menu, ifnotfound = 
+> list(NULL)`. Or the sapply solution. Is this a benchmarking artifact?
+>
+> https://stackoverflow.com/q/77828678/4868692
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+-- 
+Herv? Pag?s
+
+Bioconductor Core Team
+hpages.on.github at gmail.com
+
+	[[alternative HTML version deleted]]
+
+
+From m|ch@e|ch|r|co4 @end|ng |rom gm@||@com  Fri Jan 26 18:36:24 2024
+From: m|ch@e|ch|r|co4 @end|ng |rom gm@||@com (Michael Chirico)
+Date: Fri, 26 Jan 2024 09:36:24 -0800
+Subject: [Rd] readChar() could read the whole file by default?
+Message-ID: <CAPRVBcyG92q3KYEP7LtdvZ3isOaxCpCxChX9EHp4twURbWa+TQ@mail.gmail.com>
+
+I am curious why readLines() has a default (n=-1L) to read the full
+file while readChar() has no default for nchars= (i.e., readChar(file)
+is an error). Is there a technical reason for this?
+
+I often[1] see code like paste(readLines(f), collapse="\n") which
+would be better served by readChar(), especially given issues with the
+global string cache I've come across[2]. But lacking the default, the
+replacement might come across less clean.
+
+For my own purposes the incantation readChar(file, file.size(file)) is
+ubiquitous. Taking CRAN code[3] as a sample[4], 41% of readChar()
+calls use either readChar(f, file.info(f)$size) or readChar(f,
+file.size(f))[5].
+
+Thanks for the consideration and feedback,
+Mike C
+
+[1] e.g. a quick search shows O(100) usages in CRAN packages:
+https://github.com/search?q=org%3Acran+%2Fpaste%5B%28%5D%5Cs*readLines%5B%28%5D.*%5B%29%5D%2C%5Cs*collapse%5Cs*%3D%5Cs*%5B%27%22%5D%5B%5C%5C%5D%2F+lang%3AR&type=code,
+and O(1000) usages generally on GitHub:
+https://github.com/search?q=lang%3AR+%2Fpaste%5B%28%5D%5Cs*readLines%5B%28%5D.*%5B%29%5D%2C%5Cs*collapse%5Cs*%3D%5Cs*%5B%27%22%5D%5B%5C%5C%5D%2F+lang%3AR&type=code
+[2] AIUI the readLines() approach "pollutes" the global string cache
+with potentially 1000s/10000s of strings for each line, only to get
+them gc()'d after combining everything with paste(collapse="\n")
+[3] The mirror on GitHub, which includes archived packages as well as
+current (well, eventually-consistent) versions.
+[4] Note that usage in packages is likely not representative of usage
+in scripts, e.g. I often saw readChar(f, 1), or eol-finders like
+readChar(f, 500) + grep("[\n\r]"), which makes more sense to me as
+something to find in package internals than in analysis scripts. FWIW
+I searched an internal codebase (scripts and packages) and found 70%
+of usages reading the full file.
+[5] repro: https://gist.github.com/MichaelChirico/247ea9500460dca239f031e74bdcf76b
+requires GitHub PAT in env GITHUB_PAT for API permissions.
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Fri Jan 26 22:05:02 2024
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Fri, 26 Jan 2024 15:05:02 -0600 (CST)
+Subject: [Rd] 
+ [External]  readChar() could read the whole file by default?
+In-Reply-To: <CAPRVBcyG92q3KYEP7LtdvZ3isOaxCpCxChX9EHp4twURbWa+TQ@mail.gmail.com>
+References: <CAPRVBcyG92q3KYEP7LtdvZ3isOaxCpCxChX9EHp4twURbWa+TQ@mail.gmail.com>
+Message-ID: <d3f157fa-bbd8-d751-641f-2d38ba635e3b@uiowa.edu>
+
+On Fri, 26 Jan 2024, Michael Chirico wrote:
+
+> I am curious why readLines() has a default (n=-1L) to read the full
+> file while readChar() has no default for nchars= (i.e., readChar(file)
+> is an error). Is there a technical reason for this?
+>
+> I often[1] see code like paste(readLines(f), collapse="\n") which
+> would be better served by readChar(), especially given issues with the
+> global string cache I've come across[2]. But lacking the default, the
+> replacement might come across less clean.
+
+The string cache seems like a very dark pink herring to me. The fact
+that the lines are allocated on the heap might create an issue; the
+cache isn't likely to add much to that. In any case I would need to
+see a realistic example to convince me this is worth addressing on
+performance grounds.
+
+I don't see any reason in principle not to have readChar and readBin
+read the entire file if n = -1 (others might) but someone would need
+to write a patch to implement that.
+
+Best,
+
+luke
+
+> For my own purposes the incantation readChar(file, file.size(file)) is
+> ubiquitous. Taking CRAN code[3] as a sample[4], 41% of readChar()
+> calls use either readChar(f, file.info(f)$size) or readChar(f,
+> file.size(f))[5].
+>
+> Thanks for the consideration and feedback,
+> Mike C
+>
+> [1] e.g. a quick search shows O(100) usages in CRAN packages:
+> https://github.com/search?q=org%3Acran+%2Fpaste%5B%28%5D%5Cs*readLines%5B%28%5D.*%5B%29%5D%2C%5Cs*collapse%5Cs*%3D%5Cs*%5B%27%22%5D%5B%5C%5C%5D%2F+lang%3AR&type=code,
+> and O(1000) usages generally on GitHub:
+> https://github.com/search?q=lang%3AR+%2Fpaste%5B%28%5D%5Cs*readLines%5B%28%5D.*%5B%29%5D%2C%5Cs*collapse%5Cs*%3D%5Cs*%5B%27%22%5D%5B%5C%5C%5D%2F+lang%3AR&type=code
+> [2] AIUI the readLines() approach "pollutes" the global string cache
+> with potentially 1000s/10000s of strings for each line, only to get
+> them gc()'d after combining everything with paste(collapse="\n")
+> [3] The mirror on GitHub, which includes archived packages as well as
+> current (well, eventually-consistent) versions.
+> [4] Note that usage in packages is likely not representative of usage
+> in scripts, e.g. I often saw readChar(f, 1), or eol-finders like
+> readChar(f, 500) + grep("[\n\r]"), which makes more sense to me as
+> something to find in package internals than in analysis scripts. FWIW
+> I searched an internal codebase (scripts and packages) and found 70%
+> of usages reading the full file.
+> [5] repro: https://gist.github.com/MichaelChirico/247ea9500460dca239f031e74bdcf76b
+> requires GitHub PAT in env GITHUB_PAT for API permissions.
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+
+From t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk  Mon Jan 29 15:04:16 2024
+From: t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk (Tim Taylor)
+Date: Mon, 29 Jan 2024 14:04:16 +0000
+Subject: [Rd] strcapture performance when perl = TRUE
+Message-ID: <8b027c67-106e-49c8-8ae1-f77d9d177105@app.fastmail.com>
+
+I wanted to raise the possibility of improving strcapture performance in
+cases where perl = TRUE. I believe we can do this in a non-breaking way
+by calling regexpr instead of regexec (conditionally when perl = TRUE).
+To illustrate this I've put together a 'proof of concept' function called
+strcapture2 that utilises output from regexpr directly (following a very
+nice substring approach that I've seen implemented by Toby Hocking
+in the nc package - nc::capture_first_vec).
+
+strcapture2 <- function(pattern, x, proto, perl = FALSE, useBytes = FALSE) {
+    if (isTRUE(perl)) {
+        m <- regexpr(pattern = pattern, text = x, perl = TRUE, useBytes = useBytes)
+        nomatch <- is.na(m) | m == -1L
+        ntokens <- length(proto)
+        if (any(!nomatch)) {
+            length <- attr(m, "match.length")
+            start <- attr(m, "capture.start")
+            length <- attr(m, "capture.length")
+            end <- start + length - 1L
+            end[nomatch, ] <- start[nomatch, ] <- NA
+            res <- substring(x, start, end)
+            out <- matrix(res, length(m))
+            if (ncol(out) != ntokens) {
+                stop("The number of captures in 'pattern' != 'length(proto)'")
+            }
+        } else {
+            out <- matrix(NA_character_, length(m), ntokens)
+        }
+        utils:::conformToProto(out,proto)
+    } else {
+        strcapture(pattern,x,proto,perl,useBytes)
+    }
+}
+
+Now comparing with strcapture we can expand the named capture example
+from the grep documentation:
+
+notables <- c(
+    "  Ben Franklin and Jefferson Davis",
+    "\tMillard Fillmore",
+    "Bob",
+    NA_character_
+)
+
+regex <- "(?<first>[[:upper:]][[:lower:]]+) (?<last>[[:upper:]][[:lower:]]+)"
+proto = data.frame("", "")
+
+(strcapture(regex, notables, proto, perl = TRUE))
+      X..    X...1
+1     Ben Franklin
+2 Millard Fillmore
+3    <NA>     <NA>
+4    <NA>     <NA>
+
+(strcapture2(regex, notables, proto, perl = TRUE))
+      X..    X...1
+1     Ben Franklin
+2 Millard Fillmore
+3    <NA>     <NA>
+4    <NA>     <NA>
+
+Now to compare timings over multiple reps:
+
+lengths <- sort(outer(c(1, 2, 5), 10^(1:4)))
+reps <- 20 
+
+time_strcapture <- function(text, length, regex, proto, reps) {
+    text <- rep_len(text, length)
+    str <- system.time(for (i in seq_len(reps)) strcapture(regex, text, proto, perl = TRUE))
+    str2 <- system.time(for (i in seq_len(reps)) strcapture2(regex, text, proto, perl = TRUE))
+    c(strcapture = str[["user.self"]], strcapture2 = str2[["user.self"]])
+}
+timings <- sapply(
+    lengths,
+    time_strcapture,
+    text = notables, regex = regex, reps = reps, proto = proto
+)
+cbind(lengths, t(timings))
+      lengths strcapture strcapture2
+ [1,]      10      0.005       0.003
+ [2,]      20      0.005       0.002
+ [3,]      50      0.008       0.003
+ [4,]     100      0.012       0.002
+ [5,]     200      0.021       0.003
+ [6,]     500      0.051       0.003
+ [7,]    1000      0.097       0.004
+ [8,]    2000      0.171       0.005
+ [9,]    5000      0.517       0.011
+[10,]   10000      1.203       0.018
+[11,]   20000      2.563       0.037
+[12,]   50000      7.276       0.090
+
+I've attached a plot of these timings in case helpful.
+
+I appreciate that changing strcapture in this way does make it more
+complicated but I think the performance improvements make it worth
+considering. Note that I've not thoroughly tested the above implementation
+as wanted to get feedback from the list before proceeding further.
+
+Hope all this make sense. Cheers
+
+Tim
+
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: strcapture.png
+Type: image/png
+Size: 28123 bytes
+Desc: not available
+URL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20240129/261d61e7/attachment.png>
+
+From tdhock5 @end|ng |rom gm@||@com  Mon Jan 29 19:09:12 2024
+From: tdhock5 @end|ng |rom gm@||@com (Toby Hocking)
+Date: Mon, 29 Jan 2024 11:09:12 -0700
+Subject: [Rd] 
+ [External] readChar() could read the whole file by default?
+In-Reply-To: <d3f157fa-bbd8-d751-641f-2d38ba635e3b@uiowa.edu>
+References: <CAPRVBcyG92q3KYEP7LtdvZ3isOaxCpCxChX9EHp4twURbWa+TQ@mail.gmail.com>
+ <d3f157fa-bbd8-d751-641f-2d38ba635e3b@uiowa.edu>
+Message-ID: <CALK03d3_kUhKCeKD5V0CQN8KY3-aApq77=WjO3WB592-aHvTFw@mail.gmail.com>
+
+My opinion is that the proposed feature would be greatly appreciated by users.
+I had always wondered if I was the only one doing paste(readLines(f),
+collapse="\n") all the time.
+It would be great to have the proposed, more straightforward way to
+read the whole file as a string: readChar("my_file.txt", -1) or even
+better readChar("my_file.txt")
+Thanks for your detailed analysis Michael.
+
+On Fri, Jan 26, 2024 at 2:05?PM luke-tierney--- via R-devel
+<r-devel at r-project.org> wrote:
+>
+> On Fri, 26 Jan 2024, Michael Chirico wrote:
+>
+> > I am curious why readLines() has a default (n=-1L) to read the full
+> > file while readChar() has no default for nchars= (i.e., readChar(file)
+> > is an error). Is there a technical reason for this?
+> >
+> > I often[1] see code like paste(readLines(f), collapse="\n") which
+> > would be better served by readChar(), especially given issues with the
+> > global string cache I've come across[2]. But lacking the default, the
+> > replacement might come across less clean.
+>
+> The string cache seems like a very dark pink herring to me. The fact
+> that the lines are allocated on the heap might create an issue; the
+> cache isn't likely to add much to that. In any case I would need to
+> see a realistic example to convince me this is worth addressing on
+> performance grounds.
+>
+> I don't see any reason in principle not to have readChar and readBin
+> read the entire file if n = -1 (others might) but someone would need
+> to write a patch to implement that.
+>
+> Best,
+>
+> luke
+>
+> > For my own purposes the incantation readChar(file, file.size(file)) is
+> > ubiquitous. Taking CRAN code[3] as a sample[4], 41% of readChar()
+> > calls use either readChar(f, file.info(f)$size) or readChar(f,
+> > file.size(f))[5].
+> >
+> > Thanks for the consideration and feedback,
+> > Mike C
+> >
+> > [1] e.g. a quick search shows O(100) usages in CRAN packages:
+> > https://github.com/search?q=org%3Acran+%2Fpaste%5B%28%5D%5Cs*readLines%5B%28%5D.*%5B%29%5D%2C%5Cs*collapse%5Cs*%3D%5Cs*%5B%27%22%5D%5B%5C%5C%5D%2F+lang%3AR&type=code,
+> > and O(1000) usages generally on GitHub:
+> > https://github.com/search?q=lang%3AR+%2Fpaste%5B%28%5D%5Cs*readLines%5B%28%5D.*%5B%29%5D%2C%5Cs*collapse%5Cs*%3D%5Cs*%5B%27%22%5D%5B%5C%5C%5D%2F+lang%3AR&type=code
+> > [2] AIUI the readLines() approach "pollutes" the global string cache
+> > with potentially 1000s/10000s of strings for each line, only to get
+> > them gc()'d after combining everything with paste(collapse="\n")
+> > [3] The mirror on GitHub, which includes archived packages as well as
+> > current (well, eventually-consistent) versions.
+> > [4] Note that usage in packages is likely not representative of usage
+> > in scripts, e.g. I often saw readChar(f, 1), or eol-finders like
+> > readChar(f, 500) + grep("[\n\r]"), which makes more sense to me as
+> > something to find in package internals than in analysis scripts. FWIW
+> > I searched an internal codebase (scripts and packages) and found 70%
+> > of usages reading the full file.
+> > [5] repro: https://gist.github.com/MichaelChirico/247ea9500460dca239f031e74bdcf76b
+> > requires GitHub PAT in env GITHUB_PAT for API permissions.
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+>
+> --
+> Luke Tierney
+> Ralph E. Wareham Professor of Mathematical Sciences
+> University of Iowa                  Phone:             319-335-3386
+> Department of Statistics and        Fax:               319-335-3017
+>     Actuarial Science
+> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Jan 29 19:23:41 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 29 Jan 2024 13:23:41 -0500
+Subject: [Rd] 
+ [External] readChar() could read the whole file by default?
+In-Reply-To: <CALK03d3_kUhKCeKD5V0CQN8KY3-aApq77=WjO3WB592-aHvTFw@mail.gmail.com>
+References: <CAPRVBcyG92q3KYEP7LtdvZ3isOaxCpCxChX9EHp4twURbWa+TQ@mail.gmail.com>
+ <d3f157fa-bbd8-d751-641f-2d38ba635e3b@uiowa.edu>
+ <CALK03d3_kUhKCeKD5V0CQN8KY3-aApq77=WjO3WB592-aHvTFw@mail.gmail.com>
+Message-ID: <4181b926-67c0-44fd-be73-31b022af15d8@gmail.com>
+
+On 29/01/2024 1:09 p.m., Toby Hocking wrote:
+> My opinion is that the proposed feature would be greatly appreciated by users.
+> I had always wondered if I was the only one doing paste(readLines(f),
+> collapse="\n") all the time.
+> It would be great to have the proposed, more straightforward way to
+> read the whole file as a string: readChar("my_file.txt", -1) or even
+> better readChar("my_file.txt")
+> Thanks for your detailed analysis Michael.
+
+These two things aren't the same:
+
+   paste(readLines(f), collapse = "\n")
+
+is not the same as
+
+   readChar(f, file.size(f))
+
+in cases where the file has Windows-style newlines and you're reading it 
+on Unix, because the first one converts the CR LF newlines into \n, 
+while the second would give \r\n.  I think they would match for reading 
+Unix-style files on Windows.)
+
+Does this ever matter?  I don't know, but I think usually people would 
+want the behaviour of paste(readLines(f), collapse = "\n").
+
+Duncan Murdoch
+
+
+> 
+> On Fri, Jan 26, 2024 at 2:05?PM luke-tierney--- via R-devel
+> <r-devel at r-project.org> wrote:
+>>
+>> On Fri, 26 Jan 2024, Michael Chirico wrote:
+>>
+>>> I am curious why readLines() has a default (n=-1L) to read the full
+>>> file while readChar() has no default for nchars= (i.e., readChar(file)
+>>> is an error). Is there a technical reason for this?
+>>>
+>>> I often[1] see code like paste(readLines(f), collapse="\n") which
+>>> would be better served by readChar(), especially given issues with the
+>>> global string cache I've come across[2]. But lacking the default, the
+>>> replacement might come across less clean.
+>>
+>> The string cache seems like a very dark pink herring to me. The fact
+>> that the lines are allocated on the heap might create an issue; the
+>> cache isn't likely to add much to that. In any case I would need to
+>> see a realistic example to convince me this is worth addressing on
+>> performance grounds.
+>>
+>> I don't see any reason in principle not to have readChar and readBin
+>> read the entire file if n = -1 (others might) but someone would need
+>> to write a patch to implement that.
+>>
+>> Best,
+>>
+>> luke
+>>
+>>> For my own purposes the incantation readChar(file, file.size(file)) is
+>>> ubiquitous. Taking CRAN code[3] as a sample[4], 41% of readChar()
+>>> calls use either readChar(f, file.info(f)$size) or readChar(f,
+>>> file.size(f))[5].
+>>>
+>>> Thanks for the consideration and feedback,
+>>> Mike C
+>>>
+>>> [1] e.g. a quick search shows O(100) usages in CRAN packages:
+>>> https://github.com/search?q=org%3Acran+%2Fpaste%5B%28%5D%5Cs*readLines%5B%28%5D.*%5B%29%5D%2C%5Cs*collapse%5Cs*%3D%5Cs*%5B%27%22%5D%5B%5C%5C%5D%2F+lang%3AR&type=code,
+>>> and O(1000) usages generally on GitHub:
+>>> https://github.com/search?q=lang%3AR+%2Fpaste%5B%28%5D%5Cs*readLines%5B%28%5D.*%5B%29%5D%2C%5Cs*collapse%5Cs*%3D%5Cs*%5B%27%22%5D%5B%5C%5C%5D%2F+lang%3AR&type=code
+>>> [2] AIUI the readLines() approach "pollutes" the global string cache
+>>> with potentially 1000s/10000s of strings for each line, only to get
+>>> them gc()'d after combining everything with paste(collapse="\n")
+>>> [3] The mirror on GitHub, which includes archived packages as well as
+>>> current (well, eventually-consistent) versions.
+>>> [4] Note that usage in packages is likely not representative of usage
+>>> in scripts, e.g. I often saw readChar(f, 1), or eol-finders like
+>>> readChar(f, 500) + grep("[\n\r]"), which makes more sense to me as
+>>> something to find in package internals than in analysis scripts. FWIW
+>>> I searched an internal codebase (scripts and packages) and found 70%
+>>> of usages reading the full file.
+>>> [5] repro: https://gist.github.com/MichaelChirico/247ea9500460dca239f031e74bdcf76b
+>>> requires GitHub PAT in env GITHUB_PAT for API permissions.
+>>>
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>
+>>
+>> --
+>> Luke Tierney
+>> Ralph E. Wareham Professor of Mathematical Sciences
+>> University of Iowa                  Phone:             319-335-3386
+>> Department of Statistics and        Fax:               319-335-3017
+>>      Actuarial Science
+>> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+>> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+

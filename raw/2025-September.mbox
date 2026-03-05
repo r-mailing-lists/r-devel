@@ -1,0 +1,986 @@
+From edd @end|ng |rom deb|@n@org  Wed Sep  3 21:06:33 2025
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 3 Sep 2025 14:06:33 -0500
+Subject: [Rd] Suggested one word change for R-admin.texi
+Message-ID: <26808.37305.181737.645896@paul.eddelbuettel.com>
+
+
+The third bullet point in section A 3.1.4 'Shared BLAS' starts with 'This
+because less easy'; I suggest to change this to 'This became less easy':
+
+edd at paul:~/svn/r-devel$ svn diff doc/manual/R-admin.texi 
+Index: doc/manual/R-admin.texi
+===================================================================
+--- doc/manual/R-admin.texi     (revision 88787)
++++ doc/manual/R-admin.texi     (working copy)
+@@ -4028,7 +4028,7 @@
+ need to be found by the linker: this may need the library path to be
+ changed in @file{@var{R_HOME}/etc/ldpaths}.
+ 
+-This because less easy in 2025: swapping the BLAS is only possible to
++This became less easy in 2025: swapping the BLAS is only possible to
+ one compatible with the LAPACK in use.  For the LAPACK shipped with @R{}
+ 4.5.0 that means one containing @code{dgemmtr} and @code{zgemmtr}, or
+ configuring @R{} with @option{--with-2025blas}.
+edd at paul:~/svn/r-devel$
+
+Best,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Thu Sep  4 06:36:01 2025
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Thu, 4 Sep 2025 06:36:01 +0200
+Subject: [Rd] Suggested one word change for R-admin.texi
+In-Reply-To: <26808.37305.181737.645896@paul.eddelbuettel.com>
+References: <26808.37305.181737.645896@paul.eddelbuettel.com>
+Message-ID: <26809.5937.265760.821119@hornik.net>
+
+>>>>> Dirk Eddelbuettel writes:
+
+Thanks: changed now.
+
+Best
+-k
+
+> The third bullet point in section A 3.1.4 'Shared BLAS' starts with 'This
+> because less easy'; I suggest to change this to 'This became less easy':
+
+> edd at paul:~/svn/r-devel$ svn diff doc/manual/R-admin.texi 
+> Index: doc/manual/R-admin.texi
+> ===================================================================
+> --- doc/manual/R-admin.texi     (revision 88787)
+> +++ doc/manual/R-admin.texi     (working copy)
+> @@ -4028,7 +4028,7 @@
+>  need to be found by the linker: this may need the library path to be
+>  changed in @file{@var{R_HOME}/etc/ldpaths}.
+ 
+> -This because less easy in 2025: swapping the BLAS is only possible to
+> +This became less easy in 2025: swapping the BLAS is only possible to
+>  one compatible with the LAPACK in use.  For the LAPACK shipped with @R{}
+>  4.5.0 that means one containing @code{dgemmtr} and @code{zgemmtr}, or
+>  configuring @R{} with @option{--with-2025blas}.
+> edd at paul:~/svn/r-devel$
+
+> Best,  Dirk
+
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From he|g@@o|t @end|ng |rom gm@||@com  Thu Sep 11 01:13:25 2025
+From: he|g@@o|t @end|ng |rom gm@||@com (helgasoft)
+Date: Wed, 10 Sep 2025 16:13:25 -0700
+Subject: [Rd] compiler::cmpfile output contains source code
+Message-ID: <a7fe8bef-806e-45b9-b938-ed5b4f2972b0@helgasoft.com>
+
+Command?compiler::cmpfile(infile) outputs a binary (.Rc) file.
+The infile source code is contained in this output file.
+Is the source code required, and if not, is it possible to make it 
+optional ?
+
+
+From @uny|ngk@| @end|ng |rom @jtu@edu@cn  Thu Sep 11 03:09:25 2025
+From: @uny|ngk@| @end|ng |rom @jtu@edu@cn (=?gb2312?B?y+/Tor+t?=)
+Date: Thu, 11 Sep 2025 09:09:25 +0800 (CST)
+Subject: [Rd] [BUG?] S4 validity function not enforced during object
+ creation in R 4.4.2
+Message-ID: <78022517.16035369.1757552965613.JavaMail.zimbra@sjtu.edu.cn>
+
+
+Dear R Core Team,
+I would like to report a possible bug or behavioral change in the S4 class system in R 4.4.2 regarding the validity function.
+Description of the issue:
+In previous versions of R, when the validity function of an S4 class returns a character string (i.e., an error message), the ?new() function would refuse to create the object and throw an error.
+However, in R 4.4.2, I found that ?new() creates the object successfully even when the validity function returns an error message. Only a manual call to ?validObject() triggers the error.
+Minimal reproducible example:
+
+setClass('TestVital',
+         slots = list(visit_type='character'),
+         prototype = list(visit_type=''),
+         validity = function(object){
+           if(!object at visit_type %in% c('OP','IP')){
+             return('??????')
+           }
+           TRUE
+         })
+new('TestVital')  # This should fail, but it succeeds in R 4.4.2
+validObject(new('TestVital'))  # This correctly triggers the error
+
+Session info:
+
+R version 4.4.2 (2024-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sequoia 15.6.1
+
+Expected behavior:
+?new('TestVital') should fail and throw an error if the validity function returns a character string, as documented in the official R extensions manual.
+Actual behavior:
+?new('TestVital') creates the object even when the validity function returns an error message.
+Is this an intentional change in R 4.4.x, or is it a bug?
+Thank you for your attention.
+Best regards,
+Sun Yingkai
+
+
+From j@g@nmn2 @end|ng |rom gm@||@com  Fri Sep 12 01:53:57 2025
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Thu, 11 Sep 2025 19:53:57 -0400
+Subject: [Rd] [BUG?] S4 validity function not enforced during object
+ creation in R 4.4.2
+In-Reply-To: <mailman.55029.3.1757584802.51194.r-devel@r-project.org>
+References: <mailman.55029.3.1757584802.51194.r-devel@r-project.org>
+Message-ID: <ae877645-29bb-4dae-b839-74554b3fdb15@gmail.com>
+
+Dear Yingkai,
+
+The default method for 'initialize', which is called by 'new' in your example
+and is accessible as
+
+     > selectMethod("initialize", "ANY")
+
+has always called 'validObject' *only if* it finds arguments matching '...',
+so the behaviour that you report is not a change from earlier behaviour.
+
+The bug seems to be that you, the class author, defined a nonvirtual class
+with an invalid prototype, *not* that 'new' ignores invalid prototypes.
+
+I added the following regression test in Matrix version 1.6-0 in order to
+catch exactly this mistake:
+
+     for (cl in c(names(getClassDef("Matrix")@subclasses),
+                  names(getClassDef("MatrixFactorization")@subclasses)))
+         if (!isVirtualClass(def <- getClassDef(cl)))
+             validObject(new(def))
+
+One could argue that setClass(name, ...) should test validObject(new(name))
+before returning whenever it defines a nonvirtual class.  But I can imagine
+false positives, e.g., if a class author documents that 'new' *must* be
+called with additional arguments, then the validity of the prototype seems
+inconsequential.  Hence the test ought to be optional and probably (at least
+initially) disabled by default.
+
+Mikael
+
+
+> Date: Thu, 11 Sep 2025 09:09:25 +0800 (CST)
+> From: =?gb2312?B?y+/Tor+t?=<sunyingkai at sjtu.edu.cn>
+> 
+> Dear R Core Team,
+> I would like to report a possible bug or behavioral change in the S4 class system in R 4.4.2 regarding the validity function.
+> Description of the issue:
+> In previous versions of R, when the validity function of an S4 class returns a character string (i.e., an error message), the ?new() function would refuse to create the object and throw an error.
+> However, in R 4.4.2, I found that ?new() creates the object successfully even when the validity function returns an error message. Only a manual call to ?validObject() triggers the error.
+> Minimal reproducible example:
+> 
+setClass('TestVital',
+>           slots = list(visit_type='character'),
+>           prototype = list(visit_type=''),
+>           validity = function(object){
+>             if(!object at visit_type %in% c('OP','IP')){
+>               return('??????')
+>             }
+>             TRUE
+>           })
+> new('TestVital')  # This should fail, but it succeeds in R 4.4.2
+> validObject(new('TestVital'))  # This correctly triggers the error
+> 
+Session info:
+> 
+R version 4.4.2 (2024-10-31)
+> Platform: aarch64-apple-darwin20
+> Running under: macOS Sequoia 15.6.1
+> 
+Expected behavior:
+> ?new('TestVital') should fail and throw an error if the validity function returns a character string, as documented in the official R extensions manual.
+> Actual behavior:
+> ?new('TestVital') creates the object even when the validity function returns an error message.
+> Is this an intentional change in R 4.4.x, or is it a bug?
+> Thank you for your attention.
+> Best regards,
+> Sun Yingkai
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Sep 12 23:25:50 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 13 Sep 2025 00:25:50 +0300
+Subject: [Rd] compiler::cmpfile output contains source code
+In-Reply-To: <a7fe8bef-806e-45b9-b938-ed5b4f2972b0@helgasoft.com>
+References: <a7fe8bef-806e-45b9-b938-ed5b4f2972b0@helgasoft.com>
+Message-ID: <20250913002550.04d1c8de@Tarkus>
+
+? Wed, 10 Sep 2025 16:13:25 -0700
+helgasoft <helgasoft at gmail.com> ?????:
+
+> Command?compiler::cmpfile(infile) outputs a binary (.Rc) file.
+> The infile source code is contained in this output file.
+> Is the source code required, and if not, is it possible to make it 
+> optional ?
+
+The source references are optional. Since cmpfile() calls parse(),
+setting options(keep.source=FALSE) should prevent it from adding source
+references.
+
+On the other hand, by calling compiler::disassemble() on the bytecode
+values, you will still be able to see the language objects from the
+file, so a somewhat lossy representation of the source code is still
+present. These language objects are used at least for error handling
+and sometimes for internal consistency checks [*].
+
+What's your use case?
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://coolbutuseless.github.io/book/rbytecodebook/15-stored-expressions.html
+
+
+From |we|ch @end|ng |rom g@uc|@@edu  Wed Sep 17 19:23:53 2025
+From: |we|ch @end|ng |rom g@uc|@@edu (IVO I WELCH)
+Date: Wed, 17 Sep 2025 10:23:53 -0700
+Subject: [Rd] Declaring Types at Function Declaration
+Message-ID: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+
+
+Suggestion for Syntax Sugar:
+
+Would it make sense to permit a simple way to allow a coder to document the function argument type?
+
+f <- function( a:chr, b:data.frame, c:logi ) { ? }
+
+presumably, what comes behind the ?:? should match what ?str? returns.
+
+however, this need not be checked (except perhaps when a particular option is set).  catching errors as soon as possible makes code easier to debug and error messages clearer.
+
+regards,
+
+/iaw
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Sep 17 19:38:23 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 17 Sep 2025 13:38:23 -0400
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+Message-ID: <f1613b06-7c71-4bf9-9cd7-83d1eba1ec3c@gmail.com>
+
+On 2025-09-17 1:23 p.m., IVO I WELCH wrote:
+> 
+> Suggestion for Syntax Sugar:
+> 
+> Would it make sense to permit a simple way to allow a coder to document the function argument type?
+> 
+> f <- function( a:chr, b:data.frame, c:logi ) { ? }
+> 
+> presumably, what comes behind the ?:? should match what ?str? returns.
+> 
+> however, this need not be checked (except perhaps when a particular option is set).  catching errors as soon as possible makes code easier to debug and error messages clearer.
+
+We already have that:  the Rd file should give a text description, and 
+it can be enforced by run-time tests in the function body, e.g.
+
+  stopifnot(is.char(a), is.data.frame(b), is.logical(c))
+
+What we don't have, and I don't think it would be feasible, is a way to 
+do this at compile time.  In general variables and expressions in R 
+don't have a fixed type that is known before they are evaluated.
+
+Duncan Murdoch
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Wed Sep 17 19:49:04 2025
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Wed, 17 Sep 2025 10:49:04 -0700
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <f1613b06-7c71-4bf9-9cd7-83d1eba1ec3c@gmail.com>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+ <f1613b06-7c71-4bf9-9cd7-83d1eba1ec3c@gmail.com>
+Message-ID: <CAFDcVCTBzKgwX9NJCA=EJKdK8j-eDvNHdt9ieARykfefQc=trg@mail.gmail.com>
+
+There's also base::declare() in R (>= 4.4.0), which people are
+exploring to programmatically declare types and other things
+(https://github.com/HenrikBengtsson/Wishlist-for-R/issues/169). For
+example, Tomasz Kalinowski uses it in 'quickr' for guiding the "R to
+Fortran Transpiler" (https://github.com/t-kalinowski/quickr).
+
+/Henrik
+
+On Wed, Sep 17, 2025 at 10:38?AM Duncan Murdoch
+<murdoch.duncan at gmail.com> wrote:
+>
+> On 2025-09-17 1:23 p.m., IVO I WELCH wrote:
+> >
+> > Suggestion for Syntax Sugar:
+> >
+> > Would it make sense to permit a simple way to allow a coder to document the function argument type?
+> >
+> > f <- function( a:chr, b:data.frame, c:logi ) { ? }
+> >
+> > presumably, what comes behind the ?:? should match what ?str? returns.
+> >
+> > however, this need not be checked (except perhaps when a particular option is set).  catching errors as soon as possible makes code easier to debug and error messages clearer.
+>
+> We already have that:  the Rd file should give a text description, and
+> it can be enforced by run-time tests in the function body, e.g.
+>
+>   stopifnot(is.char(a), is.data.frame(b), is.logical(c))
+>
+> What we don't have, and I don't think it would be feasible, is a way to
+> do this at compile time.  In general variables and expressions in R
+> don't have a fixed type that is known before they are evaluated.
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From |vo@we|ch @end|ng |rom uc|@@edu  Wed Sep 17 20:39:10 2025
+From: |vo@we|ch @end|ng |rom uc|@@edu (ivo welch)
+Date: Wed, 17 Sep 2025 11:39:10 -0700
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <CAFDcVCTBzKgwX9NJCA=EJKdK8j-eDvNHdt9ieARykfefQc=trg@mail.gmail.com>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+ <f1613b06-7c71-4bf9-9cd7-83d1eba1ec3c@gmail.com>
+ <CAFDcVCTBzKgwX9NJCA=EJKdK8j-eDvNHdt9ieARykfefQc=trg@mail.gmail.com>
+Message-ID: <CAJrNScS4W0YpF0gvNMhczznZTdVuZJvcu3h3qFCCXSpwVL5imQ@mail.gmail.com>
+
+thanks.  (indeed, on this one, even I knew this can be done, and only at
+runtime, of course, for all generality. ;-)).
+
+My suggestion was only for a little syntactic sugar.  python has something
+like it, too.
+
+	[[alternative HTML version deleted]]
+
+
+From |vo@we|ch @end|ng |rom uc|@@edu  Wed Sep 17 23:36:20 2025
+From: |vo@we|ch @end|ng |rom uc|@@edu (ivo welch)
+Date: Wed, 17 Sep 2025 14:36:20 -0700
+Subject: [Rd] Suggestion: Add box constraints to optim() default Nelder-Mead
+Message-ID: <CAJrNScQWc=Y1uLRpDi2in1GRU9BAisgPiq5jRXeixnz_pmaCbg@mail.gmail.com>
+
+Title says it all.
+
+I know this can be done by transformations by the user, but given that
+interval is so prominent in the ?doc and given that Nelder-Mead is the
+default method for optim(), it would be nice if the default method would
+honor this one, too.
+
+[could be done (even by me) within the R code because the C code through
+the arctan transforms]
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Thu Sep 18 01:00:00 2025
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 17 Sep 2025 19:00:00 -0400
+Subject: [Rd] 
+ Suggestion: Add box constraints to optim() default Nelder-Mead
+In-Reply-To: <CAJrNScQWc=Y1uLRpDi2in1GRU9BAisgPiq5jRXeixnz_pmaCbg@mail.gmail.com>
+References: <CAJrNScQWc=Y1uLRpDi2in1GRU9BAisgPiq5jRXeixnz_pmaCbg@mail.gmail.com>
+Message-ID: <ebc6fde4-8472-4a25-828e-8bae234a49bd@gmail.com>
+
+   For what it's worth:
+
+John Nash (original author of the Pascal implementations of (most of) 
+the available algorithms in optim() (including the Nelder-Mead)) has 
+long maintained that these implementations could be updated. (Any update 
+that changed solutions, rather than adding new functionality, would need 
+to be handled carefully for back-compatibility reasons ...)
+
+    Solving the problem of box constraints by transformation to an 
+unconstrained space is problematic when the constraints are binding 
+(i.e. the minimum is on the boundary of the allowed space) -- the 
+transformation essentially moves the solution to a point at infinity, 
+leading to infinite flatness ...
+
+    FWIW the Nelder-Mead implementation (?lme4::Nelder_Mead), and the 
+one in NLopt (accessible via the nloptr package: 
+https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#local-derivative-free-optimization 
+) both allow box constraints.  (The author of NLopt suggests that the 
+'subplex' algorithm is generally preferable ...)  According to the CRAN 
+optimization task view 
+<https://cran.r-project.org/web/views/Optimization.html#general-purpose-continuous-solvers>, 
+the dfoptim package also has a box-constrained variant of Nelder-Mead ...
+
+   cheers
+    Ben Bolker
+
+
+On 9/17/25 17:36, ivo welch wrote:
+> Title says it all.
+> 
+> I know this can be done by transformations by the user, but given that
+> interval is so prominent in the ?doc and given that Nelder-Mead is the
+> default method for optim(), it would be nice if the default method would
+> honor this one, too.
+> 
+> [could be done (even by me) within the R code because the C code through
+> the arctan transforms]
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From ro|@nd@|u@@ @end|ng |rom thuenen@de  Fri Sep 19 10:57:29 2025
+From: ro|@nd@|u@@ @end|ng |rom thuenen@de (=?UTF-8?Q?Roland_Fu=C3=9F?=)
+Date: Fri, 19 Sep 2025 10:57:29 +0200
+Subject: [Rd] Clarify documentation of nlme::varIdent
+Message-ID: <39151d4f-339d-43bd-a193-b76fa201c215@thuenen.de>
+
+Hello,
+
+The documentation of nlme::varIdent says this:
+
+"the coefficients of the variance function represent the ratios between 
+the variances and a reference variance (corresponding to a reference 
+group level)"
+
+However, the parameter estimate shown in the summary output for lme 
+models is the ratio between standard deviations. Could this be clarified 
+in the documentation, e.g., by adding Eq. 5.13 from?Pinheiro and Bates 
+(2000)?
+
+-- 
+Dr. Roland Fu?
+
+Th?nen-Institut f?r Agrarklimaschutz/
+Th?nen Institute of Climate-Smart Agriculture
+
+
+From |@|@ye @end|ng |rom un@w@edu@@u  Sat Sep 20 02:34:54 2025
+From: |@|@ye @end|ng |rom un@w@edu@@u (Pierre Lafaye de Micheaux)
+Date: Sat, 20 Sep 2025 00:34:54 +0000
+Subject: [Rd] Reviving IndependenceTests and LAPACK WARNINGs
+In-Reply-To: <MEYPR01MB7400352021712978EE0B97AB9311A@MEYPR01MB7400.ausprd01.prod.outlook.com>
+References: <01dbf2f3$Blat.v3.2.24$02318840$1f884658@mail.statistik.tu-dortmund.de>
+ <MEYPR01MB7400BC0D9F0458448283A982934AA@MEYPR01MB7400.ausprd01.prod.outlook.com>
+ <MEYPR01MB74008074E5B9A508168644E69352A@MEYPR01MB7400.ausprd01.prod.outlook.com>
+ <MEYPR01MB7400352021712978EE0B97AB9311A@MEYPR01MB7400.ausprd01.prod.outlook.com>
+Message-ID: <MEYPR01MB740014914CA9C62F3D7001D79310A@MEYPR01MB7400.ausprd01.prod.outlook.com>
+
+Dear R developpers,
+
+Two months ago, I sent an email to the CRAN team asking if they would consider adding more LAPACK routines to the R's source tree. I have not received a response from them, which led me to assume that maybe I used the wrong communication channel. (I apologise if this is the case.)
+
+My goal is to revive my "IndependenceTests" package. It was archived in 2021 (because I had not been able to solve various issues on time).
+I have now been able to resolve most of the issues, though I still WARNINGs  such as:
+
+    Warning: GNU Extension: Nonstandard type declaration COMPLEX*16 at (1)
+
+It is my firm belief that I cannot solve these issues without modifying several (old) Lapack Fortran source files.
+
+Now, in Section 6.7 of the "Writing R Extensions" manual, I read that the current set of LAPACK subroutines included in R "might be supplemented". Also, in the https://github.com/SurajGupta/r-source/blob/master/src/modules/lapack/README file,
+I see that some Lapack files were added over the years to the R source tree. But not all the ones I need, unfortunately.
+
+The file I would like to be added to the R source tree is the following:
+
+zhpevx.f
+
+which in turn needs those below that are not in the R Lapack:
+
+lsame.f
+xerbla.f
+zhptrd.f
+zlanhp.f
+zstein.f
+zupgtr.f
+zupmtr.f
+
+Would you kindly let me know if:
+
+
+  1.
+A formal request to add these LAPACK routines to the R's source tree is something that can be considered?
+  2.
+Alternatively, would a submission with these few remaining warnings still be acceptable?
+
+I fully understand if this falls outside the scope of R Core Team or CRAN's intended support, but any guidance would be greatly appreciated.
+
+Thank you in advance for your time and consideration.
+
+Kind regards,
+
+Associate Professor Pierre Lafaye De Micheaux
+UNSW Sydney
+
+
+
+From: ligges at statistik.tu-dortmund.de <ligges at statistik.tu-dortmund.de>
+Sent: Saturday, 12 July 2025 16:05
+To: Pierre Lafaye de Micheaux <lafaye at unsw.edu.au>
+Cc: ligges at statistik.tu-dortmund.de <ligges at statistik.tu-dortmund.de>
+Subject: winbuilder: Package IndependenceTests_0.6.tar.gz has been checked and built
+
+Dear package maintainer,
+
+this notification has been generated automatically.
+Your package IndependenceTests_0.6.tar.gz has been built (if working) and checked for Windows.
+Please check the log files and (if working) the binary package at:
+https://win-builder.r-project.org/XB9bsh1dkkT4
+The files will be removed after roughly 72 hours.
+Installation time in seconds: 36
+Check time in seconds: 67
+Status: 2 WARNINGs, 1 NOTE
+R Under development (unstable) (2025-07-11 r88405 ucrt)
+
+All the best,
+Uwe Ligges
+(CRAN maintainer of binary packages for Windows)
+
+
+This email and any files transmitted with it may contain confidential information. If you believe you have received this email or any of its contents in error, please notify me immediately by return email and destroy this email. Do not use, disseminate, forward, print or copy any contents of an email received in error.
+
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Mon Sep 22 16:05:52 2025
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Mon, 22 Sep 2025 16:05:52 +0200
+Subject: [Rd] 
+ Suggestion: Add box constraints to optim() default Nelder-Mead
+In-Reply-To: <fake-VM-id.02a5eb395abbbc9bdb240aec6790a48b@talos.iv>
+References: <CAJrNScQWc=Y1uLRpDi2in1GRU9BAisgPiq5jRXeixnz_pmaCbg@mail.gmail.com>
+ <ebc6fde4-8472-4a25-828e-8bae234a49bd@gmail.com>
+Message-ID: <26833.22464.659549.701802@stat.math.ethz.ch>
+
+>>>>> Ben Bolker  on Wed, 17 Sep 2025 19:00:00 -0400 writes:
+
+    > For what it's worth:
+
+    > John Nash (original author of the Pascal implementations of (most of) 
+    > the available algorithms in optim() (including the Nelder-Mead)) has 
+    > long maintained that these implementations could be updated. (Any update 
+    > that changed solutions, rather than adding new functionality, would need 
+    > to be handled carefully for back-compatibility reasons ...)
+
+    > Solving the problem of box constraints by transformation to an 
+    > unconstrained space is problematic when the constraints are binding 
+    > (i.e. the minimum is on the boundary of the allowed space) -- the 
+    > transformation essentially moves the solution to a point at infinity, 
+    > leading to infinite flatness ...
+
+    > FWIW the Nelder-Mead implementation (?lme4::Nelder_Mead), and the 
+    > one in NLopt (accessible via the nloptr package: 
+    > https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#local-derivative-free-optimization 
+    > ) both allow box constraints.  (The author of NLopt suggests that the 
+    > 'subplex' algorithm is generally preferable ...)  According to the CRAN 
+    > optimization task view 
+    > <https://cran.r-project.org/web/views/Optimization.html#general-purpose-continuous-solvers>, 
+    > the dfoptim package also has a box-constrained variant of Nelder-Mead ...
+
+    > cheers
+    > Ben Bolker
+
+Just  as this thread hasn't been continued,
+and nobody mentioned -- hence for "completeness":
+
+We (R-core, not me) had introduced a relatively simplistic but
+useful  constrOptim()  function a long time ago, and it *does*
+provide box constraints.
+
+Hence, in some sense, Ivo Welch's wish has been fulfilled a long
+time ago and *in base R* (the 'stats' package) :
+
+E.g.
+  https://search.r-project.org/R/refmans/stats/html/constrOptim.html
+
+Martin
+
+
+    > On 9/17/25 17:36, ivo welch wrote:
+    >> Title says it all.
+    >> 
+    >> I know this can be done by transformations by the user, but given that
+    >> interval is so prominent in the ?doc and given that Nelder-Mead is the
+    >> default method for optim(), it would be nice if the default method would
+    >> honor this one, too.
+    >> 
+    >> [could be done (even by me) within the R code because the C code through
+    >> the arctan transforms]
+    >> 
+    >> [[alternative HTML version deleted]]
+    >> 
+    >> ______________________________________________
+    >> R-devel at r-project.org mailing list
+    >> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+    > ______________________________________________
+    > R-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From r|p|eybd @end|ng |rom |c|oud@com  Wed Sep 24 08:59:32 2025
+From: r|p|eybd @end|ng |rom |c|oud@com (Prof Brian Ripley)
+Date: Wed, 24 Sep 2025 07:59:32 +0100
+Subject: [Rd] Reviving IndependenceTests and LAPACK WARNINGs
+Message-ID: <96960dd8-0e5d-4bc7-9e21-8ee11b75dac7@icloud.com>
+
+ From the NEWS for R 4.5.0:
+
+   ? It is intended that this will be the last update to BLAS and
+     LAPACK in the R sources.  Those building R from source are
+     encouraged to use external BLAS and LAPACK and this will be
+     required in future.
+
+Your package could be using an external BLAS/LAPACK, or include the 
+routines you want in the package sources (if the licences allow).
+
+On 20/09/2025 01:34, Pierre Lafaye de Micheaux via R-devel wrote:
+> Dear R developpers,
+
+> Two months ago, I sent an email to the CRAN team asking if they would consider adding more LAPACK routines to the R's source tree. I have not received a response from them, which led me to assume that maybe I used the wrong communication channel. (I apologise if this is the case.)
+
+> My goal is to revive my "IndependenceTests" package. It was archived in 2021 (because I had not been able to solve various issues on time).
+> I have now been able to resolve most of the issues, though I still WARNINGs  such as:
+>    Warning: GNU Extension: Nonstandard type declaration COMPLEX*16 at (1)
+> It is my firm belief that I cannot solve these issues without modifying several (old) Lapack Fortran source files.
+> Now, in Section 6.7 of the "Writing R Extensions" manual, I read that the current set of LAPACK subroutines included in R "might be supplemented". 
+
+That is about those declared in Lapack.h, not about the routines 
+included in the R sources.
+
+> Also, in the 
+https://github.com/SurajGupta/r-source/blob/master/src/modules/lapack/README 
+file,
+
+That is not the official R sources and appears to be several years 
+out-of-date.
+
+> I see that some Lapack files were added over the years to the R source tree. But not all the ones I need, unfortunately.
+> The file I would like to be added to the R source tree is the following:
+> zhpevx.f
+> which in turn needs those below that are not in the R Lapack:
+> lsame.f
+> xerbla.f
+
+Those two are included -- lsame.f as part of the BLAS, xerbla is 
+implemented via a C version.
+
+> zhptrd.f
+> zlanhp.f
+> zstein.f
+> zupgtr.f
+> zupmtr.f
+
+> Would you kindly let me know if:
+>  1.
+> A formal request to add these LAPACK routines to the R's source tree is something that can be considered?
+
+See above.
+
+>  2.
+> Alternatively, would a submission with these few remaining warnings still be acceptable?
+
+It is not clear what those are.  No CRAN package is showing COMPLEX*16 
+warnings in its checks although two do in their installation logs.
+
+> I fully understand if this falls outside the scope of R Core Team or CRAN's intended support, but any guidance would be greatly appreciated.
+> Thank you in advance for your time and consideration.
+> Kind regards,
+> Associate Professor Pierre Lafaye De Micheaux
+> UNSW Sydney
+
+(Copyright message removed as used without permission.  And the details 
+it linked to had expired.)
+
+>   [[alternative HTML version deleted]]
+
+As the posting guide says, do not send HTML.
+
+--
+Brian D. Ripley,                  ripleybd at icloud.com
+Emeritus Professor of Applied Statistics, University of Oxford
+
+
+From hp@ge@@on@g|thub @end|ng |rom gm@||@com  Wed Sep 24 20:56:53 2025
+From: hp@ge@@on@g|thub @end|ng |rom gm@||@com (=?UTF-8?B?SGVydsOpIFBhZ8Oocw==?=)
+Date: Wed, 24 Sep 2025 11:56:53 -0700
+Subject: [Rd] about class(<raster>)
+Message-ID: <f3d66803-4e19-4a30-af91-508e3fbca033@gmail.com>
+
+Hi,
+
+A few years ago, class() on a matrix was modified to return c("matrix", 
+"array") instead of just "matrix", thus formalizing the fact that a 
+matrix is an array. Concretely this change meant that is.array(), 
+inherits() and is() were finally in agreement:
+
+ ? ? > is.array(matrix())
+ ? ? [1] TRUE
+ ? ? > inherits(matrix(), "array")? # used to return FALSE
+ ? ? [1] TRUE
+ ? ? > is(matrix(), "array")? # also used to return FALSE
+ ? ? [1] TRUE
+
+Has the same kind of change be considered for raster objects? A raster 
+object is a matrix, and this is acknowledged by is.matrix() but not by 
+inherits() or is():
+
+ ? ? > r <- as.raster(array(runif(60), 5:3))
+ ? ? > is.matrix(r)
+ ? ? [1] TRUE
+ ? ? > inherits(r, "matrix")
+ ? ? [1] FALSE
+ ? ? > is(r, "matrix")
+ ? ? [1] FALSE
+
+This is because class(r) only returns "raster":
+
+ ? ? > class(r)
+ ? ? [1] "raster"
+
+Also, because of this, 'r' is not considered an array in a consistent 
+manner either:
+
+ ? ? > is.array(r)
+ ? ? [1] TRUE
+ ? ? > inherits(r, "array")
+ ? ? [1] FALSE
+ ? ? > is(r, "array")
+ ? ? [1] FALSE
+
+These issues would go away if class(r) was returning c("raster", 
+"matrix", "array") instead of just "raster":
+
+ ? ? > class(r) <- c("raster", "matrix", "array")
+ ? ? > inherits(r, "matrix")
+ ? ? [1] TRUE
+ ? ? > is(r, "matrix")
+ ? ? [1] TRUE
+ ? ? > inherits(r, "array")
+ ? ? [1] TRUE
+ ? ? > is(r, "array")
+ ? ? [1] TRUE
+
+Has this been considered?
+
+I'm aware that this kind of change has the potential to be quite 
+disruptive because it would break any code around that uses things like
+
+ ? ? if (class(r) == "raster") ...
+
+instead of
+
+ ? ? if (is.raster(r)) ...
+
+or
+
+ ? ? if (inherits(r, "raster")) ...
+
+But consistency is priceless isn't it?
+
+Thanks,
+
+H.
+
+-- 
+Herv? Pag?s
+
+Bioconductor Core Team
+hpages.on.github at gmail.com
+
+
+From edd @end|ng |rom deb|@n@org  Thu Sep 25 02:34:48 2025
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 24 Sep 2025 19:34:48 -0500
+Subject: [Rd] about class(<raster>)
+In-Reply-To: <f3d66803-4e19-4a30-af91-508e3fbca033@gmail.com>
+References: <f3d66803-4e19-4a30-af91-508e3fbca033@gmail.com>
+Message-ID: <26836.36392.912455.414244@paul.eddelbuettel.com>
+
+
+Herv?,
+
+Which `as.raster()` did you call here? The one from package `graphics`, or
+one from a contributed package such as `raster`, `terra`, ... ?
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From hp@ge@@on@g|thub @end|ng |rom gm@||@com  Thu Sep 25 07:32:40 2025
+From: hp@ge@@on@g|thub @end|ng |rom gm@||@com (=?UTF-8?B?SGVydsOpIFBhZ8Oocw==?=)
+Date: Wed, 24 Sep 2025 22:32:40 -0700
+Subject: [Rd] about class(<raster>)
+In-Reply-To: <26836.36392.912455.414244@paul.eddelbuettel.com>
+References: <f3d66803-4e19-4a30-af91-508e3fbca033@gmail.com>
+ <26836.36392.912455.414244@paul.eddelbuettel.com>
+Message-ID: <b43eba62-2275-4afe-946c-4e472bcc6c05@gmail.com>
+
+On 24/09/2025 17:34, Dirk Eddelbuettel wrote:
+
+> Herv?,
+>
+> Which `as.raster()` did you call here? The one from package `graphics`, or
+> one from a contributed package such as `raster`, `terra`, ... ?
+
+The one from grDevices. It's on the search path on a fresh start:
+
+ > as.raster
+function (x, ...)
+UseMethod("as.raster")
+<bytecode: 0x61dcf1df2ce0>
+<environment: namespace:grDevices>
+
+H.
+
+-- 
+Herv? Pag?s
+
+Bioconductor Core Team
+hpages.on.github at gmail.com
+
+
+From |onghu@880 @end|ng |rom |oxm@||@com  Thu Sep 25 10:19:56 2025
+From: |onghu@880 @end|ng |rom |oxm@||@com (=?utf-8?B?6b6Z5Y2O?=)
+Date: Thu, 25 Sep 2025 16:19:56 +0800
+Subject: [Rd] Proposal: Enhance as.character() for Consistency with
+ as.numeric() Precision
+Message-ID: <tencent_9B669CC0A5DF40B1E92C9407D244389ED00A@qq.com>
+
+Dear R Core Team and R-devel Community,
+
+
+I hope this message finds you well. I am writing to propose an enhancement to the `as.character()` function in R's base package to address an inconsistency with `as.numeric()` when handling high-precision floating-point numbers. This issue has practical implications for code reliability, especially in scientific computing and data analysis, and I believe a small adjustment could align the behavior more closely with modern user expectations and R's evolving use cases.
+
+
+Problem Description
+The current behavior of `as.character()` and `as.numeric()` leads to logical inconsistencies when converting high-precision decimal strings. For example, consider the string `"7.999999999999999111822"` (22 significant digits):
+
+
+- `as.numeric("7.999999999999999111822")` converts this to a double-precision floating-point number (per IEEE 754), which is stored as approximately `7.9999999999999991118` (verifiable with `print(x, digits = 20)`). The difference from 8 (`8 - x ? 8.88178e-16`) is slightly greater than half the machine epsilon (`0.5 * .Machine$double.eps ? 1.11e-16`), so it is not rounded to `8.0`.
+- However, `as.character(as.numeric("7.999999999999999111822"))` returns `"8"`, simplifying the value and losing the small difference. This leads to a mismatch: `x < 8` is `TRUE`, but `as.numeric(as.character(x)) == 8` is also `TRUE`.
+
+
+This inconsistency arises because `as.numeric()` preserves the precision of the IEEE 754 double (up to ~15-17 decimal digits), while `as.character()` defaults to a human-readable simplification, often rounding to the nearest integer when the difference is below its internal display threshold.
+
+
+Proposed Solution
+I suggest either of the following enhancements to improve consistency:
+
+
+1. Swap the Functionality of `format()` and `as.character()`:
+&nbsp; &nbsp;- Redefine `as.character(x)` to inherit `format()`'s behavior, providing a default precision (e.g., `digits = 17`) to match the effective decimal precision of double-precision floats. This would output `"7.99999999999999911"` for the example above.
+&nbsp; &nbsp;- Redefine `format(x)` to inherit `as.character()`'s current behavior, serving as a utility for concise, human-readable output (e.g., `"8"`).
+&nbsp; &nbsp;- Naming would then align with intent: `as.character()` for type conversion with precision, `format()` for formatting adjustments.
+
+
+2. Add a `digits` Parameter to `as.character()`:
+&nbsp; &nbsp;- Extend `as.character()` to accept a `digits` argument (defaulting to `NULL` for current behavior, or e.g., `17` for precision matching). Example:
+
+
+&nbsp; &nbsp; &nbsp;x <- as.numeric("7.999999999999999111822")
+&nbsp; &nbsp; &nbsp;as.character(x, digits = 17) &nbsp;# "7.99999999999999911"
+&nbsp; &nbsp; &nbsp;as.character(x) &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; # "8" (current default)
+
+
+&nbsp; &nbsp;- This would allow users to opt for precise conversion while preserving backward compatibility.
+
+
+Rationale
+- Consistency: `as.numeric()` and `as.character()` are similarly named base functions, suggesting they should follow analogous precision rules. The current discrepancy violates the expectation of round-trip consistency (string ? numeric ? string).
+-&nbsp;Modern Use Cases: With R's growing use in scientific computing and data science, high-precision handling is increasingly critical. The proposed change aligns R with tools like Python (`str(float(x))` retains more precision) and NumPy.
+- User Experience: Explicit control via `digits` or a redefined `as.character()` would reduce confusion, especially for users relying on type conversion for logical operations.
+
+
+Use Case
+Consider a data validation script:
+
+
+s1 <- "7.999999999999999111822"
+x <- as.numeric(s1)
+if (x < 8) print("Less than 8") &nbsp;# TRUE, correct
+if (as.numeric(as.character(x)) == 8) print("Equal to 8") &nbsp;# TRUE, inconsistent
+
+
+The second condition fails due to `as.character(x)` simplifying to `"8"`. With the proposed change (e.g., `as.character(x, digits = 17)`), both conditions would align with the stored value (`< 8`).
+
+
+Implementation Considerations
+- Backward Compatibility: Option 2 (adding `digits`) is less disruptive, allowing existing code to use the default `as.character()` behavior. Option 1 requires a transition period or deprecation notice.
+- Performance: High-precision formatting may have minor overhead, but this is negligible for modern hardware.
+- Documentation: Clear guidance on the new `digits` parameter or redefined roles would be essential.
+
+
+Next Steps
+I would be happy to assist with testing or drafting a patch if this proposal gains traction. Please let me know your thoughts or any additional considerations. This issue was identified with the help of Grok (xAI), and I believe community feedback could refine the approach.
+
+
+Thank you for your time and the incredible work on R!
+
+
+Best regards
+
+
+??
+longhua880 at foxmail.com
+	[[alternative HTML version deleted]]
+
+
+From ht @end|ng |rom he@therturner@net  Mon Sep 29 09:38:47 2025
+From: ht @end|ng |rom he@therturner@net (Heather Turner)
+Date: Mon, 29 Sep 2025 08:38:47 +0100
+Subject: [Rd] R Dev Day @ Australia 2025, Fri 21 Nov,
+ Monash University | Virtual
+Message-ID: <49ef8d6d-3cf8-44f4-b2dc-d9c96b9f77f6@app.fastmail.com>
+
+Dear All,
+
+A hybrid R Dev Day will be held at Monash University, Melbourne, Australia on Friday 21 November. There will likely be a local hub at Brisbane and possibly Perth.
+
+Join this open, collaborative event to work on contributions to the code and documentation of base R, or to infrastructure that supports such contribution. Both new and experienced contributors are welcome!
+
+Read more details and register for free: https://pretix.eu/r-contributors/r-dev-day-oz-25/
+
+*Deadline: Sunday 16, November (midnight AEST).* - but only 2 in-person tickets left at present, wait list available! 
+
+The latest information for all upcoming R Dev Days can be found on the contributor site: https://contributor.r-project.org/events/r-dev-days/.
+
+Best wishes,
+
+Heather
+
+
+From ht @end|ng |rom he@therturner@net  Tue Sep 30 16:27:13 2025
+From: ht @end|ng |rom he@therturner@net (Heather Turner)
+Date: Tue, 30 Sep 2025 15:27:13 +0100
+Subject: [Rd] R Dev Day @ NZ 2025, Dec 16-17 Dec,
+ Auckland University | Virtual (Americas/Asia-Pacific)
+Message-ID: <cd4ddc22-d4ef-4fe4-923f-7898a7b83a61@app.fastmail.com>
+
+Dear All,
+
+A hybrid R Dev Day will be held at Auckland University, New Zealand on Tuesday 16 - Wednesday 17 December. There will be two independent streams to enable remote participation in the Americas (stream 1) and Asia-Pacific region (stream 2), with the potential for meeting in local hubs.
+
+Join this open, collaborative event to work on contributions to the code and documentation of base R, or to infrastructure that supports such contribution. Both new and experienced contributors are welcome!
+
+Read more details and register for free: https://pretix.eu/r-contributors/r-dev-day-nz-25/
+
+*Deadline: Sunday 7, December (midnight NZDT).*
+
+The latest information for all upcoming R Dev Days can be found on the contributor site: https://contributor.r-project.org/events/r-dev-days/.
+
+Best wishes,
+
+Heather
+
+

@@ -1,0 +1,870 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2024-09",
+  "messages": [
+    {
+      "id": "msg-eade5be1a12f",
+      "message_id": "<MM0P280MB0008F1C95663520452BBDEB1F0912@MM0P280MB0008.SWEP280.PROD.OUTLOOK.COM>",
+      "from_name": "Mark Clements",
+      "from_email_hash": "7aa8aa4f14ae0f61dbfa8ba275365477ec7b7ad494999cca0719283568c8d63e",
+      "date": "2024-09-01T12:42:35Z",
+      "subject": "[Rd] R compilation (revision 87083) failed after upgrade to Ubuntu 24.04 (libtirpc missing)",
+      "subject_clean": "R compilation (revision 87083) failed after upgrade to Ubuntu 24.04 (libtirpc missing)",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Following an upgrade from Ubuntu 22.04 LTS to 24.04.1, revision 87083 failed to compile with an error:\n\n\"No rule to make target '/usr/include/tirpc/rpc/types.h', needed by 'saveload.o'\"\n\nwhere the file /usr/include/tirpc/rpc/types.h did not exist. After installing libtirpc-dev:\n\n> sudo apt install libtirpc-dev\n\ncompilation proceeded smoothly. I understand that this may be local to my system.\n\nSincerely, Mark.\n\n\n\nN?r du skickar e-post till Karolinska Institutet (KI) inneb?r detta att KI kommer att behandla dina personuppgifter. H?r finns information om hur KI behandlar personuppgifter<https://ki.se/om-ki/integritetsskyddspolicy>.\n\n\nSending email to Karolinska Institutet (KI) will result in KI processing your personal data. You can read more about KI's processing of personal data here<https://staff.ki.se/data-protection-policy>.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Following an upgrade from Ubuntu 22.04 LTS to 24.04.1, revision 87083 failed to compile with an error:\n\n\"No rule to make target '/usr/include/tirpc/rpc/types.h', needed by 'saveload.o'\"\n\nwhere the fil",
+      "thread_id": "thread-eade5be1a12f",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-1542f31cd746",
+      "message_id": "<248ad6c4-ec50-4a3c-b9e4-05346840dbf0@gmail.com>",
+      "from_name": "Tomas Kalibera",
+      "from_email_hash": "7af110c9340339e5307bd348f1ec524e2fd1c8f104d583e9993022c5550711f4",
+      "date": "2024-09-02T16:04:43+02:00",
+      "subject": "[Rd] Big speedup in install.packages() by re-using connections",
+      "subject_clean": "Big speedup in install.packages() by re-using connections",
+      "in_reply_to": "<20240425180109.418ca5f4@arachnoid>",
+      "references": [
+        "<CABFfbXtpXChZLeLREEWFHFWP24cvD8Ox-7xfBGj0p+N0Rjzwbg@mail.gmail.com>",
+        "<CABFfbXtnteY=_qRz8ZBQ4aAPi-j+HjasRvU-fcLPJm2nu+QwLQ@mail.gmail.com>",
+        "<20240425180109.418ca5f4@arachnoid>"
+      ],
+      "body_plain": "On 4/25/24 17:01, Ivan Krylov via R-devel wrote:\n> On Thu, 25 Apr 2024 14:45:04 +0200\n> Jeroen Ooms <jeroenooms at gmail.com> wrote:\n>\n>> Thoughts?\n> How verboten would it be to create an empty external pointer object,\n> add it to the preserved list, and set an on-exit finalizer to clean up\n> the curl multi-handle? As far as I can tell, the internet module is not\n> supposed to be unloaded, so this would not introduce an opportunity to\n> jump to an unmapped address. This makes it possible to avoid adding a\n> CurlCleanup() function to the internet module:\n\nCleaning up this way in principle would probably be fine, but R already \nhas support for re-using connections. Even more, R can download files in \nparallel (in a single thread), which particularly helps with bigger \nlatencies (e.g. typically users connecting from home, etc). See \n?download.file(), look for \"simultaneous\".\n\nI've improved the existing support in R-devel and made it the default in \ninstall.packages() and download.packages(). I am seeing speedups \nsomewhere between 2x and 9x on several systems (with quiet=TRUE) when \ndownloading many packages.\n\nSequential downloads by default (quiet=FALSE) show a progress bar, which \ncan be rather slow, particularly on Windows. Turning that off can help \nwith slow downloads in already released versions of R. Consequently, via \ndisabling the progress bar, the speedups with R-devel could seem even \nbigger than the range.\n\nA common practice when installing/checking say all packages from CRAN or \nBioconductor is to set up a local mirror of the repositories and \ndownload/update it with \"rsync\". When R then \"downloads\" packages from \nthe local mirror using the \"file://\" protocol, it completely avoids \nthese problems. The increased performance of download in R-devel cannot \nbeat this setup.\n\nHowever, the improvement should help a little bit users installing \nbinary packages (on Windows, macOS), where the download time can play a \nvisible role, when they install packages with many (uninstalled) \ndependencies. Users installing from source, particularly with packages \nneeding compilation, would probably not notice.\n\nTomas\n\n\n>\n> Index: src/modules/internet/libcurl.c\n> ===================================================================\n> --- src/modules/internet/libcurl.c\t(revision 86484)\n> +++ src/modules/internet/libcurl.c\t(working copy)\n> @@ -55,6 +55,47 @@\n>   \n>   static int current_timeout = 0;\n>   \n> +// The multi-handle is shared between downloads for reusing connections\n> +static CURLM *shared_mhnd = NULL;\n> +static SEXP mhnd_sentinel = NULL;\n> +\n> +static void cleanup_mhnd(SEXP ignored)\n> +{\n> +    if(shared_mhnd){\n> +        curl_multi_cleanup(shared_mhnd);\n> +        shared_mhnd = NULL;\n> +    }\n> +    curl_global_cleanup();\n> +}\n> +static void rollback_mhnd_sentinel(void* sentinel) {\n> +    // Failed to allocate memory while registering a finalizer,\n> +    // therefore must release the object\n> +    R_ReleaseObject((SEXP)sentinel);\n> +}\n> +static CURLM *get_mhnd(void)\n> +{\n> +    if (!mhnd_sentinel) {\n> +      SEXP sentinel = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, R_NilValue));\n> +      R_PreserveObject(sentinel);\n> +      UNPROTECT(1);\n> +      // Avoid leaking the sentinel before setting the finalizer\n> +      RCNTXT cntxt;\n> +      begincontext(&cntxt, CTXT_CCODE, R_NilValue, R_BaseEnv, R_BaseEnv,\n> +                   R_NilValue, R_NilValue);\n> +      cntxt.cend = &rollback_mhnd_sentinel;\n> +      cntxt.cenddata = sentinel;\n> +      R_RegisterCFinalizerEx(sentinel, cleanup_mhnd, TRUE);\n> +      // Succeeded, no need to clean up if endcontext() fails allocation\n> +      mhnd_sentinel = sentinel;\n> +      cntxt.cend = NULL;\n> +      endcontext(&cntxt);\n> +    }\n> +    if(!shared_mhnd) {\n> +      shared_mhnd = curl_multi_init();\n> +    }\n> +    return shared_mhnd;\n> +}\n> +\n>   # if LIBCURL_VERSION_MAJOR < 7 || (LIBCURL_VERSION_MAJOR == 7 && LIBCURL_VERSION_MINOR < 28)\n>   \n>   // curl/curl.h includes <sys/select.h> and headers it requires.\n> @@ -565,8 +606,6 @@\n>   \tif (c->hnd && c->hnd[i])\n>   \t    curl_easy_cleanup(c->hnd[i]);\n>       }\n> -    if (c->mhnd)\n> -\tcurl_multi_cleanup(c->mhnd);\n>       if (c->headers)\n>   \tcurl_slist_free_all(c->headers);\n>   \n> @@ -668,7 +707,7 @@\n>   \tc.headers = headers = tmp;\n>       }\n>   \n> -    CURLM *mhnd = curl_multi_init();\n> +    CURLM *mhnd = get_mhnd();\n>       if (!mhnd)\n>   \terror(_(\"could not create curl handle\"));\n>       c.mhnd = mhnd;\n>\n>",
+      "body_snippet": "On 4/25/24 17:01, Ivan Krylov via R-devel wrote:\n> On Thu, 25 Apr 2024 14:45:04 +0200\n> Jeroen Ooms <jeroenooms at gmail.com> wrote:\n>\n>> Thoughts?\n> How verboten would it be to create an empty extern",
+      "thread_id": "thread-1542f31cd746",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-dd9ec83a1d2a",
+      "message_id": "<CAP01uRnVmJ1ETMq93gE7=peHTNZWNLPE49ah8zd9a2A8Sh4SXw@mail.gmail.com>",
+      "from_name": "Gabor Grothendieck",
+      "from_email_hash": "2470cc61688c301322ff3a85f3fd51ddba9f1112f88f535ec93c41ab610332d1",
+      "date": "2024-09-08T07:30:36-04:00",
+      "subject": "[Rd] Inconsistency between row and nrow",
+      "subject_clean": "Inconsistency between row and nrow",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "In the following nrow provides the expected result but row gives an\nerror.  I would have thought that they would both work or both fail.\n\n  aa <- array(dim = 5:3)\n\n  nrow(aa)\n  ## [1] 5\n\n  row(aa)\n  ## Error in row(aa) : a matrix-like object is required as argument to 'row'\n\n  # this does work:\n  slice.index(aa, 1)\n\n-- \nStatistics & Software Consulting\nGKX Group, GKX Associates Inc.\ntel: 1-877-GKX-GROUP\nemail: ggrothendieck at gmail.com",
+      "body_snippet": "In the following nrow provides the expected result but row gives an\nerror.  I would have thought that they would both work or both fail.\n\n  aa <- array(dim = 5:3)\n\n  nrow(aa)\n  ## [1] 5\n\n  row(aa)\n  #",
+      "thread_id": "thread-dd9ec83a1d2a",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-b3c650833ea6",
+      "message_id": "<0453329E-F005-4EB6-86D1-EA9BDEC349CC@me.com>",
+      "from_name": "Marc Schwartz",
+      "from_email_hash": "040b2d09159b27cfd2853bc2dbb476bd637811586f307d9583c9ef7f806f3692",
+      "date": "2024-09-08T08:26:53-04:00",
+      "subject": "[Rd] Inconsistency between row and nrow",
+      "subject_clean": "Inconsistency between row and nrow",
+      "in_reply_to": "<CAP01uRnVmJ1ETMq93gE7=peHTNZWNLPE49ah8zd9a2A8Sh4SXw@mail.gmail.com>",
+      "references": [
+        "<CAP01uRnVmJ1ETMq93gE7=peHTNZWNLPE49ah8zd9a2A8Sh4SXw@mail.gmail.com>"
+      ],
+      "body_plain": "Hi Gabor,\n\nIn strictly reading the help files for both nrow() and row(), the 'x' argument in the former case is \"a vector, array, data frame, or NULL.\", whereas in the latter case it is \"a matrix-like object, that is one with a two-dimensional dim.\".\n\nThus, I would expect row() to fail on a >= 3-dimensional array, as your example shows.\n\nIn reading the help file for slice.index(), there is the following in the See Also section:\n\n\"row and col for determining row and column indexes; in fact, these are special cases of slice.index corresponding to MARGIN equal to 1 and 2, respectively when x is a matrix.\"\n\nfurther differentiating the behavior of row() and col() as more specific implementations in the 2-dimensional case.\n\nTo my read then, the difference in behavior appears to be intentional and expected.\n\nRegards,\n\nMarc Schwartz\n\n\n?-----Original Message-----\nFrom: R-devel <r-devel-bounces at r-project.org <mailto:r-devel-bounces at r-project.org>> on behalf of Gabor Grothendieck <ggrothendieck at gmail.com <mailto:ggrothendieck at gmail.com>>\nDate: Sunday, September 8, 2024 at 7:31 AM\nTo: \"r-devel at r-project.org <mailto:r-devel at r-project.org>\" <r-devel at r-project.org <mailto:r-devel at r-project.org>>\nSubject: [Rd] Inconsistency between row and nrow\n\n\nIn the following nrow provides the expected result but row gives an\nerror. I would have thought that they would both work or both fail.\n\n\naa <- array(dim = 5:3)\n\n\nnrow(aa)\n## [1] 5\n\n\nrow(aa)\n## Error in row(aa) : a matrix-like object is required as argument to 'row'\n\n\n# this does work:\nslice.index(aa, 1)\n\n\n-- \nStatistics & Software Consulting\nGKX Group, GKX Associates Inc.\ntel: 1-877-GKX-GROUP\nemail: ggrothendieck at gmail.com\n\n\n______________________________________________\nR-devel at r-project.org <mailto:R-devel at r-project.org> mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel <https://stat.ethz.ch/mailman/listinfo/r-devel>",
+      "body_snippet": "Hi Gabor,\n\nIn strictly reading the help files for both nrow() and row(), the 'x' argument in the former case is \"a vector, array, data frame, or NULL.\", whereas in the latter case it is \"a matrix-like",
+      "thread_id": "thread-dd9ec83a1d2a",
+      "thread_depth": 1,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-41feb37220b9",
+      "message_id": "<CAP01uRk+k_2w84YtY9i3NDxbr0RNqiC75i70rct7gTTY2cEhUg@mail.gmail.com>",
+      "from_name": "Gabor Grothendieck",
+      "from_email_hash": "2470cc61688c301322ff3a85f3fd51ddba9f1112f88f535ec93c41ab610332d1",
+      "date": "2024-09-08T08:36:41-04:00",
+      "subject": "[Rd] Inconsistency between row and nrow",
+      "subject_clean": "Inconsistency between row and nrow",
+      "in_reply_to": "<0453329E-F005-4EB6-86D1-EA9BDEC349CC@me.com>",
+      "references": [
+        "<CAP01uRnVmJ1ETMq93gE7=peHTNZWNLPE49ah8zd9a2A8Sh4SXw@mail.gmail.com>",
+        "<0453329E-F005-4EB6-86D1-EA9BDEC349CC@me.com>"
+      ],
+      "body_plain": "The fact that it is consistent with the documentation is not the\npoint.  The  point is that the design itself is inconsistent.\n\nOn Sun, Sep 8, 2024 at 8:27?AM Marc Schwartz <marc_schwartz at me.com> wrote:\n>\n> Hi Gabor,\n>\n> In strictly reading the help files for both nrow() and row(), the 'x' argument in the former case is \"a vector, array, data frame, or NULL.\", whereas in the latter case it is \"a matrix-like object, that is one with a two-dimensional dim.\".\n>\n> Thus, I would expect row() to fail on a >= 3-dimensional array, as your example shows.\n>\n> In reading the help file for slice.index(), there is the following in the See Also section:\n>\n> \"row and col for determining row and column indexes; in fact, these are special cases of slice.index corresponding to MARGIN equal to 1 and 2, respectively when x is a matrix.\"\n>\n> further differentiating the behavior of row() and col() as more specific implementations in the 2-dimensional case.\n>\n> To my read then, the difference in behavior appears to be intentional and expected.\n>\n> Regards,\n>\n> Marc Schwartz\n>\n>\n> ?-----Original Message-----\n> From: R-devel <r-devel-bounces at r-project.org <mailto:r-devel-bounces at r-project.org>> on behalf of Gabor Grothendieck <ggrothendieck at gmail.com <mailto:ggrothendieck at gmail.com>>\n> Date: Sunday, September 8, 2024 at 7:31 AM\n> To: \"r-devel at r-project.org <mailto:r-devel at r-project.org>\" <r-devel at r-project.org <mailto:r-devel at r-project.org>>\n> Subject: [Rd] Inconsistency between row and nrow\n>\n>\n> In the following nrow provides the expected result but row gives an\n> error. I would have thought that they would both work or both fail.\n>\n>\n> aa <- array(dim = 5:3)\n>\n>\n> nrow(aa)\n> ## [1] 5\n>\n>\n> row(aa)\n> ## Error in row(aa) : a matrix-like object is required as argument to 'row'\n>\n>\n> # this does work:\n> slice.index(aa, 1)\n>\n>\n> --\n> Statistics & Software Consulting\n> GKX Group, GKX Associates Inc.\n> tel: 1-877-GKX-GROUP\n> email: ggrothendieck at gmail.com\n>\n>\n> ______________________________________________\n> R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel <https://stat.ethz.ch/mailman/listinfo/r-devel>\n>\n>\n>\n>\n\n\n-- \nStatistics & Software Consulting\nGKX Group, GKX Associates Inc.\ntel: 1-877-GKX-GROUP\nemail: ggrothendieck at gmail.com",
+      "body_snippet": "The fact that it is consistent with the documentation is not the\npoint.  The  point is that the design itself is inconsistent.\n\nOn Sun, Sep 8, 2024 at 8:27?AM Marc Schwartz <marc_schwartz at me.com> w",
+      "thread_id": "thread-dd9ec83a1d2a",
+      "thread_depth": 2,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-820850f8424c",
+      "message_id": "<CAP01uRn4dVscOaXdbkLTCL2ZbA_nV=zJzU69_X5ZwQOJp1rGGA@mail.gmail.com>",
+      "from_name": "Gabor Grothendieck",
+      "from_email_hash": "2470cc61688c301322ff3a85f3fd51ddba9f1112f88f535ec93c41ab610332d1",
+      "date": "2024-09-08T08:38:58-04:00",
+      "subject": "[Rd] transform",
+      "subject_clean": "transform",
+      "in_reply_to": "<3b755353-abee-41aa-8621-bbfd49876200@fau.de>",
+      "references": [
+        "<CAP01uR=DJOOJFBh-kwGAstC1aryt8uMh7c0vceYRYAtyeD59SA@mail.gmail.com>",
+        "<9629D1E6-A493-41E4-80EB-1A2289F42F60@gmail.com>",
+        "<3b755353-abee-41aa-8621-bbfd49876200@fau.de>"
+      ],
+      "body_plain": "Suggest you look at dplyr::mutate as this functionality is widely used\nthere and has shown itself to be useful.\n\nOn Tue, Aug 27, 2024 at 9:16?AM Sebastian Meyer <seb.meyer at fau.de> wrote:\n>\n> Am 27.08.24 um 11:55 schrieb peter dalgaard:\n> > Yes. A quirk, rather than a bug I'd say. One issue is that the internal logic of transform() relies on\n> >\n> >      e <- eval(substitute(list(...)), `_data`, parent.frame())\n> >      tags <- names(e)\n> >\n> > so untagged entries in ... will not be included.\n>\n> ... unless at least one is tagged:\n>\n> R> transform(BOD, 0:5, 1:6)\n>    Time demand\n> 1    1    8.3\n> 2    2   10.3\n> 3    3   19.0\n> 4    4   16.0\n> 5    5   15.6\n> 6    7   19.8\n>\n> R> transform(BOD, 0:5, 1:6, foo = 1)\n>    Time demand 0:5 1:6 foo\n> 1    1    8.3   0   1   1\n> 2    2   10.3   1   2   1\n> 3    3   19.0   2   3   1\n> 4    4   16.0   3   4   1\n> 5    5   15.6   4   5   1\n> 6    7   19.8   5   6   1\n>\n> But as transform.data.frame is only documented for tagged vector\n> expressions, all examples provided in this thread were formal misuses.\n> (It might make sense to warn about untagged entries.)\n>\n> Personally, I'd be quite confused about what to expect from syntax like\n>\n>      transform(BOD, data.frame(y = 1:6))\n>\n> as really no transformation is specified. Looks like cbind() or\n> data.frame() was meant.\n>\n>         Sebastian\n>\n>\n> > The other part is a direct consequence of a quirk in data.frame:\n> >\n> >> data.frame(head(airquality), y=data.frame(x=rnorm(6)))\n> >    Ozone Solar.R Wind Temp Month Day          x\n> > 1    41     190  7.4   67     5   1  0.3075402\n> > 2    36     118  8.0   72     5   2  0.7765265\n> > 3    12     149 12.6   74     5   3  0.3909341\n> > 4    18     313 11.5   62     5   4  0.4733170\n> > 5    NA      NA 14.3   56     5   5 -0.6947709\n> > 6    28      NA 14.9   66     5   6  0.1126040\n> >\n> > whereas (the wisdom of this escapes me)\n> >\n> >> data.frame(head(airquality), y=data.frame(x=rnorm(6),z=rnorm(6)))\n> >    Ozone Solar.R Wind Temp Month Day        y.x         y.z\n> > 1    41     190  7.4   67     5   1 -0.9250228  0.46483406\n> > 2    36     118  8.0   72     5   2 -0.5035793  0.28822668\n> > ...\n> >\n> > On the whole, I think that transform was never designed (nor documented) to take data frame arguments, so caveat emptor.\n> >\n> > - Peter\n> >\n> >\n> >> On 24 Aug 2024, at 16:41 , Gabor Grothendieck <ggrothendieck at gmail.com> wrote:\n> >>\n> >> One oddity in transform that I recently noticed.  It seems that to include\n> >> a one-column data frame in the arguments one must name it even though the\n> >> name is ignored.  If the data frame has more than one column then it must\n> >> also be named but in that case it is not ignored and the names are made up of\n> >> a combination of that name and the data frame's names.  I would have thought\n> >> that if we did not want a combination of names we would just not name the\n> >> argument.\n> >>\n> >>   # ignores second argument returning BOD unchanged\n> >>   transform(BOD, data.frame(y = 1:6)) |> names()\n> >>   ## [1] \"Time\"   \"demand\"\n> >>\n> >>   # ignores second argument returning BOD unchanged\n> >>   transform(BOD, data.frame(y = 1:6, z = 6:1)) |> names()\n> >>   ## [1] \"Time\"   \"demand\"\n> >>\n> >>   # with one column in data frame it adds the column and names it y ignoring x\n> >>   transform(BOD, x = data.frame(y = 1:6)) |> names()\n> >>   ## [1] \"Time\"   \"demand\" \"y\"\n> >>\n> >>   # with multiple columns in data frame it uses x.y and x.z as names\n> >>   transform(BOD, data.frame(y = 1:6, z = 6:1)) |> names()\n> >>   ## [1] \"Time\"   \"demand\" \"x.y\"    \"x.z\"\n> >>\n> >>\n> >> --\n> >> Statistics & Software Consulting\n> >> GKX Group, GKX Associates Inc.\n> >> tel: 1-877-GKX-GROUP\n> >> email: ggrothendieck at gmail.com\n> >>\n> >> ______________________________________________\n> >> R-devel at r-project.org mailing list\n> >> https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n\n\n\n-- \nStatistics & Software Consulting\nGKX Group, GKX Associates Inc.\ntel: 1-877-GKX-GROUP\nemail: ggrothendieck at gmail.com",
+      "body_snippet": "Suggest you look at dplyr::mutate as this functionality is widely used\nthere and has shown itself to be useful.\n\nOn Tue, Aug 27, 2024 at 9:16?AM Sebastian Meyer <seb.meyer at fau.de> wrote:\n>\n> Am 27.",
+      "thread_id": "thread-820850f8424c",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-956a7579f6ef",
+      "message_id": "<003701db0222$b84b0730$28e11590$@gmail.com>",
+      "from_name": "@vi@e@gross m@iii@g oii gm@ii@com",
+      "from_email_hash": "d6a4c55a185bab73b3c0ff3c4ff2919a7304ba1b26cb7598116213c48aa6f4dd",
+      "date": "2024-09-08T15:10:07-04:00",
+      "subject": "[Rd] Inconsistency between row and nrow",
+      "subject_clean": "Inconsistency between row and nrow",
+      "in_reply_to": "<CAP01uRk+k_2w84YtY9i3NDxbr0RNqiC75i70rct7gTTY2cEhUg@mail.gmail.com>",
+      "references": [
+        "<CAP01uRnVmJ1ETMq93gE7=peHTNZWNLPE49ah8zd9a2A8Sh4SXw@mail.gmail.com>",
+        "<0453329E-F005-4EB6-86D1-EA9BDEC349CC@me.com>",
+        "<CAP01uRk+k_2w84YtY9i3NDxbr0RNqiC75i70rct7gTTY2cEhUg@mail.gmail.com>"
+      ],
+      "body_plain": "Why would a design made by perhaps different people at different times have to be consistent?\n\nWhy complicate a simple design meant to be used in 2-D objects to also handle other things?\n\nIt is a bit like asking why for a vector you cannot use the same verb to measure length as in one sense a vector is about the same as a 1-D matrix. Why use length(vec) and not nrow(vec) or something\n\n-----Original Message-----\nFrom: R-devel <r-devel-bounces at r-project.org> On Behalf Of Gabor Grothendieck\nSent: Sunday, September 8, 2024 8:37 AM\nTo: Marc Schwartz <marc_schwartz at me.com>\nCc: r-devel at r-project.org\nSubject: Re: [Rd] Inconsistency between row and nrow\n\nThe fact that it is consistent with the documentation is not the\npoint.  The  point is that the design itself is inconsistent.\n\nOn Sun, Sep 8, 2024 at 8:27?AM Marc Schwartz <marc_schwartz at me.com> wrote:\n>\n> Hi Gabor,\n>\n> In strictly reading the help files for both nrow() and row(), the 'x' argument in the former case is \"a vector, array, data frame, or NULL.\", whereas in the latter case it is \"a matrix-like object, that is one with a two-dimensional dim.\".\n>\n> Thus, I would expect row() to fail on a >= 3-dimensional array, as your example shows.\n>\n> In reading the help file for slice.index(), there is the following in the See Also section:\n>\n> \"row and col for determining row and column indexes; in fact, these are special cases of slice.index corresponding to MARGIN equal to 1 and 2, respectively when x is a matrix.\"\n>\n> further differentiating the behavior of row() and col() as more specific implementations in the 2-dimensional case.\n>\n> To my read then, the difference in behavior appears to be intentional and expected.\n>\n> Regards,\n>\n> Marc Schwartz\n>\n>\n> ?-----Original Message-----\n> From: R-devel <r-devel-bounces at r-project.org <mailto:r-devel-bounces at r-project.org>> on behalf of Gabor Grothendieck <ggrothendieck at gmail.com <mailto:ggrothendieck at gmail.com>>\n> Date: Sunday, September 8, 2024 at 7:31 AM\n> To: \"r-devel at r-project.org <mailto:r-devel at r-project.org>\" <r-devel at r-project.org <mailto:r-devel at r-project.org>>\n> Subject: [Rd] Inconsistency between row and nrow\n>\n>\n> In the following nrow provides the expected result but row gives an\n> error. I would have thought that they would both work or both fail.\n>\n>\n> aa <- array(dim = 5:3)\n>\n>\n> nrow(aa)\n> ## [1] 5\n>\n>\n> row(aa)\n> ## Error in row(aa) : a matrix-like object is required as argument to 'row'\n>\n>\n> # this does work:\n> slice.index(aa, 1)\n>\n>\n> --\n> Statistics & Software Consulting\n> GKX Group, GKX Associates Inc.\n> tel: 1-877-GKX-GROUP\n> email: ggrothendieck at gmail.com\n>\n>\n> ______________________________________________\n> R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel <https://stat.ethz.ch/mailman/listinfo/r-devel>\n>\n>\n>\n>\n\n\n-- \nStatistics & Software Consulting\nGKX Group, GKX Associates Inc.\ntel: 1-877-GKX-GROUP\nemail: ggrothendieck at gmail.com\n\n______________________________________________\nR-devel at r-project.org mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Why would a design made by perhaps different people at different times have to be consistent?\n\nWhy complicate a simple design meant to be used in 2-D objects to also handle other things?\n\nIt is a bit ",
+      "thread_id": "thread-dd9ec83a1d2a",
+      "thread_depth": 3,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-375919264fd7",
+      "message_id": "<CABFfbXs8n4Okup+8y2zt-P_f7WymoknBP4WAYuQ8dTwNgMAeLg@mail.gmail.com>",
+      "from_name": "Jeroen Ooms",
+      "from_email_hash": "6d6b57f7dfdacdb11068763c49af518a12f1ee23bc379f749098f057c1d6df69",
+      "date": "2024-09-08T17:14:22-04:00",
+      "subject": "[Rd] Big speedup in install.packages() by re-using connections",
+      "subject_clean": "Big speedup in install.packages() by re-using connections",
+      "in_reply_to": "<248ad6c4-ec50-4a3c-b9e4-05346840dbf0@gmail.com>",
+      "references": [
+        "<CABFfbXtpXChZLeLREEWFHFWP24cvD8Ox-7xfBGj0p+N0Rjzwbg@mail.gmail.com>",
+        "<CABFfbXtnteY=_qRz8ZBQ4aAPi-j+HjasRvU-fcLPJm2nu+QwLQ@mail.gmail.com>",
+        "<20240425180109.418ca5f4@arachnoid>",
+        "<248ad6c4-ec50-4a3c-b9e4-05346840dbf0@gmail.com>"
+      ],
+      "body_plain": "On Mon, Sep 2, 2024 at 10:05?AM Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>\n>\n> On 4/25/24 17:01, Ivan Krylov via R-devel wrote:\n> > On Thu, 25 Apr 2024 14:45:04 +0200\n> > Jeroen Ooms <jeroenooms at gmail.com> wrote:\n> >\n> >> Thoughts?\n> > How verboten would it be to create an empty external pointer object,\n> > add it to the preserved list, and set an on-exit finalizer to clean up\n> > the curl multi-handle? As far as I can tell, the internet module is not\n> > supposed to be unloaded, so this would not introduce an opportunity to\n> > jump to an unmapped address. This makes it possible to avoid adding a\n> > CurlCleanup() function to the internet module:\n>\n> Cleaning up this way in principle would probably be fine, but R already\n> has support for re-using connections. Even more, R can download files in\n> parallel (in a single thread), which particularly helps with bigger\n> latencies (e.g. typically users connecting from home, etc). See\n> ?download.file(), look for \"simultaneous\".\n\nThank you for looking at this. A few ideas wrt parallel downloading:\n\nAdditional improvement on Windows can be achieved by enabling the\nnghttp2 driver in libcurl in rtools, such that it takes advantage of\nhttp2 multiplexing for parallel downloads\n(https://bugs.r-project.org/show_bug.cgi?id=18664).\n\nMoreover, one concern is that install.packages() may fail more\nfrequently on low bandwidth connections due to reaching the \"download\ntimeout\" when downloading files in parallel:\n\nR has an unusual definition of the http timeout, which by default\naborts in-progress downloads after 60 seconds for no obvious reason.\n(by contrast, browsers enforce a timeout on unresponsive/stalled\ndownloads only, which can be achieved in libcurl by setting\nCURLOPT_CONNECTTIMEOUT or CURLOPT_LOW_SPEED_TIME).\n\nThe above is already a problem on slow networks, where large packages\ncan fail to install with a timeout error in the download stage. Users\nmay assume there must be a problem with the network, as it is not\nobvious that machines on slower internet connection need to work\naround R's defaults and modify options(timeout) before\ninstall.packages(). This problem could become more prevalent when\nusing parallel downloads while still enforcing the same total timeout.\n\nFor example: the MacOS binary for package \"sf\" is close to 90mb, hence\ncurrently, under the default R settings of options(timeout=60),\ninstall.packages will error with a download timeout on clients with\nless than 1.5MB/s bandwidth. But with the parallel implementation,\ninstall.packages() will share the bandwidth on 6 parallel downloads,\nso if \"sf\" is downloaded with all its dependencies, we need at least\n9MB/s (i.e. a 100mbit connection) for the default settings to not\ncause a timeout.\n\nHopefully this can be revised to enforce the timeout on stalled\ndownloads only, as is common practice.",
+      "body_snippet": "On Mon, Sep 2, 2024 at 10:05?AM Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>\n>\n> On 4/25/24 17:01, Ivan Krylov via R-devel wrote:\n> > On Thu, 25 Apr 2024 14:45:04 +0200\n> > Jeroen Ooms <jeroe",
+      "thread_id": "thread-1542f31cd746",
+      "thread_depth": 1,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-f3fd9233429d",
+      "message_id": "<004001db023f$8f984d80$aec8e880$@gmail.com>",
+      "from_name": "@vi@e@gross m@iii@g oii gm@ii@com",
+      "from_email_hash": "d6a4c55a185bab73b3c0ff3c4ff2919a7304ba1b26cb7598116213c48aa6f4dd",
+      "date": "2024-09-08T18:36:34-04:00",
+      "subject": "[Rd] Inconsistency between row and nrow",
+      "subject_clean": "Inconsistency between row and nrow",
+      "in_reply_to": "<0453329E-F005-4EB6-86D1-EA9BDEC349CC@me.com>",
+      "references": [
+        "<CAP01uRnVmJ1ETMq93gE7=peHTNZWNLPE49ah8zd9a2A8Sh4SXw@mail.gmail.com>",
+        "<0453329E-F005-4EB6-86D1-EA9BDEC349CC@me.com>"
+      ],
+      "body_plain": "It can be informative to look at what the actual functions being discussed do.\n\nDim is an internal, meaning written in some variant of C, perhaps:\n\n> dim\nfunction (x)  .Primitive(\"dim\")\n\nThe function nrow, in my distribution, actually just calls dim() and throws away one dimension:\n\n> nrow\nfunction (x) \ndim(x)[1L]\n<bytecode: 0x0000022df4d6f348>\n<environment: namespace:base>\n\nThe function row is a bit related in calling dim in one of several ways:\n\n> row\nfunction (x, as.factor = FALSE) \n{\n    if (as.factor) {\n        labs <- rownames(x, do.NULL = FALSE, prefix = \"\")\n        res <- factor(.Internal(row(dim(x))), labels = labs)\n        dim(res) <- dim(x)\n        res\n    }\n    else .Internal(row(dim(x)))\n}\n<bytecode: 0x0000022d87fbfb98>\n<environment: namespace:base>\n\nDoes this shed any light on why the result may be inconsistent?\n\n-----Original Message-----\nFrom: R-devel <r-devel-bounces at r-project.org> On Behalf Of Marc Schwartz via R-devel\nSent: Sunday, September 8, 2024 8:27 AM\nTo: Gabor Grothendieck <ggrothendieck at gmail.com>; r-devel at r-project.org\nSubject: Re: [Rd] Inconsistency between row and nrow\n\nHi Gabor,\n\nIn strictly reading the help files for both nrow() and row(), the 'x' argument in the former case is \"a vector, array, data frame, or NULL.\", whereas in the latter case it is \"a matrix-like object, that is one with a two-dimensional dim.\".\n\nThus, I would expect row() to fail on a >= 3-dimensional array, as your example shows.\n\nIn reading the help file for slice.index(), there is the following in the See Also section:\n\n\"row and col for determining row and column indexes; in fact, these are special cases of slice.index corresponding to MARGIN equal to 1 and 2, respectively when x is a matrix.\"\n\nfurther differentiating the behavior of row() and col() as more specific implementations in the 2-dimensional case.\n\nTo my read then, the difference in behavior appears to be intentional and expected.\n\nRegards,\n\nMarc Schwartz\n\n\n?-----Original Message-----\nFrom: R-devel <r-devel-bounces at r-project.org <mailto:r-devel-bounces at r-project.org>> on behalf of Gabor Grothendieck <ggrothendieck at gmail.com <mailto:ggrothendieck at gmail.com>>\nDate: Sunday, September 8, 2024 at 7:31 AM\nTo: \"r-devel at r-project.org <mailto:r-devel at r-project.org>\" <r-devel at r-project.org <mailto:r-devel at r-project.org>>\nSubject: [Rd] Inconsistency between row and nrow\n\n\nIn the following nrow provides the expected result but row gives an\nerror. I would have thought that they would both work or both fail.\n\n\naa <- array(dim = 5:3)\n\n\nnrow(aa)\n## [1] 5\n\n\nrow(aa)\n## Error in row(aa) : a matrix-like object is required as argument to 'row'\n\n\n# this does work:\nslice.index(aa, 1)\n\n\n-- \nStatistics & Software Consulting\nGKX Group, GKX Associates Inc.\ntel: 1-877-GKX-GROUP\nemail: ggrothendieck at gmail.com\n\n\n______________________________________________\nR-devel at r-project.org <mailto:R-devel at r-project.org> mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel <https://stat.ethz.ch/mailman/listinfo/r-devel>\n\n______________________________________________\nR-devel at r-project.org mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "It can be informative to look at what the actual functions being discussed do.\n\nDim is an internal, meaning written in some variant of C, perhaps:\n\n> dim\nfunction (x)  .Primitive(\"dim\")\n\nThe function ",
+      "thread_id": "thread-dd9ec83a1d2a",
+      "thread_depth": 2,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-127691116971",
+      "message_id": "<CAN+W6_sBbuyThDTJX27rYAxwyrZLBsm1FKYtDtRnttAYP+6Ltg@mail.gmail.com>",
+      "from_name": "Lluís Revilla",
+      "from_email_hash": "76a9726a6e0e47bbb7afccdf71a32cc468fa12b74f368ad4203569f7d7fbc065",
+      "date": "2024-09-09T08:00:00+02:00",
+      "subject": "[Rd] Documentation cross references",
+      "subject_clean": "Documentation cross references",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hi all,\n\nI am checking the cross references at CRAN and base R, and I am having\ntrouble understanding how to reconcile the documentation and how R\nhelp links work.\n\nChecking the documentation [1] it seems that in a cross reference such\nas \\link[pkg:x]{text} x should be a topic (created with \\alias{topic}\nin R documentation).\nBut I found some cases exploring the output of\ntools::base_rdxrefs_db() where it is a file name (without the .Rd\nextension).\nFor instance, ?print has a link with text (Target as named by the\noutput) \".print.via.format\" and the anchor \"tools:print.via.format\".\nThe topic would be print.via.format, but if one uses:\nhelp(topic = \"print.via.format\", package = \"tools\"):\n     No documentation for 'print.via.format' in specified packages and\nlibraries:\n     you could try '??print.via.format'\n\nHowever, if one accesses the html help page and clicks\n.print.via.format, is redirected to the right help page (found in the\nREPL too with help(topic = \".print.via.format\", package = \"tools\") ).\n\nI see a paragraph in R 4.1 NEWS about a change in behaviour [2] (also\nhinted in WRE), where it is described as:\n... \"and fall back to a file link only if the topic is not found in\nthe target package. The earlier rule which prioritized file names over\ntopics can be restored by setting the environment variable\n_R_HELP_LINKS_TO_TOPICS_ to a false value.\"\n\nThe internal variable _R_HELP_LINKS_TO_TOPICS_ isn't mentioned on\nR-internals and this behaviour of html pages is not mentioned on WRE.\n - Perhaps documentation at R-internals and WRE could be updated to\nshow how html page links are created?\n - And/or the behaviour could continue the path started on R 4.1 and\nstart complaining about anchors pointing to files?\n\nIn the second case, ~10 links in base R would be affected but on CRAN\nthis could affect ~1700 more packages than those currently with \"Rd\ncross-references\" notes.\n\nRegards,\n\nLlu?s\n\n[1]: https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Cross_002dreferences\n[2]: https://developer.r-project.org/blosxom.cgi/R-4-1-branch/NEWS/2021/04/20#n2021-04-21",
+      "body_snippet": "Hi all,\n\nI am checking the cross references at CRAN and base R, and I am having\ntrouble understanding how to reconcile the documentation and how R\nhelp links work.\n\nChecking the documentation [1] it s",
+      "thread_id": "thread-127691116971",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-1c0e629f73cc",
+      "message_id": "<905cd9c7-5c1f-43eb-b104-d540a5598d96@gmail.com>",
+      "from_name": "Tomas Kalibera",
+      "from_email_hash": "7af110c9340339e5307bd348f1ec524e2fd1c8f104d583e9993022c5550711f4",
+      "date": "2024-09-09T11:11:02+02:00",
+      "subject": "[Rd] Big speedup in install.packages() by re-using connections",
+      "subject_clean": "Big speedup in install.packages() by re-using connections",
+      "in_reply_to": "<CABFfbXs8n4Okup+8y2zt-P_f7WymoknBP4WAYuQ8dTwNgMAeLg@mail.gmail.com>",
+      "references": [
+        "<CABFfbXtpXChZLeLREEWFHFWP24cvD8Ox-7xfBGj0p+N0Rjzwbg@mail.gmail.com>",
+        "<CABFfbXtnteY=_qRz8ZBQ4aAPi-j+HjasRvU-fcLPJm2nu+QwLQ@mail.gmail.com>",
+        "<20240425180109.418ca5f4@arachnoid>",
+        "<248ad6c4-ec50-4a3c-b9e4-05346840dbf0@gmail.com>",
+        "<CABFfbXs8n4Okup+8y2zt-P_f7WymoknBP4WAYuQ8dTwNgMAeLg@mail.gmail.com>"
+      ],
+      "body_plain": "On 9/8/24 23:14, Jeroen Ooms wrote:\n> On Mon, Sep 2, 2024 at 10:05?AM Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>>\n>> On 4/25/24 17:01, Ivan Krylov via R-devel wrote:\n>>> On Thu, 25 Apr 2024 14:45:04 +0200\n>>> Jeroen Ooms <jeroenooms at gmail.com> wrote:\n>>>\n>>>> Thoughts?\n>>> How verboten would it be to create an empty external pointer object,\n>>> add it to the preserved list, and set an on-exit finalizer to clean up\n>>> the curl multi-handle? As far as I can tell, the internet module is not\n>>> supposed to be unloaded, so this would not introduce an opportunity to\n>>> jump to an unmapped address. This makes it possible to avoid adding a\n>>> CurlCleanup() function to the internet module:\n>> Cleaning up this way in principle would probably be fine, but R already\n>> has support for re-using connections. Even more, R can download files in\n>> parallel (in a single thread), which particularly helps with bigger\n>> latencies (e.g. typically users connecting from home, etc). See\n>> ?download.file(), look for \"simultaneous\".\n> Thank you for looking at this. A few ideas wrt parallel downloading:\n>\n> Additional improvement on Windows can be achieved by enabling the\n> nghttp2 driver in libcurl in rtools, such that it takes advantage of\n> http2 multiplexing for parallel downloads\n> (https://bugs.r-project.org/show_bug.cgi?id=18664).\n\nAnyone who wants to cooperate and help is more than welcome to \ncontribute patches to upstream MXE.\n\nIn case of nghttp2, thanks to Andrew Johnson, who contributed nghttp2 \nsupport to upstream MXE. It will be part of the next Rtools (probably \nRtools45).\n\n> Moreover, one concern is that install.packages() may fail more\n> frequently on low bandwidth connections due to reaching the \"download\n> timeout\" when downloading files in parallel:\n>\n> R has an unusual definition of the http timeout, which by default\n> aborts in-progress downloads after 60 seconds for no obvious reason.\n> (by contrast, browsers enforce a timeout on unresponsive/stalled\n> downloads only, which can be achieved in libcurl by setting\n> CURLOPT_CONNECTTIMEOUT or CURLOPT_LOW_SPEED_TIME).\n>\n> The above is already a problem on slow networks, where large packages\n> can fail to install with a timeout error in the download stage. Users\n> may assume there must be a problem with the network, as it is not\n> obvious that machines on slower internet connection need to work\n> around R's defaults and modify options(timeout) before\n> install.packages(). This problem could become more prevalent when\n> using parallel downloads while still enforcing the same total timeout.\n>\n> For example: the MacOS binary for package \"sf\" is close to 90mb, hence\n> currently, under the default R settings of options(timeout=60),\n> install.packages will error with a download timeout on clients with\n> less than 1.5MB/s bandwidth. But with the parallel implementation,\n> install.packages() will share the bandwidth on 6 parallel downloads,\n> so if \"sf\" is downloaded with all its dependencies, we need at least\n> 9MB/s (i.e. a 100mbit connection) for the default settings to not\n> cause a timeout.\n>\n> Hopefully this can be revised to enforce the timeout on stalled\n> downloads only, as is common practice.\n\nYes, this is work in progress, I am aware that the timeout could use \nsome thought re simultaneous downloads.\n\nIf anyone wants to help with testing the current implementation of \nsimultaneous download and report any bugs found, that would be nice.\n\nBest\nTomas",
+      "body_snippet": "On 9/8/24 23:14, Jeroen Ooms wrote:\n> On Mon, Sep 2, 2024 at 10:05?AM Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>>\n>> On 4/25/24 17:01, Ivan Krylov via R-devel wrote:\n>>> On Thu, 25 Apr 2024",
+      "thread_id": "thread-1542f31cd746",
+      "thread_depth": 2,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-14dafaf390c3",
+      "message_id": "<CABFfbXtxuX+7JqQ0ZSc=JaVs-1sOH_JtDHEpNBHQd76trPA2sg@mail.gmail.com>",
+      "from_name": "Jeroen Ooms",
+      "from_email_hash": "6d6b57f7dfdacdb11068763c49af518a12f1ee23bc379f749098f057c1d6df69",
+      "date": "2024-09-09T18:19:12+02:00",
+      "subject": "[Rd] Big speedup in install.packages() by re-using connections",
+      "subject_clean": "Big speedup in install.packages() by re-using connections",
+      "in_reply_to": "<905cd9c7-5c1f-43eb-b104-d540a5598d96@gmail.com>",
+      "references": [
+        "<CABFfbXtpXChZLeLREEWFHFWP24cvD8Ox-7xfBGj0p+N0Rjzwbg@mail.gmail.com>",
+        "<CABFfbXtnteY=_qRz8ZBQ4aAPi-j+HjasRvU-fcLPJm2nu+QwLQ@mail.gmail.com>",
+        "<20240425180109.418ca5f4@arachnoid>",
+        "<248ad6c4-ec50-4a3c-b9e4-05346840dbf0@gmail.com>",
+        "<CABFfbXs8n4Okup+8y2zt-P_f7WymoknBP4WAYuQ8dTwNgMAeLg@mail.gmail.com>",
+        "<905cd9c7-5c1f-43eb-b104-d540a5598d96@gmail.com>"
+      ],
+      "body_plain": "On Mon, Sep 9, 2024 at 11:11?AM Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>\n>\n> On 9/8/24 23:14, Jeroen Ooms wrote:\n> > On Mon, Sep 2, 2024 at 10:05?AM Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n> >>\n> >> On 4/25/24 17:01, Ivan Krylov via R-devel wrote:\n> >>> On Thu, 25 Apr 2024 14:45:04 +0200\n> >>> Jeroen Ooms <jeroenooms at gmail.com> wrote:\n> >>>\n> >>>> Thoughts?\n> >>> How verboten would it be to create an empty external pointer object,\n> >>> add it to the preserved list, and set an on-exit finalizer to clean up\n> >>> the curl multi-handle? As far as I can tell, the internet module is not\n> >>> supposed to be unloaded, so this would not introduce an opportunity to\n> >>> jump to an unmapped address. This makes it possible to avoid adding a\n> >>> CurlCleanup() function to the internet module:\n> >> Cleaning up this way in principle would probably be fine, but R already\n> >> has support for re-using connections. Even more, R can download files in\n> >> parallel (in a single thread), which particularly helps with bigger\n> >> latencies (e.g. typically users connecting from home, etc). See\n> >> ?download.file(), look for \"simultaneous\".\n> > Thank you for looking at this. A few ideas wrt parallel downloading:\n> >\n> > Additional improvement on Windows can be achieved by enabling the\n> > nghttp2 driver in libcurl in rtools, such that it takes advantage of\n> > http2 multiplexing for parallel downloads\n> > (https://bugs.r-project.org/show_bug.cgi?id=18664).\n>\n> Anyone who wants to cooperate and help is more than welcome to\n> contribute patches to upstream MXE.\n>\n> In case of nghttp2, thanks to Andrew Johnson, who contributed nghttp2\n> support to upstream MXE. It will be part of the next Rtools (probably\n> Rtools45).\n>\n> > Moreover, one concern is that install.packages() may fail more\n> > frequently on low bandwidth connections due to reaching the \"download\n> > timeout\" when downloading files in parallel:\n> >\n> > R has an unusual definition of the http timeout, which by default\n> > aborts in-progress downloads after 60 seconds for no obvious reason.\n> > (by contrast, browsers enforce a timeout on unresponsive/stalled\n> > downloads only, which can be achieved in libcurl by setting\n> > CURLOPT_CONNECTTIMEOUT or CURLOPT_LOW_SPEED_TIME).\n> >\n> > The above is already a problem on slow networks, where large packages\n> > can fail to install with a timeout error in the download stage. Users\n> > may assume there must be a problem with the network, as it is not\n> > obvious that machines on slower internet connection need to work\n> > around R's defaults and modify options(timeout) before\n> > install.packages(). This problem could become more prevalent when\n> > using parallel downloads while still enforcing the same total timeout.\n> >\n> > For example: the MacOS binary for package \"sf\" is close to 90mb, hence\n> > currently, under the default R settings of options(timeout=60),\n> > install.packages will error with a download timeout on clients with\n> > less than 1.5MB/s bandwidth. But with the parallel implementation,\n> > install.packages() will share the bandwidth on 6 parallel downloads,\n> > so if \"sf\" is downloaded with all its dependencies, we need at least\n> > 9MB/s (i.e. a 100mbit connection) for the default settings to not\n> > cause a timeout.\n> >\n> > Hopefully this can be revised to enforce the timeout on stalled\n> > downloads only, as is common practice.\n>\n> Yes, this is work in progress, I am aware that the timeout could use\n> some thought re simultaneous downloads.\n\nOK that is good to hear.\n\n\n> If anyone wants to help with testing the current implementation of\n> simultaneous download and report any bugs found, that would be nice.\n\nR-universe has ran this a few thousand times to recheck packages on\nr-devel on both linux and windows, and it works well. It reduces the\nCI process by a few seconds, and there are less random connection\nfailures. If you want to inspect some recent logs for yourself, click\nthe rightmost column on https://r-universe.dev/builds and then on the\nGitHub Actions page, look under the \"Build R-devel for Windows /\nLinux\" runs to see the log files.\n\nI was also able to confirm an edge case that install.packages() does\nnot abort if any of the dependencies fails to download with http-404,\nwhich I think is desired behavior. If there is anything else\nspecifically that you would like to see tested I can look at that.",
+      "body_snippet": "On Mon, Sep 9, 2024 at 11:11?AM Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>\n>\n> On 9/8/24 23:14, Jeroen Ooms wrote:\n> > On Mon, Sep 2, 2024 at 10:05?AM Tomas Kalibera <tomas.kalibera at gmai",
+      "thread_id": "thread-1542f31cd746",
+      "thread_depth": 3,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-bfbdc1f718c0",
+      "message_id": "<CWXP123MB619012B710931D02CF91B812D0642@CWXP123MB6190.GBRP123.PROD.OUTLOOK.COM>",
+      "from_name": "Simon Andrews",
+      "from_email_hash": "f9c7ae1a63a5781daf490d422a59333ef2945f3634acd741a99e17a9ec5517c4",
+      "date": "2024-09-12T12:01:54Z",
+      "subject": "[Rd] Can gzfile be given the same method option as file",
+      "subject_clean": "Can gzfile be given the same method option as file",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Recently my employer has introduced a security system which generates SSL certificates on the fly to be able to see the content of https connections.  To make this work they add a new root certificate to the windows certificate store.\n\nIn R this causes problems because the default library used to download data from URLs doesn't look at this store, however the \"wininet\" download method works so where this is used then things work (albeit with a warning about future deprecation).\n\nFor functions like download.file this works great, but it fails when running readRDS:\n\nreadRDS('https://seurat.nygenome.org/azimuth/references/homologs.rds')\nError in gzfile(file, \"rb\") : cannot open the connection\nIn addition: Warning message:\nIn gzfile(file, \"rb\") :\n  cannot open compressed file 'https://seurat.nygenome.org/azimuth/references/homologs.rds', probable reason 'Invalid argument'\n\nAfter some debugging I see that the root cause is from the gzfile function.\n\n> gzfile('https://seurat.nygenome.org/azimuth/references/homologs.rds') -> g\n> open(g, open=\"r\")\nError in open.connection(g, open = \"r\") : cannot open the connection\nIn addition: Warning message:\nIn open.connection(g, open = \"r\") :\n  cannot open compressed file 'https://seurat.nygenome.org/azimuth/references/homologs.rds', probable reason 'Invalid argument'\n\nIf this was not a compressed file then using file rather than gzfile we can make this work by setting the url.method option:\n\n> options(\"url.method\"=\"wininet\")\n> file('https://seurat.nygenome.org/azimuth/references/homologs.rds') -> g\n> open(g, open=\"r\")\nWarning message:\nIn open.connection(g, open = \"r\") :\n  the 'wininet' method of url() is deprecated for http:// and https:// URLs\n\nSo I get a warning, but it works.\n\nI guess this boils down to two questions:\n\n\n  1.  Is it possible to add the same \"method\" argument to gzfile that file uses so that people in my situation have a work round?\n  2.  Given the warnings we're getting when using wininet, are their plans to make windows certficates be supported in another way?\n\nThanks\n\nSimon.\n\n\n\n\n\n\n\n\n\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Recently my employer has introduced a security system which generates SSL certificates on the fly to be able to see the content of https connections.  To make this work they add a new root certificate",
+      "thread_id": "thread-bfbdc1f718c0",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-689911942e14",
+      "message_id": "<20240912172737.1202b2bd@arachnoid>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2024-09-12T17:27:37+03:00",
+      "subject": "[Rd] Can gzfile be given the same method option as file",
+      "subject_clean": "Can gzfile be given the same method option as file",
+      "in_reply_to": "<CWXP123MB619012B710931D02CF91B812D0642@CWXP123MB6190.GBRP123.PROD.OUTLOOK.COM>",
+      "references": [
+        "<CWXP123MB619012B710931D02CF91B812D0642@CWXP123MB6190.GBRP123.PROD.OUTLOOK.COM>"
+      ],
+      "body_plain": "? Thu, 12 Sep 2024 12:01:54 +0000\nSimon Andrews via R-devel <r-devel at r-project.org> ?????:\n\n> readRDS('https://seurat.nygenome.org/azimuth/references/homologs.rds')\n> Error in gzfile(file, \"rb\") : cannot open the connection\n\nI don't think that gzfile works with URLs. gzcon(), on the other hand,\ndoes work with url() connections, which accepts the 'method' argument\nand the getOption('url.method') default.\n\nh <- readRDS(url(\n 'https://seurat.nygenome.org/azimuth/references/homologs.rds'\n))\n\nBut that only works with gzip-compressed files. For example, CRAN's\nPACKAGES.rds is xz-compressed, and I don't see a way to read it the\nsame way:\n\nreadBin(\n index <- file.path(\n  contrib.url(getOption('repos')['CRAN']),\n  'PACKAGES.rds'\n ), raw(), 5\n) |> rawToChar()\n# [1] \"\\xfd7zXZ\" <-- note the \"7zXZ\" header\nreadRDS(url(index))\n# Error in readRDS(url(index)) : unknown input format\n\n>   2.  Given the warnings we're getting when using wininet, are their\n> plans to make windows certficates be supported in another way?\n\nWhat does libcurlVersion() return for you? In theory, it should be\npossible to make libcurl use schannel and therefore the system\ncertificate store for TLS verification purposes.\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "? Thu, 12 Sep 2024 12:01:54 +0000\nSimon Andrews via R-devel <r-devel at r-project.org> ?????:\n\n> readRDS('https://seurat.nygenome.org/azimuth/references/homologs.rds')\n> Error in gzfile(file, \"rb\") : ",
+      "thread_id": "thread-bfbdc1f718c0",
+      "thread_depth": 1,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-e1842d6635c6",
+      "message_id": "<CWXP123MB6190D38EB374D47862DC5E52D0642@CWXP123MB6190.GBRP123.PROD.OUTLOOK.COM>",
+      "from_name": "Simon Andrews",
+      "from_email_hash": "f9c7ae1a63a5781daf490d422a59333ef2945f3634acd741a99e17a9ec5517c4",
+      "date": "2024-09-12T15:06:50Z",
+      "subject": "[Rd] Can gzfile be given the same method option as file",
+      "subject_clean": "Can gzfile be given the same method option as file",
+      "in_reply_to": "<20240912172737.1202b2bd@arachnoid>",
+      "references": [
+        "<CWXP123MB619012B710931D02CF91B812D0642@CWXP123MB6190.GBRP123.PROD.OUTLOOK.COM>",
+        "<20240912172737.1202b2bd@arachnoid>"
+      ],
+      "body_plain": "Thankyou!  This helped a lot.  I had mis-understood some of the chain of functions which got to the eventual failure.  I can confirm that it does indeed work if you create a url() first and it picks the appropriate back end as long as the url.method option is set.\n\nFor the schannel back end I have:\n\n> libcurlVersion()\n[1] \"8.6.0\"\nattr(,\"ssl_version\")\n[1] \"(OpenSSL/3.2.1) Schannel\"\nattr(,\"libssh_version\")\n[1] \"libssh2/1.11.0\"\n\nHowever I can't get either of the curl related methods to work.\n\n> download.file('https://seurat.nygenome.org/azimuth/references/homologs.rds', destfile = \"c:/Users/andrewss/homologs.rds\", method=\"libcurl\")\ntrying URL 'https://seurat.nygenome.org/azimuth/references/homologs.rds'\nError in download.file(\"https://seurat.nygenome.org/azimuth/references/homologs.rds\",  : \n  cannot open URL 'https://seurat.nygenome.org/azimuth/references/homologs.rds'\nIn addition: Warning message:\nIn download.file(\"https://seurat.nygenome.org/azimuth/references/homologs.rds\",  :\n  URL 'https://seurat.nygenome.org/azimuth/references/homologs.rds': status was 'SSL connect error'\n\n> download.file('https://seurat.nygenome.org/azimuth/references/homologs.rds', destfile = \"c:/Users/andrewss/homologs.rds\", method=\"curl\")\n  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\ncurl: (35) schannel: next InitializeSecurityContext failed: CRYPT_E_NO_REVOCATION_CHECK (0x80092012) - The revocation function was unable to check revocation for the certificate.\nError in download.file(\"https://seurat.nygenome.org/azimuth/references/homologs.rds\",  : \n  'curl' call had nonzero exit status\n\nI realise that this may not be as simple as the certificate not being seen, and that the system here may not fake the revocation infrastructure too, but I don't see that this is going to change, and it's only the winet method which actually allows anything to connect.\n\nSimon.\n\n\n\n\n-----Original Message-----\nFrom: Ivan Krylov <ikrylov at disroot.org> \nSent: 12 September 2024 15:28\nTo: Simon Andrews via R-devel <r-devel at r-project.org>\nCc: Simon Andrews <simon.andrews at babraham.ac.uk>\nSubject: Re: [Rd] Can gzfile be given the same method option as file\n\n? Thu, 12 Sep 2024 12:01:54 +0000\nSimon Andrews via R-devel <r-devel at r-project.org> ?????:\n\n> readRDS('https://seurat.nygenome.org/azimuth/references/homologs.rds')\n> Error in gzfile(file, \"rb\") : cannot open the connection\n\nI don't think that gzfile works with URLs. gzcon(), on the other hand, does work with url() connections, which accepts the 'method' argument and the getOption('url.method') default.\n\nh <- readRDS(url(\n 'https://seurat.nygenome.org/azimuth/references/homologs.rds'\n))\n\nBut that only works with gzip-compressed files. For example, CRAN's PACKAGES.rds is xz-compressed, and I don't see a way to read it the same way:\n\nreadBin(\n index <- file.path(\n  contrib.url(getOption('repos')['CRAN']),\n  'PACKAGES.rds'\n ), raw(), 5\n) |> rawToChar()\n# [1] \"\\xfd7zXZ\" <-- note the \"7zXZ\" header\nreadRDS(url(index))\n# Error in readRDS(url(index)) : unknown input format\n\n>   2.  Given the warnings we're getting when using wininet, are their \n> plans to make windows certficates be supported in another way?\n\nWhat does libcurlVersion() return for you? In theory, it should be possible to make libcurl use schannel and therefore the system certificate store for TLS verification purposes.\n\n--\nBest regards,\nIvan\n\n------------------------------------\nThis email has been scanned for spam & viruses. If you believe this email should have been stopped by our filters, click the following link to report it (https://portal-uk.mailanyone.net/index.html#/outer/reportspam?token=dXNlcj1zaW1vbi5hbmRyZXdzQGJhYnJhaGFtLmFjLnVrO3RzPTE3MjYxNTEyNjU7dXVpZD02NkUyRkE2MDJDNjczRjRCREUwOTMxQUM4NTdCNkY3Nzt0b2tlbj1lNWI5MzU2NGJmOWE1MTcwYmM4ZmY2YjNhNTYwMWQ5ZmFkOTU2YWE1Ow%3D%3D).",
+      "body_snippet": "Thankyou!  This helped a lot.  I had mis-understood some of the chain of functions which got to the eventual failure.  I can confirm that it does indeed work if you create a url() first and it picks t",
+      "thread_id": "thread-bfbdc1f718c0",
+      "thread_depth": 2,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-de492509d93c",
+      "message_id": "<20240912182302.5ddbe5a8@arachnoid>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2024-09-12T18:23:02+03:00",
+      "subject": "[Rd] Can gzfile be given the same method option as file",
+      "subject_clean": "Can gzfile be given the same method option as file",
+      "in_reply_to": "<CWXP123MB6190D38EB374D47862DC5E52D0642@CWXP123MB6190.GBRP123.PROD.OUTLOOK.COM>",
+      "references": [
+        "<CWXP123MB619012B710931D02CF91B812D0642@CWXP123MB6190.GBRP123.PROD.OUTLOOK.COM>",
+        "<20240912172737.1202b2bd@arachnoid>",
+        "<CWXP123MB6190D38EB374D47862DC5E52D0642@CWXP123MB6190.GBRP123.PROD.OUTLOOK.COM>"
+      ],
+      "body_plain": "? Thu, 12 Sep 2024 15:06:50 +0000\nSimon Andrews <simon.andrews at babraham.ac.uk> ?????:\n\n> > download.file('https://seurat.nygenome.org/azimuth/references/homologs.rds',\n> > destfile = \"c:/Users/andrewss/homologs.rds\", method=\"libcurl\")  \n<...>\n> status was 'SSL connect error'\n> \n> > download.file('https://seurat.nygenome.org/azimuth/references/homologs.rds',\n> > destfile = \"c:/Users/andrewss/homologs.rds\", method=\"curl\")  \n<...>\n> curl: (35) schannel: next InitializeSecurityContext\n> failed: CRYPT_E_NO_REVOCATION_CHECK (0x80092012) - The revocation\n> function was unable to check revocation for the certificate.\n\nThis extra error code is useful, thank you for trying the \"curl\"\nmethod. https://github.com/curl/curl/issues/14315 suggests a libcurl\noption and a curl command line option.\n\nDoes download.file(method = 'curl', extra = '--ssl-no-revoke') work for\nyou?\n\nSince R-4.2.2, R understands the R_LIBCURL_SSL_REVOKE_BEST_EFFORT\nenvironment variable. Does it help to set it to \"TRUE\" (e.g. in the\n.Renviron file) before invoking download.file(method = \"libcurl\")?\n\nSome extra context can be found in\nnews(grepl('R_LIBCURL_SSL_REVOKE_BEST_EFFORT', Text)) and\n<https://bugs.r-project.org/show_bug.cgi?id=18379>.\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "? Thu, 12 Sep 2024 15:06:50 +0000\nSimon Andrews <simon.andrews at babraham.ac.uk> ?????:\n\n> > download.file('https://seurat.nygenome.org/azimuth/references/homologs.rds',\n> > destfile = \"c:/Users/andr",
+      "thread_id": "thread-bfbdc1f718c0",
+      "thread_depth": 3,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-bb88ecc4fbba",
+      "message_id": "<CWXP123MB6190EF5BCE48303117C82AA4D0642@CWXP123MB6190.GBRP123.PROD.OUTLOOK.COM>",
+      "from_name": "Simon Andrews",
+      "from_email_hash": "f9c7ae1a63a5781daf490d422a59333ef2945f3634acd741a99e17a9ec5517c4",
+      "date": "2024-09-12T15:36:32Z",
+      "subject": "[Rd] Can gzfile be given the same method option as file",
+      "subject_clean": "Can gzfile be given the same method option as file",
+      "in_reply_to": "<20240912182302.5ddbe5a8@arachnoid>",
+      "references": [
+        "<CWXP123MB619012B710931D02CF91B812D0642@CWXP123MB6190.GBRP123.PROD.OUTLOOK.COM>",
+        "<20240912172737.1202b2bd@arachnoid>",
+        "<CWXP123MB6190D38EB374D47862DC5E52D0642@CWXP123MB6190.GBRP123.PROD.OUTLOOK.COM>",
+        "<20240912182302.5ddbe5a8@arachnoid>"
+      ],
+      "body_plain": "? Thu, 12 Sep 2024 15:06:50 +0000\nSimon Andrews <simon.andrews at babraham.ac.uk> ?????:\n\n> > > download.file('https://seurat.nygenome.org/azimuth/references/homolo\n> > > gs.rds', destfile = \"c:/Users/andrewss/homologs.rds\", method=\"curl\")\n<...>\n> > curl: (35) schannel: next InitializeSecurityContext\n> > failed: CRYPT_E_NO_REVOCATION_CHECK (0x80092012) - The revocation \n> > function was unable to check revocation for the certificate.\n\n> This extra error code is useful, thank you for trying the \"curl\"\n> method. https://github.com/curl/curl/issues/14315 suggests a libcurl option and a curl command line option.\n> \n> Does download.file(method = 'curl', extra = '--ssl-no-revoke') work for you?\n\nYes!  Adding that option does indeed work and generates no warnings.\n\n> Since R-4.2.2, R understands the R_LIBCURL_SSL_REVOKE_BEST_EFFORT environment variable. Does it help to set it > to \"TRUE\" (e.g. in the .Renviron file) before invoking download.file(method = \"libcurl\")?\n\nYes, this also works and will provide a workable solution for our environment\n\n> Sys.getenv(\"R_LIBCURL_SSL_REVOKE_BEST_EFFORT\")\n[1] \"TRUE\"\n> download.file('https://seurat.nygenome.org/azimuth/references/homologs.rds', destfile = \"c:/Users/andrewss/homologs.rds\", method=\"libcurl\")\ntrying URL 'https://seurat.nygenome.org/azimuth/references/homologs.rds'\nContent type 'application/octet-stream' length 3458249 bytes (3.3 MB)\ndownloaded 3.3 MB\n\nThank you so much for your help with this.  I shall implement this for the rest of our organisation.\n\nSimon.",
+      "body_snippet": "? Thu, 12 Sep 2024 15:06:50 +0000\nSimon Andrews <simon.andrews at babraham.ac.uk> ?????:\n\n> > > download.file('https://seurat.nygenome.org/azimuth/references/homolo\n> > > gs.rds', destfile = \"c:/Users",
+      "thread_id": "thread-bfbdc1f718c0",
+      "thread_depth": 4,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-b4b33604bf40",
+      "message_id": "<BL0PR01MB4658BCF7EF86EAD903545CD7AE672@BL0PR01MB4658.prod.exchangelabs.com>",
+      "from_name": "Therneau, Terry M., Ph.D.",
+      "from_email_hash": "0df4ba795db07bfdd67dfdaa3c30ef6456663a5b0a916d95386922fedbe8ddbd",
+      "date": "2024-09-15T00:43:31Z",
+      "subject": "[Rd] Possible update to survival",
+      "subject_clean": "Possible update to survival",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I got good feedback from the list about a scope issue, so I am coming back for more.\nPrior issue:   users who type survival::coxph(survival::Surv(time, status) ~ x1 + x2 + surv ival::strata(group), data=mydata)\nThis messes up the character string matching for strata, done via   tt <- terms(formula, specials= ?strata?).  The code runs, and gives the wrong answer (group is treated as an ordinary covariate).\n\nThe solution\n\n  1.  Add code very early that rewrites the formula without the offendinge survival:: string\n  2.  Before calling model.frame(), insert my copy of strata into the calling chain\n    coxenv <- new.env(parent= environment(formula))\n    assign(\"strata\", survival::strata, envir= coxenv)\n    environment(formula) <- coxenv\n\nThe second part of this deals with those who want to use survival functions but not use library(survival).\n\n\nNow to the question.\nI had always (naively) assumed that the Surv(), strata(), etc calls within a coxph formula would be resolved first within the survival namespace.  I realize now that this is not true: they get resoloved within model.frame.  If a user has their own Surv, it will get used.\nFor ultimate safety, I am thinking of extending the above to all of the internal survival functions that might be used in a formula: Surv, strata, pspline, cluster, ratetable  (I think that?s all).   An intitial limited test looks okay, but before anything migrates to CRAN I am looking for any feedback.   The current test version also prints a warning when removing the extraneous ?survival::? modifier, which I will retain for at least a little while although I personally detest receiving such messages.\n\nTerry T.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I got good feedback from the list about a scope issue, so I am coming back for more.\nPrior issue:   users who type survival::coxph(survival::Surv(time, status) ~ x1 + x2 + surv ival::strata(group), da",
+      "thread_id": "thread-b4b33604bf40",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-e7b77ab322c8",
+      "message_id": "<CALK03d1EgjSDw69yKHyqO2y=-7-NVW58LikosoxrNqJhUmZ8OQ@mail.gmail.com>",
+      "from_name": "Toby Hocking",
+      "from_email_hash": "fd3f0734dd513baa27fe9f311f3c9952ffdc21878ab0abc8ff90eb06223ac647",
+      "date": "2024-09-16T10:47:20-04:00",
+      "subject": "[Rd] numerical issue with t.test",
+      "subject_clean": "numerical issue with t.test",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hi! I expected that t.test should report a very large p-value (close\nto 1), even when using paired=TRUE, for the data below (which are very\nsimilar). However, I observe p-value = 0.02503 which indicates a\nsignificant difference, even though there is none. Can this be fixed\nplease? This is with R-4.4.1. For reference below I use paired=FALSE\nwith the same data, and I get p-value = 1 as expected.\n\n> err1 = c(-1.6076199373862132, -1.658521185520103, -1.6549424312339873, -1.5887767975086149, -1.634129577540383, -1.7442711937982249)\n> err2 = c(-1.6076199373862132, -1.6585211855201032, -1.6549424312339875, -1.5887767975086149, -1.6341295775403832, -1.7442711937982252)\n> t.test(err1,err2,paired=TRUE)\n\n    Paired t-test\n\ndata:  err1 and err2\nt = 3.1623, df = 5, p-value = 0.02503\nalternative hypothesis: true mean difference is not equal to 0\n95 percent confidence interval:\n 2.769794e-17 2.683615e-16\nsample estimates:\nmean difference\n   1.480297e-16\n\n> t.test(err1,err2,paired=FALSE)\n\n    Welch Two Sample t-test\n\ndata:  err1 and err2\nt = 0, df = 10, p-value = 1\nalternative hypothesis: true difference in means is not equal to 0\n95 percent confidence interval:\n -0.06988771  0.06988771\nsample estimates:\nmean of x mean of y\n-1.648044 -1.648044",
+      "body_snippet": "Hi! I expected that t.test should report a very large p-value (close\nto 1), even when using paired=TRUE, for the data below (which are very\nsimilar). However, I observe p-value = 0.02503 which indicat",
+      "thread_id": "thread-e7b77ab322c8",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-e2f84a810873",
+      "message_id": "<2e646d2d-5ad3-052f-3b24-1de9d3eb8596@dewey.myzen.co.uk>",
+      "from_name": "Michael Dewey",
+      "from_email_hash": "23eddf46e0ea9b02c3ac4701d820ec1c7cb1ea6f9f9d602508498f7026c2f5f3",
+      "date": "2024-09-16T15:54:11+01:00",
+      "subject": "[Rd] numerical issue with t.test",
+      "subject_clean": "numerical issue with t.test",
+      "in_reply_to": "<CALK03d1EgjSDw69yKHyqO2y=-7-NVW58LikosoxrNqJhUmZ8OQ@mail.gmail.com>",
+      "references": [
+        "<CALK03d1EgjSDw69yKHyqO2y=-7-NVW58LikosoxrNqJhUmZ8OQ@mail.gmail.com>"
+      ],
+      "body_plain": "Dear Toby\n\nI see no problem there. If you compute the mean and variance of err1 - \nerr2 which is what the paired test is working on then that might help to \nsee what is going on.\n\nMichael\n\nOn 16/09/2024 15:47, Toby Hocking wrote:\n> Hi! I expected that t.test should report a very large p-value (close\n> to 1), even when using paired=TRUE, for the data below (which are very\n> similar). However, I observe p-value = 0.02503 which indicates a\n> significant difference, even though there is none. Can this be fixed\n> please? This is with R-4.4.1. For reference below I use paired=FALSE\n> with the same data, and I get p-value = 1 as expected.\n> \n>> err1 = c(-1.6076199373862132, -1.658521185520103, -1.6549424312339873, -1.5887767975086149, -1.634129577540383, -1.7442711937982249)\n>> err2 = c(-1.6076199373862132, -1.6585211855201032, -1.6549424312339875, -1.5887767975086149, -1.6341295775403832, -1.7442711937982252)\n>> t.test(err1,err2,paired=TRUE)\n> \n>      Paired t-test\n> \n> data:  err1 and err2\n> t = 3.1623, df = 5, p-value = 0.02503\n> alternative hypothesis: true mean difference is not equal to 0\n> 95 percent confidence interval:\n>   2.769794e-17 2.683615e-16\n> sample estimates:\n> mean difference\n>     1.480297e-16\n> \n>> t.test(err1,err2,paired=FALSE)\n> \n>      Welch Two Sample t-test\n> \n> data:  err1 and err2\n> t = 0, df = 10, p-value = 1\n> alternative hypothesis: true difference in means is not equal to 0\n> 95 percent confidence interval:\n>   -0.06988771  0.06988771\n> sample estimates:\n> mean of x mean of y\n> -1.648044 -1.648044\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n> \n\n-- \nMichael",
+      "body_snippet": "Dear Toby\n\nI see no problem there. If you compute the mean and variance of err1 - \nerr2 which is what the paired test is working on then that might help to \nsee what is going on.\n\nMichael\n\nOn 16/09/20",
+      "thread_id": "thread-e7b77ab322c8",
+      "thread_depth": 1,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-5d90b2c1ec8e",
+      "message_id": "<0af3164f-c5f5-4dfb-b1b8-c950fef3b925@gmail.com>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2024-09-16T10:57:29-04:00",
+      "subject": "[Rd] numerical issue with t.test",
+      "subject_clean": "numerical issue with t.test",
+      "in_reply_to": "<2e646d2d-5ad3-052f-3b24-1de9d3eb8596@dewey.myzen.co.uk>",
+      "references": [
+        "<CALK03d1EgjSDw69yKHyqO2y=-7-NVW58LikosoxrNqJhUmZ8OQ@mail.gmail.com>",
+        "<2e646d2d-5ad3-052f-3b24-1de9d3eb8596@dewey.myzen.co.uk>"
+      ],
+      "body_plain": "To be more specific, this replicates the computations that t.test is \ndoing (stripped of all the different cases that stats:::t.test.default \nhandles)\n\nz <- err1-err2\nse <- sqrt(var(z)/length(z))\nmz <- mean(z)\ntstat <- mz/se\n2*pt(tstat, df= length(z)-1, lower.tail = FALSE)\n\nOn 2024-09-16 10:54 a.m., Michael Dewey wrote:\n> Dear Toby\n> \n> I see no problem there. If you compute the mean and variance of err1 - \n> err2 which is what the paired test is working on then that might help to \n> see what is going on.\n> \n> Michael\n> \n> On 16/09/2024 15:47, Toby Hocking wrote:\n>> Hi! I expected that t.test should report a very large p-value (close\n>> to 1), even when using paired=TRUE, for the data below (which are very\n>> similar). However, I observe p-value = 0.02503 which indicates a\n>> significant difference, even though there is none. Can this be fixed\n>> please? This is with R-4.4.1. For reference below I use paired=FALSE\n>> with the same data, and I get p-value = 1 as expected.\n>>\n>>> err1 = c(-1.6076199373862132, -1.658521185520103, \n>>> -1.6549424312339873, -1.5887767975086149, -1.634129577540383, \n>>> -1.7442711937982249)\n>>> err2 = c(-1.6076199373862132, -1.6585211855201032, \n>>> -1.6549424312339875, -1.5887767975086149, -1.6341295775403832, \n>>> -1.7442711937982252)\n>>> t.test(err1,err2,paired=TRUE)\n>>\n>> ???? Paired t-test\n>>\n>> data:? err1 and err2\n>> t = 3.1623, df = 5, p-value = 0.02503\n>> alternative hypothesis: true mean difference is not equal to 0\n>> 95 percent confidence interval:\n>> ? 2.769794e-17 2.683615e-16\n>> sample estimates:\n>> mean difference\n>> ??? 1.480297e-16\n>>\n>>> t.test(err1,err2,paired=FALSE)\n>>\n>> ???? Welch Two Sample t-test\n>>\n>> data:? err1 and err2\n>> t = 0, df = 10, p-value = 1\n>> alternative hypothesis: true difference in means is not equal to 0\n>> 95 percent confidence interval:\n>> ? -0.06988771? 0.06988771\n>> sample estimates:\n>> mean of x mean of y\n>> -1.648044 -1.648044\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n> \n\n-- \nDr. Benjamin Bolker\nProfessor, Mathematics & Statistics and Biology, McMaster University\nDirector, School of Computational Science and Engineering\n > E-mail is sent at my convenience; I don't expect replies outside of \nworking hours.",
+      "body_snippet": "To be more specific, this replicates the computations that t.test is \ndoing (stripped of all the different cases that stats:::t.test.default \nhandles)\n\nz <- err1-err2\nse <- sqrt(var(z)/length(z))\nmz <",
+      "thread_id": "thread-e7b77ab322c8",
+      "thread_depth": 2,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-d5a31ab5cbbd",
+      "message_id": "<CAP01uRk6m9yzFBRNwybY85-XFMjq850+MREtAF_Oo=4TdshEVw@mail.gmail.com>",
+      "from_name": "Gabor Grothendieck",
+      "from_email_hash": "2470cc61688c301322ff3a85f3fd51ddba9f1112f88f535ec93c41ab610332d1",
+      "date": "2024-09-16T11:21:55-04:00",
+      "subject": "[Rd] findInterval",
+      "subject_clean": "findInterval",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Suppose we have `dat` shown below and we want to find the the `y` value\ncorresponding to the last value in `x` equal to the corresponding component\nof `seek` and we wish to return an output the same length as `seek` using\n`findInterval` to perform  the search.  This returns the correct result:\n\n  dat <- data.frame(x = c(2, 2, 3, 4, 4, 4),\n    y = c(37, 12, 19, 30, 6, 15),\n    seek = 1:6)\n\n  zero2na <- function(x) replace(x, x == 0, NA)\n  dat |>\n    transform(dat, result = y[ zero2na(findInterval(seek, x)) ] ) |>\n    _$result\n   ## [1] NA 12 19 15 15 15\n\nSince `findInterval` returns an index it is natural that the next step be\nto use the index and it is also common that we want a result that is the\nsame length as the input.\n\nThe extra step here is to convert the 0 which `findInterval`\nhard codes as missing to NA.\n\nIf, like `match`, the `findInterval` function had a `nomatch=` argument we\ncould have written this as follows which is shorter, more understandable\nand avoids the need for zero2na:\n\n  # if nomatch= were implemented\n  seek |>\n    transform(result = y[ findInterval(x, nomatch = NA) ] ) |>\n    _$result\n\n-- \nStatistics & Software Consulting\nGKX Group, GKX Associates Inc.\ntel: 1-877-GKX-GROUP\nemail: ggrothendieck at gmail.com",
+      "body_snippet": "Suppose we have `dat` shown below and we want to find the the `y` value\ncorresponding to the last value in `x` equal to the corresponding component\nof `seek` and we wish to return an output the same l",
+      "thread_id": "thread-d5a31ab5cbbd",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-aa3fed968667",
+      "message_id": "<CAJnvaVdz31unfGmMbcX6_4Ta17mO0Q_rhdFttHEmW10xib+vGw@mail.gmail.com>",
+      "from_name": "LJJ",
+      "from_email_hash": "811cdc178cd0436f5a98147fd8ab64f4e39c4d4b9767f15cc62fa595dea6bb53",
+      "date": "2024-09-17T10:58:25+08:00",
+      "subject": "[Rd] Degree of freedom issue on chi-square test of goodness of fit",
+      "subject_clean": "Degree of freedom issue on chi-square test of goodness of fit",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I am running chi-square test of goodness of fit, the observation data was\nwell groupped to observation freq. I assume the data obey the normal\ndistribution N(? ?^2), while ? and ?^2 are unknown. So I use their\nestimation. Consequently, I calculated out the probabilities and input in\nvector p\n\n>x<-c(6,13,14,27,25,19,10,6)  #observation freq>p<-c(0.0505, 0.0874, 0.1533, 0.2088, 0.2088, 0.1533, 0.0874, 0.0505)\n                                 #probabilities from normal distribution\ntest_result<-chisq.test(x=x,p=p)\ntest_result\n\n    Chi-squared test for given probabilities\n\ndata:  x\nX-squared = 1.8468, df = 7, p-value = 0.9678\n\n\nfrom the out put, the degree of freedon is 7 (df=7),  because the data\nwas in 8 groups so df=8-1=7\n\nThat is perfect if the parameters (? and ?^2) in normal distribution is\nprecise. However, in this case, they are unknow and I used ther\nestimations.\n\n If the observation group is n, number of unknow parameters in distribution\nis r, then in chi-square test, the degree of freedom should be n-r-1. But\nin chisq.test() output, it is always n-1.\n\nIn this case, the degree of freedom should be 8-2-1=5 (there are two unknow\nparameters). I have to run function pchisq() for rest calculation manually.\n\nI propose to enhance function chisq.test() in degree of freedom. In\npractice, there are unknow parameters in distribution function.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I am running chi-square test of goodness of fit, the observation data was\nwell groupped to observation freq. I assume the data obey the normal\ndistribution N(? ?^2), while ? and ?^2 are unknown. So I ",
+      "thread_id": "thread-aa3fed968667",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-d7e7fc32bdca",
+      "message_id": "<070e35bd-8f13-4a54-b76a-cedf003f5a25@umontpellier.fr>",
+      "from_name": "Iago Bonnici",
+      "from_email_hash": "06e112c99aa8c8308308e11f44e6f1dee3b0aed71ea2b822aeead3b04615072b",
+      "date": "2024-09-17T12:28:19+02:00",
+      "subject": "[Rd] Wrong/incomplete documentation regarding the 100-bytes path length limit.",
+      "subject_clean": "Wrong/incomplete documentation regarding the 100-bytes path length limit.",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hello @r-devel,\n\n ??? From what I read in the following thread:\n\nhttps://stat.ethz.ch/pipermail/r-package-devel/2023q4/010197.html\n\n ??? The major reason to limit paths lengths in R packages is to help \nsupport MS Windows 260-chars paths lengths limit (pre-W10).\n\n ??? However, the official documentation at this address:\n\nhttps://cran.r-project.org/doc/manuals/R-exts.html#Package-structure-1\n\n ??? States:\n\n > /packages are normally distributed as tarballs, and these have a \nlimit on path lengths: for maximal portability 100 bytes.\n\n/??? This is the wrong explanation. Tar has been supporting 256-chars \npaths since POSIX.1-1988 and unlimited paths since POSIX.1-2001. The \nlimitation should be deferred to MS Windows instead of tar.\n\n ??? Considering that the manuals are ? /edited by the R Development \nCore Team /? <https://cran.r-project.org/manuals.html>, I suppose that \nthis is the right list to point out this inconsistency? How can I help \nin fixing this? Should I open a bug at R Bugzilla?\n\n ??? Note: I am not discussing whether the limit itself should be \nreconsidered. That discussion seems yet covered by the aforementioned \nthread (but it's non-official), and by bug #18637 \n<https://bugs.r-project.org/show_bug.cgi?id=18637> (but it's stale). In \nany case, I think there is no blocker to clarifying the situation in the \ndocumentation.\n\n ??? Best regards,\n\n--\nIago-lito\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello @r-devel,\n\n ??? From what I read in the following thread:\n\nhttps://stat.ethz.ch/pipermail/r-package-devel/2023q4/010197.html\n\n ??? The major reason to limit paths lengths in R packages is to hel",
+      "thread_id": "thread-d7e7fc32bdca",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-ae5540e0321a",
+      "message_id": "<c296a460-0a8e-473a-849a-3b40687cd40c@gmail.com>",
+      "from_name": "Tomas Kalibera",
+      "from_email_hash": "7af110c9340339e5307bd348f1ec524e2fd1c8f104d583e9993022c5550711f4",
+      "date": "2024-09-17T14:45:01+02:00",
+      "subject": "[Rd]  Wrong/incomplete documentation regarding the 100-bytes path length limit.",
+      "subject_clean": "Wrong/incomplete documentation regarding the 100-bytes path length limit.",
+      "in_reply_to": "<070e35bd-8f13-4a54-b76a-cedf003f5a25@umontpellier.fr>",
+      "references": [
+        "<070e35bd-8f13-4a54-b76a-cedf003f5a25@umontpellier.fr>"
+      ],
+      "body_plain": "On 9/17/24 12:28, Iago Bonnici via R-devel wrote:\n> Hello @r-devel,\n>\n>   ??? From what I read in the following thread:\n>\n> https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010197.html\n>\n>   ??? The major reason to limit paths lengths in R packages is to help\n> support MS Windows 260-chars paths lengths limit (pre-W10).\nNot really, the limit on Windows is a reason why path length is a scarce \nresource in portable applications. And it exists also on Windows 10 and \nnewer - it is a limitation now in Windows applications, inherited by a \nlimit in early versions of Windows operating system. R itself doesn't \nhave this limitation anymore.\n>   ??? However, the official documentation at this address:\n>\n> https://cran.r-project.org/doc/manuals/R-exts.html#Package-structure-1\n>\n>   ??? States:\n>\n>   > /packages are normally distributed as tarballs, and these have a\n> limit on path lengths: for maximal portability 100 bytes.\n>\n> /??? This is the wrong explanation. Tar has been supporting 256-chars\n> paths since POSIX.1-1988 and unlimited paths since POSIX.1-2001. The\n> limitation should be deferred to MS Windows instead of tar.\n>\n>   ??? Considering that the manuals are ? /edited by the R Development\n> Core Team /? <https://cran.r-project.org/manuals.html>, I suppose that\n> this is the right list to point out this inconsistency? How can I help\n> in fixing this? Should I open a bug at R Bugzilla?\n>\n>   ??? Note: I am not discussing whether the limit itself should be\n> reconsidered. That discussion seems yet covered by the aforementioned\n> thread (but it's non-official), and by bug #18637\n> <https://bugs.r-project.org/show_bug.cgi?id=18637> (but it's stale). In\n> any case, I think there is no blocker to clarifying the situation in the\n> documentation.\n\nI have added a sentence to R-exts mentioning Windows is also a reason \nwhy it makes sense to keep paths short.\n\nBest\nTomas\n\n>\n>   ??? Best regards,\n>\n> --\n> Iago-lito\n> \t[[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On 9/17/24 12:28, Iago Bonnici via R-devel wrote:\n> Hello @r-devel,\n>\n>   ??? From what I read in the following thread:\n>\n> https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010197.html\n>\n>   ??? ",
+      "thread_id": "thread-d7e7fc32bdca",
+      "thread_depth": 1,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-c51bfb181edc",
+      "message_id": "<26345.43776.640449.934216@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2024-09-17T18:14:56+02:00",
+      "subject": "[Rd] findInterval",
+      "subject_clean": "findInterval",
+      "in_reply_to": "<CAP01uRk6m9yzFBRNwybY85-XFMjq850+MREtAF_Oo=4TdshEVw@mail.gmail.com>",
+      "references": [
+        "<CAP01uRk6m9yzFBRNwybY85-XFMjq850+MREtAF_Oo=4TdshEVw@mail.gmail.com>"
+      ],
+      "body_plain": ">>>>> Gabor Grothendieck \n>>>>>     on Mon, 16 Sep 2024 11:21:55 -0400 writes:\n\n    > Suppose we have `dat` shown below and we want to find the the `y` value\n    > corresponding to the last value in `x` equal to the corresponding component\n    > of `seek` and we wish to return an output the same length as `seek` using\n    > `findInterval` to perform  the search.  This returns the correct result:\n\n    > dat <- data.frame(x = c(2, 2, 3, 4, 4, 4),\n    > \t     \t\ty = c(37, 12, 19, 30, 6, 15),\n    >                  seek = 1:6)\n\n    > zero2na <- function(x) replace(x, x == 0, NA)\n\n    > dat |>\n    > transform(dat, result = y[ zero2na(findInterval(seek, x)) ] ) |>\n    > _$result\n    > ## [1] NA 12 19 15 15 15\n\nI'd write that as\n\n    with(dat, y[ zero2na(findInterval(seek, x)) ] )\n\nso I can read it with jumping hoops and stand on my head ...\n\n    > Since `findInterval` returns an index it is natural that the next step be\n    > to use the index and it is also common that we want a result that is the\n    > same length as the input.\n\nI think your example where x and y are of the same length\nnot typical.\n\nNot that the design of   findInterval(x, vec, ..)  is indeed to always return\nan index, but there isn't any \"nomatch\", but rather a\n- \"left of the leftmost\", i.e.,  an x[i] < vec[1]  (as 'vec' must be\n  sorted increasingly) or\n- \"right of rightmost\"  , i.e.,  an x[i] > vec[length(vec)]\n\nand these should give *different* results (and not both the\nsame).\n\nI don't think 'nomatch' would improve the relatively clean  findInterval()\nbehavior.\n\nThere are  three logical switches  ... which allow   2^3\nvariants of which I now guess only 6  differ:\n\nHere's some R code showing the possibilities:\n\n\n(argsTF <- names(formals(findInterval))[-(1:2)]) # \"rightmost.closed\"  \"all.inside\" \"left.open\"       \nFT <- c(FALSE, TRUE)\nallFT <- as.matrix(expand.grid(rightmost.closed = FT,\n                               all.inside       = FT,\n                               left.open        = FT))\nallFT\n(cn <- substr(colnames(allFT), 1,1)) #  \"r\" \"a\" \"l\"\n\nx <- 2:18\nv <- c(5, 10, 15) # create two bins [5,10) and [10,15)\n\nfiAll <- apply(allFT, 1, function(r.a.f)\n    do.call(findInterval, c(list(x, v), as.list(r.a.f))))\n\ncbind(x, fiAll) # has all info\n\n## must find cool 'column names' for fiAll: construct from r.., a.., l.. = F / T\n(cn1 <- apply(`dim<-`(c(\".\",\"|\")[allFT+1L], dim(allFT)), 1, paste0, collapse=\"\"))\n##  \"...\" \"|..\" \".|.\" \"||.\" \"..|\" \"|.|\" \".||\" \"|||\"\ncolnames(fiAll) <- cn1\ncbind(x, fiAll) ## --> col. 3 == 4  and  7 == 8\n##==> show only unique columns:\ncbind(x, t(unique(t(fiAll))))\n ##  x ... |.. .|. ..| |.| .||\n ##  2   0   0   1   0   0   1\n ##  3   0   0   1   0   0   1\n ##  4   0   0   1   0   0   1\n ##  5   1   1   1   0   1   1\n ##  6   1   1   1   1   1   1\n ##  7   1   1   1   1   1   1\n ##  8   1   1   1   1   1   1\n ##  9   1   1   1   1   1   1\n ## 10   2   2   2   1   1   1\n ## 11   2   2   2   2   2   2\n ## 12   2   2   2   2   2   2\n ## 13   2   2   2   2   2   2\n ## 14   2   2   2   2   2   2\n ## 15   3   2   2   2   2   2\n ## 16   3   3   2   3   3   2\n ## 17   3   3   2   3   3   2\n ## 18   3   3   2   3   3   2\n  \n\nMartin",
+      "body_snippet": ">>>>> Gabor Grothendieck \n>>>>>     on Mon, 16 Sep 2024 11:21:55 -0400 writes:\n\n    > Suppose we have `dat` shown below and we want to find the the `y` value\n    > corresponding to the last value in `",
+      "thread_id": "thread-d5a31ab5cbbd",
+      "thread_depth": 1,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-688886c76842",
+      "message_id": "<CAP01uRnhW1XebRd5TaQd-C24KhepRX++weMwaJW5oyEhwMr1Yg@mail.gmail.com>",
+      "from_name": "Gabor Grothendieck",
+      "from_email_hash": "2470cc61688c301322ff3a85f3fd51ddba9f1112f88f535ec93c41ab610332d1",
+      "date": "2024-09-17T13:27:35-04:00",
+      "subject": "[Rd] findInterval",
+      "subject_clean": "findInterval",
+      "in_reply_to": "<26345.43776.640449.934216@stat.math.ethz.ch>",
+      "references": [
+        "<CAP01uRk6m9yzFBRNwybY85-XFMjq850+MREtAF_Oo=4TdshEVw@mail.gmail.com>",
+        "<26345.43776.640449.934216@stat.math.ethz.ch>"
+      ],
+      "body_plain": "The other problem in this example is setting NA's.\n\n   replace(x, x == 0, NA)\n\nrequires two instances of x making it not very pipe friendly.  In\ndplyr there is na_if\nto address that problem and base R might have something that addresses this\nso we don't have to define our own zero2na as the base of R now has pipes.\n\n\nOn Tue, Sep 17, 2024 at 12:14?PM Martin Maechler\n<maechler at stat.math.ethz.ch> wrote:\n>\n> >>>>> Gabor Grothendieck\n> >>>>>     on Mon, 16 Sep 2024 11:21:55 -0400 writes:\n>\n>     > Suppose we have `dat` shown below and we want to find the the `y` value\n>     > corresponding to the last value in `x` equal to the corresponding component\n>     > of `seek` and we wish to return an output the same length as `seek` using\n>     > `findInterval` to perform  the search.  This returns the correct result:\n>\n>     > dat <- data.frame(x = c(2, 2, 3, 4, 4, 4),\n>     >                   y = c(37, 12, 19, 30, 6, 15),\n>     >                  seek = 1:6)\n>\n>     > zero2na <- function(x) replace(x, x == 0, NA)\n>\n>     > dat |>\n>     > transform(dat, result = y[ zero2na(findInterval(seek, x)) ] ) |>\n>     > _$result\n>     > ## [1] NA 12 19 15 15 15\n>\n> I'd write that as\n>\n>     with(dat, y[ zero2na(findInterval(seek, x)) ] )\n>\n> so I can read it with jumping hoops and stand on my head ...\n>\n>     > Since `findInterval` returns an index it is natural that the next step be\n>     > to use the index and it is also common that we want a result that is the\n>     > same length as the input.\n>\n> I think your example where x and y are of the same length\n> not typical.\n>\n> Not that the design of   findInterval(x, vec, ..)  is indeed to always return\n> an index, but there isn't any \"nomatch\", but rather a\n> - \"left of the leftmost\", i.e.,  an x[i] < vec[1]  (as 'vec' must be\n>   sorted increasingly) or\n> - \"right of rightmost\"  , i.e.,  an x[i] > vec[length(vec)]\n>\n> and these should give *different* results (and not both the\n> same).\n>\n> I don't think 'nomatch' would improve the relatively clean  findInterval()\n> behavior.\n>\n> There are  three logical switches  ... which allow   2^3\n> variants of which I now guess only 6  differ:\n>\n> Here's some R code showing the possibilities:\n>\n>\n> (argsTF <- names(formals(findInterval))[-(1:2)]) # \"rightmost.closed\"  \"all.inside\" \"left.open\"\n> FT <- c(FALSE, TRUE)\n> allFT <- as.matrix(expand.grid(rightmost.closed = FT,\n>                                all.inside       = FT,\n>                                left.open        = FT))\n> allFT\n> (cn <- substr(colnames(allFT), 1,1)) #  \"r\" \"a\" \"l\"\n>\n> x <- 2:18\n> v <- c(5, 10, 15) # create two bins [5,10) and [10,15)\n>\n> fiAll <- apply(allFT, 1, function(r.a.f)\n>     do.call(findInterval, c(list(x, v), as.list(r.a.f))))\n>\n> cbind(x, fiAll) # has all info\n>\n> ## must find cool 'column names' for fiAll: construct from r.., a.., l.. = F / T\n> (cn1 <- apply(`dim<-`(c(\".\",\"|\")[allFT+1L], dim(allFT)), 1, paste0, collapse=\"\"))\n> ##  \"...\" \"|..\" \".|.\" \"||.\" \"..|\" \"|.|\" \".||\" \"|||\"\n> colnames(fiAll) <- cn1\n> cbind(x, fiAll) ## --> col. 3 == 4  and  7 == 8\n> ##==> show only unique columns:\n> cbind(x, t(unique(t(fiAll))))\n>  ##  x ... |.. .|. ..| |.| .||\n>  ##  2   0   0   1   0   0   1\n>  ##  3   0   0   1   0   0   1\n>  ##  4   0   0   1   0   0   1\n>  ##  5   1   1   1   0   1   1\n>  ##  6   1   1   1   1   1   1\n>  ##  7   1   1   1   1   1   1\n>  ##  8   1   1   1   1   1   1\n>  ##  9   1   1   1   1   1   1\n>  ## 10   2   2   2   1   1   1\n>  ## 11   2   2   2   2   2   2\n>  ## 12   2   2   2   2   2   2\n>  ## 13   2   2   2   2   2   2\n>  ## 14   2   2   2   2   2   2\n>  ## 15   3   2   2   2   2   2\n>  ## 16   3   3   2   3   3   2\n>  ## 17   3   3   2   3   3   2\n>  ## 18   3   3   2   3   3   2\n>\n>\n> Martin\n\n\n\n-- \nStatistics & Software Consulting\nGKX Group, GKX Associates Inc.\ntel: 1-877-GKX-GROUP\nemail: ggrothendieck at gmail.com",
+      "body_snippet": "The other problem in this example is setting NA's.\n\n   replace(x, x == 0, NA)\n\nrequires two instances of x making it not very pipe friendly.  In\ndplyr there is na_if\nto address that problem and base R",
+      "thread_id": "thread-d5a31ab5cbbd",
+      "thread_depth": 2,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-c181400cae3f",
+      "message_id": "<a7d44ccb-10b4-4fbb-b34c-154aaa687ef7@mcmaster.ca>",
+      "from_name": "John Fox",
+      "from_email_hash": "fb5e585740b7c9920dce8700b35a0da42dc1980ade6aac3a1f02de01be0488d9",
+      "date": "2024-09-20T12:49:00-04:00",
+      "subject": "[Rd] model.matrix() may be misleading for \"lme\" models",
+      "subject_clean": "model.matrix() may be misleading for \"lme\" models",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Dear r-devel list members,\n\nI'm posting this message here because it concerns the nlme package, \nwhich is maintained by R-core. The problem I'm about to describe is \nsomewhere between a bug and a feature request, and so I thought it a \ngood idea to ask here rather posting a bug report to the R bugzilla.\n\nI was made aware (by Ben Bolker) that the car::Anova() method for \"lme\" \nmodels reports unreasonable results and warnings for mixed models in \nwhich non-default contrasts are used for factors. I traced the problem \nto a call to model.matrix() on \"lme\" objects, which was introduced into \ncar:::Anova.lme() a couple of years ago to check for problems in the \nmodel matrix. That invokes model.matrix.default(), which ignores the \ncontrasts defined in a call to lme().\n\nHere's a simple direct example:\n\n------- snip -------\n\n > library(nlme)\n > m <- lme(distance ~ Sex, random = ~ 1 | Subject,\n+          data=Orthodont, contrasts=list(Sex = \"contr.sum\"))\n > m\n\nLinear mixed-effects model fit by REML\n   Data: Orthodont\n   Log-restricted-likelihood: -253.629\n   Fixed: distance ~ Sex\n(Intercept)        Sex1\n   23.808239    1.160511\n\nRandom effects:\n  Formula: ~1 | Subject\n         (Intercept) Residual\nStdDev:    1.595838 2.220312\n\nNumber of Observations: 108\nNumber of Groups: 27\n\n > model.matrix(m, data=Orthodont)\n\n     (Intercept) SexFemale\n1             1         0\n2             1         0\n3             1         0\n\n. . .\n\n106           1         1\n107           1         1\n108           1         1\nattr(,\"assign\")\n[1] 0 1\nattr(,\"contrasts\")\nattr(,\"contrasts\")$Sex\n[1] \"contr.treatment\"\n\n--------- snip ---------\n\nSo model.matrix() constructs the model matrix using contr.treatment() \neven though contr.sum() was used by lme() to fit the model.\n\nIn contrast (pun intended), model.matrix() works as expected with an \n\"lm\" model (via model.matrix.lm()):\n\n--------- snip ---------\n\n > m.lm <- lm(distance ~ Sex, data=Orthodont,\n+            contrasts=list(Sex = \"contr.sum\"))\n > m.lm\n\nCall:\nlm(formula = distance ~ Sex, data = Orthodont,\n    contrasts = list(Sex = \"contr.sum\"))\n\nCoefficients:\n(Intercept)         Sex1\n      23.808        1.161\n\n > model.matrix(m.lm)\n     (Intercept) Sex1\n1             1    1\n2             1    1\n3             1    1\n\n. . .\n\n106           1   -1\n107           1   -1\n108           1   -1\nattr(,\"assign\")\n[1] 0 1\nattr(,\"contrasts\")\nattr(,\"contrasts\")$Sex\n[1] \"contr.sum\"\n\n--------- snip ---------\n\nI was able to get around this problem by defining a model.matrix.lme() \nmethod, which is used internally in the car package but not registered:\n\n--------- snip ---------\n\nmodel.matrix.lme <- function(object, ...){\n\n   data <- object$data\n   contrasts <- object$contrasts\n\n   if (length(contrasts) == 0) {\n     xlev <- NULL\n   } else {\n     xlev <- vector(length(contrasts), mode=\"list\")\n     names(xlev) <- names <- names(contrasts)\n     for (name in names){\n       xlev[[name]] <- rownames(contrasts[[name]])\n     }\n   }\n\n   if (is.null(data)){\n     NextMethod(formula(object), data=eval(object$call$data),\n                  contrasts.arg=contrasts, xlev=xlev, ...)\n   } else {\n     NextMethod(formula(object), data=data,\n                     contrasts.arg=contrasts, xlev=xlev, ...)\n   }\n}\n\n--------- snip ---------\n\nThis function is a bit awkward, particularly the part that constructs \nthe xlev argument, but it does appear to work as intended (note, \nhowever, that the contrast matrix for Sex rather than \"contr.sum\" is \nreported in the \"contrasts\" attribute):\n\n--------- snip ---------\n\n > model.matrix(m)\n     (Intercept) Sex1\n1             1    1\n2             1    1\n3             1    1\n\n. . .\n\n106           1   -1\n107           1   -1\n108           1   -1\nattr(,\"assign\")\n[1] 0 1\nattr(,\"contrasts\")\nattr(,\"contrasts\")$Sex\n        [,1]\nMale      1\nFemale   -1\n\n > sessionInfo()\nR version 4.4.1 (2024-06-14)\nPlatform: aarch64-apple-darwin20\nRunning under: macOS Sonoma 14.6.1\n\nMatrix products: default\nBLAS: \n/System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib \n\nLAPACK: \n/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib; \n  LAPACK version 3.12.0\n\nlocale:\n[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8\n\ntime zone: America/Toronto\ntzcode source: internal\n\nattached base packages:\n[1] stats     graphics  grDevices utils     datasets  methods   base\n\nother attached packages:\n[1] nlme_3.1-165\n\nloaded via a namespace (and not attached):\n[1] compiler_4.4.1 tools_4.4.1    grid_4.4.1     lattice_0.22-6\n\n--------- snip ---------\n\nAlthough this apparently solves the problem for car::Anova(), the \nproblem is likely more general. For example, insight::get_modelmatrix() \nalso reports the wrong model matrix for the \"lme\" model m above.\n\nMy suggestion: Include a correct model.matrix.lme() method in the nlme \npackage. That could be my version, but I expect that R-core could come \nup with something better.\n\nThank you,\n  John\n-- \nJohn Fox, Professor Emeritus\nMcMaster University\nHamilton, Ontario, Canada\nweb: https://www.john-fox.ca/\n--",
+      "body_snippet": "Dear r-devel list members,\n\nI'm posting this message here because it concerns the nlme package, \nwhich is maintained by R-core. The problem I'm about to describe is \nsomewhere between a bug and a feat",
+      "thread_id": "thread-c181400cae3f",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-656209584267",
+      "message_id": "<b60df077-eab0-451c-a8c5-67e5e333b2da@mcmaster.ca>",
+      "from_name": "John Fox",
+      "from_email_hash": "fb5e585740b7c9920dce8700b35a0da42dc1980ade6aac3a1f02de01be0488d9",
+      "date": "2024-09-21T12:47:49-04:00",
+      "subject": "[Rd] model.matrix() may be misleading for \"lme\" models",
+      "subject_clean": "model.matrix() may be misleading for \"lme\" models",
+      "in_reply_to": "<a7d44ccb-10b4-4fbb-b34c-154aaa687ef7@mcmaster.ca>",
+      "references": [
+        "<a7d44ccb-10b4-4fbb-b34c-154aaa687ef7@mcmaster.ca>"
+      ],
+      "body_plain": "Dear list members,\n\nAfter further testing, I found that the following simplified version of \nmodel.matrix.lme(), which omits passing xlev to the default method, is \nmore robust. The previous version generated spurious warnings in some \ncircumstances.\n\nmodel.matrix.lme <- function(object, ...){\n   data <- object$data\n   if (is.null(data)){\n     NextMethod(formula(object),  data=eval(object$call$data),\n                contrasts.arg=object$contrasts)\n   } else {\n     NextMethod(formula(object), data=data,\n                contrasts.arg=object$contrasts)\n   }\n}\n\nBest,\n  John\n\n\nOn 2024-09-20 12:49 p.m., John Fox wrote:\n> Caution: External email.\n> \n> \n> Dear r-devel list members,\n> \n> I'm posting this message here because it concerns the nlme package,\n> which is maintained by R-core. The problem I'm about to describe is\n> somewhere between a bug and a feature request, and so I thought it a\n> good idea to ask here rather posting a bug report to the R bugzilla.\n> \n> I was made aware (by Ben Bolker) that the car::Anova() method for \"lme\"\n> models reports unreasonable results and warnings for mixed models in\n> which non-default contrasts are used for factors. I traced the problem\n> to a call to model.matrix() on \"lme\" objects, which was introduced into\n> car:::Anova.lme() a couple of years ago to check for problems in the\n> model matrix. That invokes model.matrix.default(), which ignores the\n> contrasts defined in a call to lme().\n> \n> Here's a simple direct example:\n> \n> ------- snip -------\n> \n>  > library(nlme)\n>  > m <- lme(distance ~ Sex, random = ~ 1 | Subject,\n> +????????? data=Orthodont, contrasts=list(Sex = \"contr.sum\"))\n>  > m\n> \n> Linear mixed-effects model fit by REML\n>  ? Data: Orthodont\n>  ? Log-restricted-likelihood: -253.629\n>  ? Fixed: distance ~ Sex\n> (Intercept)??????? Sex1\n>  ? 23.808239??? 1.160511\n> \n> Random effects:\n>  ?Formula: ~1 | Subject\n>  ??????? (Intercept) Residual\n> StdDev:??? 1.595838 2.220312\n> \n> Number of Observations: 108\n> Number of Groups: 27\n> \n>  > model.matrix(m, data=Orthodont)\n> \n>  ??? (Intercept) SexFemale\n> 1???????????? 1???????? 0\n> 2???????????? 1???????? 0\n> 3???????????? 1???????? 0\n> \n> . . .\n> \n> 106?????????? 1???????? 1\n> 107?????????? 1???????? 1\n> 108?????????? 1???????? 1\n> attr(,\"assign\")\n> [1] 0 1\n> attr(,\"contrasts\")\n> attr(,\"contrasts\")$Sex\n> [1] \"contr.treatment\"\n> \n> --------- snip ---------\n> \n> So model.matrix() constructs the model matrix using contr.treatment()\n> even though contr.sum() was used by lme() to fit the model.\n> \n> In contrast (pun intended), model.matrix() works as expected with an\n> \"lm\" model (via model.matrix.lm()):\n> \n> --------- snip ---------\n> \n>  > m.lm <- lm(distance ~ Sex, data=Orthodont,\n> +??????????? contrasts=list(Sex = \"contr.sum\"))\n>  > m.lm\n> \n> Call:\n> lm(formula = distance ~ Sex, data = Orthodont,\n>  ?? contrasts = list(Sex = \"contr.sum\"))\n> \n> Coefficients:\n> (Intercept)???????? Sex1\n>  ???? 23.808??????? 1.161\n> \n>  > model.matrix(m.lm)\n>  ??? (Intercept) Sex1\n> 1???????????? 1??? 1\n> 2???????????? 1??? 1\n> 3???????????? 1??? 1\n> \n> . . .\n> \n> 106?????????? 1?? -1\n> 107?????????? 1?? -1\n> 108?????????? 1?? -1\n> attr(,\"assign\")\n> [1] 0 1\n> attr(,\"contrasts\")\n> attr(,\"contrasts\")$Sex\n> [1] \"contr.sum\"\n> \n> --------- snip ---------\n> \n> I was able to get around this problem by defining a model.matrix.lme()\n> method, which is used internally in the car package but not registered:\n> \n> --------- snip ---------\n> \n> model.matrix.lme <- function(object, ...){\n> \n>  ? data <- object$data\n>  ? contrasts <- object$contrasts\n> \n>  ? if (length(contrasts) == 0) {\n>  ??? xlev <- NULL\n>  ? } else {\n>  ??? xlev <- vector(length(contrasts), mode=\"list\")\n>  ??? names(xlev) <- names <- names(contrasts)\n>  ??? for (name in names){\n>  ????? xlev[[name]] <- rownames(contrasts[[name]])\n>  ??? }\n>  ? }\n> \n>  ? if (is.null(data)){\n>  ??? NextMethod(formula(object), data=eval(object$call$data),\n>  ???????????????? contrasts.arg=contrasts, xlev=xlev, ...)\n>  ? } else {\n>  ??? NextMethod(formula(object), data=data,\n>  ??????????????????? contrasts.arg=contrasts, xlev=xlev, ...)\n>  ? }\n> }\n> \n> --------- snip ---------\n> \n> This function is a bit awkward, particularly the part that constructs\n> the xlev argument, but it does appear to work as intended (note,\n> however, that the contrast matrix for Sex rather than \"contr.sum\" is\n> reported in the \"contrasts\" attribute):\n> \n> --------- snip ---------\n> \n>  > model.matrix(m)\n>  ??? (Intercept) Sex1\n> 1???????????? 1??? 1\n> 2???????????? 1??? 1\n> 3???????????? 1??? 1\n> \n> . . .\n> \n> 106?????????? 1?? -1\n> 107?????????? 1?? -1\n> 108?????????? 1?? -1\n> attr(,\"assign\")\n> [1] 0 1\n> attr(,\"contrasts\")\n> attr(,\"contrasts\")$Sex\n>  ?????? [,1]\n> Male????? 1\n> Female?? -1\n> \n>  > sessionInfo()\n> R version 4.4.1 (2024-06-14)\n> Platform: aarch64-apple-darwin20\n> Running under: macOS Sonoma 14.6.1\n> \n> Matrix products: default\n> BLAS:\n> /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/ \n> vecLib.framework/Versions/A/libBLAS.dylib\n> \n> LAPACK:\n> /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/ \n> libRlapack.dylib;\n>  ?LAPACK version 3.12.0\n> \n> locale:\n> [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8\n> \n> time zone: America/Toronto\n> tzcode source: internal\n> \n> attached base packages:\n> [1] stats???? graphics? grDevices utils???? datasets? methods?? base\n> \n> other attached packages:\n> [1] nlme_3.1-165\n> \n> loaded via a namespace (and not attached):\n> [1] compiler_4.4.1 tools_4.4.1??? grid_4.4.1???? lattice_0.22-6\n> \n> --------- snip ---------\n> \n> Although this apparently solves the problem for car::Anova(), the\n> problem is likely more general. For example, insight::get_modelmatrix()\n> also reports the wrong model matrix for the \"lme\" model m above.\n> \n> My suggestion: Include a correct model.matrix.lme() method in the nlme\n> package. That could be my version, but I expect that R-core could come\n> up with something better.\n> \n> Thank you,\n>  ?John\n> -- \n> John Fox, Professor Emeritus\n> McMaster University\n> Hamilton, Ontario, Canada\n> web: https://www.john-fox.ca/\n> -- \n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Dear list members,\n\nAfter further testing, I found that the following simplified version of \nmodel.matrix.lme(), which omits passing xlev to the default method, is \nmore robust. The previous version g",
+      "thread_id": "thread-c181400cae3f",
+      "thread_depth": 1,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-3658d93aff64",
+      "message_id": "<20240921215156.1c65b61a@trisector>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2024-09-21T21:51:56+03:00",
+      "subject": "[Rd] model.matrix() may be misleading for \"lme\" models",
+      "subject_clean": "model.matrix() may be misleading for \"lme\" models",
+      "in_reply_to": "<b60df077-eab0-451c-a8c5-67e5e333b2da@mcmaster.ca>",
+      "references": [
+        "<a7d44ccb-10b4-4fbb-b34c-154aaa687ef7@mcmaster.ca>",
+        "<b60df077-eab0-451c-a8c5-67e5e333b2da@mcmaster.ca>"
+      ],
+      "body_plain": "Dear Prof. John Fox,\n\n? Sat, 21 Sep 2024 12:47:49 -0400\nJohn Fox <jfox at mcmaster.ca> ?????:\n\n>      NextMethod(formula(object),  data=eval(object$call$data),\n>                 contrasts.arg=object$contrasts)\n\nThe use of NextMethod worries me a bit. It will work as intended as\nlong as everyone gives fully-named arguments to the generic, without\nrelying on positional or partial matching, but may give unexpected\nresults otherwise:\n\nfoo <- \\(x, ...) UseMethod('foo')\nfoo.default <- \\(x, foo = 'default', baz = 'baz', ...)\n list(foo = foo, baz = baz, '...' = list(...))\n# try to override the argument to the default method\nfoo.bar <- \\(x, ...) NextMethod(x, foo = 'override')\nx <- structure(list(), class = 'bar')\nfoo(x) # works, gives the right argument to foo.default\n# $foo\n# [1] \"override\"\n# \n# $baz\n# [1] \"baz\"\n# \n# $...\n# list()\n\n# this used to work with foo.default, but now doesn't:\nfoo(x, fo = 'bar') # not matched to foo=\n# $foo\n# [1] \"override\"\n# \n# $baz\n# [1] \"baz\"\n# \n# $...\n# $...$fo\n# [1] \"bar\"\n\nfoo(x, 'bar') # not matched to foo=, given to baz=\n# $foo\n# [1] \"override\"\n# \n# $baz\n# [1] \"bar\"\n# \n# $...\n# list()\n\nThis happens because NextMethod() overwrites named arguments already\npresent in the call, but any other arguments just get appended, without\nany regard to whether they had already matched an argument before the\ncall was modified. In fact, I'm not seeing a way to safely override\nsome of the arguments for the next S3 method. The \"attempt 4\" described\nby Henrik Bengtsson at [1] seems to work only if an argument is given\nas part of the call:\n\nfoo.bar <- \\(x, foo, ...) { foo <- 'override'; NextMethod() }\nfoo(x) # doesn't work\n# $foo\n# [1] \"default\"\n# \n# $baz\n# [1] \"baz\"\n# \n# $...\n# list()\n\nfoo(x, 1) # does work\n# $foo\n# [1] \"override\"\n# \n# $baz\n# [1] \"baz\"\n#\n# $...\n# list()\n\nEvaluating object$call$data in the environment of the suggested\nnlme:::model.matrix.lme function may also not work right. Without an\nexplicit copy of the data, the best environment to evaluate it in would\nbe parent.frame().\n\n-- \nBest regards,\nIvan\n\n[1] https://github.com/HenrikBengtsson/Wishlist-for-R/issues/44",
+      "body_snippet": "Dear Prof. John Fox,\n\n? Sat, 21 Sep 2024 12:47:49 -0400\nJohn Fox <jfox at mcmaster.ca> ?????:\n\n>      NextMethod(formula(object),  data=eval(object$call$data),\n>                 contrasts.arg=object$c",
+      "thread_id": "thread-c181400cae3f",
+      "thread_depth": 2,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-09c328078751",
+      "message_id": "<ee50e3bd-364a-4f37-ba03-62aed1df5a8e@mcmaster.ca>",
+      "from_name": "John Fox",
+      "from_email_hash": "fb5e585740b7c9920dce8700b35a0da42dc1980ade6aac3a1f02de01be0488d9",
+      "date": "2024-09-22T10:23:50-04:00",
+      "subject": "[Rd] model.matrix() may be misleading for \"lme\" models",
+      "subject_clean": "model.matrix() may be misleading for \"lme\" models",
+      "in_reply_to": "<20240921215156.1c65b61a@trisector>",
+      "references": [
+        "<a7d44ccb-10b4-4fbb-b34c-154aaa687ef7@mcmaster.ca>",
+        "<b60df077-eab0-451c-a8c5-67e5e333b2da@mcmaster.ca>",
+        "<20240921215156.1c65b61a@trisector>"
+      ],
+      "body_plain": "Dear Ivan,\n\nThank you for addressing my questions with your usual thoroughness. \nPlease see below:\n\nOn 2024-09-21 2:51 p.m., Ivan Krylov wrote:\n> [You don't often get email from ikrylov at disroot.org. Learn why this is important at https://aka.ms/LearnAboutSenderIdentification ]\n> \n> Caution: External email.\n> \n> \n> Dear Prof. John Fox,\n> \n> ? Sat, 21 Sep 2024 12:47:49 -0400\n> John Fox <jfox at mcmaster.ca> ?????:\n> \n>>       NextMethod(formula(object),  data=eval(object$call$data),\n>>                  contrasts.arg=object$contrasts)\n> \n> The use of NextMethod worries me a bit. It will work as intended as\n> long as everyone gives fully-named arguments to the generic, without\n> relying on positional or partial matching, but may give unexpected\n> results otherwise:\n\nThat's not an issue for car:::model.matrix.lme(), which isn't registered \nand so isn't accessible to users, but could be a problem if \nmodel.matrix.lme() is incorporated in the nlme package, as I suggested. \nAn alternative that I think should work would be to call\n\n     model.matrix(formula(object),  data=eval(object$call$data), \n\n                  contrasts.arg=object$contrasts, ...)\n\nrather than NextMethod() from model.matrix.lme().\n\n. . .\n\n> Evaluating object$call$data in the environment of the suggested\n> nlme:::model.matrix.lme function may also not work right. Without an\n> explicit copy of the data, the best environment to evaluate it in would\n> be parent.frame().\n\nI'm afraid that I don't understand the suggestion. Isn't parent.frame() \nthe default for the envir argument of eval()? Do you mean the parent \nframe of the call to model.matrix.lme()?\n\nI tested car:::Anova.lme()/model.matrix.lme() with models fit to data in \nthe global environment, in an attach()ed data frame, and within another \nfunction(), and didn't encounter any problems. For example:\n\n------ snip -----\n\n > f <- function(){\n+   OD <- Orthodont\n+   m7 <- with(OD, lme(distance ~ Sex, random = ~ 1 | Subject,\n+                      contrasts=list(Sex=contr.sum)))\n+   Anova(m7, type=3)\n+ }\n\n > f()\nAnalysis of Deviance Table (Type III tests)\n\nResponse: distance\n                 Chisq Df Pr(>Chisq)\n(Intercept) 3910.8377  1  < 2.2e-16\nSex            9.2921  1   0.002301\n\n------ snip -----\n\nBest,\n  John\n\n> \n> --\n> Best regards,\n> Ivan\n> \n> [1] https://github.com/HenrikBengtsson/Wishlist-for-R/issues/44",
+      "body_snippet": "Dear Ivan,\n\nThank you for addressing my questions with your usual thoroughness. \nPlease see below:\n\nOn 2024-09-21 2:51 p.m., Ivan Krylov wrote:\n> [You don't often get email from ikrylov at disroot.org",
+      "thread_id": "thread-c181400cae3f",
+      "thread_depth": 3,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-6eab75ae1794",
+      "message_id": "<20240923225417.08fef4c1@Tarkus>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2024-09-23T22:54:17+03:00",
+      "subject": "[Rd] model.matrix() may be misleading for \"lme\" models",
+      "subject_clean": "model.matrix() may be misleading for \"lme\" models",
+      "in_reply_to": "<ee50e3bd-364a-4f37-ba03-62aed1df5a8e@mcmaster.ca>",
+      "references": [
+        "<a7d44ccb-10b4-4fbb-b34c-154aaa687ef7@mcmaster.ca>",
+        "<b60df077-eab0-451c-a8c5-67e5e333b2da@mcmaster.ca>",
+        "<20240921215156.1c65b61a@trisector>",
+        "<ee50e3bd-364a-4f37-ba03-62aed1df5a8e@mcmaster.ca>"
+      ],
+      "body_plain": "? Sun, 22 Sep 2024 10:23:50 -0400\nJohn Fox <jfox at mcmaster.ca> ?????:\n\n> > Evaluating object$call$data in the environment of the suggested\n> > nlme:::model.matrix.lme function may also not work right. Without an\n> > explicit copy of the data, the best environment to evaluate it in\n> > would be parent.frame().  \n> \n> I'm afraid that I don't understand the suggestion. Isn't\n> parent.frame() the default for the envir argument of eval()? Do you\n> mean the parent frame of the call to model.matrix.lme()?\n\nYes, I do mean the parent frame of the model.matrix.lme() function\ncall. While eval()'s default for the 'envir' argument is\nparent.frame(), this default value is evaluated in the context of the\neval() call. Letting model.matrix.lme() call eval() results in the\n'envir' being the eval()'s parent, the model.matrix.lme() call frame.\n\nIn most cases, model.matrix.lme() works as intended: either lme() has\nbeen given the 'data' argument, so object$data is not NULL and the\nbranch to eval() is not taken, or 'data' has not been given, so both\nobject$data and object$call$data are NULL, and NULL doesn't cause any\nharm when evaluated in any environment. In the latter case\nmodel.matrix.default() can access the variables in the environment of\nthe formula.\n\nWith keep.data = FALSE, the function may evaluate object$call$data in\nthe wrong environment:\n\nmaybe_model_matrix <- function(X)\n model.matrix(lme(distance ~ Sex, random = ~ 1 | Subject, X,\n                  contrasts=list(Sex=contr.sum), keep.data=FALSE))\n\nmaybe_model_matrix(Orthodont)\n# Error in eval(object$call$data) : object 'X' not found\n\n...but then model.matrix.default doesn't work on such objects either,\nand if the user wanted the data to be accessible, they could have set\nkeep.data = TRUE. I can't tell whether evaluating object$call$data in\nenvironment(object$formula) is a better or worse idea than\nparent.frame().\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "? Sun, 22 Sep 2024 10:23:50 -0400\nJohn Fox <jfox at mcmaster.ca> ?????:\n\n> > Evaluating object$call$data in the environment of the suggested\n> > nlme:::model.matrix.lme function may also not work righ",
+      "thread_id": "thread-c181400cae3f",
+      "thread_depth": 4,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-5b7eed9c1505",
+      "message_id": "<CABghstTfAjaU+D-GkN19J6eb-V=6Sc234jEV085PgQR2vTc+qg@mail.gmail.com>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2024-09-23T16:25:46-04:00",
+      "subject": "[Rd] model.matrix() may be misleading for \"lme\" models",
+      "subject_clean": "model.matrix() may be misleading for \"lme\" models",
+      "in_reply_to": "<20240923225417.08fef4c1@Tarkus>",
+      "references": [
+        "<a7d44ccb-10b4-4fbb-b34c-154aaa687ef7@mcmaster.ca>",
+        "<b60df077-eab0-451c-a8c5-67e5e333b2da@mcmaster.ca>",
+        "<20240921215156.1c65b61a@trisector>",
+        "<ee50e3bd-364a-4f37-ba03-62aed1df5a8e@mcmaster.ca>",
+        "<20240923225417.08fef4c1@Tarkus>"
+      ],
+      "body_plain": ">  I can't tell whether evaluating object$call$data in\nenvironment(object$formula) is a better or worse idea than parent.frame().\n\nI have struggled with this a lot over the years. There is a bunch of\nwonky code in lme4, e.g. here\n<https://github.com/lme4/lme4/blob/master/R/lmer.R#L814-L838>, that\ntries to look for data in different possible locations, but I don't\nthink anything works perfectly/robustly.\n\nhttps://stackoverflow.com/questions/14945274/determine-whether-evaluation-of-an-argument-will-fail-due-to-non-existence\n\nOn Mon, Sep 23, 2024 at 3:54?PM Ivan Krylov via R-devel\n<r-devel at r-project.org> wrote:\n>\n> ? Sun, 22 Sep 2024 10:23:50 -0400\n> John Fox <jfox at mcmaster.ca> ?????:\n>\n> > > Evaluating object$call$data in the environment of the suggested\n> > > nlme:::model.matrix.lme function may also not work right. Without an\n> > > explicit copy of the data, the best environment to evaluate it in\n> > > would be parent.frame().\n> >\n> > I'm afraid that I don't understand the suggestion. Isn't\n> > parent.frame() the default for the envir argument of eval()? Do you\n> > mean the parent frame of the call to model.matrix.lme()?\n>\n> Yes, I do mean the parent frame of the model.matrix.lme() function\n> call. While eval()'s default for the 'envir' argument is\n> parent.frame(), this default value is evaluated in the context of the\n> eval() call. Letting model.matrix.lme() call eval() results in the\n> 'envir' being the eval()'s parent, the model.matrix.lme() call frame.\n>\n> In most cases, model.matrix.lme() works as intended: either lme() has\n> been given the 'data' argument, so object$data is not NULL and the\n> branch to eval() is not taken, or 'data' has not been given, so both\n> object$data and object$call$data are NULL, and NULL doesn't cause any\n> harm when evaluated in any environment. In the latter case\n> model.matrix.default() can access the variables in the environment of\n> the formula.\n>\n> With keep.data = FALSE, the function may evaluate object$call$data in\n> the wrong environment:\n>\n> maybe_model_matrix <- function(X)\n>  model.matrix(lme(distance ~ Sex, random = ~ 1 | Subject, X,\n>                   contrasts=list(Sex=contr.sum), keep.data=FALSE))\n>\n> maybe_model_matrix(Orthodont)\n> # Error in eval(object$call$data) : object 'X' not found\n>\n> ...but then model.matrix.default doesn't work on such objects either,\n> and if the user wanted the data to be accessible, they could have set\n> keep.data = TRUE. I can't tell whether evaluating object$call$data in\n> environment(object$formula) is a better or worse idea than\n> parent.frame().\n>\n> --\n> Best regards,\n> Ivan\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">  I can't tell whether evaluating object$call$data in\nenvironment(object$formula) is a better or worse idea than parent.frame().\n\nI have struggled with this a lot over the years. There is a bunch of\n",
+      "thread_id": "thread-c181400cae3f",
+      "thread_depth": 5,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-b702509e19e4",
+      "message_id": "<dbef8aa6-8e59-43bd-ae6f-7f127c1f5756@mcmaster.ca>",
+      "from_name": "John Fox",
+      "from_email_hash": "fb5e585740b7c9920dce8700b35a0da42dc1980ade6aac3a1f02de01be0488d9",
+      "date": "2024-09-23T17:31:10-04:00",
+      "subject": "[Rd] model.matrix() may be misleading for \"lme\" models",
+      "subject_clean": "model.matrix() may be misleading for \"lme\" models",
+      "in_reply_to": "<CABghstTfAjaU+D-GkN19J6eb-V=6Sc234jEV085PgQR2vTc+qg@mail.gmail.com>",
+      "references": [
+        "<a7d44ccb-10b4-4fbb-b34c-154aaa687ef7@mcmaster.ca>",
+        "<b60df077-eab0-451c-a8c5-67e5e333b2da@mcmaster.ca>",
+        "<20240921215156.1c65b61a@trisector>",
+        "<ee50e3bd-364a-4f37-ba03-62aed1df5a8e@mcmaster.ca>",
+        "<20240923225417.08fef4c1@Tarkus>",
+        "<CABghstTfAjaU+D-GkN19J6eb-V=6Sc234jEV085PgQR2vTc+qg@mail.gmail.com>"
+      ],
+      "body_plain": "Thank you Ivan and Ben for your recent further comments.\n\nI think that the current code for the unregistered model.matrix.lme() in \nthe development version of the car package is pretty robust and \ncertainly an improvement over what was there before (which returned \nincorrect results for non-default contrasts!).\n\nI expect that if someone in R-core picks up the task of writing a \nmodel.matrix.lme() for the nlme package, they would do a better job than \nI did, and I'd then be able to retire the version in the car package.\n\nAgain, thanks,\n  John\n\nOn 2024-09-23 4:25 p.m., Ben Bolker wrote:\n> Caution: External email.\n> \n> \n>>   I can't tell whether evaluating object$call$data in\n> environment(object$formula) is a better or worse idea than parent.frame().\n> \n> I have struggled with this a lot over the years. There is a bunch of\n> wonky code in lme4, e.g. here\n> <https://github.com/lme4/lme4/blob/master/R/lmer.R#L814-L838>, that\n> tries to look for data in different possible locations, but I don't\n> think anything works perfectly/robustly.\n> \n> https://stackoverflow.com/questions/14945274/determine-whether-evaluation-of-an-argument-will-fail-due-to-non-existence\n> \n> On Mon, Sep 23, 2024 at 3:54?PM Ivan Krylov via R-devel\n> <r-devel at r-project.org> wrote:\n>>\n>> ? Sun, 22 Sep 2024 10:23:50 -0400\n>> John Fox <jfox at mcmaster.ca> ?????:\n>>\n>>>> Evaluating object$call$data in the environment of the suggested\n>>>> nlme:::model.matrix.lme function may also not work right. Without an\n>>>> explicit copy of the data, the best environment to evaluate it in\n>>>> would be parent.frame().\n>>>\n>>> I'm afraid that I don't understand the suggestion. Isn't\n>>> parent.frame() the default for the envir argument of eval()? Do you\n>>> mean the parent frame of the call to model.matrix.lme()?\n>>\n>> Yes, I do mean the parent frame of the model.matrix.lme() function\n>> call. While eval()'s default for the 'envir' argument is\n>> parent.frame(), this default value is evaluated in the context of the\n>> eval() call. Letting model.matrix.lme() call eval() results in the\n>> 'envir' being the eval()'s parent, the model.matrix.lme() call frame.\n>>\n>> In most cases, model.matrix.lme() works as intended: either lme() has\n>> been given the 'data' argument, so object$data is not NULL and the\n>> branch to eval() is not taken, or 'data' has not been given, so both\n>> object$data and object$call$data are NULL, and NULL doesn't cause any\n>> harm when evaluated in any environment. In the latter case\n>> model.matrix.default() can access the variables in the environment of\n>> the formula.\n>>\n>> With keep.data = FALSE, the function may evaluate object$call$data in\n>> the wrong environment:\n>>\n>> maybe_model_matrix <- function(X)\n>>   model.matrix(lme(distance ~ Sex, random = ~ 1 | Subject, X,\n>>                    contrasts=list(Sex=contr.sum), keep.data=FALSE))\n>>\n>> maybe_model_matrix(Orthodont)\n>> # Error in eval(object$call$data) : object 'X' not found\n>>\n>> ...but then model.matrix.default doesn't work on such objects either,\n>> and if the user wanted the data to be accessible, they could have set\n>> keep.data = TRUE. I can't tell whether evaluating object$call$data in\n>> environment(object$formula) is a better or worse idea than\n>> parent.frame().\n>>\n>> --\n>> Best regards,\n>> Ivan\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Thank you Ivan and Ben for your recent further comments.\n\nI think that the current code for the unregistered model.matrix.lme() in \nthe development version of the car package is pretty robust and \ncer",
+      "thread_id": "thread-c181400cae3f",
+      "thread_depth": 6,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-300643dabd8e",
+      "message_id": "<20240924171130.4627a70e@arachnoid>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2024-09-24T17:11:30+03:00",
+      "subject": "[Rd] Possible update to survival",
+      "subject_clean": "Possible update to survival",
+      "in_reply_to": "<BL0PR01MB4658BCF7EF86EAD903545CD7AE672@BL0PR01MB4658.prod.exchangelabs.com>",
+      "references": [
+        "<BL0PR01MB4658BCF7EF86EAD903545CD7AE672@BL0PR01MB4658.prod.exchangelabs.com>"
+      ],
+      "body_plain": "? Sun, 15 Sep 2024 00:43:31 +0000\n\"Therneau, Terry M., Ph.D. via R-devel\" <r-devel at r-project.org> ?????:\n\n>   2.  Before calling model.frame(), insert my copy of strata into the\n> calling chain coxenv <- new.env(parent= environment(formula))\n>     assign(\"strata\", survival::strata, envir= coxenv)\n>     environment(formula) <- coxenv\n\n<...>\n\n> For ultimate safety, I am thinking of extending the above to all of\n> the internal survival functions that might be used in a formula:\n> Surv, strata, pspline, cluster, ratetable  (I think that_s all).   An\n> intitial limited test looks okay, but before anything migrates to\n> CRAN I am looking for any feedback.\n\nWhat do you think of the following approach?\n\nWhen changing the environment of the formula, construct the following\nenvironment chain:\n\n1. Top: your 'coxenv' environment with the special survival functions\n2. Enclosing environment: list2env(data)\n3. Enclosing^2 environment: original environment(formula)\n\nSince the environment chain constructed by eval() when called by\nmodel.frame() looks different (top: data -> enclosure:\nenvironment(formula)), someone truly determined to shoot themselves in\nthe foot could still sneak a 'strata' function inside their 'data'\nargument.\n\nHaving said that, what you are planning to implement may be already\nreliable enough.\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "? Sun, 15 Sep 2024 00:43:31 +0000\n\"Therneau, Terry M., Ph.D. via R-devel\" <r-devel at r-project.org> ?????:\n\n>   2.  Before calling model.frame(), insert my copy of strata into the\n> calling chain cox",
+      "thread_id": "thread-b4b33604bf40",
+      "thread_depth": 1,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-a9e9feba9165",
+      "message_id": "<20240927133227.46546cd3@arachnoid>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2024-09-27T13:32:27+03:00",
+      "subject": "[Rd] Disabling S4 primitive dispatch during method resolution affects namespace load actions",
+      "subject_clean": "Disabling S4 primitive dispatch during method resolution affects namespace load actions",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hello,\n\nThis problem originally surfaced as an interaction between 'brms',\n'rstan' and 'Rcpp' [1]: a call to dimnames() from the 'brms' package on\nan object of an S4 class owned by the 'rstan' package tried to load its\nnamespace. rstan:::.onLoad needs to load Rcpp modules, which uses load\nactions and reference classes. Since methods:::.findInheritedMethods\ntemporarily disables primitive S4 dispatch [2], reference classes break\nand the namespace fails to load. I have prepared a small reproduction\npackage [3], which will need to be installed to show the problem:\n\nR -q -s -e \"saveRDS(repro::mk_external(), 'foo.rds')\"\nR -q -s -e \"readRDS('foo.rds')\"\n# Loading required package: repro\n# Error: package or namespace load failed for ?repro? in\n# .doLoadActions(where, attach):\n#  error in load action .__A__.1 for package repro: bar$foo(): attempt\n#  to apply non-function\n# Error in .requirePackage(package) : unable to find required package\n# ?repro?\n# Calls: <Anonymous> ... .findInheritedMethods -> getClass ->\n# getClassDef -> .requirePackage\n# Execution halted\n\n(Here it has to be a show() call to trigger the package load, not just\ndimnames().)\n\nI have verified that the following patch prevents the failure in\nloading the namespace, but which other problems could it introduce?\n\nIndex: src/library/methods/R/RClassUtils.R\n===================================================================\n--- src/library/methods/R/RClassUtils.R\t(revision 87194)\n+++ src/library/methods/R/RClassUtils.R\t(working copy)\n@@ -1812,6 +1812,9 @@\n \n ## real version of .requirePackage\n ..requirePackage <- function(package, mustFind = TRUE) {\n+    # we may be called from .findInheritedMethods, which disables S4 primitive dispatch\n+    primMethods <- .allowPrimitiveMethods(TRUE)\n+    on.exit(.allowPrimitiveMethods(primMethods))\n     value <- package\n     if(nzchar(package)) {\n         ## lookup as lightning fast as possible:\n\nThe original change to disable S4 primitive dispatch during method\nresolution was done in r50609 (2009); this may be the first documented\ninstance of it causing a problem. The comment says \"At the moment, this\nis just for efficiency, but in principle it could be needed to avoid\nrecursive calls to findInheritedMethods.\"\n\n-- \nBest regards,\nIvan\n\n[1]\nhttps://stat.ethz.ch/pipermail/r-package-devel/2024q3/011097.html\n\n[2]\nhttps://github.com/r-devel/r-svn/blob/776045d4601ed3ac7b8041e94c665bbfe9709191/src/library/methods/R/methodsTable.R#L457\n\n[3]\nhttps://codeberg.org/aitap/S4_vs_onLoad",
+      "body_snippet": "Hello,\n\nThis problem originally surfaced as an interaction between 'brms',\n'rstan' and 'Rcpp' [1]: a call to dimnames() from the 'brms' package on\nan object of an S4 class owned by the 'rstan' package",
+      "thread_id": "thread-a9e9feba9165",
+      "thread_depth": 0,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-ca13ba8df6af",
+      "message_id": "<26358.57738.160660.753206@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2024-09-27T18:47:06+02:00",
+      "subject": "[Rd] Disabling S4 primitive dispatch during method resolution affects namespace load actions",
+      "subject_clean": "Disabling S4 primitive dispatch during method resolution affects namespace load actions",
+      "in_reply_to": "<20240927133227.46546cd3@arachnoid>",
+      "references": [
+        "<20240927133227.46546cd3@arachnoid>"
+      ],
+      "body_plain": ">>>>> Ivan Krylov via R-devel \n>>>>>     on Fri, 27 Sep 2024 13:32:27 +0300 writes:\n\n    > Hello,\n    > This problem originally surfaced as an interaction between 'brms',\n    > 'rstan' and 'Rcpp' [1]: a call to dimnames() from the 'brms' package on\n    > an object of an S4 class owned by the 'rstan' package tried to load its\n    > namespace. rstan:::.onLoad needs to load Rcpp modules, which uses load\n    > actions and reference classes. Since methods:::.findInheritedMethods\n    > temporarily disables primitive S4 dispatch [2], reference classes break\n    > and the namespace fails to load. I have prepared a small reproduction\n    > package [3], which will need to be installed to show the problem:\n\n    > R -q -s -e \"saveRDS(repro::mk_external(), 'foo.rds')\"\n    > R -q -s -e \"readRDS('foo.rds')\"\n    > # Loading required package: repro\n    > # Error: package or namespace load failed for ?repro? in\n    > # .doLoadActions(where, attach):\n    > #  error in load action .__A__.1 for package repro: bar$foo(): attempt\n    > #  to apply non-function\n    > # Error in .requirePackage(package) : unable to find required package\n    > # ?repro?\n    > # Calls: <Anonymous> ... .findInheritedMethods -> getClass ->\n    > # getClassDef -> .requirePackage\n    > # Execution halted\n\n    > (Here it has to be a show() call to trigger the package load, not just\n    > dimnames().)\n\n    > I have verified that the following patch prevents the failure in\n    > loading the namespace, but which other problems could it introduce?\n\n    > Index: src/library/methods/R/RClassUtils.R\n    > ===================================================================\n    > --- src/library/methods/R/RClassUtils.R\t(revision 87194)\n    > +++ src/library/methods/R/RClassUtils.R\t(working copy)\n    > @@ -1812,6 +1812,9 @@\n \n    > ## real version of .requirePackage\n    > ..requirePackage <- function(package, mustFind = TRUE) {\n    > +    # we may be called from .findInheritedMethods, which disables S4 primitive dispatch\n    > +    primMethods <- .allowPrimitiveMethods(TRUE)\n    > +    on.exit(.allowPrimitiveMethods(primMethods))\n    > value <- package\n    > if(nzchar(package)) {\n    > ## lookup as lightning fast as possible:\n\n    > The original change to disable S4 primitive dispatch during method\n    > resolution was done in r50609 (2009); this may be the first documented\n    > instance of it causing a problem. The comment says \"At the moment, this\n    > is just for efficiency, but in principle it could be needed to avoid\n    > recursive calls to findInheritedMethods.\"\n\n    > -- \n    > Best regards,\n    > Ivan\n\nThank you, Ivan.\nYour patch makes sense indeed, given your previous findings on\nthe R-package-devel list ([1]). It is short and looks ok.\nAs you mention, speed loss may still be an issue, for S4/methods\n(including reference classes) - using R code.\n\nI was additionally interested to see your 'repro' package ([3]) and\ntry if it does reproduce the problem  ...  and then if the patch\nresolves it.... and confirm that it does this nicely.\n\nI think we will get some speed if your new code is replaced by\n\n   if(!.allowPrimitiveMethods(TRUE))\n       on.exit(.allowPrimitiveMethods(FALSE))\n\nwhich is correct as we know that the argument and return value\nare both either TRUE or FALSE.\n\nMartin\n\n\n    > [1] https://stat.ethz.ch/pipermail/r-package-devel/2024q3/011097.html\n    > [2] https://github.com/r-devel/r-svn/blob/776045d4601ed3ac7b8041e94c665bbfe9709191/src/library/methods/R/methodsTable.R#L457\n    > [3] https://codeberg.org/aitap/S4_vs_onLoad",
+      "body_snippet": ">>>>> Ivan Krylov via R-devel \n>>>>>     on Fri, 27 Sep 2024 13:32:27 +0300 writes:\n\n    > Hello,\n    > This problem originally surfaced as an interaction between 'brms',\n    > 'rstan' and 'Rcpp' [1]:",
+      "thread_id": "thread-a9e9feba9165",
+      "thread_depth": 1,
+      "month": "2024-09"
+    },
+    {
+      "id": "msg-9c3add344853",
+      "message_id": "<26362.35575.254699.219684@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2024-09-30T13:26:47+02:00",
+      "subject": "[Rd] Disabling S4 primitive dispatch during method resolution affects namespace load actions",
+      "subject_clean": "Disabling S4 primitive dispatch during method resolution affects namespace load actions",
+      "in_reply_to": "<26358.57738.160660.753206@stat.math.ethz.ch>",
+      "references": [
+        "<20240927133227.46546cd3@arachnoid>",
+        "<26358.57738.160660.753206@stat.math.ethz.ch>"
+      ],
+      "body_plain": ">>>>> Martin Maechler \n>>>>>     on Fri, 27 Sep 2024 18:47:06 +0200 writes:\n\n>>>>> Ivan Krylov via R-devel \n>>>>>     on Fri, 27 Sep 2024 13:32:27 +0300 writes:\n\n    >> Hello,\n    >> This problem originally surfaced as an interaction between 'brms',\n    >> 'rstan' and 'Rcpp' [1]: a call to dimnames() from the 'brms' package on\n    >> an object of an S4 class owned by the 'rstan' package tried to load its\n    >> namespace. rstan:::.onLoad needs to load Rcpp modules, which uses load\n    >> actions and reference classes. Since methods:::.findInheritedMethods\n    >> temporarily disables primitive S4 dispatch [2], reference classes break\n    >> and the namespace fails to load. I have prepared a small reproduction\n    >> package [3], which will need to be installed to show the problem:\n\n    >> R -q -s -e \"saveRDS(repro::mk_external(), 'foo.rds')\"\n    >> R -q -s -e \"readRDS('foo.rds')\"\n    >> # Loading required package: repro\n    >> # Error: package or namespace load failed for ?repro? in\n    >> # .doLoadActions(where, attach):\n    >> #  error in load action .__A__.1 for package repro: bar$foo(): attempt\n    >> #  to apply non-function\n    >> # Error in .requirePackage(package) : unable to find required package\n    >> # ?repro?\n    >> # Calls: <Anonymous> ... .findInheritedMethods -> getClass ->\n    >> # getClassDef -> .requirePackage\n    >> # Execution halted\n\n    >> (Here it has to be a show() call to trigger the package load, not just\n    >> dimnames().)\n\n    >> I have verified that the following patch prevents the failure in\n    >> loading the namespace, but which other problems could it introduce?\n\n    >> Index: src/library/methods/R/RClassUtils.R\n    >> ===================================================================\n    >> --- src/library/methods/R/RClassUtils.R\t(revision 87194)\n    >> +++ src/library/methods/R/RClassUtils.R\t(working copy)\n    >> @@ -1812,6 +1812,9 @@\n \n    >> ## real version of .requirePackage\n    >> ..requirePackage <- function(package, mustFind = TRUE) {\n    >> +    # we may be called from .findInheritedMethods, which disables S4 primitive dispatch\n    >> +    primMethods <- .allowPrimitiveMethods(TRUE)\n    >> +    on.exit(.allowPrimitiveMethods(primMethods))\n    >> value <- package\n    >> if(nzchar(package)) {\n    >> ## lookup as lightning fast as possible:\n\n    >> The original change to disable S4 primitive dispatch during method\n    >> resolution was done in r50609 (2009); this may be the first documented\n    >> instance of it causing a problem. The comment says \"At the moment, this\n    >> is just for efficiency, but in principle it could be needed to avoid\n    >> recursive calls to findInheritedMethods.\"\n\n    >> -- \n    >> Best regards,\n    >> Ivan\n\n    > Thank you, Ivan.\n    > Your patch makes sense indeed, given your previous findings on\n    > the R-package-devel list ([1]). It is short and looks ok.\n    > As you mention, speed loss may still be an issue, for S4/methods\n    > (including reference classes) - using R code.\n\n    > I was additionally interested to see your 'repro' package ([3]) and\n    > try if it does reproduce the problem  ...  and then if the patch\n    > resolves it.... and confirm that it does this nicely.\n\n    > I think we will get some speed if your new code is replaced by\n\n    > if(!.allowPrimitiveMethods(TRUE))\n    > on.exit(.allowPrimitiveMethods(FALSE))\n\n    > which is correct as we know that the argument and return value\n    > are both either TRUE or FALSE.\n\n    > Martin\n\nA version of that has now been committed to \"R-devel\" (the\ndevelopment version of R, in svn rev 87202 .\n... with thanks to Ivan.\n\n... I expect that the CRAN checks for broom.mixed (e.g.) will no\nlonger give 'ERROR' once the checks will use svn rev >= 87202.\n\nMartin",
+      "body_snippet": ">>>>> Martin Maechler \n>>>>>     on Fri, 27 Sep 2024 18:47:06 +0200 writes:\n\n>>>>> Ivan Krylov via R-devel \n>>>>>     on Fri, 27 Sep 2024 13:32:27 +0300 writes:\n\n    >> Hello,\n    >> This problem orig",
+      "thread_id": "thread-a9e9feba9165",
+      "thread_depth": 2,
+      "month": "2024-09"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-eade5be1a12f",
+      "subject": "R compilation (revision 87083) failed after upgrade to Ubuntu 24.04 (libtirpc missing)",
+      "message_count": 1,
+      "participants": [
+        "Mark Clements"
+      ],
+      "started": "2024-09-01T12:42:35+00:00",
+      "last_reply": "2024-09-01T12:42:35+00:00",
+      "root_message_id": "msg-eade5be1a12f"
+    },
+    {
+      "id": "thread-1542f31cd746",
+      "subject": "Big speedup in install.packages() by re-using connections",
+      "message_count": 4,
+      "participants": [
+        "Jeroen Ooms",
+        "Tomas Kalibera"
+      ],
+      "started": "2024-09-02T16:04:43+02:00",
+      "last_reply": "2024-09-09T18:19:12+02:00",
+      "root_message_id": "msg-1542f31cd746"
+    },
+    {
+      "id": "thread-dd9ec83a1d2a",
+      "subject": "Inconsistency between row and nrow",
+      "message_count": 5,
+      "participants": [
+        "@vi@e@gross m@iii@g oii gm@ii@com",
+        "Gabor Grothendieck",
+        "Marc Schwartz"
+      ],
+      "started": "2024-09-08T07:30:36-04:00",
+      "last_reply": "2024-09-08T18:36:34-04:00",
+      "root_message_id": "msg-dd9ec83a1d2a"
+    },
+    {
+      "id": "thread-820850f8424c",
+      "subject": "transform",
+      "message_count": 1,
+      "participants": [
+        "Gabor Grothendieck"
+      ],
+      "started": "2024-09-08T08:38:58-04:00",
+      "last_reply": "2024-09-08T08:38:58-04:00",
+      "root_message_id": "msg-820850f8424c"
+    },
+    {
+      "id": "thread-127691116971",
+      "subject": "Documentation cross references",
+      "message_count": 1,
+      "participants": [
+        "Lluís Revilla"
+      ],
+      "started": "2024-09-09T08:00:00+02:00",
+      "last_reply": "2024-09-09T08:00:00+02:00",
+      "root_message_id": "msg-127691116971"
+    },
+    {
+      "id": "thread-bfbdc1f718c0",
+      "subject": "Can gzfile be given the same method option as file",
+      "message_count": 5,
+      "participants": [
+        "Ivan Krylov",
+        "Simon Andrews"
+      ],
+      "started": "2024-09-12T12:01:54+00:00",
+      "last_reply": "2024-09-12T15:36:32+00:00",
+      "root_message_id": "msg-bfbdc1f718c0"
+    },
+    {
+      "id": "thread-b4b33604bf40",
+      "subject": "Possible update to survival",
+      "message_count": 2,
+      "participants": [
+        "Ivan Krylov",
+        "Therneau, Terry M., Ph.D."
+      ],
+      "started": "2024-09-15T00:43:31+00:00",
+      "last_reply": "2024-09-24T17:11:30+03:00",
+      "root_message_id": "msg-b4b33604bf40"
+    },
+    {
+      "id": "thread-e7b77ab322c8",
+      "subject": "numerical issue with t.test",
+      "message_count": 3,
+      "participants": [
+        "Ben Bolker",
+        "Michael Dewey",
+        "Toby Hocking"
+      ],
+      "started": "2024-09-16T10:47:20-04:00",
+      "last_reply": "2024-09-16T10:57:29-04:00",
+      "root_message_id": "msg-e7b77ab322c8"
+    },
+    {
+      "id": "thread-d5a31ab5cbbd",
+      "subject": "findInterval",
+      "message_count": 3,
+      "participants": [
+        "Gabor Grothendieck",
+        "Martin Maechler"
+      ],
+      "started": "2024-09-16T11:21:55-04:00",
+      "last_reply": "2024-09-17T13:27:35-04:00",
+      "root_message_id": "msg-d5a31ab5cbbd"
+    },
+    {
+      "id": "thread-aa3fed968667",
+      "subject": "Degree of freedom issue on chi-square test of goodness of fit",
+      "message_count": 1,
+      "participants": [
+        "LJJ"
+      ],
+      "started": "2024-09-17T10:58:25+08:00",
+      "last_reply": "2024-09-17T10:58:25+08:00",
+      "root_message_id": "msg-aa3fed968667"
+    },
+    {
+      "id": "thread-d7e7fc32bdca",
+      "subject": "Wrong/incomplete documentation regarding the 100-bytes path length limit.",
+      "message_count": 2,
+      "participants": [
+        "Iago Bonnici",
+        "Tomas Kalibera"
+      ],
+      "started": "2024-09-17T12:28:19+02:00",
+      "last_reply": "2024-09-17T14:45:01+02:00",
+      "root_message_id": "msg-d7e7fc32bdca"
+    },
+    {
+      "id": "thread-c181400cae3f",
+      "subject": "model.matrix() may be misleading for \"lme\" models",
+      "message_count": 7,
+      "participants": [
+        "Ben Bolker",
+        "Ivan Krylov",
+        "John Fox"
+      ],
+      "started": "2024-09-20T12:49:00-04:00",
+      "last_reply": "2024-09-23T17:31:10-04:00",
+      "root_message_id": "msg-c181400cae3f"
+    },
+    {
+      "id": "thread-a9e9feba9165",
+      "subject": "Disabling S4 primitive dispatch during method resolution affects namespace load actions",
+      "message_count": 3,
+      "participants": [
+        "Ivan Krylov",
+        "Martin Maechler"
+      ],
+      "started": "2024-09-27T13:32:27+03:00",
+      "last_reply": "2024-09-30T13:26:47+02:00",
+      "root_message_id": "msg-a9e9feba9165"
+    }
+  ]
+}

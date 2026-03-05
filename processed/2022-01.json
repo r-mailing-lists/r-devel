@@ -1,0 +1,1108 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2022-01",
+  "messages": [
+    {
+      "id": "msg-b2a2e8cc7b61",
+      "message_id": "<CADbDLZkcaK+2E_KA6+NwBhXDYhKjF-KbR9YXtzt6DjDDjH7Hyg@mail.gmail.com>",
+      "from_name": "Colin Gillespie",
+      "from_email_hash": "da3df6b8b4cf068a6b4d91b50a7c699a14c0c12e05be37af080e34fa3bed0efb",
+      "date": "2022-01-01T19:24:01Z",
+      "subject": "[Rd] Documentation for floor, ceiling & trunc",
+      "subject_clean": "Documentation for floor, ceiling & trunc",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hi,\n\nThe documentation for floor, ceiling and trunc is slightly ambiguous.\n\n\"floor takes ... and returns a numeric vector containing the largest\nintegers ...\"\n\nMy initial thought was that floor() would return a vector of integers.\nInstead, it returns a vector of doubles, i.e c(1L, 2L) vs c(1, 2)\n\n * Could the docs be changed\n * Would it be worth returning integers instead?\n\nThanks\n\nColin",
+      "body_snippet": "Hi,\n\nThe documentation for floor, ceiling and trunc is slightly ambiguous.\n\n\"floor takes ... and returns a numeric vector containing the largest\nintegers ...\"\n\nMy initial thought was that floor() woul",
+      "thread_id": "thread-b2a2e8cc7b61",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-5267785aff2c",
+      "message_id": "<5d3c433a-9711-e1a2-64cc-dadc2a4cc347@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2022-01-01T15:03:49-05:00",
+      "subject": "[Rd] Documentation for floor, ceiling & trunc",
+      "subject_clean": "Documentation for floor, ceiling & trunc",
+      "in_reply_to": "<CADbDLZkcaK+2E_KA6+NwBhXDYhKjF-KbR9YXtzt6DjDDjH7Hyg@mail.gmail.com>",
+      "references": [
+        "<CADbDLZkcaK+2E_KA6+NwBhXDYhKjF-KbR9YXtzt6DjDDjH7Hyg@mail.gmail.com>"
+      ],
+      "body_plain": "On 01/01/2022 2:24 p.m., Colin Gillespie wrote:\n> Hi,\n> \n> The documentation for floor, ceiling and trunc is slightly ambiguous.\n> \n> \"floor takes ... and returns a numeric vector containing the largest\n> integers ...\"\n> \n> My initial thought was that floor() would return a vector of integers.\n\nThat would be described as \"an integer vector\".  I think the docs are \npretty consistent about this:  if an output is described as \"a numeric \nvector\", that's the type you get.  (\"numeric\" and \"double\" refer to the \nsame type in R.  This naming inconsistency is discussed in the ?double \nhelp page.)\n\n> Instead, it returns a vector of doubles, i.e c(1L, 2L) vs c(1, 2)\n> \n>   * Could the docs be changed\n>   * Would it be worth returning integers instead?\n\nThe range of inputs is much larger than the range of 32 bit integers, so \nthis would just make things more complicated, and would mean that code \nthat cares about the difference between numeric and integer would need \nextra tests.\n\nFor example 3e9 + 0.1 is not an integer, and if you take the floor you \nget 3e9. That number can't be represented in the integer type, but can \nbe exactly represented as a mathematical integer in the numeric/double type.\n\nDuncan Murdoch",
+      "body_snippet": "On 01/01/2022 2:24 p.m., Colin Gillespie wrote:\n> Hi,\n> \n> The documentation for floor, ceiling and trunc is slightly ambiguous.\n> \n> \"floor takes ... and returns a numeric vector containing the large",
+      "thread_id": "thread-b2a2e8cc7b61",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-6bfc2811200e",
+      "message_id": "<015201d7ff4e$88696720$993c3560$@verizon.net>",
+      "from_name": "Avi Gross",
+      "from_email_hash": "d15d515a9b2e56b9091a72b709d627f99458fcd101f28b94c3ef620cf9b37e15",
+      "date": "2022-01-01T15:31:18-05:00",
+      "subject": "[Rd] Documentation for floor, ceiling & trunc",
+      "subject_clean": "Documentation for floor, ceiling & trunc",
+      "in_reply_to": "<5d3c433a-9711-e1a2-64cc-dadc2a4cc347@gmail.com>",
+      "references": [
+        "<CADbDLZkcaK+2E_KA6+NwBhXDYhKjF-KbR9YXtzt6DjDDjH7Hyg@mail.gmail.com>",
+        "<5d3c433a-9711-e1a2-64cc-dadc2a4cc347@gmail.com>"
+      ],
+      "body_plain": "Excellent reason, Duncan. R does not have an unlimited integer type as in\nPython so truncating or rounding activities can well produce a result that\nwould be out of bounds.\n\nIf someone really wants an array of integers, other than efficiency reasons,\nthey could process the output from something like floor carefully to see if\nall number returned were less than .Machine$integer.max (and similarly for\nnegatives in the other direction) and then have the option to make a vector\nof as.integer(whatever) for later uses. If any numbers where out of the\nrange, they could presumably do other things like make then NA or Inf or\nswitch to some larger integer format they can find or create. Of course, any\nsuch alterations may well not work well if fed to anything not expecting\nthem.\n\nNow consider the purpose of the R functions round(), floor(), ceiling() and\ntrunc() and perhaps even signif() taken as a group. Clearly some of them can\nbe used only in a floating point context as rounding something to three\nsignificant digits beyond the decimal point will not usually result in an\ninteger. Sure, some of them are normally used in real life to mean round it\nto the nearest integer and in those cases it could be reasonable to have a\nfunction with a restricted domain that maps into the restricted integer\nrange.  You can make your own such function easily enough.\n\n-----Original Message-----\nFrom: R-devel <r-devel-bounces at r-project.org> On Behalf Of Duncan Murdoch\nSent: Saturday, January 1, 2022 3:04 PM\nTo: Colin Gillespie <csgillespie at gmail.com>; r-devel at r-project.org\nSubject: Re: [Rd] Documentation for floor, ceiling & trunc\n\nOn 01/01/2022 2:24 p.m., Colin Gillespie wrote:\n> Hi,\n> \n> The documentation for floor, ceiling and trunc is slightly ambiguous.\n> \n> \"floor takes ... and returns a numeric vector containing the largest \n> integers ...\"\n> \n> My initial thought was that floor() would return a vector of integers.\n\nThat would be described as \"an integer vector\".  I think the docs are pretty\nconsistent about this:  if an output is described as \"a numeric vector\",\nthat's the type you get.  (\"numeric\" and \"double\" refer to the same type in\nR.  This naming inconsistency is discussed in the ?double help page.)\n\n> Instead, it returns a vector of doubles, i.e c(1L, 2L) vs c(1, 2)\n> \n>   * Could the docs be changed\n>   * Would it be worth returning integers instead?\n\nThe range of inputs is much larger than the range of 32 bit integers, so\nthis would just make things more complicated, and would mean that code that\ncares about the difference between numeric and integer would need extra\ntests.\n\nFor example 3e9 + 0.1 is not an integer, and if you take the floor you get\n3e9. That number can't be represented in the integer type, but can be\nexactly represented as a mathematical integer in the numeric/double type.\n\nDuncan Murdoch\n\n______________________________________________\nR-devel at r-project.org mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Excellent reason, Duncan. R does not have an unlimited integer type as in\nPython so truncating or rounding activities can well produce a result that\nwould be out of bounds.\n\nIf someone really wants an",
+      "thread_id": "thread-b2a2e8cc7b61",
+      "thread_depth": 2,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-1337d9121824",
+      "message_id": "<25043.7218.319752.651473@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2022-01-03T16:54:26+01:00",
+      "subject": "[Rd]  Why does lm() with the subset argument give a different answer than subsetting in advance?",
+      "subject_clean": "Why does lm() with the subset argument give a different answer than subsetting in advance?",
+      "in_reply_to": "<82962536-60a4-8a71-eaa0-ce79f5025d2e@gmail.com>",
+      "references": [
+        "<B29E2C41-2EB5-465D-8EA2-6E9E3B9906A3@miami.edu>",
+        "<82962536-60a4-8a71-eaa0-ce79f5025d2e@gmail.com>"
+      ],
+      "body_plain": ">>>>> Ben Bolker \n>>>>>     on Mon, 27 Dec 2021 09:43:42 -0500 writes:\n\n    >    I agree that it seems non-intuitive (I can't think of a\n    > design reason for it to look this way), but I'd like to\n    > stress that it's *not* an information leak; the\n    > predictions of the model are independent of the\n    > parameterization, which is all this issue affects. In a\n    > worst case there might be some unfortunate effects on\n    > numerical stability if the data-dependent bases are\n    > computed on a very different set of data than the model\n    > fitting actually uses.\n\n    >    I've attached a suggested documentation patch (I hope\n    > it makes it through to the list, if not I can add it to\n    > the body of a message.)\n\nIt did make it through;  thank you, Ben!\n( After adding two forgotten '}' ) I've committed the help file\nadditions to the R sources (R-devel) in svn r81434 .\n\nThanks again and\n\n       \"Happy New Year\"\n\nto all readers,\n\nMartin\n\n\n\n\n    > On 12/26/21 8:35 PM, Balise, Raymond R wrote:\n    >> Hello R folks, Today I noticed that using the subset\n    >> argument in lm() with a polynomial gives a different\n    >> result than using the polynomial when the data has\n    >> already been subsetted. This was not at all intuitive for\n    >> me.  You can see an example here:\n    >> https://stackoverflow.com/questions/70490599/why-does-lm-with-the-subset-argument-give-a-different-answer-than-subsetting-i\n    >> \n    >> If this is a design feature that you don?t think should\n    >> be fixed, can you please include it in the documentation\n    >> and explain why it makes sense to figure out the\n    >> orthogonal polynomials on the entire dataset?  This feels\n    >> like a serous leak of information when evaluating train\n    >> and test datasets in a statistical learning framework.\n    >> \n    >> Ray\n    >> \n    >> Raymond R. Balise, PhD Assistant Professor Department of\n    >> Public Health Sciences, Biostatistics\n    >> \n    >> University of Miami, Miller School of Medicine 1120\n    >> N.W. 14th Street Don Soffer Clinical Research Center -\n    >> Room 1061 Miami, Florida 33136\n    >> \n    >> \n    >> \n    >> [[alternative HTML version deleted]]\n    >> \n    >> ______________________________________________\n    >> R-devel at r-project.org mailing list\n    >> https://stat.ethz.ch/mailman/listinfo/r-devel\n    >> \n\n    > -- \n    > Dr. Benjamin Bolker Professor, Mathematics & Statistics\n    > and Biology, McMaster University Director, School of\n    > Computational Science and Engineering Graduate chair,\n    > Mathematics & Statistics x[DELETED ATTACHMENT external:\n    > BenB_lm-subset.patch, plain text]\n    > ______________________________________________\n    > R-devel at r-project.org mailing list\n    > https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">>>>> Ben Bolker \n>>>>>     on Mon, 27 Dec 2021 09:43:42 -0500 writes:\n\n    >    I agree that it seems non-intuitive (I can't think of a\n    > design reason for it to look this way), but I'd like to\n ",
+      "thread_id": "thread-1337d9121824",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-2a963d89fede",
+      "message_id": "<77a401c8-722b-95d7-7d54-c442c478f5ef@gmail.com>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2022-01-03T11:04:48-05:00",
+      "subject": "[Rd] trivial typo in NEWS file",
+      "subject_clean": "trivial typo in NEWS file",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Index: doc/NEWS.Rd\n===================================================================\n--- doc/NEWS.Rd\t(revision 81435)\n+++ doc/NEWS.Rd\t(working copy)\n@@ -425,7 +425,7 @@\n        data frames with default row names (Thanks to Charlie Gao's\n        \\PR{18179}).\n\n-      \\item \\code{txtProgresBar()} now enforces a non-zero width for\n+      \\item \\code{txtProgressBar()} now enforces a non-zero width for\n        \\code{char}, without which no progress can be visible.\n\n        \\item \\code{dimnames(table(d))} is more consistent in the case where",
+      "body_snippet": "Index: doc/NEWS.Rd\n===================================================================\n--- doc/NEWS.Rd\t(revision 81435)\n+++ doc/NEWS.Rd\t(working copy)\n@@ -425,7 +425,7 @@\n        data frames with defa",
+      "thread_id": "thread-2a963d89fede",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-877102f58f9b",
+      "message_id": "<25043.8977.289648.963947@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2022-01-03T17:23:45+01:00",
+      "subject": "[Rd] trivial typo in NEWS file",
+      "subject_clean": "trivial typo in NEWS file",
+      "in_reply_to": "<77a401c8-722b-95d7-7d54-c442c478f5ef@gmail.com>",
+      "references": [
+        "<77a401c8-722b-95d7-7d54-c442c478f5ef@gmail.com>"
+      ],
+      "body_plain": ">>>>> Ben Bolker \n>>>>>     on Mon, 3 Jan 2022 11:04:48 -0500 writes:\n\n    > Index: doc/NEWS.Rd\n    > ===================================================================\n    > --- doc/NEWS.Rd\t(revision 81435)\n    > +++ doc/NEWS.Rd\t(working copy)\n    > @@ -425,7 +425,7 @@\n    > data frames with default row names (Thanks to Charlie Gao's\n    > \\PR{18179}).\n\n    > -      \\item \\code{txtProgresBar()} now enforces a non-zero width for\n    > +      \\item \\code{txtProgressBar()} now enforces a non-zero width for\n    > \\code{char}, without which no progress can be visible.\n\n    > \\item \\code{dimnames(table(d))} is more consistent in the case where\n\n\nThank you, Ben!\n\nI will take care of this with my next commit (dealing with R's\nbugzilla PR#18272).\n\nMartin",
+      "body_snippet": ">>>>> Ben Bolker \n>>>>>     on Mon, 3 Jan 2022 11:04:48 -0500 writes:\n\n    > Index: doc/NEWS.Rd\n    > ===================================================================\n    > --- doc/NEWS.Rd\t(revisio",
+      "thread_id": "thread-2a963d89fede",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-d192e0f76fb8",
+      "message_id": "<25043.12072.659723.752755@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2022-01-03T18:15:20+01:00",
+      "subject": "[Rd] \"getOption(max.print) omitted %d entries\" may be negative",
+      "subject_clean": "\"getOption(max.print) omitted %d entries\" may be negative",
+      "in_reply_to": "<CAJmOi+MFUrn+hx9PVj1ALWwMFPq518dTYGPDToqF92TB4w9xgw@mail.gmail.com>",
+      "references": [
+        "<CAJmOi+MFUrn+hx9PVj1ALWwMFPq518dTYGPDToqF92TB4w9xgw@mail.gmail.com>"
+      ],
+      "body_plain": ">>>>> Hugh Parsonage \n>>>>>     on Wed, 29 Dec 2021 00:36:51 +1100 writes:\n\n    > In src/main/printvector.c in the definition of printVector and\n    > printNamedVector  (and elsewhere):\n\n    > Rprintf(\" [ reached getOption(\\\"max.print\\\") -- omitted %d entries ]\\n\",\n    >         n - n_pr);\n\n    > Though n - n_pr is of type R_xlen_t so may not be representable as\n    > int. In practice negative values may be observed for long vectors.\n\n    > Rprintf(\" [ reached getOption(\\\"max.print\\\") -- omitted %lld entries ]\\n\",\n    >         n - n_pr);\n\n\nThank you Hugh, for finding and reporting this,\nincluding a proposed remedy. \n\nAt some point in time, I think the   %lld   format specifier was\nnot portable enough to all versions of C compiler / libraries\nthat were considered valid for compiling R.\n\nSee e.g.,\n\n   https://stackoverflow.com/questions/462345/format-specifier-for-long-long\n\nwhich says that \"it\" does not work on Windows.\n\nMaybe this has changed now that we require C99 and also that\nsince R version 4.0.0 (or 4.0.1) we also use a somewhat more\nrecent version of gcc also on Windows?\n\n... ah, searching the R sources reveals uses of %lld\n*plus*\n\n#ifdef Win32\n#include <trioremap.h> /* for %lld */\n#endif\n\nso it seems we can and should probably change this ...\n\n[Please, C  compiler / library standard experts, chime in !]\n\nMartin Maechler\nETH Zurich  and  R core team",
+      "body_snippet": ">>>>> Hugh Parsonage \n>>>>>     on Wed, 29 Dec 2021 00:36:51 +1100 writes:\n\n    > In src/main/printvector.c in the definition of printVector and\n    > printNamedVector  (and elsewhere):\n\n    > Rprintf",
+      "thread_id": "thread-d192e0f76fb8",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-bdc28f327506",
+      "message_id": "<fe5e0663-1827-8045-7aee-6b87e9c140ac@gmail.com>",
+      "from_name": "Tomas Kalibera",
+      "from_email_hash": "7af110c9340339e5307bd348f1ec524e2fd1c8f104d583e9993022c5550711f4",
+      "date": "2022-01-03T20:59:30+01:00",
+      "subject": "[Rd] \"getOption(max.print) omitted %d entries\" may be negative",
+      "subject_clean": "\"getOption(max.print) omitted %d entries\" may be negative",
+      "in_reply_to": "<25043.12072.659723.752755@stat.math.ethz.ch>",
+      "references": [
+        "<CAJmOi+MFUrn+hx9PVj1ALWwMFPq518dTYGPDToqF92TB4w9xgw@mail.gmail.com>",
+        "<25043.12072.659723.752755@stat.math.ethz.ch>"
+      ],
+      "body_plain": "On 1/3/22 6:15 PM, Martin Maechler wrote:\n>>>>>> Hugh Parsonage\n>>>>>>      on Wed, 29 Dec 2021 00:36:51 +1100 writes:\n>      > In src/main/printvector.c in the definition of printVector and\n>      > printNamedVector  (and elsewhere):\n>\n>      > Rprintf(\" [ reached getOption(\\\"max.print\\\") -- omitted %d entries ]\\n\",\n>      >         n - n_pr);\n>\n>      > Though n - n_pr is of type R_xlen_t so may not be representable as\n>      > int. In practice negative values may be observed for long vectors.\n>\n>      > Rprintf(\" [ reached getOption(\\\"max.print\\\") -- omitted %lld entries ]\\n\",\n>      >         n - n_pr);\n>\n>\n> Thank you Hugh, for finding and reporting this,\n> including a proposed remedy.\n>\n> At some point in time, I think the   %lld   format specifier was\n> not portable enough to all versions of C compiler / libraries\n> that were considered valid for compiling R.\n>\n> See e.g.,\n>\n>     https://stackoverflow.com/questions/462345/format-specifier-for-long-long\n>\n> which says that \"it\" does not work on Windows.\n>\n> Maybe this has changed now that we require C99 and also that\n> since R version 4.0.0 (or 4.0.1) we also use a somewhat more\n> recent version of gcc also on Windows?\n>\n> ... ah, searching the R sources reveals uses of %lld\n> *plus*\n>\n> #ifdef Win32\n> #include <trioremap.h> /* for %lld */\n> #endif\n>\n> so it seems we can and should probably change this ...\n\nUCRT on Windows supports the C99 format, so %lld works, but there is a \nbug in GCC which causes a compilation warning to appear for %lld.\n\nThere is an open GCC bug report with a patch. It has not been adopted, \nyet, but I got reviews from two people and patched the build of GCC in \nRtools42. So, %lld etc now works without a warning for us on Windows and \ncertainly can be used in package code.\nhttps://gcc.gnu.org/bugzilla/show_bug.cgi?id=95130\n\nFor base R, as we have been using the trio remap to get rid of the \nwarning with %lld, it would make sense to keep doing this for \nconsistency. Eventually we might be able to remove the dependency on \ntrio, after checking that the other problems due to which we use it have \nbeen resolved in UCRT.\n\nTomas\n\n>\n> [Please, C  compiler / library standard experts, chime in !]\n>\n> Martin Maechler\n> ETH Zurich  and  R core team\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On 1/3/22 6:15 PM, Martin Maechler wrote:\n>>>>>> Hugh Parsonage\n>>>>>>      on Wed, 29 Dec 2021 00:36:51 +1100 writes:\n>      > In src/main/printvector.c in the definition of printVector and\n>      > ",
+      "thread_id": "thread-d192e0f76fb8",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-1ba07d51832f",
+      "message_id": "<018301d800e2$65064bf0$2f12e3d0$@verizon.net>",
+      "from_name": "Avi Gross",
+      "from_email_hash": "d15d515a9b2e56b9091a72b709d627f99458fcd101f28b94c3ef620cf9b37e15",
+      "date": "2022-01-03T15:42:16-05:00",
+      "subject": "[Rd] A patchwork indeed",
+      "subject_clean": "A patchwork indeed",
+      "in_reply_to": null,
+      "references": [
+        "<018301d800e2$65064bf0$2f12e3d0$.ref@verizon.net>"
+      ],
+      "body_plain": "Let me be clear up front that I do not want to start any major discussions,\nmerely to share some observations.\n\n \n\nWe discussed at length what it would mean if R was extended to allow a plus\nsign to concatenate text when the operands were both of the right types that\nmade sense for the purpose so that, as in a language like Python:\n\n \n\n                \"Hello \" + \"World!\"\n\n \n\nwould result in the obvious concatenation and not as an error. It might be a\nway to call perhaps a limited functionality of paste0() as an example. \n\n \n\nSo, I was studying an R package called patchwork and looking at it from a\nperspective in that it slightly extends the way ggplot uses the plus sign\nwhen applied to objects of certain classes. Patchwork does allow something\nlike some form of (many types) of graphic objects to be displayed left to\nright (or in a grid) by just typing \n\np1 + p2 + p3\n\n \n\nBUT it goes a bit nuts and overlays lots of operators so that:\n\n \n\n                (p1 | p2) / p3\n\n \n\nresults in the first two taking up half each of a top row and the third in\nthe next row and wide. You can of course make all kinds of adjustments but\nthe point is that those symbols are in a sense overlaid from their default\nmeanings. there is also a meaning (a tad obscure) for a unary negative sign\nas in\n\n- p1 \n\n \n\nAnd, without explanation here, the symbols * and & also are used in new\nways. \n\n \n\nI note the obvious that the normal precedence rules in R for these\nsymbols/operators are NOT changed so you often need to use extra levels of\nparentheses to guarantee the order of evaluation.\n\n \n\nClearly anyone reading your code that has not thoroughly read the manual for\nthe package will be even more mystified than people are about ggplot and the\nplus sign, or the pipe symbols used in the tidyverse and even the new one\nnow in base R. \n\n \n\nBut my point is that it looks like doing it is quite possible and small\nisolated worlds can benefit from the notational simplicity. Having said\nthat, this package also allows you to bypass all of this and use more\nstandard functions that generally get you the same results. Since\nmanipulating graphs and subgraphs generally does not require combining the\nabove symbols alongside their other normal usage, this may look harmless and\nif you come from languages that routinely allow operators to be overloaded\nor polymorphic, looks fine.\n\n \n\nI am providing this info, not to make a case for doing anything but to ask\nif it makes sense to document acceptable methods for others, perhaps using\ntheir own created objects, to do such effects.\n\n \n\nIn case anyone is curious, start here for a sort of tutorial:\n\n \n\nhttps://patchwork.data-imaginist.com/\n\n \n\nAgain, not advocating, just providing an example, no doubt among many\nothers, where R is used in an extended way that can be useful. But of course\nmoving R to be fully object-oriented in the same way as some other specific\nlanguage is not a valid goal.\n\n \n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Let me be clear up front that I do not want to start any major discussions,\nmerely to share some observations.\n\n \n\nWe discussed at length what it would mean if R was extended to allow a plus\nsign to c",
+      "thread_id": "thread-1ba07d51832f",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-34f13212d408",
+      "message_id": "<BN8PR04MB6241FCAA6D228F3CB00991B5F94A9@BN8PR04MB6241.namprd04.prod.outlook.com>",
+      "from_name": "Martin Morgan",
+      "from_email_hash": "d080adfe7101b99b22e855cb1d7ac6c0d6f5df67ab6766563004f45a9ceeed59",
+      "date": "2022-01-04T19:35:30Z",
+      "subject": "[Rd] gsub() hex character range problems in R-devel?",
+      "subject_clean": "gsub() hex character range problems in R-devel?",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I'm not very good at character encoding / etc so this might be user error. The following code is meant to replace extended ASCII characters, in particular a non-breaking space, with \"\", and it works in R-4-1-branch\n\n> R.version.string\n[1] \"R version 4.1.2 Patched (2022-01-04 r81445)\"\n> gsub(\"[\\x7f-\\xff]\", \"\", \"fo\\xa0o\")\n[1] \"foo\"\n\nbut fails in R-devel\n\n> R.version.string\n[1] \"R Under development (unstable) (2022-01-04 r81445)\"\n> gsub(\"[\\x7f-\\xff]\", \"\", \"fo\\xa0o\")\nError in gsub(\"[\\177-\\xff]\", \"\", \"fo\\xa0o\") : invalid regular expression '[-?]', reason 'Invalid character range'\nIn addition: Warning message:\nIn gsub(\"[\\177-\\xff]\", \"\", \"fo\\xa0o\") :\n  TRE pattern compilation error 'Invalid character range'\n\nThere are other oddities, too, like\n\n> gsub(\"[[:alnum:]]\", \"\", \"fo\\xa0o\")  # R-4-1-branch\n[1] \"\\xfc\\xbe\\x8c\\x86\\x84\\xbc\"\n\n> gsub(\"[[:alnum:]]\", \"\", \"fo\\xa0o\")  # R-devel\n[1] \"<>\"\n\nThe R-devel sessionInfo is\n\n> sessionInfo()\nR Under development (unstable) (2022-01-04 r81445)\nPlatform: x86_64-apple-darwin19.6.0 (64-bit)\nRunning under: macOS Catalina 10.15.7\n\nMatrix products: default\nBLAS:   /Users/ma38727/bin/R-devel/lib/libRblas.dylib\nLAPACK: /Users/ma38727/bin/R-devel/lib/libRlapack.dylib\n\nlocale:\n[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8\n\nattached base packages:\n[1] stats     graphics  grDevices utils     datasets  methods   base\n\nloaded via a namespace (and not attached):\n[1] compiler_4.2.0\n\n(I have built my own R on macOS; similar behavior is observed on a Linux machine)\n\nAny hints welcome,\n\nMartin Morgan",
+      "body_snippet": "I'm not very good at character encoding / etc so this might be user error. The following code is meant to replace extended ASCII characters, in particular a non-breaking space, with \"\", and it works i",
+      "thread_id": "thread-34f13212d408",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-6672abbd9609",
+      "message_id": "<1523321191.1706512.1641347661397@mail.yahoo.com>",
+      "from_name": "Brodie Gaslam",
+      "from_email_hash": "671f5402c186de5945c34deb8b8157b8adc470325b32745c09602547421baa39",
+      "date": "2022-01-05T01:54:21Z",
+      "subject": "[Rd] gsub() hex character range problems in R-devel?",
+      "subject_clean": "gsub() hex character range problems in R-devel?",
+      "in_reply_to": "<BN8PR04MB6241FCAA6D228F3CB00991B5F94A9@BN8PR04MB6241.namprd04.prod.outlook.com>",
+      "references": [
+        "<BN8PR04MB6241FCAA6D228F3CB00991B5F94A9@BN8PR04MB6241.namprd04.prod.outlook.com>"
+      ],
+      "body_plain": "> On Tuesday, January 4, 2022, 02:35:50 PM EST, Martin Morgan <mtmorgan.bioc at gmail.com> wrote:\n>\n> I'm not very good at character encoding / etc so this might be user\n> error. The following code is meant to replace extended ASCII characters,\n> in particular a non-breaking space, with \"\", and it works in\n> R-4-1-branch\n\nMartin,\n\nI'm (obviously) not R-Core, so you should take whatever I say with a grain\nof salt.? Nonetheless I have run into a similar issue as you, and my\nassessment is that the behavior in R-4-1-2 is due to a bug that was fixed\nwith -r81103 for R-devel only.? It only appears more correct due to\nhappenstance and \"surprising\" (at least to me) behavior from the\n\"corrected\" code.\n\nBut before I get into the details, I'd be remiss not to add some warnings\nabout using arbitrary bytes in strings as you do here.? The strings in\nyour examples are not marked:\n\n??? Encoding(\"fo\\xa0o\")\n??? [1] \"unknown\"\n\nThis means internals may interpret them as being in native encoding (UTF-8\nin your case, in which your string is invalid).? If you want to use byte\noperations you should mark your strings as \"bytes\" / use the \"useBytes\"\nparameter to the functions in question (and assume all the consequences of\ngenerating invalid encodings), or even better translate the string from its\nactual encoding to your encoding.? For your case assuming you have\nISO-8859-1 encoding (I'm just guessing) I would do:\n\n??? x <- \"fo\\xa0o\"\n??? y <- iconv(x, \"ISO-8859-1\", \"UTF-8\")\n??? gsub(\"\\ua0\", \"\", y)\n??? [1] \"foo\"\n\nYou could also just have marked your string as \"latin1\" as for 0xA0 it is\nthe same as ISO-8859-1 and gotten the same result without `iconv`, but the\n`iconv` solution is more general.\n\nI'll address the two examples in reverse order as the first one\nis more obvious.\n\n> > gsub(\"[[:alnum:]]\", \"\", \"fo\\xa0o\")? # R-4-1-branch\n> [1] \"\\xfc\\xbe\\x8c\\x86\\x84\\xbc\"\n>\n> > gsub(\"[[:alnum:]]\", \"\", \"fo\\xa0o\")? # R-devel\n> [1] \"<>\"\n\nThe result in the 4-1 contains bytes not present in the input.? Clearly\nthis cannot be correct.? R-devel is \"correct\" if you account for the\nsurprising (to me) behavior that invalid bytes in UTF-8 interpreted\nstrings may be escaped in pre-processing.? This is roughly what's\nhappening:\n\n??? \"fo\\xa0o\" -> \"fo<a0>o\" -> gsub(\"[[:alnum:]]\", \"\", \"fo<a0>o\") -> \"<>\"\n\nWhere \"<a0>\" is the escaped version of the \"\\xa0\".? It's clearer if you do\n(R-devel):\n\n??? gsub(\"f\", \"\", \"fo\\xa0o\")\n??? [1] \"o<a0>o\"\n\nI do think this \"correct\" behavior would be better as an error or at a\nminimum a warning, and hopefully this is something that will change in the\nfuture.\n\n> > R.version.string\n> [1] \"R version 4.1.2 Patched (2022-01-04 r81445)\"\n> > gsub(\"[\\x7f-\\xff]\", \"\", \"fo\\xa0o\")\n> [1] \"foo\"\n>\n> but fails in R-devel\n> > R.version.string\n> [1] \"R Under development (unstable) (2022-01-04 r81445)\"\n> > gsub(\"[\\x7f-\\xff]\", \"\", \"fo\\xa0o\")\n> Error in gsub(\"[\\177-\\xff]\", \"\", \"fo\\xa0o\") : invalid regular expression '[-?]', reason 'Invalid character range'\n> In addition: Warning message:\n> In gsub(\"[\\177-\\xff]\", \"\", \"fo\\xa0o\") :\n>?? TRE pattern compilation error 'Invalid character range'\n\nThis one is pretty interesting.? The same bug persists, but because it\naffects both the pattern and the string to manipulate the bugs cancel out.\nIf you look at what's happening internally in R-4-1, the range \"\\x7f-\\xff\"\nis translated to \"\\u7f-\\U{3e66663c}\", but \"fo\\xa0o\" is also translated to\n\"fo\\U{3e30613c}o\", so it happens to work.\n\nWhy \"\\U{3e66663c}\"?? Well, it's really 3e 66 66 3c, which the code\nintended to have interpreted as < f f >.? In ASCII encoding, we have 3e =\n<, 66 = f, 3c = >.? So the intent was to write out \"<ff>\", the 4 character\nescape for the single byte \"\\xff\".? Instead, the 4 bytes are written into\na single wchar_t (on systems with 32bit wchar_t) and interpreted as that\ncode point.\n\nIn little-endian machines like ours, the double cancellation does not\nalways work as seen in R-4-1-2:\n\n??? gsub(\"[\\x7f-\\xab]\", \"\",? \"\\xab\")\n??? ## [1] \"\"\n??? gsub(\"[\\x7f-\\xba]\", \"\",? \"\\xab\")? # changed end to be \\xba\n??? ## [1] \"\\xab\"\n\nOne would expect the second range to still capture the character, but\nbecause wchar_t is interpreted little endian the order of the \"a\" and \"b\"\nwritten into the wchar_t is opposite of what is desired.? So it would not\nbe possible to leave the bug in (even if it didn't cause other issues) on\nthe grounds it cancels itself out.\n\nWith the patch applied in R-devel, the range \"[\\x7f-\\xff]\" becomes\n\"[\\x7f-<ff>]\", which is invalid because \"<\" has a lower code point that\n\"\\x7f\".? Here the fix exposes the \"surprisingness\" of the current\nbehavior.\n\nAlthough again, you can currently side-step all this simply by\nconverting everything into valid encodings and avoiding bytes\nmanipulation, or doing everything very carefully explicitly with \"bytes\"\nmarked strings and \"useBytes=TRUE\".\n\nBest,\n\nB.\n\n> The R-devel sessionInfo is\n>\n> > sessionInfo()\n> R Under development (unstable) (2022-01-04 r81445)\n> Platform: x86_64-apple-darwin19.6.0 (64-bit)\n> Running under: macOS Catalina 10.15.7\n>\n> Matrix products: default\n> BLAS:? /Users/ma38727/bin/R-devel/lib/libRblas.dylib\n> LAPACK: /Users/ma38727/bin/R-devel/lib/libRlapack.dylib\n>\n> locale:\n> [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8\n>\n> attached base packages:\n> [1] stats??? graphics? grDevices utils??? datasets? methods? base\n>\n> loaded via a namespace (and not attached):\n> [1] compiler_4.2.0\n>\n> (I have built my own R on macOS; similar behavior is observed on a Linux machine)\n>\n> Any hints welcome,\n>\n> Martin Morgan\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>",
+      "body_snippet": "> On Tuesday, January 4, 2022, 02:35:50 PM EST, Martin Morgan <mtmorgan.bioc at gmail.com> wrote:\n>\n> I'm not very good at character encoding / etc so this might be user\n> error. The following code is",
+      "thread_id": "thread-34f13212d408",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-31860a3a6c6b",
+      "message_id": "<04c065e3-8f53-0233-55c5-a8ce510bd47f@gmail.com>",
+      "from_name": "Tomas Kalibera",
+      "from_email_hash": "7af110c9340339e5307bd348f1ec524e2fd1c8f104d583e9993022c5550711f4",
+      "date": "2022-01-05T10:17:01+01:00",
+      "subject": "[Rd] gsub() hex character range problems in R-devel?",
+      "subject_clean": "gsub() hex character range problems in R-devel?",
+      "in_reply_to": "<BN8PR04MB6241FCAA6D228F3CB00991B5F94A9@BN8PR04MB6241.namprd04.prod.outlook.com>",
+      "references": [
+        "<BN8PR04MB6241FCAA6D228F3CB00991B5F94A9@BN8PR04MB6241.namprd04.prod.outlook.com>"
+      ],
+      "body_plain": "Hi Martin,\n\nI'd add few comments to the excellent analysis of Brodie.\n\n- \\xhh is allowed and defined in Perl regular expressions, see ?regex \n(would need perl=TRUE), but to enter that in an R string, you need to \nescape the backslash.\n\n- \\xhh is not defined by POSIX for extended regular expressions, neither \nit is documented in ?regex for those; TRE supports it, but still \nportable programs should not rely on that\n\n- literal \\xhh in an R string is turned to the byte by R, but I would \nsay this should not be used at all by users, because the result is \nencoding specific\n\n- use of \\u and \\U in an R string is fine, it has well defined semantics \nand the corresponding string will then be flagged UTF-8 in R (so e.g. \n\\ua0 is fine to represent the Unicode no-break space)\n\n- see caveats of using character ranges with POSIX extended regular \nexpressions in ?regex re encodings, using Perl regular expressions in \nUTF-8 mode is more reliable for those\n\nSo, a variant of your example might be:\n\n > gsub(\"[\\\\x7f-\\\\xff]\", \"\", \"fo\\ua0o\", perl=TRUE)\n[1] \"foo\"\n\n(note that the \\ua0 ensures that the text is UTF-8, and hence the UTF-8 \nmode for regular expressions is used, ?regex has more)\n\nHowever, I think it is better to formulate regular expressions to cover \nall of Unicode, so do something like e.g. \"only keep ASCII digits, ASCII \nspace, ASCII underscore, but remove all other characters\".\n\nBest\nTomas\n\nOn 1/4/22 8:35 PM, Martin Morgan wrote:\n\n> I'm not very good at character encoding / etc so this might be user error. The following code is meant to replace extended ASCII characters, in particular a non-breaking space, with \"\", and it works in R-4-1-branch\n>\n>> R.version.string\n> [1] \"R version 4.1.2 Patched (2022-01-04 r81445)\"\n>> gsub(\"[\\x7f-\\xff]\", \"\", \"fo\\xa0o\")\n> [1] \"foo\"\n>\n> but fails in R-devel\n>\n>> R.version.string\n> [1] \"R Under development (unstable) (2022-01-04 r81445)\"\n>> gsub(\"[\\x7f-\\xff]\", \"\", \"fo\\xa0o\")\n> Error in gsub(\"[\\177-\\xff]\", \"\", \"fo\\xa0o\") : invalid regular expression '[-?]', reason 'Invalid character range'\n> In addition: Warning message:\n> In gsub(\"[\\177-\\xff]\", \"\", \"fo\\xa0o\") :\n>    TRE pattern compilation error 'Invalid character range'\n>\n> There are other oddities, too, like\n>\n>> gsub(\"[[:alnum:]]\", \"\", \"fo\\xa0o\")  # R-4-1-branch\n> [1] \"\\xfc\\xbe\\x8c\\x86\\x84\\xbc\"\n>\n>> gsub(\"[[:alnum:]]\", \"\", \"fo\\xa0o\")  # R-devel\n> [1] \"<>\"\n>\n> The R-devel sessionInfo is\n>\n>> sessionInfo()\n> R Under development (unstable) (2022-01-04 r81445)\n> Platform: x86_64-apple-darwin19.6.0 (64-bit)\n> Running under: macOS Catalina 10.15.7\n>\n> Matrix products: default\n> BLAS:   /Users/ma38727/bin/R-devel/lib/libRblas.dylib\n> LAPACK: /Users/ma38727/bin/R-devel/lib/libRlapack.dylib\n>\n> locale:\n> [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8\n>\n> attached base packages:\n> [1] stats     graphics  grDevices utils     datasets  methods   base\n>\n> loaded via a namespace (and not attached):\n> [1] compiler_4.2.0\n>\n> (I have built my own R on macOS; similar behavior is observed on a Linux machine)\n>\n> Any hints welcome,\n>\n> Martin Morgan\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Hi Martin,\n\nI'd add few comments to the excellent analysis of Brodie.\n\n- \\xhh is allowed and defined in Perl regular expressions, see ?regex \n(would need perl=TRUE), but to enter that in an R string, ",
+      "thread_id": "thread-34f13212d408",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-3f54fcb849ae",
+      "message_id": "<BN8PR04MB6241C3B0400F5E25DA88C629F94C9@BN8PR04MB6241.namprd04.prod.outlook.com>",
+      "from_name": "Martin Morgan",
+      "from_email_hash": "d080adfe7101b99b22e855cb1d7ac6c0d6f5df67ab6766563004f45a9ceeed59",
+      "date": "2022-01-06T16:47:31Z",
+      "subject": "[Rd] gsub() hex character range problems in R-devel?",
+      "subject_clean": "gsub() hex character range problems in R-devel?",
+      "in_reply_to": "<04c065e3-8f53-0233-55c5-a8ce510bd47f@gmail.com>",
+      "references": [
+        "<BN8PR04MB6241FCAA6D228F3CB00991B5F94A9@BN8PR04MB6241.namprd04.prod.outlook.com>",
+        "<04c065e3-8f53-0233-55c5-a8ce510bd47f@gmail.com>"
+      ],
+      "body_plain": "Thanks Tomas and 'Brodie' for your expert explanation; it provides great help in understanding and solving my immediate problem.\n\nThomas' observation to 'do something like e.g. \"only keep ASCII digits, ASCII space, ASCII underscore, but remove all other characters\"' points to a basic weakness in the code I'm looking at. E.g., removing non-breaking space is probably not appropriate ('foo\\ua0bar' is probably cleaned to 'foo bar' and not 'foobar'). And more generally other non-ASCII characters ('fancy' quotes, em-dashes, ...) would require special treatment. It seems like the right thing to do is to handle the raw data in its original encoding, rather than to try to clean it to ASCII.\n\nMartin\n\n?On 1/5/22, 4:17 AM, \"Tomas Kalibera\" <tomas.kalibera at gmail.com> wrote:\n\n    Hi Martin,\n\n    I'd add few comments to the excellent analysis of Brodie.\n\n    - \\xhh is allowed and defined in Perl regular expressions, see ?regex \n    (would need perl=TRUE), but to enter that in an R string, you need to \n    escape the backslash.\n\n    - \\xhh is not defined by POSIX for extended regular expressions, neither \n    it is documented in ?regex for those; TRE supports it, but still \n    portable programs should not rely on that\n\n    - literal \\xhh in an R string is turned to the byte by R, but I would \n    say this should not be used at all by users, because the result is \n    encoding specific\n\n    - use of \\u and \\U in an R string is fine, it has well defined semantics \n    and the corresponding string will then be flagged UTF-8 in R (so e.g. \n    \\ua0 is fine to represent the Unicode no-break space)\n\n    - see caveats of using character ranges with POSIX extended regular \n    expressions in ?regex re encodings, using Perl regular expressions in \n    UTF-8 mode is more reliable for those\n\n    So, a variant of your example might be:\n\n     > gsub(\"[\\\\x7f-\\\\xff]\", \"\", \"fo\\ua0o\", perl=TRUE)\n    [1] \"foo\"\n\n    (note that the \\ua0 ensures that the text is UTF-8, and hence the UTF-8 \n    mode for regular expressions is used, ?regex has more)\n\n    However, I think it is better to formulate regular expressions to cover \n    all of Unicode, so do something like e.g. \"only keep ASCII digits, ASCII \n    space, ASCII underscore, but remove all other characters\".\n\n    Best\n    Tomas\n\n    On 1/4/22 8:35 PM, Martin Morgan wrote:\n\n    > I'm not very good at character encoding / etc so this might be user error. The following code is meant to replace extended ASCII characters, in particular a non-breaking space, with \"\", and it works in R-4-1-branch\n    >\n    >> R.version.string\n    > [1] \"R version 4.1.2 Patched (2022-01-04 r81445)\"\n    >> gsub(\"[\\x7f-\\xff]\", \"\", \"fo\\xa0o\")\n    > [1] \"foo\"\n    >\n    > but fails in R-devel\n    >\n    >> R.version.string\n    > [1] \"R Under development (unstable) (2022-01-04 r81445)\"\n    >> gsub(\"[\\x7f-\\xff]\", \"\", \"fo\\xa0o\")\n    > Error in gsub(\"[\\177-\\xff]\", \"\", \"fo\\xa0o\") : invalid regular expression '[-?]', reason 'Invalid character range'\n    > In addition: Warning message:\n    > In gsub(\"[\\177-\\xff]\", \"\", \"fo\\xa0o\") :\n    >    TRE pattern compilation error 'Invalid character range'\n    >\n    > There are other oddities, too, like\n    >\n    >> gsub(\"[[:alnum:]]\", \"\", \"fo\\xa0o\")  # R-4-1-branch\n    > [1] \"\\xfc\\xbe\\x8c\\x86\\x84\\xbc\"\n    >\n    >> gsub(\"[[:alnum:]]\", \"\", \"fo\\xa0o\")  # R-devel\n    > [1] \"<>\"\n    >\n    > The R-devel sessionInfo is\n    >\n    >> sessionInfo()\n    > R Under development (unstable) (2022-01-04 r81445)\n    > Platform: x86_64-apple-darwin19.6.0 (64-bit)\n    > Running under: macOS Catalina 10.15.7\n    >\n    > Matrix products: default\n    > BLAS:   /Users/ma38727/bin/R-devel/lib/libRblas.dylib\n    > LAPACK: /Users/ma38727/bin/R-devel/lib/libRlapack.dylib\n    >\n    > locale:\n    > [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8\n    >\n    > attached base packages:\n    > [1] stats     graphics  grDevices utils     datasets  methods   base\n    >\n    > loaded via a namespace (and not attached):\n    > [1] compiler_4.2.0\n    >\n    > (I have built my own R on macOS; similar behavior is observed on a Linux machine)\n    >\n    > Any hints welcome,\n    >\n    > Martin Morgan\n    > ______________________________________________\n    > R-devel at r-project.org mailing list\n    > https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Thanks Tomas and 'Brodie' for your expert explanation; it provides great help in understanding and solving my immediate problem.\n\nThomas' observation to 'do something like e.g. \"only keep ASCII digits",
+      "thread_id": "thread-34f13212d408",
+      "thread_depth": 2,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-a0af8d03879e",
+      "message_id": "<25049.44922.461214.439279@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2022-01-08T16:36:26+01:00",
+      "subject": "[Rd] \"getOption(max.print) omitted %d entries\" may be negative",
+      "subject_clean": "\"getOption(max.print) omitted %d entries\" may be negative",
+      "in_reply_to": "<fe5e0663-1827-8045-7aee-6b87e9c140ac@gmail.com>",
+      "references": [
+        "<CAJmOi+MFUrn+hx9PVj1ALWwMFPq518dTYGPDToqF92TB4w9xgw@mail.gmail.com>",
+        "<25043.12072.659723.752755@stat.math.ethz.ch>",
+        "<fe5e0663-1827-8045-7aee-6b87e9c140ac@gmail.com>"
+      ],
+      "body_plain": ">>>>> Tomas Kalibera \n>>>>>     on Mon, 3 Jan 2022 20:59:30 +0100 writes:\n\n    > On 1/3/22 6:15 PM, Martin Maechler wrote:\n    >>>>>>> Hugh Parsonage on Wed, 29 Dec 2021 00:36:51 +1100\n    >>>>>>> writes:\n    >> > In src/main/printvector.c in the definition of\n    >> printVector and > printNamedVector (and elsewhere):\n    >> \n    >> > Rprintf(\" [ reached getOption(\\\"max.print\\\") -- omitted\n    >> %d entries ]\\n\", > n - n_pr);\n    >> \n    >> > Though n - n_pr is of type R_xlen_t so may not be\n    >> representable as > int. In practice negative values may\n    >> be observed for long vectors.\n    >> \n    >> > Rprintf(\" [ reached getOption(\\\"max.print\\\") -- omitted\n    >> %lld entries ]\\n\", > n - n_pr);\n    >> \n    >> \n    >> Thank you Hugh, for finding and reporting this, including\n    >> a proposed remedy.\n    >> \n    >> At some point in time, I think the %lld format specifier\n    >> was not portable enough to all versions of C compiler /\n    >> libraries that were considered valid for compiling R.\n    >> \n    >> See e.g.,\n    >> \n    >> https://stackoverflow.com/questions/462345/format-specifier-for-long-long\n    >> \n    >> which says that \"it\" does not work on Windows.\n    >> \n    >> Maybe this has changed now that we require C99 and also\n    >> that since R version 4.0.0 (or 4.0.1) we also use a\n    >> somewhat more recent version of gcc also on Windows?\n    >> \n    >> ... ah, searching the R sources reveals uses of %lld\n    >> *plus*\n    >> \n    >> #ifdef Win32 #include <trioremap.h> /* for %lld */ #endif\n    >> \n    >> so it seems we can and should probably change this ...\n\n    > UCRT on Windows supports the C99 format, so %lld works,\n    > but there is a bug in GCC which causes a compilation\n    > warning to appear for %lld.\n\n    > There is an open GCC bug report with a patch. It has not\n    > been adopted, yet, but I got reviews from two people and\n    > patched the build of GCC in Rtools42. So, %lld etc now\n    > works without a warning for us on Windows and certainly\n    > can be used in package code.\n    > https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95130\n\n    > For base R, as we have been using the trio remap to get\n    > rid of the warning with %lld, it would make sense to keep\n    > doing this for consistency. Eventually we might be able to\n    > remove the dependency on trio, after checking that the\n    > other problems due to which we use it have been resolved\n    > in UCRT.\n\n    > Tomas\n\nI have committed changes now (svn r81459), using %lld as mentioned above,\nalso including  trioremap.h  for Windows,\nnot just for printing long unnamed atomic vectors, but also in\nthe code for printing named vectors and \"generic vectors\" aka\nlists.... which previously did not allow long vectors at all,\nusing `length() and `int` before.\n\nI've set it as to be ported to  \"R 4.1.2 patched\" eventually.\nMartin\n\n\n\n\n    >> \n    >> [Please, C compiler / library standard experts, chime in\n    >> !]\n    >> \n    >> Martin Maechler ETH Zurich and R core team",
+      "body_snippet": ">>>>> Tomas Kalibera \n>>>>>     on Mon, 3 Jan 2022 20:59:30 +0100 writes:\n\n    > On 1/3/22 6:15 PM, Martin Maechler wrote:\n    >>>>>>> Hugh Parsonage on Wed, 29 Dec 2021 00:36:51 +1100\n    >>>>>>> wri",
+      "thread_id": "thread-d192e0f76fb8",
+      "thread_depth": 2,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-3151159de796",
+      "message_id": "<7150b64c-c139-1421-9ba2-1a297dc32ac9@gmail.com>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2022-01-09T16:39:43-05:00",
+      "subject": "[Rd] documentation patch for as.formula → reformulate",
+      "subject_clean": "documentation patch for as.formula → reformulate",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "There was some discussion on twitter about the fact that the manual \npage for as.formula() doesn't mention reformulate(), and indeed the last \nexample is\n\n## Create a formula for a model with a large number of variables:\n      xnam <- paste0(\"x\", 1:25)\n      (fmla <- as.formula(paste(\"y ~ \", paste(xnam, collapse= \"+\"))))\n\n\nwhich could arguably be better done as\n\n   reformulate(xname, response = \"y\")\n\n   I've attached a documentation patch that adds the alternative version \nand a \\seealso{} link.\n\n   Happy to submit to r-bugzilla if requested.\n\n   cheers\n    Ben Bolker\n\n-------------- next part --------------\nAn embedded and charset-unspecified text was scrubbed...\nName: reformulate_patch.txt\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20220109/f3266495/attachment.txt>",
+      "body_snippet": "There was some discussion on twitter about the fact that the manual \npage for as.formula() doesn't mention reformulate(), and indeed the last \nexample is\n\n## Create a formula for a model with a large ",
+      "thread_id": "thread-3151159de796",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-df3ece4b80ef",
+      "message_id": "<25051.63115.679473.229695@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2022-01-10T10:04:11+01:00",
+      "subject": "[Rd]  documentation patch for as.formula → reformulate",
+      "subject_clean": "documentation patch for as.formula → reformulate",
+      "in_reply_to": "<7150b64c-c139-1421-9ba2-1a297dc32ac9@gmail.com>",
+      "references": [
+        "<7150b64c-c139-1421-9ba2-1a297dc32ac9@gmail.com>"
+      ],
+      "body_plain": ">>>>> Ben Bolker   on Sun, 9 Jan 2022 16:39:43 -0500 writes:\n\n>    There was some discussion on twitter about the fact\n> that the manual page for as.formula() doesn't mention\n> reformulate(), and indeed the last example is\n\n> ## Create a formula for a model with a large number of\n> variables: xnam <- paste0(\"x\", 1:25) (fmla <-\n> as.formula(paste(\"y ~ \", paste(xnam, collapse= \"+\"))))\n\n\n> which could arguably be better done as\n\n>    reformulate(xname, response = \"y\")\n\n>    I've attached a documentation patch that adds the\n> alternative version and a \\seealso{} link.\n\n>    Happy to submit to r-bugzilla if requested.\n\n>    cheers Ben Bolker\n\nx[DELETED ATTACHMENT external:  reformulate_patch.txt, plain text]\n\nThanks a lot, Ben!\n\nI've committed (+-) it to R-devel as svn rev 81464\nMartin",
+      "body_snippet": ">>>>> Ben Bolker   on Sun, 9 Jan 2022 16:39:43 -0500 writes:\n\n>    There was some discussion on twitter about the fact\n> that the manual page for as.formula() doesn't mention\n> reformulate(), and inde",
+      "thread_id": "thread-3151159de796",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-7fdccbc7ef3c",
+      "message_id": "<66cd913b-233a-c9ea-1d48-e9192e408c1d@gmail.com>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2022-01-14T20:39:59-05:00",
+      "subject": "[Rd] partial matching of row names in [-indexing",
+      "subject_clean": "partial matching of row names in [-indexing",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "People are often surprised that row-indexing a data frame by [ + \ncharacter does partial matching (and annoyed that there is no way to \nturn it off:\n\nhttps://stackoverflow.com/questions/18033501/warning-when-partial-matching-rownames\n\nhttps://stackoverflow.com/questions/34233235/r-returning-partial-matching-of-row-names\n\nhttps://stackoverflow.com/questions/70716905/why-does-r-have-inconsistent-behaviors-when-a-non-existent-rowname-is-retrieved\n\n\n?\"[\" says:\n\nCharacter indices can in some circumstances be partially matched\n      (see ?pmatch?) to the names or dimnames of the object being\n      subsetted (but never for subassignment).  UNLIKE S (Becker et al_\n      p. 358), R NEVER USES PARTIAL MATCHING WHEN EXTRACTING BY ?[?, and\n      partial matching is not by default used by ?[[? (see argument\n      ?exact?).\n\n(EMPHASIS ADDED).\n\nLooking through the rest of that page, I don't see any other text that \nmodifies or supersedes that statement.\n\n   Is this a documentation bug?\n\nThe example given in one of the links above:\n\nb <- as.data.frame(matrix(4:5, ncol = 1, nrow = 2, dimnames = \nlist(c(\"A10\", \"B\"), \"V1\")))\n\nb[\"A1\",]  ## 4 (partial matching)\nb[rownames(b) == \"A1\",]  ## logical(0)\nb[\"A1\", , exact=TRUE]    ## unused argument error\nb$V1[[\"A1\"]] ## subscript out of bounds error\nb$V1[\"A1\"]   ## NA",
+      "body_snippet": "People are often surprised that row-indexing a data frame by [ + \ncharacter does partial matching (and annoyed that there is no way to \nturn it off:\n\nhttps://stackoverflow.com/questions/18033501/warni",
+      "thread_id": "thread-7fdccbc7ef3c",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-670c6d147cc0",
+      "message_id": "<CAP=dwz-tFm6eK1gd2xhU6ayjTK6jD0HNwG_52PrUwc2BjfvzAQ@mail.gmail.com>",
+      "from_name": "Steve Martin",
+      "from_email_hash": "af237b835f8f20d68728c964ae035e09d29fe9aa1ef1c15f13d24dc4e5a96079",
+      "date": "2022-01-14T21:19:16-05:00",
+      "subject": "[Rd] partial matching of row names in [-indexing",
+      "subject_clean": "partial matching of row names in [-indexing",
+      "in_reply_to": "<66cd913b-233a-c9ea-1d48-e9192e408c1d@gmail.com>",
+      "references": [
+        "<66cd913b-233a-c9ea-1d48-e9192e408c1d@gmail.com>"
+      ],
+      "body_plain": "I don't think this is a bug in the documentation. The help page for\n`?[.data.frame` has the following in the last paragraph of the\ndetails:\n\nBoth [ and [[ extraction methods partially match row names. By default\nneither partially match column names, but [[ will if exact = FALSE\n(and with a warning if exact = NA). If you want to exact matching on\nrow names use match, as in the examples.\n\nThe example it refers to is\n\nsw <- swiss[1:5, 1:4]  # select a manageable subset\nsw[\"C\", ] # partially matches\nsw[match(\"C\", row.names(sw)), ] # no exact match\n\nWhether this is good behaviour or not is a different question, but the\ndocumentation seems clear enough (to me, at least).\n\nBest,\nSteve\n\nOn Fri, 14 Jan 2022 at 20:40, Ben Bolker <bbolker at gmail.com> wrote:\n>\n>\n>    People are often surprised that row-indexing a data frame by [ +\n> character does partial matching (and annoyed that there is no way to\n> turn it off:\n>\n> https://stackoverflow.com/questions/18033501/warning-when-partial-matching-rownames\n>\n> https://stackoverflow.com/questions/34233235/r-returning-partial-matching-of-row-names\n>\n> https://stackoverflow.com/questions/70716905/why-does-r-have-inconsistent-behaviors-when-a-non-existent-rowname-is-retrieved\n>\n>\n> ?\"[\" says:\n>\n> Character indices can in some circumstances be partially matched\n>       (see ?pmatch?) to the names or dimnames of the object being\n>       subsetted (but never for subassignment).  UNLIKE S (Becker et al_\n>       p. 358), R NEVER USES PARTIAL MATCHING WHEN EXTRACTING BY ?[?, and\n>       partial matching is not by default used by ?[[? (see argument\n>       ?exact?).\n>\n> (EMPHASIS ADDED).\n>\n> Looking through the rest of that page, I don't see any other text that\n> modifies or supersedes that statement.\n>\n>    Is this a documentation bug?\n>\n> The example given in one of the links above:\n>\n> b <- as.data.frame(matrix(4:5, ncol = 1, nrow = 2, dimnames =\n> list(c(\"A10\", \"B\"), \"V1\")))\n>\n> b[\"A1\",]  ## 4 (partial matching)\n> b[rownames(b) == \"A1\",]  ## logical(0)\n> b[\"A1\", , exact=TRUE]    ## unused argument error\n> b$V1[[\"A1\"]] ## subscript out of bounds error\n> b$V1[\"A1\"]   ## NA\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "I don't think this is a bug in the documentation. The help page for\n`?[.data.frame` has the following in the last paragraph of the\ndetails:\n\nBoth [ and [[ extraction methods partially match row names.",
+      "thread_id": "thread-7fdccbc7ef3c",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-796f0ac7f486",
+      "message_id": "<a0af0044-b91f-e983-dda6-63288ff23707@gmail.com>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2022-01-14T21:54:56-05:00",
+      "subject": "[Rd] partial matching of row names in [-indexing",
+      "subject_clean": "partial matching of row names in [-indexing",
+      "in_reply_to": "<CAP=dwz-tFm6eK1gd2xhU6ayjTK6jD0HNwG_52PrUwc2BjfvzAQ@mail.gmail.com>",
+      "references": [
+        "<66cd913b-233a-c9ea-1d48-e9192e408c1d@gmail.com>",
+        "<CAP=dwz-tFm6eK1gd2xhU6ayjTK6jD0HNwG_52PrUwc2BjfvzAQ@mail.gmail.com>"
+      ],
+      "body_plain": "Makes sense if you realize that ?\"[\" only applies to *vector*, \n*list*, and *matrix* indexing and that data frames follow their own \nrules that are documented elsewhere ...\n\n   So yes, not a bug but I claim it's an infelicity. I might submit a \ndoc patch.\n\n  FWIW\n\nb[\"A1\",]\nas.matrix(b)[\"A1\",]\n\n  illustrates the difference.\n\n  thanks\n    Ben\n\n\nOn 1/14/22 9:19 PM, Steve Martin wrote:\n> I don't think this is a bug in the documentation. The help page for\n> `?[.data.frame` has the following in the last paragraph of the\n> details:\n> \n> Both [ and [[ extraction methods partially match row names. By default\n> neither partially match column names, but [[ will if exact = FALSE\n> (and with a warning if exact = NA). If you want to exact matching on\n> row names use match, as in the examples.\n> \n> The example it refers to is\n> \n> sw <- swiss[1:5, 1:4]  # select a manageable subset\n> sw[\"C\", ] # partially matches\n> sw[match(\"C\", row.names(sw)), ] # no exact match\n> \n> Whether this is good behaviour or not is a different question, but the\n> documentation seems clear enough (to me, at least).\n> \n> Best,\n> Steve\n> \n> On Fri, 14 Jan 2022 at 20:40, Ben Bolker <bbolker at gmail.com> wrote:\n>>\n>>\n>>     People are often surprised that row-indexing a data frame by [ +\n>> character does partial matching (and annoyed that there is no way to\n>> turn it off:\n>>\n>> https://stackoverflow.com/questions/18033501/warning-when-partial-matching-rownames\n>>\n>> https://stackoverflow.com/questions/34233235/r-returning-partial-matching-of-row-names\n>>\n>> https://stackoverflow.com/questions/70716905/why-does-r-have-inconsistent-behaviors-when-a-non-existent-rowname-is-retrieved\n>>\n>>\n>> ?\"[\" says:\n>>\n>> Character indices can in some circumstances be partially matched\n>>        (see ?pmatch?) to the names or dimnames of the object being\n>>        subsetted (but never for subassignment).  UNLIKE S (Becker et al_\n>>        p. 358), R NEVER USES PARTIAL MATCHING WHEN EXTRACTING BY ?[?, and\n>>        partial matching is not by default used by ?[[? (see argument\n>>        ?exact?).\n>>\n>> (EMPHASIS ADDED).\n>>\n>> Looking through the rest of that page, I don't see any other text that\n>> modifies or supersedes that statement.\n>>\n>>     Is this a documentation bug?\n>>\n>> The example given in one of the links above:\n>>\n>> b <- as.data.frame(matrix(4:5, ncol = 1, nrow = 2, dimnames =\n>> list(c(\"A10\", \"B\"), \"V1\")))\n>>\n>> b[\"A1\",]  ## 4 (partial matching)\n>> b[rownames(b) == \"A1\",]  ## logical(0)\n>> b[\"A1\", , exact=TRUE]    ## unused argument error\n>> b$V1[[\"A1\"]] ## subscript out of bounds error\n>> b$V1[\"A1\"]   ## NA\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nDr. Benjamin Bolker\nProfessor, Mathematics & Statistics and Biology, McMaster University\nDirector, School of Computational Science and Engineering\n(Acting) Graduate chair, Mathematics & Statistics",
+      "body_snippet": "Makes sense if you realize that ?\"[\" only applies to *vector*, \n*list*, and *matrix* indexing and that data frames follow their own \nrules that are documented elsewhere ...\n\n   So yes, not a bug but I",
+      "thread_id": "thread-7fdccbc7ef3c",
+      "thread_depth": 2,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-223610bd8f34",
+      "message_id": "<f03410$ha1nt1@ironport10.mayo.edu>",
+      "from_name": "Therneau, Terry M., Ph.D.",
+      "from_email_hash": "0df4ba795db07bfdd67dfdaa3c30ef6456663a5b0a916d95386922fedbe8ddbd",
+      "date": "2022-01-17T12:06:57-06:00",
+      "subject": "[Rd] compile failure for R-devel",
+      "subject_clean": "compile failure for R-devel",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I reran my usual steps to update R this AM, preparatory to doing checks on the rpart \npackage.? (I had made changes from Free to R_Free, requested by Brian R.)?? However, the \nprocess fails:\n\n ?svn up\ntools/rsync-recommended\n./configure\nmake\n\nThe make finishes with the following:\n\ngcc -I\"../../../../include\" -DNDEBUG -I../../../include -I../../../../src/include \n-DHAVE_CONFIG_H -I../../../../src/main -I/usr/local/include? -fvisibility=hidden -fpic? -g \n-O2? -c http.c -o http.o\ngcc -shared -L/usr/local/lib -o tools.so text.o init.o Rmd5.o md5.o signals.o install.o \ngetfmts.o http.o gramLatex.o gramRd.o pdscan.o\nmake[6]: Leaving directory '/usr/local/src/R-devel/src/library/tools/src'\nmake[5]: Leaving directory '/usr/local/src/R-devel/src/library/tools/src'\nmake[4]: Leaving directory '/usr/local/src/R-devel/src/library/tools'\nmake[4]: Entering directory '/usr/local/src/R-devel/src/library/tools'\ninstalling 'sysdata.rda'\nError: 'hashtab' is not an exported object from 'namespace:utils'\nExecution halted\nmake[4]: *** [../../../share/make/basepkg.mk:151: sysdata] Error 1\nmake[4]: Leaving directory '/usr/local/src/R-devel/src/library/tools'\nmake[3]: *** [Makefile:36: all] Error 2\nmake[3]: Leaving directory '/usr/local/src/R-devel/src/library/tools'\nmake[2]: *** [Makefile:37: R] Error 1\nmake[2]: Leaving directory '/usr/local/src/R-devel/src/library'\nmake[1]: *** [Makefile:28: R] Error 1\nmake[1]: Leaving directory '/usr/local/src/R-devel/src'\nmake: *** [Makefile:61: R] Error 1--\n\n-------\n > sessionInfo()\nR Under development (unstable) (2022-01-17 r81511)\nPlatform: x86_64-pc-linux-gnu (64-bit)\nRunning under: Ubuntu 20.04.3 LTS\n\nMatrix products: default\nBLAS:?? /usr/local/src/R-devel/lib/libRblas.so\nLAPACK: /usr/local/src/R-devel/lib/libRlapack.so\n\nlocale:\n ?[1] LC_CTYPE=en_US.UTF-8?????? LC_NUMERIC=C\n ?[3] LC_TIME=en_US.UTF-8??????? LC_COLLATE=C\n ?[5] LC_MONETARY=en_US.UTF-8??? LC_MESSAGES=en_US.UTF-8\n ?[7] LC_PAPER=en_US.UTF-8?????? LC_NAME=C\n ?[9] LC_ADDRESS=C?????????????? LC_TELEPHONE=C\n[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n\nattached base packages:\n[1] stats???? graphics? grDevices utils???? datasets? methods base\n\nloaded via a namespace (and not attached):\n[1] compiler_4.2.0\n >\n\nAny hints?\n\nTerry\n\nTerry M Therneau, PhD\nDepartment of Quantitative Health Sciences\nMayo Clinic\ntherneau at mayo.edu\n\n\"TERR-ree THUR-noh\"\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I reran my usual steps to update R this AM, preparatory to doing checks on the rpart \npackage.? (I had made changes from Free to R_Free, requested by Brian R.)?? However, the \nprocess fails:\n\n ?svn up",
+      "thread_id": "thread-223610bd8f34",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-f47f994660e4",
+      "message_id": "<9359157d-829c-9e87-d5e8-398cdf936dd7@gmail.com>",
+      "from_name": "Tomas Kalibera",
+      "from_email_hash": "7af110c9340339e5307bd348f1ec524e2fd1c8f104d583e9993022c5550711f4",
+      "date": "2022-01-17T19:08:34+01:00",
+      "subject": "[Rd] compile failure for R-devel",
+      "subject_clean": "compile failure for R-devel",
+      "in_reply_to": "<f03410$ha1nt1@ironport10.mayo.edu>",
+      "references": [
+        "<f03410$ha1nt1@ironport10.mayo.edu>"
+      ],
+      "body_plain": "On 1/17/22 7:06 PM, Therneau, Terry M., Ph.D. via R-devel wrote:\n> I reran my usual steps to update R this AM, preparatory to doing checks on the rpart\n> package.? (I had made changes from Free to R_Free, requested by Brian R.)?? However, the\n> process fails:\n\nMake distclean (or otherwise a fresh build) should resolve this.\n\nBest\nTomas\n\n>\n>   ?svn up\n> tools/rsync-recommended\n> ./configure\n> make\n>\n> The make finishes with the following:\n>\n> gcc -I\"../../../../include\" -DNDEBUG -I../../../include -I../../../../src/include\n> -DHAVE_CONFIG_H -I../../../../src/main -I/usr/local/include? -fvisibility=hidden -fpic? -g\n> -O2? -c http.c -o http.o\n> gcc -shared -L/usr/local/lib -o tools.so text.o init.o Rmd5.o md5.o signals.o install.o\n> getfmts.o http.o gramLatex.o gramRd.o pdscan.o\n> make[6]: Leaving directory '/usr/local/src/R-devel/src/library/tools/src'\n> make[5]: Leaving directory '/usr/local/src/R-devel/src/library/tools/src'\n> make[4]: Leaving directory '/usr/local/src/R-devel/src/library/tools'\n> make[4]: Entering directory '/usr/local/src/R-devel/src/library/tools'\n> installing 'sysdata.rda'\n> Error: 'hashtab' is not an exported object from 'namespace:utils'\n> Execution halted\n> make[4]: *** [../../../share/make/basepkg.mk:151: sysdata] Error 1\n> make[4]: Leaving directory '/usr/local/src/R-devel/src/library/tools'\n> make[3]: *** [Makefile:36: all] Error 2\n> make[3]: Leaving directory '/usr/local/src/R-devel/src/library/tools'\n> make[2]: *** [Makefile:37: R] Error 1\n> make[2]: Leaving directory '/usr/local/src/R-devel/src/library'\n> make[1]: *** [Makefile:28: R] Error 1\n> make[1]: Leaving directory '/usr/local/src/R-devel/src'\n> make: *** [Makefile:61: R] Error 1--\n>\n> -------\n>   > sessionInfo()\n> R Under development (unstable) (2022-01-17 r81511)\n> Platform: x86_64-pc-linux-gnu (64-bit)\n> Running under: Ubuntu 20.04.3 LTS\n>\n> Matrix products: default\n> BLAS:?? /usr/local/src/R-devel/lib/libRblas.so\n> LAPACK: /usr/local/src/R-devel/lib/libRlapack.so\n>\n> locale:\n>   ?[1] LC_CTYPE=en_US.UTF-8?????? LC_NUMERIC=C\n>   ?[3] LC_TIME=en_US.UTF-8??????? LC_COLLATE=C\n>   ?[5] LC_MONETARY=en_US.UTF-8??? LC_MESSAGES=en_US.UTF-8\n>   ?[7] LC_PAPER=en_US.UTF-8?????? LC_NAME=C\n>   ?[9] LC_ADDRESS=C?????????????? LC_TELEPHONE=C\n> [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n>\n> attached base packages:\n> [1] stats???? graphics? grDevices utils???? datasets? methods base\n>\n> loaded via a namespace (and not attached):\n> [1] compiler_4.2.0\n>   >\n>\n> Any hints?\n>\n> Terry\n>\n> Terry M Therneau, PhD\n> Department of Quantitative Health Sciences\n> Mayo Clinic\n> therneau at mayo.edu\n>\n> \"TERR-ree THUR-noh\"\n>\n>\n> \t[[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On 1/17/22 7:06 PM, Therneau, Terry M., Ph.D. via R-devel wrote:\n> I reran my usual steps to update R this AM, preparatory to doing checks on the rpart\n> package.? (I had made changes from Free to R_F",
+      "thread_id": "thread-223610bd8f34",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-e4f8e6ec0c15",
+      "message_id": "<f03410$ha221q@ironport10.mayo.edu>",
+      "from_name": "Therneau, Terry M., Ph.D.",
+      "from_email_hash": "0df4ba795db07bfdd67dfdaa3c30ef6456663a5b0a916d95386922fedbe8ddbd",
+      "date": "2022-01-17T12:46:06-06:00",
+      "subject": "[Rd] [EXTERNAL] Re:  compile failure for R-devel",
+      "subject_clean": "[EXTERNAL] Re:  compile failure for R-devel",
+      "in_reply_to": "<9359157d-829c-9e87-d5e8-398cdf936dd7@gmail.com>",
+      "references": [
+        "<f03410$ha1nt1@ironport10.mayo.edu>",
+        "<9359157d-829c-9e87-d5e8-398cdf936dd7@gmail.com>"
+      ],
+      "body_plain": "Thank you Tomas, this fixed the issue.\n\nOn 1/17/22 12:08 PM, Tomas Kalibera wrote:\n>\n> On 1/17/22 7:06 PM, Therneau, Terry M., Ph.D. via R-devel wrote:\n>> I reran my usual steps to update R this AM, preparatory to doing checks on the rpart\n>> package.? (I had made changes from Free to R_Free, requested by Brian R.)?? However, the\n>> process fails:\n>\n> Make distclean (or otherwise a fresh build) should resolve this.\n>\n> Best\n> Tomas\n>",
+      "body_snippet": "Thank you Tomas, this fixed the issue.\n\nOn 1/17/22 12:08 PM, Tomas Kalibera wrote:\n>\n> On 1/17/22 7:06 PM, Therneau, Terry M., Ph.D. via R-devel wrote:\n>> I reran my usual steps to update R this AM, p",
+      "thread_id": "thread-223610bd8f34",
+      "thread_depth": 2,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-d81015550d03",
+      "message_id": "<CAFDcVCSHDiQr6Ms9y6BA-HqTo3wXGh61zEJSXmiAJNLZaeLODw@mail.gmail.com>",
+      "from_name": "Henrik Bengtsson",
+      "from_email_hash": "4861a2b833132ccee758def2caa0ac4dc6bbdf1b2c4e2f28a1b1b8a43ceeb278",
+      "date": "2022-01-20T11:58:50-08:00",
+      "subject": "[Rd] partial matching of row names in [-indexing",
+      "subject_clean": "partial matching of row names in [-indexing",
+      "in_reply_to": "<a0af0044-b91f-e983-dda6-63288ff23707@gmail.com>",
+      "references": [
+        "<66cd913b-233a-c9ea-1d48-e9192e408c1d@gmail.com>",
+        "<CAP=dwz-tFm6eK1gd2xhU6ayjTK6jD0HNwG_52PrUwc2BjfvzAQ@mail.gmail.com>",
+        "<a0af0044-b91f-e983-dda6-63288ff23707@gmail.com>"
+      ],
+      "body_plain": "Although implicit, but what I don't think anyone has mentioned is that\nthe partial matching of row names only applies if the row name is\nuniquely matched, as in:\n\n> X <- data.frame(a=1:3, b=letters[1:3], row.names=c(\"A1\", \"B\", \"C\"))\n> X[\"A\", ]\n   a b\nA1 1 a\n\nIf it matches two or more rows, you get:\n\n> X <- data.frame(a=1:3, b=letters[1:3], row.names=c(\"A1\", \"A2\", \"C\"))\n> X[\"A\", ]\n    a    b\nNA NA <NA>\n\njust as you would get if there is no match:\n\n> X[\"A3\", ]\n    a    b\nNA NA <NA>\n\nSo, the current behavior is dependent on what the other similar row\nnames too, that is, what might work at one point, might break when new\ndata are added to the data frame.\n\nThis is a behavior that I think stems from someone thought it's handy\nwhile working interactively with data.frame:s interactively.  I think\nit's an error-prone property when it comes to production code (script,\npackages, and dynamic documents).  To me, this behavior should be\nphased out from R to avoid silent errors and false scientific results.\nIt's not clear to me how to best deprecate the partial matching,\nbecause of the default behavior of returning NA:s when there is no\nmatch.  This means it can't be just a warning or an error.\n\nMy $.03\n\n/Henrik\n\nOn Fri, Jan 14, 2022 at 6:55 PM Ben Bolker <bbolker at gmail.com> wrote:\n>\n>    Makes sense if you realize that ?\"[\" only applies to *vector*,\n> *list*, and *matrix* indexing and that data frames follow their own\n> rules that are documented elsewhere ...\n>\n>    So yes, not a bug but I claim it's an infelicity. I might submit a\n> doc patch.\n>\n>   FWIW\n>\n> b[\"A1\",]\n> as.matrix(b)[\"A1\",]\n>\n>   illustrates the difference.\n>\n>   thanks\n>     Ben\n>\n>\n> On 1/14/22 9:19 PM, Steve Martin wrote:\n> > I don't think this is a bug in the documentation. The help page for\n> > `?[.data.frame` has the following in the last paragraph of the\n> > details:\n> >\n> > Both [ and [[ extraction methods partially match row names. By default\n> > neither partially match column names, but [[ will if exact = FALSE\n> > (and with a warning if exact = NA). If you want to exact matching on\n> > row names use match, as in the examples.\n> >\n> > The example it refers to is\n> >\n> > sw <- swiss[1:5, 1:4]  # select a manageable subset\n> > sw[\"C\", ] # partially matches\n> > sw[match(\"C\", row.names(sw)), ] # no exact match\n> >\n> > Whether this is good behaviour or not is a different question, but the\n> > documentation seems clear enough (to me, at least).\n> >\n> > Best,\n> > Steve\n> >\n> > On Fri, 14 Jan 2022 at 20:40, Ben Bolker <bbolker at gmail.com> wrote:\n> >>\n> >>\n> >>     People are often surprised that row-indexing a data frame by [ +\n> >> character does partial matching (and annoyed that there is no way to\n> >> turn it off:\n> >>\n> >> https://stackoverflow.com/questions/18033501/warning-when-partial-matching-rownames\n> >>\n> >> https://stackoverflow.com/questions/34233235/r-returning-partial-matching-of-row-names\n> >>\n> >> https://stackoverflow.com/questions/70716905/why-does-r-have-inconsistent-behaviors-when-a-non-existent-rowname-is-retrieved\n> >>\n> >>\n> >> ?\"[\" says:\n> >>\n> >> Character indices can in some circumstances be partially matched\n> >>        (see ?pmatch?) to the names or dimnames of the object being\n> >>        subsetted (but never for subassignment).  UNLIKE S (Becker et al_\n> >>        p. 358), R NEVER USES PARTIAL MATCHING WHEN EXTRACTING BY ?[?, and\n> >>        partial matching is not by default used by ?[[? (see argument\n> >>        ?exact?).\n> >>\n> >> (EMPHASIS ADDED).\n> >>\n> >> Looking through the rest of that page, I don't see any other text that\n> >> modifies or supersedes that statement.\n> >>\n> >>     Is this a documentation bug?\n> >>\n> >> The example given in one of the links above:\n> >>\n> >> b <- as.data.frame(matrix(4:5, ncol = 1, nrow = 2, dimnames =\n> >> list(c(\"A10\", \"B\"), \"V1\")))\n> >>\n> >> b[\"A1\",]  ## 4 (partial matching)\n> >> b[rownames(b) == \"A1\",]  ## logical(0)\n> >> b[\"A1\", , exact=TRUE]    ## unused argument error\n> >> b$V1[[\"A1\"]] ## subscript out of bounds error\n> >> b$V1[\"A1\"]   ## NA\n> >>\n> >> ______________________________________________\n> >> R-devel at r-project.org mailing list\n> >> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n> --\n> Dr. Benjamin Bolker\n> Professor, Mathematics & Statistics and Biology, McMaster University\n> Director, School of Computational Science and Engineering\n> (Acting) Graduate chair, Mathematics & Statistics\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Although implicit, but what I don't think anyone has mentioned is that\nthe partial matching of row names only applies if the row name is\nuniquely matched, as in:\n\n> X <- data.frame(a=1:3, b=letters[1:",
+      "thread_id": "thread-7fdccbc7ef3c",
+      "thread_depth": 3,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-ed593dfe5e8d",
+      "message_id": "<c1737bf2-bad5-9058-7659-fbcc5a5f33f1@gmail.com>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2022-01-20T15:02:37-05:00",
+      "subject": "[Rd] partial matching of row names in [-indexing",
+      "subject_clean": "partial matching of row names in [-indexing",
+      "in_reply_to": "<CAFDcVCSHDiQr6Ms9y6BA-HqTo3wXGh61zEJSXmiAJNLZaeLODw@mail.gmail.com>",
+      "references": [
+        "<66cd913b-233a-c9ea-1d48-e9192e408c1d@gmail.com>",
+        "<CAP=dwz-tFm6eK1gd2xhU6ayjTK6jD0HNwG_52PrUwc2BjfvzAQ@mail.gmail.com>",
+        "<a0af0044-b91f-e983-dda6-63288ff23707@gmail.com>",
+        "<CAFDcVCSHDiQr6Ms9y6BA-HqTo3wXGh61zEJSXmiAJNLZaeLODw@mail.gmail.com>"
+      ],
+      "body_plain": "FWIW there is also a discussion of this on bugzilla:\n\nhttps://bugs.r-project.org/show_bug.cgi?id=18278\n\nOn 1/20/22 2:58 PM, Henrik Bengtsson wrote:\n> Although implicit, but what I don't think anyone has mentioned is that\n> the partial matching of row names only applies if the row name is\n> uniquely matched, as in:\n> \n>> X <- data.frame(a=1:3, b=letters[1:3], row.names=c(\"A1\", \"B\", \"C\"))\n>> X[\"A\", ]\n>     a b\n> A1 1 a\n> \n> If it matches two or more rows, you get:\n> \n>> X <- data.frame(a=1:3, b=letters[1:3], row.names=c(\"A1\", \"A2\", \"C\"))\n>> X[\"A\", ]\n>      a    b\n> NA NA <NA>\n> \n> just as you would get if there is no match:\n> \n>> X[\"A3\", ]\n>      a    b\n> NA NA <NA>\n> \n> So, the current behavior is dependent on what the other similar row\n> names too, that is, what might work at one point, might break when new\n> data are added to the data frame.\n> \n> This is a behavior that I think stems from someone thought it's handy\n> while working interactively with data.frame:s interactively.  I think\n> it's an error-prone property when it comes to production code (script,\n> packages, and dynamic documents).  To me, this behavior should be\n> phased out from R to avoid silent errors and false scientific results.\n> It's not clear to me how to best deprecate the partial matching,\n> because of the default behavior of returning NA:s when there is no\n> match.  This means it can't be just a warning or an error.\n> \n> My $.03\n> \n> /Henrik\n> \n> On Fri, Jan 14, 2022 at 6:55 PM Ben Bolker <bbolker at gmail.com> wrote:\n>>\n>>     Makes sense if you realize that ?\"[\" only applies to *vector*,\n>> *list*, and *matrix* indexing and that data frames follow their own\n>> rules that are documented elsewhere ...\n>>\n>>     So yes, not a bug but I claim it's an infelicity. I might submit a\n>> doc patch.\n>>\n>>    FWIW\n>>\n>> b[\"A1\",]\n>> as.matrix(b)[\"A1\",]\n>>\n>>    illustrates the difference.\n>>\n>>    thanks\n>>      Ben\n>>\n>>\n>> On 1/14/22 9:19 PM, Steve Martin wrote:\n>>> I don't think this is a bug in the documentation. The help page for\n>>> `?[.data.frame` has the following in the last paragraph of the\n>>> details:\n>>>\n>>> Both [ and [[ extraction methods partially match row names. By default\n>>> neither partially match column names, but [[ will if exact = FALSE\n>>> (and with a warning if exact = NA). If you want to exact matching on\n>>> row names use match, as in the examples.\n>>>\n>>> The example it refers to is\n>>>\n>>> sw <- swiss[1:5, 1:4]  # select a manageable subset\n>>> sw[\"C\", ] # partially matches\n>>> sw[match(\"C\", row.names(sw)), ] # no exact match\n>>>\n>>> Whether this is good behaviour or not is a different question, but the\n>>> documentation seems clear enough (to me, at least).\n>>>\n>>> Best,\n>>> Steve\n>>>\n>>> On Fri, 14 Jan 2022 at 20:40, Ben Bolker <bbolker at gmail.com> wrote:\n>>>>\n>>>>\n>>>>      People are often surprised that row-indexing a data frame by [ +\n>>>> character does partial matching (and annoyed that there is no way to\n>>>> turn it off:\n>>>>\n>>>> https://stackoverflow.com/questions/18033501/warning-when-partial-matching-rownames\n>>>>\n>>>> https://stackoverflow.com/questions/34233235/r-returning-partial-matching-of-row-names\n>>>>\n>>>> https://stackoverflow.com/questions/70716905/why-does-r-have-inconsistent-behaviors-when-a-non-existent-rowname-is-retrieved\n>>>>\n>>>>\n>>>> ?\"[\" says:\n>>>>\n>>>> Character indices can in some circumstances be partially matched\n>>>>         (see ?pmatch?) to the names or dimnames of the object being\n>>>>         subsetted (but never for subassignment).  UNLIKE S (Becker et al_\n>>>>         p. 358), R NEVER USES PARTIAL MATCHING WHEN EXTRACTING BY ?[?, and\n>>>>         partial matching is not by default used by ?[[? (see argument\n>>>>         ?exact?).\n>>>>\n>>>> (EMPHASIS ADDED).\n>>>>\n>>>> Looking through the rest of that page, I don't see any other text that\n>>>> modifies or supersedes that statement.\n>>>>\n>>>>      Is this a documentation bug?\n>>>>\n>>>> The example given in one of the links above:\n>>>>\n>>>> b <- as.data.frame(matrix(4:5, ncol = 1, nrow = 2, dimnames =\n>>>> list(c(\"A10\", \"B\"), \"V1\")))\n>>>>\n>>>> b[\"A1\",]  ## 4 (partial matching)\n>>>> b[rownames(b) == \"A1\",]  ## logical(0)\n>>>> b[\"A1\", , exact=TRUE]    ## unused argument error\n>>>> b$V1[[\"A1\"]] ## subscript out of bounds error\n>>>> b$V1[\"A1\"]   ## NA\n>>>>\n>>>> ______________________________________________\n>>>> R-devel at r-project.org mailing list\n>>>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>> --\n>> Dr. Benjamin Bolker\n>> Professor, Mathematics & Statistics and Biology, McMaster University\n>> Director, School of Computational Science and Engineering\n>> (Acting) Graduate chair, Mathematics & Statistics\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nDr. Benjamin Bolker\nProfessor, Mathematics & Statistics and Biology, McMaster University\nDirector, School of Computational Science and Engineering\n(Acting) Graduate chair, Mathematics & Statistics",
+      "body_snippet": "FWIW there is also a discussion of this on bugzilla:\n\nhttps://bugs.r-project.org/show_bug.cgi?id=18278\n\nOn 1/20/22 2:58 PM, Henrik Bengtsson wrote:\n> Although implicit, but what I don't think anyone h",
+      "thread_id": "thread-7fdccbc7ef3c",
+      "thread_depth": 4,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-c6020b8844f5",
+      "message_id": "<CAGpdKUJJsCY_+1=SePCOaJY5VhTZbHJ-jaZGqn+iLkx=uyEMAw@mail.gmail.com>",
+      "from_name": "Roman Savchenko",
+      "from_email_hash": "845e576650a1bf6450d96523111bc4dad558ce076fa55acf63578407d6f88bd1",
+      "date": "2022-01-20T23:33:40+02:00",
+      "subject": "[Rd] Out buffers flushing",
+      "subject_clean": "Out buffers flushing",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hey Dear R devs,\n\nI'm using R CMD BATCH output stream as control stream (via IPC) in my\nproject. I noticed that sometimes I'm not receiving out line intime (that\nleads to unwanted behaviour). I suspect it is due to some buffering\nmechanism. I tried to use flush.console() but it does not help.\n\nThanks for any advices,\nRoman.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hey Dear R devs,\n\nI'm using R CMD BATCH output stream as control stream (via IPC) in my\nproject. I noticed that sometimes I'm not receiving out line intime (that\nleads to unwanted behaviour). I suspec",
+      "thread_id": "thread-c6020b8844f5",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-07d8e7373346",
+      "message_id": "<4150804.1642780312@apollo2.minshall.org>",
+      "from_name": "Greg Minshall",
+      "from_email_hash": "96741f7ca8e07e2ad368f3b08877cfed212da4b8508bc02a43bdfe596390d66b",
+      "date": "2022-01-21T07:51:52-08:00",
+      "subject": "[Rd] Out buffers flushing",
+      "subject_clean": "Out buffers flushing",
+      "in_reply_to": "<CAGpdKUJJsCY_+1=SePCOaJY5VhTZbHJ-jaZGqn+iLkx=uyEMAw@mail.gmail.com>",
+      "references": [
+        "<CAGpdKUJJsCY_+1=SePCOaJY5VhTZbHJ-jaZGqn+iLkx=uyEMAw@mail.gmail.com>"
+      ],
+      "body_plain": "Roman,\n\n> I'm using R CMD BATCH output stream as control stream (via IPC) in my\n> project. I noticed that sometimes I'm not receiving out line intime\n> (that leads to unwanted behaviour). I suspect it is due to some\n> buffering mechanism. I tried to use flush.console() but it does not\n> help.\n\nso, i'm not quite sure i understand the setup here.  you are running\nsome script via `R CMD BATCH`.  that i got.  but i don't know what you\nmean with \"(via IPC)\".\n\nif when running `R CMD BATCH` on a terminal, your output is showing up\nin a timely way, but when running it some other way, the output is\ndelayed, you might try running (on Unix, say) it through a pipe like\n> R CMD BATCH <YOUR_ARGUMENTS_HERE> | cat\nand seeing if you still get the output in a timely way.  if not, then\nthere might be some buffering inside the R code that disables buffering\nwhen going to a terminal, but does buffer when the output is going\nsomewhere other than your terminal (this is not uncommon in, e.g.,\nUnix's \"standard I/O library\").\n\nbut, if that pipeline gives output in a timely manner, then maybe your\n\"IPC\" mechanism is causing the problem.\n\ni don't know if that will be of any help.\n\ncheers, Greg",
+      "body_snippet": "Roman,\n\n> I'm using R CMD BATCH output stream as control stream (via IPC) in my\n> project. I noticed that sometimes I'm not receiving out line intime\n> (that leads to unwanted behaviour). I suspect it",
+      "thread_id": "thread-c6020b8844f5",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-50a26f9f85c6",
+      "message_id": "<CAHqSRuSSeSdO5RTLfVMMU0QuyWq7dh0DY0e-p71KUSpAHXpkrg@mail.gmail.com>",
+      "from_name": "Bill Dunlap",
+      "from_email_hash": "36d0562dd195046d368020981c44be3c28cbbab321cad428a1ae16dfe0aa6491",
+      "date": "2022-01-21T08:25:06-08:00",
+      "subject": "[Rd] Out buffers flushing",
+      "subject_clean": "Out buffers flushing",
+      "in_reply_to": "<4150804.1642780312@apollo2.minshall.org>",
+      "references": [
+        "<CAGpdKUJJsCY_+1=SePCOaJY5VhTZbHJ-jaZGqn+iLkx=uyEMAw@mail.gmail.com>",
+        "<4150804.1642780312@apollo2.minshall.org>"
+      ],
+      "body_plain": "On Linux you could try\n    stdbuf --output=L R 2>&1 | cat\nto force line buffering when the output goes to a pipe (replace 'cat' by\nthe command of your choice).  'R' may have to be replaced by the actual\nexecutable, e.g.,\n    R CMD stdbuf --output=L `R RHOME`/bin/exec/R 2>&1 | cat\n\n-Bill\n\nOn Fri, Jan 21, 2022 at 7:52 AM Greg Minshall <minshall at umich.edu> wrote:\n\n> Roman,\n>\n> > I'm using R CMD BATCH output stream as control stream (via IPC) in my\n> > project. I noticed that sometimes I'm not receiving out line intime\n> > (that leads to unwanted behaviour). I suspect it is due to some\n> > buffering mechanism. I tried to use flush.console() but it does not\n> > help.\n>\n> so, i'm not quite sure i understand the setup here.  you are running\n> some script via `R CMD BATCH`.  that i got.  but i don't know what you\n> mean with \"(via IPC)\".\n>\n> if when running `R CMD BATCH` on a terminal, your output is showing up\n> in a timely way, but when running it some other way, the output is\n> delayed, you might try running (on Unix, say) it through a pipe like\n> > R CMD BATCH <YOUR_ARGUMENTS_HERE> | cat\n> and seeing if you still get the output in a timely way.  if not, then\n> there might be some buffering inside the R code that disables buffering\n> when going to a terminal, but does buffer when the output is going\n> somewhere other than your terminal (this is not uncommon in, e.g.,\n> Unix's \"standard I/O library\").\n>\n> but, if that pipeline gives output in a timely manner, then maybe your\n> \"IPC\" mechanism is causing the problem.\n>\n> i don't know if that will be of any help.\n>\n> cheers, Greg\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Linux you could try\n    stdbuf --output=L R 2>&1 | cat\nto force line buffering when the output goes to a pipe (replace 'cat' by\nthe command of your choice).  'R' may have to be replaced by the actu",
+      "thread_id": "thread-c6020b8844f5",
+      "thread_depth": 2,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-506d25a2e0f1",
+      "message_id": "<CABtg=Kn8zaF+ebw8qd-PeG2DnzT6xa-r3tMct9raDLUPFz=X0A@mail.gmail.com>",
+      "from_name": "Gábor Csárdi",
+      "from_email_hash": "79df10281c8db01a49e04a2604925829b32dce62a7d5cf4b6eb242379d9b1158",
+      "date": "2022-01-21T17:26:23+01:00",
+      "subject": "[Rd] isNamespaceLoaded() while the namespace is loading",
+      "subject_clean": "isNamespaceLoaded() while the namespace is loading",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "We ran into a bug in our package that seems to boil down to\nisNamespaceLoaded() returning TRUE for namespaces that R is currently\nloading.\n\nWe had something like this in an .onLoad function:\n\nif (isNamespaceLoaded(\"upstream\")) {\n  upstream::upstream_function()\n}\n\nWhich seems OK, unless upstream (recursively) imports the package\nhaving this code. Should that happen, the loading of upstream triggers\nthe loading of this package as well and isNamespaceLoaded() seems to\nreturn TRUE, even though the namespace of upstream is not fully loaded\nyet, and we get an error that looks like this:\n\nError : .onLoad failed in loadNamespace() for 'foo', details:\n     call: NULL\n     error: 'upstream_function' is not an exported object from\n'namespace:upstream'\n\nI wonder if isNamespaceLoaded() returning TRUE is correct in this\ncase, or returning FALSE would be better. Or maybe it would make sense\nto have a way to query the packages that are being loaded currently?\n\nAFAICT this works, but it does use some implementation details from\nloadNamespace(), so it does not seem like a proper solution:\n\ndynGet(\"__NameSpacesLoading__\", NULL)\n\nAnother workaround is something like this:\n\n  is_loaded <- function(pkg) {\n    if (!isNamespaceLoaded(pkg)) return(FALSE)\n    tryCatch({\n      loadNamespace(pkg)\n      TRUE\n    }, error = function(err) FALSE)\n  }\n\nwhich forces an error for currently loading namespaces by triggering a\n(fake) recursive dependency.\n\nThanks,\nGabor",
+      "body_snippet": "We ran into a bug in our package that seems to boil down to\nisNamespaceLoaded() returning TRUE for namespaces that R is currently\nloading.\n\nWe had something like this in an .onLoad function:\n\nif (isNa",
+      "thread_id": "thread-506d25a2e0f1",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-057d94d0d40f",
+      "message_id": "<87f61918-0bd9-638c-83ef-1057d2f7dfd5@gmail.com>",
+      "from_name": "J C Nash",
+      "from_email_hash": "3c186aece47b9fdb3cc7c9c4b2429fcf77a95534a068b908c57a0b272b212c98",
+      "date": "2022-01-21T20:51:08-05:00",
+      "subject": "[Rd] reason for odd timings",
+      "subject_clean": "reason for odd timings",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Occasionally I run some rather trivial timings to get an idea of what might\nbe the best way to compute some quantities.\n\nThe program below gave timings for sums of squares of 100 elements much greater\nthan those for 1000, which seems surprising. Does anyone know the cause of this?\n\nThis isn't holding up my work. Just causing some head scratching.\n\nJN\n\n> source(\"sstimer.R\")\n n  \t  t(forloop) : ratio \t  t(sum) : ratio \t t(crossprod) \t all.equal\n100 \t 38719.15  :  1.766851 \t 13421.12  :  0.6124391 \t 21914.21 \t TRUE\n1000 \t 44722.71  :  20.98348 \t 3093.94  :  1.451648 \t 2131.33 \t TRUE\n10000 \t 420149.9  :  42.10269 \t 27341.6  :  2.739867 \t 9979.17 \t TRUE\n1e+05 \t 4070469  :  39.89473 \t 343293.5  :  3.364625 \t 102030.2 \t TRUE\n1e+06 \t 42293696  :  33.27684 \t 3605866  :  2.837109 \t 1270965 \t TRUE\n1e+07 \t 408123066  :  29.20882 \t 35415106  :  2.534612 \t 13972596 \t TRUE\n>\n\n# crossprod timer\nlibrary(microbenchmark)\nsuml<-function(vv) {\n    ss<-0.0\n    for (i in 1:length(vv)) {ss<-ss+vv[i]^2}\n    ss\n}\nsums<-function(vv) {\n  ss<-sum(vv^2)\n  ss\n}\nsumc<-function(vv) {\n  ss<-as.numeric(crossprod(vv))\n  ss\n}\nll <- c(100, 1000, 10000, 100000, 1000000, 10000000)\ncat(\" n  \\t  t(forloop) : ratio \\t  t(sum) : ratio \\t t(crossprod) \\t all.equal \\n\")\nfor (nn in ll ){\n   set.seed(1234)\n   vv <- runif(nn)\n   tsuml<-microbenchmark(sl<-suml(vv), unit=\"us\")\n   tsums<-microbenchmark(ss<-sums(vv), unit=\"us\")\n   tsumc<-microbenchmark(sc<-sumc(vv), unit=\"us\")\n   ml<-mean(tsuml$time)\n   ms<-mean(tsums$time)\n   mc<-mean(tsumc$time)\n   cat(nn,\"\\t\",ml,\" : \",ml/mc,\"\\t\",ms,\" : \",ms/mc,\"\\t\",mc,\"\\t\",all.equal(sl, ss, sc),\"\\n\")\n}",
+      "body_snippet": "Occasionally I run some rather trivial timings to get an idea of what might\nbe the best way to compute some quantities.\n\nThe program below gave timings for sums of squares of 100 elements much greater",
+      "thread_id": "thread-057d94d0d40f",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-ec8b129c1170",
+      "message_id": "<CA+hbrhVGE1a4BY7ubEhPXRJPs5aKt9id5O_C2hUWGVLxQ3BVEQ@mail.gmail.com>",
+      "from_name": "Peter Langfelder",
+      "from_email_hash": "452832397217a6c78113e7dfafde5ae5401620d433eb2fdb9ba99fc9b57db26f",
+      "date": "2022-01-21T20:27:02-08:00",
+      "subject": "[Rd] reason for odd timings",
+      "subject_clean": "reason for odd timings",
+      "in_reply_to": "<87f61918-0bd9-638c-83ef-1057d2f7dfd5@gmail.com>",
+      "references": [
+        "<87f61918-0bd9-638c-83ef-1057d2f7dfd5@gmail.com>"
+      ],
+      "body_plain": "I think R spends a little bit of time compiling the functions into byte\ncode the first time you call the function. The hint is that the oddity\nseems to go away when running the code repeatedly. The first timing for the\nfirst three values of ll returns this:\n\n100 65347.45  :  2.491943 24329.94  :  0.9277918 26223.49 TRUE\n1000 71387.79  :  11.49891 4619.35  :  0.74407 6208.22 TRUE\n10000 711115.8  :  16.82563 61732.79  :  1.460653 42263.83 TRUE\n\nthe subsequent runs return this:\n\n100 8349.68  :  3.125699 1821.28  :  0.6817954 2671.3 TRUE\n1000 72191.88  :  11.8359 4712.81  :  0.7726678 6099.4 TRUE\n10000 706826.9  :  15.95787 61574.9  :  1.390162 44293.32 TRUE\n\n100 8390.46  :  3.159023 1815.71  :  0.683618 2656.03 TRUE\n1000 93731.96  :  15.3112 4630.55  :  0.7564046 6121.79 TRUE\n10000 809345.8  :  18.75048 61903.45  :  1.434145 43164 TRUE\n\nPeter\n\nOn Fri, Jan 21, 2022 at 5:51 PM J C Nash <profjcnash at gmail.com> wrote:\n\n> Occasionally I run some rather trivial timings to get an idea of what might\n> be the best way to compute some quantities.\n>\n> The program below gave timings for sums of squares of 100 elements much\n> greater\n> than those for 1000, which seems surprising. Does anyone know the cause of\n> this?\n>\n> This isn't holding up my work. Just causing some head scratching.\n>\n> JN\n>\n> > source(\"sstimer.R\")\n>  n        t(forloop) : ratio      t(sum) : ratio         t(crossprod)\n> all.equal\n> 100      38719.15  :  1.766851   13421.12  :  0.6124391          21914.21\n>       TRUE\n> 1000     44722.71  :  20.98348   3093.94  :  1.451648    2131.33\n>  TRUE\n> 10000    420149.9  :  42.10269   27341.6  :  2.739867    9979.17\n>  TRUE\n> 1e+05    4070469  :  39.89473    343293.5  :  3.364625   102030.2\n> TRUE\n> 1e+06    42293696  :  33.27684   3605866  :  2.837109    1270965\n>  TRUE\n> 1e+07    408123066  :  29.20882          35415106  :  2.534612   13972596\n>       TRUE\n> >\n>\n> # crossprod timer\n> library(microbenchmark)\n> suml<-function(vv) {\n>     ss<-0.0\n>     for (i in 1:length(vv)) {ss<-ss+vv[i]^2}\n>     ss\n> }\n> sums<-function(vv) {\n>   ss<-sum(vv^2)\n>   ss\n> }\n> sumc<-function(vv) {\n>   ss<-as.numeric(crossprod(vv))\n>   ss\n> }\n> ll <- c(100, 1000, 10000, 100000, 1000000, 10000000)\n> cat(\" n  \\t  t(forloop) : ratio \\t  t(sum) : ratio \\t t(crossprod) \\t\n> all.equal \\n\")\n> for (nn in ll ){\n>    set.seed(1234)\n>    vv <- runif(nn)\n>    tsuml<-microbenchmark(sl<-suml(vv), unit=\"us\")\n>    tsums<-microbenchmark(ss<-sums(vv), unit=\"us\")\n>    tsumc<-microbenchmark(sc<-sumc(vv), unit=\"us\")\n>    ml<-mean(tsuml$time)\n>    ms<-mean(tsums$time)\n>    mc<-mean(tsumc$time)\n>    cat(nn,\"\\t\",ml,\" : \",ml/mc,\"\\t\",ms,\" :\n> \",ms/mc,\"\\t\",mc,\"\\t\",all.equal(sl, ss, sc),\"\\n\")\n> }\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I think R spends a little bit of time compiling the functions into byte\ncode the first time you call the function. The hint is that the oddity\nseems to go away when running the code repeatedly. The fi",
+      "thread_id": "thread-057d94d0d40f",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-a06431787ab4",
+      "message_id": "<CAP=dwz_WWXb6_bejxvPUwYUFzvO=qbQBV7aCAQ6+Sa0mkhYaNQ@mail.gmail.com>",
+      "from_name": "Steve Martin",
+      "from_email_hash": "af237b835f8f20d68728c964ae035e09d29fe9aa1ef1c15f13d24dc4e5a96079",
+      "date": "2022-01-21T23:38:33-05:00",
+      "subject": "[Rd] reason for odd timings",
+      "subject_clean": "reason for odd timings",
+      "in_reply_to": "<87f61918-0bd9-638c-83ef-1057d2f7dfd5@gmail.com>",
+      "references": [
+        "<87f61918-0bd9-638c-83ef-1057d2f7dfd5@gmail.com>"
+      ],
+      "body_plain": "Just to add a bit more, stripping out most of your test shows that\nthere is one iteration (the 2nd one) that takes a lot longer than the\nothers because the sums() function gets bytecode compiled.\n\nlibrary(microbenchmark)\n\nsums <- function(vv) {\n  ss <- sum(vv^2)\n  ss\n}\n\nsums2 <- compiler::cmpfun(sums)\n\nx <- runif(100)\n\nhead(as.data.frame(microbenchmark(sums(x), sums2(x))))\n          expr    time\n1  sums(x)   29455\n2  sums(x) 3683091\n3 sums2(x)    7108\n4  sums(x)    4305\n5  sums(x)    2733\n6  sums(x)    2797\n\nThe paragraph on JIT in the details of ?compiler::compile explains\nthat this is the default behavior.\n\nSteve\n\nOn Fri, 21 Jan 2022 at 20:51, J C Nash <profjcnash at gmail.com> wrote:\n>\n> Occasionally I run some rather trivial timings to get an idea of what might\n> be the best way to compute some quantities.\n>\n> The program below gave timings for sums of squares of 100 elements much greater\n> than those for 1000, which seems surprising. Does anyone know the cause of this?\n>\n> This isn't holding up my work. Just causing some head scratching.\n>\n> JN\n>\n> > source(\"sstimer.R\")\n>  n        t(forloop) : ratio      t(sum) : ratio         t(crossprod)    all.equal\n> 100      38719.15  :  1.766851   13421.12  :  0.6124391          21914.21        TRUE\n> 1000     44722.71  :  20.98348   3093.94  :  1.451648    2131.33         TRUE\n> 10000    420149.9  :  42.10269   27341.6  :  2.739867    9979.17         TRUE\n> 1e+05    4070469  :  39.89473    343293.5  :  3.364625   102030.2        TRUE\n> 1e+06    42293696  :  33.27684   3605866  :  2.837109    1270965         TRUE\n> 1e+07    408123066  :  29.20882          35415106  :  2.534612   13972596        TRUE\n> >\n>\n> # crossprod timer\n> library(microbenchmark)\n> suml<-function(vv) {\n>     ss<-0.0\n>     for (i in 1:length(vv)) {ss<-ss+vv[i]^2}\n>     ss\n> }\n> sums<-function(vv) {\n>   ss<-sum(vv^2)\n>   ss\n> }\n> sumc<-function(vv) {\n>   ss<-as.numeric(crossprod(vv))\n>   ss\n> }\n> ll <- c(100, 1000, 10000, 100000, 1000000, 10000000)\n> cat(\" n  \\t  t(forloop) : ratio \\t  t(sum) : ratio \\t t(crossprod) \\t all.equal \\n\")\n> for (nn in ll ){\n>    set.seed(1234)\n>    vv <- runif(nn)\n>    tsuml<-microbenchmark(sl<-suml(vv), unit=\"us\")\n>    tsums<-microbenchmark(ss<-sums(vv), unit=\"us\")\n>    tsumc<-microbenchmark(sc<-sumc(vv), unit=\"us\")\n>    ml<-mean(tsuml$time)\n>    ms<-mean(tsums$time)\n>    mc<-mean(tsumc$time)\n>    cat(nn,\"\\t\",ml,\" : \",ml/mc,\"\\t\",ms,\" : \",ms/mc,\"\\t\",mc,\"\\t\",all.equal(sl, ss, sc),\"\\n\")\n> }\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Just to add a bit more, stripping out most of your test shows that\nthere is one iteration (the 2nd one) that takes a lot longer than the\nothers because the sums() function gets bytecode compiled.\n\nlib",
+      "thread_id": "thread-057d94d0d40f",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-f98dec263b3b",
+      "message_id": "<13444c9f-4d81-2431-b409-3901a6c94f61@gmail.com>",
+      "from_name": "J C Nash",
+      "from_email_hash": "3c186aece47b9fdb3cc7c9c4b2429fcf77a95534a068b908c57a0b272b212c98",
+      "date": "2022-01-22T12:18:38-05:00",
+      "subject": "[Rd] reason for odd timings",
+      "subject_clean": "reason for odd timings",
+      "in_reply_to": "<CAP=dwz_WWXb6_bejxvPUwYUFzvO=qbQBV7aCAQ6+Sa0mkhYaNQ@mail.gmail.com>",
+      "references": [
+        "<87f61918-0bd9-638c-83ef-1057d2f7dfd5@gmail.com>",
+        "<CAP=dwz_WWXb6_bejxvPUwYUFzvO=qbQBV7aCAQ6+Sa0mkhYaNQ@mail.gmail.com>"
+      ],
+      "body_plain": "Many thanks for quick and reasonable explanation.\n\nNow the issue is to figure out when it is worthwhile to recommend/use sums2.\n\nBest, JN\n\n\nOn 2022-01-21 23:38, Steve Martin wrote:\n> Just to add a bit more, stripping out most of your test shows that\n> there is one iteration (the 2nd one) that takes a lot longer than the\n> others because the sums() function gets bytecode compiled.\n> \n> library(microbenchmark)\n> \n> sums <- function(vv) {\n>    ss <- sum(vv^2)\n>    ss\n> }\n> \n> sums2 <- compiler::cmpfun(sums)\n> \n> x <- runif(100)\n> \n> head(as.data.frame(microbenchmark(sums(x), sums2(x))))\n>            expr    time\n> 1  sums(x)   29455\n> 2  sums(x) 3683091\n> 3 sums2(x)    7108\n> 4  sums(x)    4305\n> 5  sums(x)    2733\n> 6  sums(x)    2797\n> \n> The paragraph on JIT in the details of ?compiler::compile explains\n> that this is the default behavior.\n> \n> Steve\n> \n> On Fri, 21 Jan 2022 at 20:51, J C Nash <profjcnash at gmail.com> wrote:\n>>\n>> Occasionally I run some rather trivial timings to get an idea of what might\n>> be the best way to compute some quantities.\n>>\n>> The program below gave timings for sums of squares of 100 elements much greater\n>> than those for 1000, which seems surprising. Does anyone know the cause of this?\n>>\n>> This isn't holding up my work. Just causing some head scratching.\n>>\n>> JN\n>>\n>>> source(\"sstimer.R\")\n>>   n        t(forloop) : ratio      t(sum) : ratio         t(crossprod)    all.equal\n>> 100      38719.15  :  1.766851   13421.12  :  0.6124391          21914.21        TRUE\n>> 1000     44722.71  :  20.98348   3093.94  :  1.451648    2131.33         TRUE\n>> 10000    420149.9  :  42.10269   27341.6  :  2.739867    9979.17         TRUE\n>> 1e+05    4070469  :  39.89473    343293.5  :  3.364625   102030.2        TRUE\n>> 1e+06    42293696  :  33.27684   3605866  :  2.837109    1270965         TRUE\n>> 1e+07    408123066  :  29.20882          35415106  :  2.534612   13972596        TRUE\n>>>\n>>\n>> # crossprod timer\n>> library(microbenchmark)\n>> suml<-function(vv) {\n>>      ss<-0.0\n>>      for (i in 1:length(vv)) {ss<-ss+vv[i]^2}\n>>      ss\n>> }\n>> sums<-function(vv) {\n>>    ss<-sum(vv^2)\n>>    ss\n>> }\n>> sumc<-function(vv) {\n>>    ss<-as.numeric(crossprod(vv))\n>>    ss\n>> }\n>> ll <- c(100, 1000, 10000, 100000, 1000000, 10000000)\n>> cat(\" n  \\t  t(forloop) : ratio \\t  t(sum) : ratio \\t t(crossprod) \\t all.equal \\n\")\n>> for (nn in ll ){\n>>     set.seed(1234)\n>>     vv <- runif(nn)\n>>     tsuml<-microbenchmark(sl<-suml(vv), unit=\"us\")\n>>     tsums<-microbenchmark(ss<-sums(vv), unit=\"us\")\n>>     tsumc<-microbenchmark(sc<-sumc(vv), unit=\"us\")\n>>     ml<-mean(tsuml$time)\n>>     ms<-mean(tsums$time)\n>>     mc<-mean(tsumc$time)\n>>     cat(nn,\"\\t\",ml,\" : \",ml/mc,\"\\t\",ms,\" : \",ms/mc,\"\\t\",mc,\"\\t\",all.equal(sl, ss, sc),\"\\n\")\n>> }\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Many thanks for quick and reasonable explanation.\n\nNow the issue is to figure out when it is worthwhile to recommend/use sums2.\n\nBest, JN\n\n\nOn 2022-01-21 23:38, Steve Martin wrote:\n> Just to add a bit",
+      "thread_id": "thread-057d94d0d40f",
+      "thread_depth": 2,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-b3f0cb783bd4",
+      "message_id": "<B8A7884D-6970-461B-9A1D-941EC0162520@R-project.org>",
+      "from_name": "Simon Urbanek",
+      "from_email_hash": "0f7a36ede18d495e19236834ee83f5b20722f5d7cec3588576a59851b948b51a",
+      "date": "2022-01-23T10:44:54+13:00",
+      "subject": "[Rd] reason for odd timings",
+      "subject_clean": "reason for odd timings",
+      "in_reply_to": "<13444c9f-4d81-2431-b409-3901a6c94f61@gmail.com>",
+      "references": [
+        "<87f61918-0bd9-638c-83ef-1057d2f7dfd5@gmail.com>",
+        "<CAP=dwz_WWXb6_bejxvPUwYUFzvO=qbQBV7aCAQ6+Sa0mkhYaNQ@mail.gmail.com>",
+        "<13444c9f-4d81-2431-b409-3901a6c94f61@gmail.com>"
+      ],
+      "body_plain": "FWIW crossprod timings are likely not generalizable, because unlike sum() they depend on the BLAS implementation used so it's not uncommon to see significant differences. For simple things like this the parallel BLAS can actually be slower than the built-in one (since the computation is limited by memory throughput).\n\nAlso if you actually want to measure the difference, don't use functions as they have significant overhead (for short evals), just use the expressions, e.g.:\n\n> library(microbenchmark)\n> ll <- c(100, 1000, 10000, 100000, 1000000, 10000000)\n> l <- lapply(ll, function(nn) {\n+    set.seed(1234)\n+    vv <- runif(nn)\n+    rbind(microbenchmark(sum(vv^2)),\n+          microbenchmark(c(crossprod(vv))))\n+ })\n> do.call(\"rbind\", lapply(l, summary, unit=\"us\"))\n               expr       min        lq        mean     median         uq       max neval\n1         sum(vv^2)     0.703     0.731     1.09781     0.7665     0.9050    10.356   100\n2  c(crossprod(vv))     2.317     2.334     3.39735     2.4025     2.5390    92.110   100\n3         sum(vv^2)     3.200     3.261     3.51941     3.3580     3.5425    13.109   100\n4  c(crossprod(vv))     3.919     3.973     4.29774     4.0145     4.1200    25.054   100\n5         sum(vv^2)    57.461    60.910    69.12497    67.4455    75.9360   102.943   100\n6  c(crossprod(vv))    18.321    18.468    19.32948    18.5735    18.6795    82.353   100\n7         sum(vv^2)   286.488   566.928   607.11935   596.7610   631.5625  4955.724   100\n8  c(crossprod(vv))   161.757   163.338   167.62892   165.1660   165.8425   327.439   100\n9         sum(vv^2)  3221.395  3694.859  4604.01607  3867.5830  4050.5715  8565.486   100\n10 c(crossprod(vv))  1898.899  1922.386  1955.75945  1941.1760  1959.3340  2392.512   100\n11        sum(vv^2) 43634.025 44486.356 45493.26093 44850.8460 45170.9870 97560.633   100\n12 c(crossprod(vv)) 19379.950 19631.935 19817.88547 19770.3475 19922.6035 21512.017   100\n\nThat said, I suspect that we used more time talking about this than will be ever saved by picking one method over the other ;).\n\nCheers,\nSimon\n\n\n\n> On Jan 23, 2022, at 6:18 AM, J C Nash <profjcnash at gmail.com> wrote:\n> \n> Many thanks for quick and reasonable explanation.\n> \n> Now the issue is to figure out when it is worthwhile to recommend/use sums2.\n> \n> Best, JN\n> \n> \n> On 2022-01-21 23:38, Steve Martin wrote:\n>> Just to add a bit more, stripping out most of your test shows that\n>> there is one iteration (the 2nd one) that takes a lot longer than the\n>> others because the sums() function gets bytecode compiled.\n>> library(microbenchmark)\n>> sums <- function(vv) {\n>>   ss <- sum(vv^2)\n>>   ss\n>> }\n>> sums2 <- compiler::cmpfun(sums)\n>> x <- runif(100)\n>> head(as.data.frame(microbenchmark(sums(x), sums2(x))))\n>>           expr    time\n>> 1  sums(x)   29455\n>> 2  sums(x) 3683091\n>> 3 sums2(x)    7108\n>> 4  sums(x)    4305\n>> 5  sums(x)    2733\n>> 6  sums(x)    2797\n>> The paragraph on JIT in the details of ?compiler::compile explains\n>> that this is the default behavior.\n>> Steve\n>> On Fri, 21 Jan 2022 at 20:51, J C Nash <profjcnash at gmail.com> wrote:\n>>> \n>>> Occasionally I run some rather trivial timings to get an idea of what might\n>>> be the best way to compute some quantities.\n>>> \n>>> The program below gave timings for sums of squares of 100 elements much greater\n>>> than those for 1000, which seems surprising. Does anyone know the cause of this?\n>>> \n>>> This isn't holding up my work. Just causing some head scratching.\n>>> \n>>> JN\n>>> \n>>>> source(\"sstimer.R\")\n>>>  n        t(forloop) : ratio      t(sum) : ratio         t(crossprod)    all.equal\n>>> 100      38719.15  :  1.766851   13421.12  :  0.6124391          21914.21        TRUE\n>>> 1000     44722.71  :  20.98348   3093.94  :  1.451648    2131.33         TRUE\n>>> 10000    420149.9  :  42.10269   27341.6  :  2.739867    9979.17         TRUE\n>>> 1e+05    4070469  :  39.89473    343293.5  :  3.364625   102030.2        TRUE\n>>> 1e+06    42293696  :  33.27684   3605866  :  2.837109    1270965         TRUE\n>>> 1e+07    408123066  :  29.20882          35415106  :  2.534612   13972596        TRUE\n>>>> \n>>> \n>>> # crossprod timer\n>>> library(microbenchmark)\n>>> suml<-function(vv) {\n>>>     ss<-0.0\n>>>     for (i in 1:length(vv)) {ss<-ss+vv[i]^2}\n>>>     ss\n>>> }\n>>> sums<-function(vv) {\n>>>   ss<-sum(vv^2)\n>>>   ss\n>>> }\n>>> sumc<-function(vv) {\n>>>   ss<-as.numeric(crossprod(vv))\n>>>   ss\n>>> }\n>>> ll <- c(100, 1000, 10000, 100000, 1000000, 10000000)\n>>> cat(\" n  \\t  t(forloop) : ratio \\t  t(sum) : ratio \\t t(crossprod) \\t all.equal \\n\")\n>>> for (nn in ll ){\n>>>    set.seed(1234)\n>>>    vv <- runif(nn)\n>>>    tsuml<-microbenchmark(sl<-suml(vv), unit=\"us\")\n>>>    tsums<-microbenchmark(ss<-sums(vv), unit=\"us\")\n>>>    tsumc<-microbenchmark(sc<-sumc(vv), unit=\"us\")\n>>>    ml<-mean(tsuml$time)\n>>>    ms<-mean(tsums$time)\n>>>    mc<-mean(tsumc$time)\n>>>    cat(nn,\"\\t\",ml,\" : \",ml/mc,\"\\t\",ms,\" : \",ms/mc,\"\\t\",mc,\"\\t\",all.equal(sl, ss, sc),\"\\n\")\n>>> }\n>>> \n>>> ______________________________________________\n>>> R-devel at r-project.org mailing list\n>>> https://stat.ethz.ch/mailman/listinfo/r-devel\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>",
+      "body_snippet": "FWIW crossprod timings are likely not generalizable, because unlike sum() they depend on the BLAS implementation used so it's not uncommon to see significant differences. For simple things like this t",
+      "thread_id": "thread-057d94d0d40f",
+      "thread_depth": 3,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-ffbaf68753ba",
+      "message_id": "<CAP01uRnONpc=WnQATrcdU0xLv_Ce=RJ-TTyCfKBN+pnV0NMYbw@mail.gmail.com>",
+      "from_name": "Gabor Grothendieck",
+      "from_email_hash": "2470cc61688c301322ff3a85f3fd51ddba9f1112f88f535ec93c41ab610332d1",
+      "date": "2022-01-26T09:48:21-05:00",
+      "subject": "[Rd] aggregate.formula and pipes",
+      "subject_clean": "aggregate.formula and pipes",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Because aggregate.formula has a formula argument but the generic\nhas an x argument neither of these work:\n\n  mtcars |> aggregate(x = mpg ~ cyl, FUN = mean)\n  mtcars |> aggregate(formula = mpg ~ cyl, FUN = mean)\n\nThis does work:\n\n  mtcars |> stats:::aggregate.formula(formula = mpg ~ cyl, FUN = mean)\n\nSuggest that aggregate.formula be exported.\n\n--\nStatistics & Software Consulting\nGKX Group, GKX Associates Inc.\ntel: 1-877-GKX-GROUP\nemail: ggrothendieck at gmail.com",
+      "body_snippet": "Because aggregate.formula has a formula argument but the generic\nhas an x argument neither of these work:\n\n  mtcars |> aggregate(x = mpg ~ cyl, FUN = mean)\n  mtcars |> aggregate(formula = mpg ~ cyl, F",
+      "thread_id": "thread-ffbaf68753ba",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-bd778ffa0bc4",
+      "message_id": "<6244c3b8-0750-c675-9353-92fc78cfd02f@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2022-01-30T06:50:19-05:00",
+      "subject": "[Rd] Bug in rbind.data.frame?",
+      "subject_clean": "Bug in rbind.data.frame?",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I was surprised to see this result:\n\n# This works:  Create a dataframe and add a row:\ndf <- data.frame(a = 1, b = 2)\nrbind(df, c(3, 4))\n#>   a b\n#> 1 1 2\n#> 2 3 4\n\n# It doesn't work if the original dataframe is empty\ndf <- data.frame(a = numeric(), b = numeric())\nrbind(df, c(1, 2))\n#>   X1 X2\n#> 1  1  2\n# The column names changed!\n\n# It doesn't matter if the new row is named:\nrbind(df, c(a = 1, b = 2))\n#>   X1 X2\n#> 1  1  2\n\nI tried this in a very old R version, and saw the same result, so it's \nnot a new bug:  but is it maybe intentional, and if so, what is the \nreason for it?\n\nDuncan Murdoch",
+      "body_snippet": "I was surprised to see this result:\n\n# This works:  Create a dataframe and add a row:\ndf <- data.frame(a = 1, b = 2)\nrbind(df, c(3, 4))\n#>   a b\n#> 1 1 2\n#> 2 3 4\n\n# It doesn't work if the original da",
+      "thread_id": "thread-bd778ffa0bc4",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-128de4836544",
+      "message_id": "<90da4fd6-2e80-1b7b-4e36-5895138fa42b@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2022-01-30T07:00:39-05:00",
+      "subject": "[Rd] Bug in rbind.data.frame?",
+      "subject_clean": "Bug in rbind.data.frame?",
+      "in_reply_to": "<6244c3b8-0750-c675-9353-92fc78cfd02f@gmail.com>",
+      "references": [
+        "<6244c3b8-0750-c675-9353-92fc78cfd02f@gmail.com>"
+      ],
+      "body_plain": "Okay, I spotted it.  This is intentional.  From ?rbind.data.frame:\n\n\"The rbind data frame method first drops all zero-column and zero-row \narguments.\"\n\nSo I wouldn't expect to keep the names in the argument that was dropped.\n\nHowever, there's still an issue in the case where the row is named.  To \nme it implies that when df is empty, rbind(df, c(a=1, b=2)) should be \nthe same as rbind(c(a=1, b=2)), which gives a properly named result.  Of \ncourse, rbind(c(a=1, b=2)) won't call rbind.data.frame() at all, so that \nexplains the difference, but not the intention.\n\nDuncan Murdoch\n\nOn 30/01/2022 6:50 a.m., Duncan Murdoch wrote:\n> I was surprised to see this result:\n> \n> # This works:  Create a dataframe and add a row:\n> df <- data.frame(a = 1, b = 2)\n> rbind(df, c(3, 4))\n> #>   a b\n> #> 1 1 2\n> #> 2 3 4\n> \n> # It doesn't work if the original dataframe is empty\n> df <- data.frame(a = numeric(), b = numeric())\n> rbind(df, c(1, 2))\n> #>   X1 X2\n> #> 1  1  2\n> # The column names changed!\n> \n> # It doesn't matter if the new row is named:\n> rbind(df, c(a = 1, b = 2))\n> #>   X1 X2\n> #> 1  1  2\n> \n> I tried this in a very old R version, and saw the same result, so it's\n> not a new bug:  but is it maybe intentional, and if so, what is the\n> reason for it?\n> \n> Duncan Murdoch",
+      "body_snippet": "Okay, I spotted it.  This is intentional.  From ?rbind.data.frame:\n\n\"The rbind data frame method first drops all zero-column and zero-row \narguments.\"\n\nSo I wouldn't expect to keep the names in the ar",
+      "thread_id": "thread-bd778ffa0bc4",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-f0d0a3e6e756",
+      "message_id": "<ba62c6ce-71f5-c43a-2746-d02f1d4c2256@univ-fcomte.fr>",
+      "from_name": "Patrick Giraudoux",
+      "from_email_hash": "8f1b7b60c6b20fcd9682e7dab7758747fb930683770df6e4bc3164abfd60bef1",
+      "date": "2022-01-30T18:52:51+01:00",
+      "subject": "[Rd] trouble with package loading: Function found when exporting methods from the namespace ‘raster’ which is not S4 generic: ‘all.equal’",
+      "subject_clean": "trouble with package loading: Function found when exporting methods from the namespace ‘raster’ which is not S4 generic: ‘all.equal’",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Dear listers,\n\nAfter having exchanged on the R-package-devel at r-project.org list, I feel \nthat the question should now be adressed on the R developper list.\n\nYou'll find below the trouble I met, and one of the answers that Zhian \nKamvar has been kind enough to provide.\n\nIl looks like the origin might be found in the way R deploys methods and \nnamespace is managed, which is by far out my skills...\n\nSuspect some bug somewhere (?)\n\nBest,\n\nPatrick\n\n------------------------------------------------------------------------\n\nTHE PROBLEM\n\nOne user (in cc) has signaled a problem installing the package pgirmess \n(version 1.7.1 on CRAN), with this message on loading:\n\n> library(pgirmess)\n\nError: package or namespace load failed for ?pgirmess?:\n\nFunction found when exporting methods from the namespace ?raster? which \nis not S4 generic: ?all.equal?\n\nIn addition: Warning message:\n\nno function found corresponding to methods exports from ?raster? for: \n?direction?, ?gridDistance?\n\nI cannot identify where the trouble comes from since:\n\n- pgirmess goes through OK in all the checks on CRAN\n\n- I can install/remove it with correct loading on my own platform \n(Windows 10)\n\n- pgirmess 1.7.1 does not import 'raster' and the functions mentioned above\n\nThe user has installed the last R version on Windows.? However, she gets \na correct loading only if she loads 'Matrix' before (or 'lme4' - but to \nmy knowlege, lme4 actually loads Matrix).\n\nShe meets also the same issue with pgirmess 2.0 (not on CRAN yet, see \nhttps://github.com/pgiraudoux/pgirmess however this version (still on \ntest) has deprecated/dropped all functions related to dealing with rasters.\n\nThis occurs in R directly (not necessarily within RStudio).\n\nOn the web, Iook likes this issue has is already been spotted for some \nother packages (e.g. mapview, tmap, etc.). Checking help-lists I saw \nthat installing rtools might solve the problem (e.g. \nhttps://community.rstudio.com/t/error-package-or-namespace-load-failed-for-mapview/126914) \nhowever, it seems to me a strange workaround since rtools should not be \nmade necessary for lay R user (not developers).\n\nBest,\n\n------------------------------------------------------------------------\n\nZHIAN's ANSWER\n\nLe 28/01/2022 ? 17:35, Zhian Kamvar wrote :\nI've run into deep dependencies registering methods that mess things up \nbefore: https://github.com/thibautjombart/adegenet/issues/308.\nAFAICT, it has something to do with the way R deploys methods where they \ncan be available if the namespace is available. In this case, it's via \nspdep -> spData -> raster. That being said, I am NOT an expert on this \nand would?like to know more if anyone has better insight.\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear listers,\n\nAfter having exchanged on the R-package-devel at r-project.org list, I feel \nthat the question should now be adressed on the R developper list.\n\nYou'll find below the trouble I met, and",
+      "thread_id": "thread-f0d0a3e6e756",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-efedc7f66cd8",
+      "message_id": "<30f6ea02-5405-8981-cc3c-65773d7ac866@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2022-01-30T13:09:52-05:00",
+      "subject": "[Rd]  trouble with package loading: Function found when exporting methods from the namespace ‘raster’ which is not S4 generic: ‘all.equal’",
+      "subject_clean": "trouble with package loading: Function found when exporting methods from the namespace ‘raster’ which is not S4 generic: ‘all.equal’",
+      "in_reply_to": "<ba62c6ce-71f5-c43a-2746-d02f1d4c2256@univ-fcomte.fr>",
+      "references": [
+        "<ba62c6ce-71f5-c43a-2746-d02f1d4c2256@univ-fcomte.fr>"
+      ],
+      "body_plain": "Can you reproduce the problem?  If so, please post the recipe for doing \nso here, e.g. \"install x from Github, y from CRAN, ...\"  If not, it's \nunlikely anyone will be able to help.\n\nIf you don't know how to do it, I'd contact the original reporter, and \nat least ask the original reporter for sessionInfo() just before and \nafter the error occurs.\n\nDuncan Murdoch\n\n\n\nOn 30/01/2022 12:52 p.m., Patrick Giraudoux wrote:\n> Dear listers,\n> \n> After having exchanged on the R-package-devel at r-project.org list, I feel\n> that the question should now be adressed on the R developper list.\n> \n> You'll find below the trouble I met, and one of the answers that Zhian\n> Kamvar has been kind enough to provide.\n> \n> Il looks like the origin might be found in the way R deploys methods and\n> namespace is managed, which is by far out my skills...\n> \n> Suspect some bug somewhere (?)\n> \n> Best,\n> \n> Patrick\n> \n> ------------------------------------------------------------------------\n> \n> THE PROBLEM\n> \n> One user (in cc) has signaled a problem installing the package pgirmess\n> (version 1.7.1 on CRAN), with this message on loading:\n> \n>> library(pgirmess)\n> \n> Error: package or namespace load failed for ?pgirmess?:\n> \n> Function found when exporting methods from the namespace ?raster? which\n> is not S4 generic: ?all.equal?\n> \n> In addition: Warning message:\n> \n> no function found corresponding to methods exports from ?raster? for:\n> ?direction?, ?gridDistance?\n> \n> I cannot identify where the trouble comes from since:\n> \n> - pgirmess goes through OK in all the checks on CRAN\n> \n> - I can install/remove it with correct loading on my own platform\n> (Windows 10)\n> \n> - pgirmess 1.7.1 does not import 'raster' and the functions mentioned above\n> \n> The user has installed the last R version on Windows.? However, she gets\n> a correct loading only if she loads 'Matrix' before (or 'lme4' - but to\n> my knowlege, lme4 actually loads Matrix).\n> \n> She meets also the same issue with pgirmess 2.0 (not on CRAN yet, see\n> https://github.com/pgiraudoux/pgirmess however this version (still on\n> test) has deprecated/dropped all functions related to dealing with rasters.\n> \n> This occurs in R directly (not necessarily within RStudio).\n> \n> On the web, Iook likes this issue has is already been spotted for some\n> other packages (e.g. mapview, tmap, etc.). Checking help-lists I saw\n> that installing rtools might solve the problem (e.g.\n> https://community.rstudio.com/t/error-package-or-namespace-load-failed-for-mapview/126914)\n> however, it seems to me a strange workaround since rtools should not be\n> made necessary for lay R user (not developers).\n> \n> Best,\n> \n> ------------------------------------------------------------------------\n> \n> ZHIAN's ANSWER\n> \n> Le 28/01/2022 ? 17:35, Zhian Kamvar wrote :\n> I've run into deep dependencies registering methods that mess things up\n> before: https://github.com/thibautjombart/adegenet/issues/308.\n> AFAICT, it has something to do with the way R deploys methods where they\n> can be available if the namespace is available. In this case, it's via\n> spdep -> spData -> raster. That being said, I am NOT an expert on this\n> and would?like to know more if anyone has better insight.\n> \n> \n> \t[[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Can you reproduce the problem?  If so, please post the recipe for doing \nso here, e.g. \"install x from Github, y from CRAN, ...\"  If not, it's \nunlikely anyone will be able to help.\n\nIf you don't know",
+      "thread_id": "thread-f0d0a3e6e756",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-a6ae0c1c8ca2",
+      "message_id": "<307d5902-69d9-d929-52fe-ce36ee780a12@univ-fcomte.fr>",
+      "from_name": "Patrick Giraudoux",
+      "from_email_hash": "8f1b7b60c6b20fcd9682e7dab7758747fb930683770df6e4bc3164abfd60bef1",
+      "date": "2022-01-30T19:21:08+01:00",
+      "subject": "[Rd]  trouble with package loading: Function found when exporting methods from the namespace ‘raster’ which is not S4 generic: ‘all.equal’",
+      "subject_clean": "trouble with package loading: Function found when exporting methods from the namespace ‘raster’ which is not S4 generic: ‘all.equal’",
+      "in_reply_to": "<30f6ea02-5405-8981-cc3c-65773d7ac866@gmail.com>",
+      "references": [
+        "<ba62c6ce-71f5-c43a-2746-d02f1d4c2256@univ-fcomte.fr>",
+        "<30f6ea02-5405-8981-cc3c-65773d7ac866@gmail.com>"
+      ],
+      "body_plain": "Le 30/01/2022 ? 19:09, Duncan Murdoch a ?crit?:\n> Can you reproduce the problem?? If so, please post the recipe for \n> doing so here, e.g. \"install x from Github, y from CRAN, ...\"? If not, \n> it's unlikely anyone will be able to help.\n>\n> If you don't know how to do it, I'd contact the original reporter, and \n> at least ask the original reporter for sessionInfo() just before and \n> after the error occurs.\n>\n> Duncan Murdoch\n\n\nOK. Will do my best however the problem has been reported to me by a \n'lay' user (I do not met it however I tried installing/desinstalling to \nget a reproducible error etc). I will ask her to follow your \ninstructions (she is in cc) and help her if I can. She repeatly met her \non three different computer in her office and home, all Windows. However \nGoogling a bit one can see that this problem is not met for the first \ntime with other packages\n\n- https://github.com/r-tmap/tmap/issues/621\n\n- \nhttps://community.rstudio.com/t/error-package-or-namespace-load-failed-for-mapview/126914\n\nI also put Zhian Kamvar in cc, in the case he can report on his own case\n\nThanks for your concern (and congrats/thanks for all the work done by \nthe R core team including yourself).\n\nPatrick\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Le 30/01/2022 ? 19:09, Duncan Murdoch a ?crit?:\n> Can you reproduce the problem?? If so, please post the recipe for \n> doing so here, e.g. \"install x from Github, y from CRAN, ...\"? If not, \n> it's un",
+      "thread_id": "thread-f0d0a3e6e756",
+      "thread_depth": 2,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-a2b542c9ff59",
+      "message_id": "<e8d1998b-507a-b1f5-2849-393b33bc1159@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2022-01-30T13:57:27-05:00",
+      "subject": "[Rd]  trouble with package loading: Function found when exporting methods from the namespace ‘raster’ which is not S4 generic: ‘all.equal’",
+      "subject_clean": "trouble with package loading: Function found when exporting methods from the namespace ‘raster’ which is not S4 generic: ‘all.equal’",
+      "in_reply_to": "<307d5902-69d9-d929-52fe-ce36ee780a12@univ-fcomte.fr>",
+      "references": [
+        "<ba62c6ce-71f5-c43a-2746-d02f1d4c2256@univ-fcomte.fr>",
+        "<30f6ea02-5405-8981-cc3c-65773d7ac866@gmail.com>",
+        "<307d5902-69d9-d929-52fe-ce36ee780a12@univ-fcomte.fr>"
+      ],
+      "body_plain": "On 30/01/2022 1:21 p.m., Patrick Giraudoux wrote:\n> Le 30/01/2022 ? 19:09, Duncan Murdoch a ?crit?:\n>> Can you reproduce the problem?? If so, please post the recipe for \n>> doing so here, e.g. \"install x from Github, y from CRAN, ...\"? If not, \n>> it's unlikely anyone will be able to help.\n>>\n>> If you don't know how to do it, I'd contact the original reporter, and \n>> at least ask the original reporter for sessionInfo() just before and \n>> after the error occurs.\n>>\n>> Duncan Murdoch\n> \n> \n> OK. Will do my best however the problem has been reported to me by a \n> 'lay' user (I do not met it however I tried installing/desinstalling to \n> get a reproducible error etc). I will ask her to follow your \n> instructions (she is in cc) and help her if I can. She repeatly met her \n> on three different computer in her office and home, all Windows. However \n> Googling a bit one can see that this problem is not met for the first \n> time with other packages\n> \n> - https://github.com/r-tmap/tmap/issues/621\n> \n> - \n> https://community.rstudio.com/t/error-package-or-namespace-load-failed-for-mapview/126914\n> \n> I also put Zhian Kamvar in cc, in the case he can report on his own case\n> \n> Thanks for your concern (and congrats/thanks for all the work done by \n> the R core team including yourself).\n\nNeither of those links posted useful information.  They show that it \nisn't something specific to Julie's system, but don't really give a hint \nabout where to look to fix it.  My guess would be some version \ndependence between two packages that isn't being declared.  That is, \npackage A declares that it depends on package B, but in fact it needs a \nparticular version of B, so people who happen to have the wrong version \ninstalled get the error.\n\nA complication that is Windows-specific is that it is so easy on that \nsystem to have two versions of packages installed:  one in the system \nlibrary, one in the user library.  (It's possible on all systems, it \njust seems to happen more on Windows.)\n\nDuncan Murdoch",
+      "body_snippet": "On 30/01/2022 1:21 p.m., Patrick Giraudoux wrote:\n> Le 30/01/2022 ? 19:09, Duncan Murdoch a ?crit?:\n>> Can you reproduce the problem?? If so, please post the recipe for \n>> doing so here, e.g. \"instal",
+      "thread_id": "thread-f0d0a3e6e756",
+      "thread_depth": 3,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-b8ff5f6874a3",
+      "message_id": "<25079.40418.973003.506232@hornik.net>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "38d7001af840d889a64ba1cdcb8ec8beb738b8daf9643622801f3acb78b6052a",
+      "date": "2022-01-31T09:29:22+01:00",
+      "subject": "[Rd] Bug in rbind.data.frame?",
+      "subject_clean": "Bug in rbind.data.frame?",
+      "in_reply_to": "<90da4fd6-2e80-1b7b-4e36-5895138fa42b@gmail.com>",
+      "references": [
+        "<6244c3b8-0750-c675-9353-92fc78cfd02f@gmail.com>",
+        "<90da4fd6-2e80-1b7b-4e36-5895138fa42b@gmail.com>"
+      ],
+      "body_plain": ">>>>> Duncan Murdoch writes:\n\n> Okay, I spotted it.  This is intentional.  From ?rbind.data.frame:\n> \"The rbind data frame method first drops all zero-column and zero-row \n> arguments.\"\n\nHmm.  \"As document\", but still surprising too me as well ...\n\nWe also say\n\n     For ?rbind? column names are taken from the first argument with\n     appropriate names: colnames for a matrix, or names for a vector of\n     length the number of columns of the result.\n\nOf course, one could argue that \"The rbind data frame method first drops\nall zero-column and zero-row arguments.\" implies that \"first argument\n...\" should be taken after dropping, but then\n\nR> m <- matrix(0, 0, 2, dimnames = list(NULL, c(\"a\", \"b\")))\nR> rbind(m, c(3, 4))\n     a b\n[1,] 3 4\n\nwhich is not consistent with the data frame case.\n\nBtw, whereas\n\nR> rbind(c(1, 2),\n      c(3, 4, 5))\nWarning in rbind(c(1, 2), c(3, 4, 5)) :\n  number of columns of result is not a multiple of vector length (arg 1)\n     [,1] [,2] [,3]\n[1,]    1    2    1\n[2,]    3    4    5\n\n\"as documented\", \n\nR> df <- data.frame(a = 1, b = 2)\nrbind(df, c(3, 4, 5))\n  a b\n1 1 2\n2 3 4\n\nwith is a bit worrying (and not as documented)?\n\nBest\n-k\n\n> So I wouldn't expect to keep the names in the argument that was dropped.\n\n> However, there's still an issue in the case where the row is named.  To \n> me it implies that when df is empty, rbind(df, c(a=1, b=2)) should be \n> the same as rbind(c(a=1, b=2)), which gives a properly named result.  Of \n> course, rbind(c(a=1, b=2)) won't call rbind.data.frame() at all, so that \n> explains the difference, but not the intention.\n\n> Duncan Murdoch\n\n> On 30/01/2022 6:50 a.m., Duncan Murdoch wrote:\n>> I was surprised to see this result:\n>> \n>> # This works:  Create a dataframe and add a row:\n>> df <- data.frame(a = 1, b = 2)\n>> rbind(df, c(3, 4))\n>> #>   a b\n>> #> 1 1 2\n>> #> 2 3 4\n>> \n>> # It doesn't work if the original dataframe is empty\n>> df <- data.frame(a = numeric(), b = numeric())\n>> rbind(df, c(1, 2))\n>> #>   X1 X2\n>> #> 1  1  2\n>> # The column names changed!\n>> \n>> # It doesn't matter if the new row is named:\n>> rbind(df, c(a = 1, b = 2))\n>> #>   X1 X2\n>> #> 1  1  2\n>> \n>> I tried this in a very old R version, and saw the same result, so it's\n>> not a new bug:  but is it maybe intentional, and if so, what is the\n>> reason for it?\n>> \n>> Duncan Murdoch\n\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">>>>> Duncan Murdoch writes:\n\n> Okay, I spotted it.  This is intentional.  From ?rbind.data.frame:\n> \"The rbind data frame method first drops all zero-column and zero-row \n> arguments.\"\n\nHmm.  \"As doc",
+      "thread_id": "thread-bd778ffa0bc4",
+      "thread_depth": 2,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-c60e47bec366",
+      "message_id": "<68F1ECBC-E65A-443B-928B-94889F183D03@uni-due.de>",
+      "from_name": "Blätte, Andreas",
+      "from_email_hash": "941ec4fbd9280b54c4dbe0fc9c7bbac88915a5edf9862dd52ee691ac68bc056d",
+      "date": "2022-01-31T09:56:27Z",
+      "subject": "[Rd] localeToCharset()",
+      "subject_clean": "localeToCharset()",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Dear all,\n\npackages for processing text may need information on the charset of the R session. In my packages RcppCWB and polmineR, I extract this information from the locale using `localeToCharset()`. But when running cross-platform checks (Github Actions and Docker), I recurringly encounter unexpected behavior of `localeToCharset()`.\n\nAs a a reproducible example, I suggest to use a local Fedora (latest) container, starting as follows:\n\ndocker pull fedora:latest\ndocker run -it fedora:latest /bin/bash\n\nAfter installing R (`yum install -y R`) and starting R, `localeToCharset()` returns `NA`. However, the part of sessionInfo() on the locale is as follows:\n [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8\n [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8\n [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C\n[10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C\n\nIf I run R CMD check on any arbitrary package in this environment at this stage, I see:\n* using session charset: UTF-8\n\nThe documentation says however: ?In the C locale the answer will be \"ASCII\".?  Why not UTF-8 in this case?\n\nThe `localeToCharset()` function is also confusing for me, when I explicitly re-define the locale. In my fresh Fedora docker container, I need to install English-language locales first:\ndnf install langpacks-en\n\nAfter starting R with a re-defined locale (`env LC_CTYPE=en_US.UTF-8 R`,  the output of `localeToCharset()` is:\n[1] \"UTF-8\"     \"ISO8859-1\"\n\nThe ?Value? section of the documentation says: ?A character vector naming an encoding and possibly a fallback single-encoding, NA if unknown.?  But I do not understand why ISO8859-1 might be a fallback option here?\n\nI do not know whether this is just a matter of documentation? My intuition is that `localeToCharset()` should work differently. At the moment, I need to rely on a few workarounds to cope with the behavior I do not understand.  (Or is there a better function to detect the encoding of the R session?)\n\nPart of my analysis of the code of `localeToCharset()` is that it targets special scenarios on Windows and macOS, but not on Linux.\n\nKind regards\nAndreas\n\n--\nProf. Dr. Andreas Blaette\nProfessor of Public Policy and Regional Politics\nUniversity of Duisburg-Essen\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear all,\n\npackages for processing text may need information on the charset of the R session. In my packages RcppCWB and polmineR, I extract this information from the locale using `localeToCharset()`.",
+      "thread_id": "thread-c60e47bec366",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-44d56de4c1c1",
+      "message_id": "<Yfe7WizKVWtGC9yc@posteo.no>",
+      "from_name": "Rasmus Liland",
+      "from_email_hash": "49d24ded46a48018a50de25921750c1438fd373f7db35e8f59f6377a74205a1f",
+      "date": "2022-01-31T10:35:06Z",
+      "subject": "[Rd] localeToCharset()",
+      "subject_clean": "localeToCharset()",
+      "in_reply_to": "<68F1ECBC-E65A-443B-928B-94889F183D03@uni-due.de>",
+      "references": [
+        "<68F1ECBC-E65A-443B-928B-94889F183D03@uni-due.de>"
+      ],
+      "body_plain": "Dear Andreas,\n\nI think your R session is able to use \ncorrect unicode from your Fedora docker \ncontainer, because I get the same output \nfrom `localeToCharset()` on my similarly \nconfigured ArchLinux system.\n\nI found some notes on setting locale in \nFedora [1]\n\nOn ArchLinux, I set my locale globally \nin /etc/locale.conf, since a long time \nago\n\n\tLANG=en_GB.UTF-8\n\tLC_CTYPE=\"en_GB.UTF-8\"\n\tLC_NUMERIC=\"en_GB.UTF-8\"\n\tLC_TIME=\"en_DK.UTF-8\"\n\tLC_COLLATE=\"en_GB.UTF-8\"\n\tLC_MONETARY=\"nb_NO.UTF-8\"\n\tLC_PAPER=\"nb_NO.UTF-8\"\n\tLC_NAME=\"nb_NO.UTF-8\"\n\tLC_ADDRESS=\"nb_NO.UTF-8\"\n\tLC_TELEPHONE=\"nb_NO.UTF-8\"\n\tLC_MEASUREMENT=\"nb_NO.UTF-8\"\n\tLC_INDENTIFICATION=\"nb_NO.UTF-8\"\n\nOn FreeBSD, it is customary to set the \nlocale locally in your ~/.login_conf\n\n\tme:\\\n\t\t:charset=UTF-8:\\\n\t\t:lang=en_GB.UTF-8:\\\n\t\t:setenv=LC_COLLATE=C:\n\nOpenBSD has UTF-8 enabled for everything \nall of the time (I'm thinking), coming \nfrom a state not long ago where it was \nlargely unavailable ...\n\nBest,\nRasmus\n\n[1] https://docs.fedoraproject.org/en-US/Fedora/26/html/System_Administrators_Guide/ch-System_Locale_and_Keyboard_Configuration.html",
+      "body_snippet": "Dear Andreas,\n\nI think your R session is able to use \ncorrect unicode from your Fedora docker \ncontainer, because I get the same output \nfrom `localeToCharset()` on my similarly \nconfigured ArchLinux ",
+      "thread_id": "thread-c60e47bec366",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-3fe76a8d039d",
+      "message_id": "<20220131143201.10e183dc@Tarkus>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "72bda76034efaa18cd166b722c373c5159885b988468de351df8992020f3856a",
+      "date": "2022-01-31T14:32:01+03:00",
+      "subject": "[Rd] localeToCharset()",
+      "subject_clean": "localeToCharset()",
+      "in_reply_to": "<68F1ECBC-E65A-443B-928B-94889F183D03@uni-due.de>",
+      "references": [
+        "<68F1ECBC-E65A-443B-928B-94889F183D03@uni-due.de>"
+      ],
+      "body_plain": "On Mon, 31 Jan 2022 09:56:27 +0000\n\"Bl?tte, Andreas\" <andreas.blaette at uni-due.de> wrote:\n\n> After starting R with a re-defined locale (`env LC_CTYPE=en_US.UTF-8\n> R`,  the output of `localeToCharset()` is:\n> [1] \"UTF-8\"     \"ISO8859-1\"\n\n> why ISO8859-1 might be a fallback option here?\n\nISO8859-1 seems to be offered because it covers the alphabet of\nAmerican English. Obviously, this doesn't guarantee that the guess is\ncorrect. For example, I could symlink the ru_RU.KOI8-R locale on my\nsystem to name it \"ru_RU\", and localeToCharset() would return\n\"ISO8859-5\", not knowing the correct answer. ??????, anyone?\n\n> Part of my analysis of the code of `localeToCharset()` is that it\n> targets special scenarios on Windows and macOS, but not on Linux.\n\nWell, it almost does the right thing. GNU/Linux locales are typically\nnamed like <language>_<country>.<encoding>, and localeToCharset()\nrespects the <encoding> part, but only if the language and the country\nare specified. A quick fix for that would be to add one final case:\n\nIndex: src/library/utils/R/iconv.R\n===================================================================\n--- src/library/utils/R/iconv.R (revision 81596)\n+++ src/library/utils/R/iconv.R (working copy)\n@@ -135,6 +135,7 @@\n             if(enc == \"utf8\") return(c(\"UTF-8\", guess(ll)))\n             else return(guess(ll))\n         }\n+        if (enc == \"utf8\") return(\"UTF-8\") # fallback for ???.UTF-8\n         return(NA_character_)\n     }\n }\n\n(Non-UTF-8 encodings on POSIX are handled above, in the if(nzchar(enc)\n&& enc != \"utf8\") branch.)\n\nMaybe a better fix would be to restructure the code a bit, to always\ntake the encoding hint and then also try to guess if the locale looks\nlike it provides a language code.\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "On Mon, 31 Jan 2022 09:56:27 +0000\n\"Bl?tte, Andreas\" <andreas.blaette at uni-due.de> wrote:\n\n> After starting R with a re-defined locale (`env LC_CTYPE=en_US.UTF-8\n> R`,  the output of `localeToCharse",
+      "thread_id": "thread-c60e47bec366",
+      "thread_depth": 1,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-31e9f3ce5813",
+      "message_id": "<E5C802F0-1943-4CF4-AE64-9545207B285C@uni-due.de>",
+      "from_name": "Blätte, Andreas",
+      "from_email_hash": "941ec4fbd9280b54c4dbe0fc9c7bbac88915a5edf9862dd52ee691ac68bc056d",
+      "date": "2022-01-31T11:38:45Z",
+      "subject": "[Rd] localeToCharset()",
+      "subject_clean": "localeToCharset()",
+      "in_reply_to": "<20220131143201.10e183dc@Tarkus>",
+      "references": [
+        "<68F1ECBC-E65A-443B-928B-94889F183D03@uni-due.de>",
+        "<20220131143201.10e183dc@Tarkus>"
+      ],
+      "body_plain": "Dear Ivan,\n\nthis is a very helpful explanation!  I think it is important to make output of localeToCharset() more predictable. My problem is essentially not to set the locale such that things will work after all. I think the problem is that you see unexpected results.  I guess I owe a suggestion how to improve the code, but your suggestion looks like a very good starting point. \n\nAndreas \n\n?Am 31.01.22, 12:32 schrieb \"Ivan Krylov\" <krylov.r00t at gmail.com>:\n\n    On Mon, 31 Jan 2022 09:56:27 +0000\n    \"Bl?tte, Andreas\" <andreas.blaette at uni-due.de> wrote:\n\n    > After starting R with a re-defined locale (`env LC_CTYPE=en_US.UTF-8\n    > R`,  the output of `localeToCharset()` is:\n    > [1] \"UTF-8\"     \"ISO8859-1\"\n\n    > why ISO8859-1 might be a fallback option here?\n\n    ISO8859-1 seems to be offered because it covers the alphabet of\n    American English. Obviously, this doesn't guarantee that the guess is\n    correct. For example, I could symlink the ru_RU.KOI8-R locale on my\n    system to name it \"ru_RU\", and localeToCharset() would return\n    \"ISO8859-5\", not knowing the correct answer. ??????, anyone?\n\n    > Part of my analysis of the code of `localeToCharset()` is that it\n    > targets special scenarios on Windows and macOS, but not on Linux.\n\n    Well, it almost does the right thing. GNU/Linux locales are typically\n    named like <language>_<country>.<encoding>, and localeToCharset()\n    respects the <encoding> part, but only if the language and the country\n    are specified. A quick fix for that would be to add one final case:\n\n    Index: src/library/utils/R/iconv.R\n    ===================================================================\n    --- src/library/utils/R/iconv.R (revision 81596)\n    +++ src/library/utils/R/iconv.R (working copy)\n    @@ -135,6 +135,7 @@\n                 if(enc == \"utf8\") return(c(\"UTF-8\", guess(ll)))\n                 else return(guess(ll))\n             }\n    +        if (enc == \"utf8\") return(\"UTF-8\") # fallback for ???.UTF-8\n             return(NA_character_)\n         }\n     }\n\n    (Non-UTF-8 encodings on POSIX are handled above, in the if(nzchar(enc)\n    && enc != \"utf8\") branch.)\n\n    Maybe a better fix would be to restructure the code a bit, to always\n    take the encoding hint and then also try to guess if the locale looks\n    like it provides a language code.\n\n    -- \n    Best regards,\n    Ivan",
+      "body_snippet": "Dear Ivan,\n\nthis is a very helpful explanation!  I think it is important to make output of localeToCharset() more predictable. My problem is essentially not to set the locale such that things will wor",
+      "thread_id": "thread-c60e47bec366",
+      "thread_depth": 2,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-7e6eba5c0031",
+      "message_id": "<7d32a02d-e03f-11e6-0f92-9826bd4e96b6@gmail.com>",
+      "from_name": "Tomas Kalibera",
+      "from_email_hash": "7af110c9340339e5307bd348f1ec524e2fd1c8f104d583e9993022c5550711f4",
+      "date": "2022-01-31T13:32:23+01:00",
+      "subject": "[Rd] localeToCharset()",
+      "subject_clean": "localeToCharset()",
+      "in_reply_to": "<E5C802F0-1943-4CF4-AE64-9545207B285C@uni-due.de>",
+      "references": [
+        "<68F1ECBC-E65A-443B-928B-94889F183D03@uni-due.de>",
+        "<20220131143201.10e183dc@Tarkus>",
+        "<E5C802F0-1943-4CF4-AE64-9545207B285C@uni-due.de>"
+      ],
+      "body_plain": "Hi Andreas,\n\nis there still any higher-level problem left you need to solve? Ideally \none wouldn't need to query what is the native encoding, but directly use \niconv() or indirectly other R functions to convert the data from/to the \nnative encoding. iconv() will find out internally what is the native \nencoding (via data that is available also by l10n_info(), but with care \nfor differences between OSes).\n\nBest\nTomas\n\nOn 1/31/22 12:38, Bl?tte, Andreas wrote:\n> Dear Ivan,\n>\n> this is a very helpful explanation!  I think it is important to make output of localeToCharset() more predictable. My problem is essentially not to set the locale such that things will work after all. I think the problem is that you see unexpected results.  I guess I owe a suggestion how to improve the code, but your suggestion looks like a very good starting point.\n>\n> Andreas\n>\n> ?Am 31.01.22, 12:32 schrieb \"Ivan Krylov\" <krylov.r00t at gmail.com>:\n>\n>      On Mon, 31 Jan 2022 09:56:27 +0000\n>      \"Bl?tte, Andreas\" <andreas.blaette at uni-due.de> wrote:\n>\n>      > After starting R with a re-defined locale (`env LC_CTYPE=en_US.UTF-8\n>      > R`,  the output of `localeToCharset()` is:\n>      > [1] \"UTF-8\"     \"ISO8859-1\"\n>\n>      > why ISO8859-1 might be a fallback option here?\n>\n>      ISO8859-1 seems to be offered because it covers the alphabet of\n>      American English. Obviously, this doesn't guarantee that the guess is\n>      correct. For example, I could symlink the ru_RU.KOI8-R locale on my\n>      system to name it \"ru_RU\", and localeToCharset() would return\n>      \"ISO8859-5\", not knowing the correct answer. ??????, anyone?\n>\n>      > Part of my analysis of the code of `localeToCharset()` is that it\n>      > targets special scenarios on Windows and macOS, but not on Linux.\n>\n>      Well, it almost does the right thing. GNU/Linux locales are typically\n>      named like <language>_<country>.<encoding>, and localeToCharset()\n>      respects the <encoding> part, but only if the language and the country\n>      are specified. A quick fix for that would be to add one final case:\n>\n>      Index: src/library/utils/R/iconv.R\n>      ===================================================================\n>      --- src/library/utils/R/iconv.R (revision 81596)\n>      +++ src/library/utils/R/iconv.R (working copy)\n>      @@ -135,6 +135,7 @@\n>                   if(enc == \"utf8\") return(c(\"UTF-8\", guess(ll)))\n>                   else return(guess(ll))\n>               }\n>      +        if (enc == \"utf8\") return(\"UTF-8\") # fallback for ???.UTF-8\n>               return(NA_character_)\n>           }\n>       }\n>\n>      (Non-UTF-8 encodings on POSIX are handled above, in the if(nzchar(enc)\n>      && enc != \"utf8\") branch.)\n>\n>      Maybe a better fix would be to restructure the code a bit, to always\n>      take the encoding hint and then also try to guess if the locale looks\n>      like it provides a language code.\n>\n>      --\n>      Best regards,\n>      Ivan\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Hi Andreas,\n\nis there still any higher-level problem left you need to solve? Ideally \none wouldn't need to query what is the native encoding, but directly use \niconv() or indirectly other R functions ",
+      "thread_id": "thread-c60e47bec366",
+      "thread_depth": 3,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-6953ef48f59b",
+      "message_id": "<67417606-90c4-4107-ed5b-a1062fd2a158@univ-fcomte.fr>",
+      "from_name": "Patrick Giraudoux",
+      "from_email_hash": "8f1b7b60c6b20fcd9682e7dab7758747fb930683770df6e4bc3164abfd60bef1",
+      "date": "2022-01-31T13:53:12+01:00",
+      "subject": "[Rd]  trouble with package loading: Function found when exporting methods from the namespace ‘raster’ which is not S4 generic: ‘all.equal’",
+      "subject_clean": "trouble with package loading: Function found when exporting methods from the namespace ‘raster’ which is not S4 generic: ‘all.equal’",
+      "in_reply_to": "<SV0P279MB04758AD91D4739D2BAA5F067EE259@SV0P279MB0475.NORP279.PROD.OUTLOOK.COM>",
+      "references": [
+        "<SV0P279MB04758AD91D4739D2BAA5F067EE259@SV0P279MB0475.NORP279.PROD.OUTLOOK.COM>"
+      ],
+      "body_plain": "This contribution below from Roger Bivand seems to answer the issue \nraised on this thread.\n\nActually it matches quite well Zhian and Duncan's suspicions, doesn'it ?\n\nBest,\n\nPatrick\n\n\n-------- Message transf?r? --------\nSujet?: \tFollow-up on R-devel\nDate?: \tMon, 31 Jan 2022 12:23:57 +0000\nDe?: \tRoger Bivand <Roger.Bivand at nhh.no>\nPour?: \tPatrick Giraudoux <patrick.giraudoux at univ-fcomte.fr>\n\n\n\nDear Patrick,\n\nCould you follow up on R-package-devel and R-devel that (from \nhttps://github.com/rspatial/terra/issues/514):\nCRAN has not yet updated terra to 1.5-12 for R 4.1.2 (since two weeks it \nis still the previous version).\n\nI will send a new version to CRAN this weekend, hopefully it will get \nbuild for windows. What happens is that raster is dependent on that \nversion of terra (or later), so you should first do\n\ninstall.packages('terra')\n\n(once Windows terra_1.5-17.zip is published and on your mirror) and then\n\ninstall.packages('raster')\n\nBest wishes,\n\nRoger\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "This contribution below from Roger Bivand seems to answer the issue \nraised on this thread.\n\nActually it matches quite well Zhian and Duncan's suspicions, doesn'it ?\n\nBest,\n\nPatrick\n\n\n-------- Message",
+      "thread_id": "thread-6953ef48f59b",
+      "thread_depth": 0,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-2eb98a9ec2ce",
+      "message_id": "<143B435C-3E84-4B29-A06E-FDBFC487962C@uni-due.de>",
+      "from_name": "Blätte, Andreas",
+      "from_email_hash": "941ec4fbd9280b54c4dbe0fc9c7bbac88915a5edf9862dd52ee691ac68bc056d",
+      "date": "2022-01-31T13:08:11Z",
+      "subject": "[Rd] localeToCharset()",
+      "subject_clean": "localeToCharset()",
+      "in_reply_to": "<7d32a02d-e03f-11e6-0f92-9826bd4e96b6@gmail.com>",
+      "references": [
+        "<68F1ECBC-E65A-443B-928B-94889F183D03@uni-due.de>",
+        "<20220131143201.10e183dc@Tarkus>",
+        "<E5C802F0-1943-4CF4-AE64-9545207B285C@uni-due.de>",
+        "<7d32a02d-e03f-11e6-0f92-9826bd4e96b6@gmail.com>"
+      ],
+      "body_plain": "Dear Tomas,\n\nthanks a lot. I do understand the explanation of Simon - I was not aware of the standardization issue. My conclusion is that I should rely on another approach to detect the session charset, and your suggestions are my first option.\n\nMy final thought: For users who do not know the POSIX standards and recent aberrations , a warning might be helpful, something such as:\nIf (startsWith(locale, \"C.\")) warning (sprintf(\"%s is a non-standard locale\", locale))\n\nAs far as I am concerned, I take away a lot from this discussion! Thank you!\n\nKind regards\nAndreas \n \n\n?Am 31.01.22, 13:32 schrieb \"Tomas Kalibera\" <tomas.kalibera at gmail.com>:\n\n    Hi Andreas,\n\n    is there still any higher-level problem left you need to solve? Ideally \n    one wouldn't need to query what is the native encoding, but directly use \n    iconv() or indirectly other R functions to convert the data from/to the \n    native encoding. iconv() will find out internally what is the native \n    encoding (via data that is available also by l10n_info(), but with care \n    for differences between OSes).\n\n    Best\n    Tomas\n\n    On 1/31/22 12:38, Bl?tte, Andreas wrote:\n    > Dear Ivan,\n    >\n    > this is a very helpful explanation!  I think it is important to make output of localeToCharset() more predictable. My problem is essentially not to set the locale such that things will work after all. I think the problem is that you see unexpected results.  I guess I owe a suggestion how to improve the code, but your suggestion looks like a very good starting point.\n    >\n    > Andreas\n    >\n    > Am 31.01.22, 12:32 schrieb \"Ivan Krylov\" <krylov.r00t at gmail.com>:\n    >\n    >      On Mon, 31 Jan 2022 09:56:27 +0000\n    >      \"Bl?tte, Andreas\" <andreas.blaette at uni-due.de> wrote:\n    >\n    >      > After starting R with a re-defined locale (`env LC_CTYPE=en_US.UTF-8\n    >      > R`,  the output of `localeToCharset()` is:\n    >      > [1] \"UTF-8\"     \"ISO8859-1\"\n    >\n    >      > why ISO8859-1 might be a fallback option here?\n    >\n    >      ISO8859-1 seems to be offered because it covers the alphabet of\n    >      American English. Obviously, this doesn't guarantee that the guess is\n    >      correct. For example, I could symlink the ru_RU.KOI8-R locale on my\n    >      system to name it \"ru_RU\", and localeToCharset() would return\n    >      \"ISO8859-5\", not knowing the correct answer. ??????, anyone?\n    >\n    >      > Part of my analysis of the code of `localeToCharset()` is that it\n    >      > targets special scenarios on Windows and macOS, but not on Linux.\n    >\n    >      Well, it almost does the right thing. GNU/Linux locales are typically\n    >      named like <language>_<country>.<encoding>, and localeToCharset()\n    >      respects the <encoding> part, but only if the language and the country\n    >      are specified. A quick fix for that would be to add one final case:\n    >\n    >      Index: src/library/utils/R/iconv.R\n    >      ===================================================================\n    >      --- src/library/utils/R/iconv.R (revision 81596)\n    >      +++ src/library/utils/R/iconv.R (working copy)\n    >      @@ -135,6 +135,7 @@\n    >                   if(enc == \"utf8\") return(c(\"UTF-8\", guess(ll)))\n    >                   else return(guess(ll))\n    >               }\n    >      +        if (enc == \"utf8\") return(\"UTF-8\") # fallback for ???.UTF-8\n    >               return(NA_character_)\n    >           }\n    >       }\n    >\n    >      (Non-UTF-8 encodings on POSIX are handled above, in the if(nzchar(enc)\n    >      && enc != \"utf8\") branch.)\n    >\n    >      Maybe a better fix would be to restructure the code a bit, to always\n    >      take the encoding hint and then also try to guess if the locale looks\n    >      like it provides a language code.\n    >\n    >      --\n    >      Best regards,\n    >      Ivan\n    >\n    > ______________________________________________\n    > R-devel at r-project.org mailing list\n    > https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Dear Tomas,\n\nthanks a lot. I do understand the explanation of Simon - I was not aware of the standardization issue. My conclusion is that I should rely on another approach to detect the session charse",
+      "thread_id": "thread-c60e47bec366",
+      "thread_depth": 4,
+      "month": "2022-01"
+    },
+    {
+      "id": "msg-963f48505d61",
+      "message_id": "<CAD4oTHFotrgFG6m4oL7EsxdFjf=_4b485kgLzVNifwLZgGiOOA@mail.gmail.com>",
+      "from_name": "Gabriel Becker",
+      "from_email_hash": "425e6304e1663b051566c94e9aaec800baad76542aedff5bf9f5f6dcc6eca188",
+      "date": "2022-01-31T12:11:10-08:00",
+      "subject": "[Rd] inconsistency between as.list(df) and as.list(mat) with mode(mat) == \"list\"",
+      "subject_clean": "inconsistency between as.list(df) and as.list(mat) with mode(mat) == \"list\"",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hi All,\n\nI ran into the following the other day:\n\n> mat <- matrix(1:6, nrow = 2)\n\n> as.list(mat)\n\n[[1]]\n\n[1] 1\n\n\n*<snip>*\n\n\n[[6]]\n\n[1] 6\n\n\n> mat2 <- mat\n\n> mode(mat2) <- \"list\"\n\n> as.list(mat2)\n\n     [,1] [,2] [,3]\n\n[1,] 1    3    5\n\n[2,] 2    4    6\n\n>\n\n\nI realize this is not guaranteed by the documentation, and the behavior is\ntechnically (if I would argue fairly subtly) as documented. Generally,\nhowever, as.list returns something without dimensions (other than length),\nregardless of the dimensions of the input.\n\nFurthermore, this behavior agrees with neither the data.frame (which are\nlists) method nor the non-list-mode matrix behavior which comes from the\ndefault behavior. Both result in a non-dimensioned object (the data.frame\nmethod explicitly and intentionally so).\n\nMatrices of mode \"list\" are fairly rare, in practice, I would think, but I\nwonder if the as.list behavior for them should agree with that of similar\ndimensioned objects (data.frames and non-list-mode matrices). As a user, I\ncertainly expected it to, and had to read the docs with a careful eye\nbefore I realized what was happening and why.\n\nFor the record, as.vector  does not drop dimension (or anything else) from\ndata.frames nor list-matrices, so there the behaviors agree, although we do\nget:\n\n> is.vector(mat)\n\n[1] FALSE\n\n> is.vector(mat2)\n\n[1] FALSE\n\n> is.vector(mtcars)\n\n[1] FALSE\n\n\nWhich does make the fact that for the latter two as.vector returns the\nobjects unmodified somewhat puzzling.\n\nI wonder if as.list and as.vector could get a strict argument - it could\ndefault to FALSE for a deprecation period, or forever if preferred by\nR-core -  where attributes are always stripped for 'strict' conversions.\n\nAlso, as a final aside, the documentation at ?as.list says:\n\n Attributes may be\n\n     dropped unless the argument already is a list or expression.\n\n     (This is inconsistent with functions such as ?as.character? which\n\n     always drop attributes, *and is for efficiency since lists can be*\n\n*     expensive to copy.*)\n\n\n(emphasis mine). Is this still the case with shallow duplication? I was\nunder the impression that it was not.\n\n\nBest,\n\n~G\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi All,\n\nI ran into the following the other day:\n\n> mat <- matrix(1:6, nrow = 2)\n\n> as.list(mat)\n\n[[1]]\n\n[1] 1\n\n\n*<snip>*\n\n\n[[6]]\n\n[1] 6\n\n\n> mat2 <- mat\n\n> mode(mat2) <- \"list\"\n\n> as.list(mat2)\n\n     ",
+      "thread_id": "thread-963f48505d61",
+      "thread_depth": 0,
+      "month": "2022-01"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-b2a2e8cc7b61",
+      "subject": "Documentation for floor, ceiling & trunc",
+      "message_count": 3,
+      "participants": [
+        "Avi Gross",
+        "Colin Gillespie",
+        "Duncan Murdoch"
+      ],
+      "started": "2022-01-01T19:24:01+00:00",
+      "last_reply": "2022-01-01T15:31:18-05:00",
+      "root_message_id": "msg-b2a2e8cc7b61"
+    },
+    {
+      "id": "thread-2a963d89fede",
+      "subject": "trivial typo in NEWS file",
+      "message_count": 2,
+      "participants": [
+        "Ben Bolker",
+        "Martin Maechler"
+      ],
+      "started": "2022-01-03T11:04:48-05:00",
+      "last_reply": "2022-01-03T17:23:45+01:00",
+      "root_message_id": "msg-2a963d89fede"
+    },
+    {
+      "id": "thread-1ba07d51832f",
+      "subject": "A patchwork indeed",
+      "message_count": 1,
+      "participants": [
+        "Avi Gross"
+      ],
+      "started": "2022-01-03T15:42:16-05:00",
+      "last_reply": "2022-01-03T15:42:16-05:00",
+      "root_message_id": "msg-1ba07d51832f"
+    },
+    {
+      "id": "thread-1337d9121824",
+      "subject": "Why does lm() with the subset argument give a different answer than subsetting in advance?",
+      "message_count": 1,
+      "participants": [
+        "Martin Maechler"
+      ],
+      "started": "2022-01-03T16:54:26+01:00",
+      "last_reply": "2022-01-03T16:54:26+01:00",
+      "root_message_id": "msg-1337d9121824"
+    },
+    {
+      "id": "thread-d192e0f76fb8",
+      "subject": "\"getOption(max.print) omitted %d entries\" may be negative",
+      "message_count": 3,
+      "participants": [
+        "Martin Maechler",
+        "Tomas Kalibera"
+      ],
+      "started": "2022-01-03T18:15:20+01:00",
+      "last_reply": "2022-01-08T16:36:26+01:00",
+      "root_message_id": "msg-d192e0f76fb8"
+    },
+    {
+      "id": "thread-34f13212d408",
+      "subject": "gsub() hex character range problems in R-devel?",
+      "message_count": 4,
+      "participants": [
+        "Brodie Gaslam",
+        "Martin Morgan",
+        "Tomas Kalibera"
+      ],
+      "started": "2022-01-04T19:35:30+00:00",
+      "last_reply": "2022-01-06T16:47:31+00:00",
+      "root_message_id": "msg-34f13212d408"
+    },
+    {
+      "id": "thread-3151159de796",
+      "subject": "documentation patch for as.formula → reformulate",
+      "message_count": 2,
+      "participants": [
+        "Ben Bolker",
+        "Martin Maechler"
+      ],
+      "started": "2022-01-09T16:39:43-05:00",
+      "last_reply": "2022-01-10T10:04:11+01:00",
+      "root_message_id": "msg-3151159de796"
+    },
+    {
+      "id": "thread-7fdccbc7ef3c",
+      "subject": "partial matching of row names in [-indexing",
+      "message_count": 5,
+      "participants": [
+        "Ben Bolker",
+        "Henrik Bengtsson",
+        "Steve Martin"
+      ],
+      "started": "2022-01-14T20:39:59-05:00",
+      "last_reply": "2022-01-20T15:02:37-05:00",
+      "root_message_id": "msg-7fdccbc7ef3c"
+    },
+    {
+      "id": "thread-223610bd8f34",
+      "subject": "compile failure for R-devel",
+      "message_count": 3,
+      "participants": [
+        "Therneau, Terry M., Ph.D.",
+        "Tomas Kalibera"
+      ],
+      "started": "2022-01-17T12:06:57-06:00",
+      "last_reply": "2022-01-17T12:46:06-06:00",
+      "root_message_id": "msg-223610bd8f34"
+    },
+    {
+      "id": "thread-c6020b8844f5",
+      "subject": "Out buffers flushing",
+      "message_count": 3,
+      "participants": [
+        "Bill Dunlap",
+        "Greg Minshall",
+        "Roman Savchenko"
+      ],
+      "started": "2022-01-20T23:33:40+02:00",
+      "last_reply": "2022-01-21T08:25:06-08:00",
+      "root_message_id": "msg-c6020b8844f5"
+    },
+    {
+      "id": "thread-506d25a2e0f1",
+      "subject": "isNamespaceLoaded() while the namespace is loading",
+      "message_count": 1,
+      "participants": [
+        "Gábor Csárdi"
+      ],
+      "started": "2022-01-21T17:26:23+01:00",
+      "last_reply": "2022-01-21T17:26:23+01:00",
+      "root_message_id": "msg-506d25a2e0f1"
+    },
+    {
+      "id": "thread-057d94d0d40f",
+      "subject": "reason for odd timings",
+      "message_count": 5,
+      "participants": [
+        "J C Nash",
+        "Peter Langfelder",
+        "Simon Urbanek",
+        "Steve Martin"
+      ],
+      "started": "2022-01-21T20:51:08-05:00",
+      "last_reply": "2022-01-23T10:44:54+13:00",
+      "root_message_id": "msg-057d94d0d40f"
+    },
+    {
+      "id": "thread-ffbaf68753ba",
+      "subject": "aggregate.formula and pipes",
+      "message_count": 1,
+      "participants": [
+        "Gabor Grothendieck"
+      ],
+      "started": "2022-01-26T09:48:21-05:00",
+      "last_reply": "2022-01-26T09:48:21-05:00",
+      "root_message_id": "msg-ffbaf68753ba"
+    },
+    {
+      "id": "thread-bd778ffa0bc4",
+      "subject": "Bug in rbind.data.frame?",
+      "message_count": 3,
+      "participants": [
+        "Duncan Murdoch",
+        "Kurt Hornik"
+      ],
+      "started": "2022-01-30T06:50:19-05:00",
+      "last_reply": "2022-01-31T09:29:22+01:00",
+      "root_message_id": "msg-bd778ffa0bc4"
+    },
+    {
+      "id": "thread-f0d0a3e6e756",
+      "subject": "trouble with package loading: Function found when exporting methods from the namespace ‘raster’ which is not S4 generic: ‘all.equal’",
+      "message_count": 4,
+      "participants": [
+        "Duncan Murdoch",
+        "Patrick Giraudoux"
+      ],
+      "started": "2022-01-30T18:52:51+01:00",
+      "last_reply": "2022-01-30T13:57:27-05:00",
+      "root_message_id": "msg-f0d0a3e6e756"
+    },
+    {
+      "id": "thread-c60e47bec366",
+      "subject": "localeToCharset()",
+      "message_count": 6,
+      "participants": [
+        "Blätte, Andreas",
+        "Ivan Krylov",
+        "Rasmus Liland",
+        "Tomas Kalibera"
+      ],
+      "started": "2022-01-31T09:56:27+00:00",
+      "last_reply": "2022-01-31T13:08:11+00:00",
+      "root_message_id": "msg-c60e47bec366"
+    },
+    {
+      "id": "thread-963f48505d61",
+      "subject": "inconsistency between as.list(df) and as.list(mat) with mode(mat) == \"list\"",
+      "message_count": 1,
+      "participants": [
+        "Gabriel Becker"
+      ],
+      "started": "2022-01-31T12:11:10-08:00",
+      "last_reply": "2022-01-31T12:11:10-08:00",
+      "root_message_id": "msg-963f48505d61"
+    },
+    {
+      "id": "thread-6953ef48f59b",
+      "subject": "trouble with package loading: Function found when exporting methods from the namespace ‘raster’ which is not S4 generic: ‘all.equal’",
+      "message_count": 1,
+      "participants": [
+        "Patrick Giraudoux"
+      ],
+      "started": "2022-01-31T13:53:12+01:00",
+      "last_reply": "2022-01-31T13:53:12+01:00",
+      "root_message_id": "msg-6953ef48f59b"
+    }
+  ]
+}

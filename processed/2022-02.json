@@ -1,0 +1,40 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2022-02",
+  "messages": [
+    {
+      "id": "msg-456446b95ea2",
+      "message_id": "<44E23467-FA5E-4722-A988-A9EAD32C1D12@R-project.org>",
+      "from_name": "Simon Urbanek",
+      "from_email_hash": "0f7a36ede18d495e19236834ee83f5b20722f5d7cec3588576a59851b948b51a",
+      "date": "2022-02-01T01:16:03+13:00",
+      "subject": "[Rd] localeToCharset()",
+      "subject_clean": "localeToCharset()",
+      "in_reply_to": "<E5C802F0-1943-4CF4-AE64-9545207B285C@uni-due.de>",
+      "references": [
+        "<68F1ECBC-E65A-443B-928B-94889F183D03@uni-due.de>",
+        "<20220131143201.10e183dc@Tarkus>",
+        "<E5C802F0-1943-4CF4-AE64-9545207B285C@uni-due.de>"
+      ],
+      "body_plain": "Andreas,\n\nThe output is very predictable, so this is not about predictability. Note that C.UTF-8 is technically an invalid locale by the semantics rules (see below). Also note that the C locale is \"C\" - it is not allowed to have any string behind the C (or else is not the C locale) so what you have is NOT a C locale (see POSIX 7.2).\n\nThe issue here is that the POSIX standard provides no semantic rules, locale names can be arbitrary, the only defined one is C (and its synonym POSIX). All others are random locales that can do whatever they want. Then later some systems have introduced semantic guidelines such as the <language>_<territory>.<codeset> convention - that that is what localeToCharsets() expected so it can try to guess the charset for that language. Since C.UTF-8 is such an aberration (not in the standard form) localeToCharset() doesn't know about it and returns NA since it can't guess the language.\n\nLong story short, C.UTF-8 breaks all common rules and has been introduced fairly recently to some Linux systems so R doesn't not know about it yet. Ivan's patch fixes that. That aside, locale names have no official provision to provide the charset, so all you get is a guess assuming the system follows the common rules.\n\nCheers,\nSimon\n\n\n\n> On Feb 1, 2022, at 00:38, Bl?tte, Andreas <andreas.blaette at uni-due.de> wrote:\n> \n> Dear Ivan,\n> \n> this is a very helpful explanation!  I think it is important to make output of localeToCharset() more predictable. My problem is essentially not to set the locale such that things will work after all. I think the problem is that you see unexpected results.  I guess I owe a suggestion how to improve the code, but your suggestion looks like a very good starting point. \n> \n> Andreas \n> \n> ?Am 31.01.22, 12:32 schrieb \"Ivan Krylov\" <krylov.r00t at gmail.com>:\n> \n>    On Mon, 31 Jan 2022 09:56:27 +0000\n>    \"Bl?tte, Andreas\" <andreas.blaette at uni-due.de> wrote:\n> \n>> After starting R with a re-defined locale (`env LC_CTYPE=en_US.UTF-8\n>> R`,  the output of `localeToCharset()` is:\n>> [1] \"UTF-8\"     \"ISO8859-1\"\n> \n>> why ISO8859-1 might be a fallback option here?\n> \n>    ISO8859-1 seems to be offered because it covers the alphabet of\n>    American English. Obviously, this doesn't guarantee that the guess is\n>    correct. For example, I could symlink the ru_RU.KOI8-R locale on my\n>    system to name it \"ru_RU\", and localeToCharset() would return\n>    \"ISO8859-5\", not knowing the correct answer. ??????, anyone?\n> \n>> Part of my analysis of the code of `localeToCharset()` is that it\n>> targets special scenarios on Windows and macOS, but not on Linux.\n> \n>    Well, it almost does the right thing. GNU/Linux locales are typically\n>    named like <language>_<country>.<encoding>, and localeToCharset()\n>    respects the <encoding> part, but only if the language and the country\n>    are specified. A quick fix for that would be to add one final case:\n> \n>    Index: src/library/utils/R/iconv.R\n>    ===================================================================\n>    --- src/library/utils/R/iconv.R (revision 81596)\n>    +++ src/library/utils/R/iconv.R (working copy)\n>    @@ -135,6 +135,7 @@\n>                 if(enc == \"utf8\") return(c(\"UTF-8\", guess(ll)))\n>                 else return(guess(ll))\n>             }\n>    +        if (enc == \"utf8\") return(\"UTF-8\") # fallback for ???.UTF-8\n>             return(NA_character_)\n>         }\n>     }\n> \n>    (Non-UTF-8 encodings on POSIX are handled above, in the if(nzchar(enc)\n>    && enc != \"utf8\") branch.)\n> \n>    Maybe a better fix would be to restructure the code a bit, to always\n>    take the encoding hint and then also try to guess if the locale looks\n>    like it provides a language code.\n> \n>    -- \n>    Best regards,\n>    Ivan\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Andreas,\n\nThe output is very predictable, so this is not about predictability. Note that C.UTF-8 is technically an invalid locale by the semantics rules (see below). Also note that the C locale is \"C\"",
+      "thread_id": "thread-456446b95ea2",
+      "thread_depth": 0,
+      "month": "2022-02"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-456446b95ea2",
+      "subject": "localeToCharset()",
+      "message_count": 1,
+      "participants": [
+        "Simon Urbanek"
+      ],
+      "started": "2022-02-01T01:16:03+13:00",
+      "last_reply": "2022-02-01T01:16:03+13:00",
+      "root_message_id": "msg-456446b95ea2"
+    }
+  ]
+}

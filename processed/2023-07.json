@@ -1,0 +1,865 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2023-07",
+  "messages": [
+    {
+      "id": "msg-621ab3c93695",
+      "message_id": "<fb0340ef-f2f0-4b52-ae15-900d3cf2fdeb@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2023-07-02T12:01:03-04:00",
+      "subject": "[Rd] Strange error in R CMD check --timings",
+      "subject_clean": "Strange error in R CMD check --timings",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "This SO post: https://stackoverflow.com/q/76583828 describes a strange R \nCMD check error.  Depending on the contents of a comment in one of the \nexamples sections of a help page, an error like this could be triggered:\n\n   > base::assign(\".dptime\", (proc.time() - get(\".ptime\", pos = \n\"CheckExEnv\")), pos = \"CheckExEnv\")\n   > base::cat(\"read_net\", base::get(\".format_ptime\", pos = \n'CheckExEnv')(get(\".dptime\", pos = \"CheckExEnv\")), \"\\n\", \nfile=base::get(\".ExTimings\", pos = 'CheckExEnv'), append=TRUE, sep=\"\\t\")\n   > ### * <FOOTER>\n   > ###\n   > cleanEx()\n   > options(digits = 7L)\n   > base::cat(\"Time elapsed: \", proc.time() - base::g\n   + Error: unexpected end of input\n   Execution halted\n\nThe code without the offending comment is available here:\n\n   https://github.com/rob-ward-psych/iac\n\nat revision c2f3529.  To add the offending comment, change line 318 of \nR/iac_networks.R to\n\n   #' # Ken is a burglar in the Sharks, what is retrieved from his name\n\nand run roxygen on the package, so the long comment ends up in the \nexamples section of man/read_net.Rd instead of the empty comment that is \nthere on Github.\n\nAt first it appeared to require devtools::check(), but in fact the error \ncomes from R CMD check --timings .  One thing that may be related is \nthat an earlier example had this code:\n\n   file.edit(iac_example(\"what_where.yaml\"))\n\nIf that line is skipped (by conditioning on interactive()), the error \ngoes away.  But this might be unrelated, since deleting that comment \nalso makes the error go away.\n\nDuncan Murdoch",
+      "body_snippet": "This SO post: https://stackoverflow.com/q/76583828 describes a strange R \nCMD check error.  Depending on the contents of a comment in one of the \nexamples sections of a help page, an error like this c",
+      "thread_id": "thread-621ab3c93695",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-cd0d2552f9c9",
+      "message_id": "<c3fa82ce-8941-e606-8229-131fa2fe03b0@fau.de>",
+      "from_name": "Sebastian Meyer",
+      "from_email_hash": "b32c09dd3a31073d640ca6b0e4a9622b24387f298b03dc425beea12447839a33",
+      "date": "2023-07-02T20:34:21+02:00",
+      "subject": "[Rd] Strange error in R CMD check --timings",
+      "subject_clean": "Strange error in R CMD check --timings",
+      "in_reply_to": "<fb0340ef-f2f0-4b52-ae15-900d3cf2fdeb@gmail.com>",
+      "references": [
+        "<fb0340ef-f2f0-4b52-ae15-900d3cf2fdeb@gmail.com>"
+      ],
+      "body_plain": "Am 02.07.23 um 18:01 schrieb Duncan Murdoch:\n> This SO post: https://stackoverflow.com/q/76583828 describes a strange R\n> CMD check error.  Depending on the contents of a comment in one of the\n> examples sections of a help page, an error like this could be triggered:\n> \n>     > base::assign(\".dptime\", (proc.time() - get(\".ptime\", pos =\n> \"CheckExEnv\")), pos = \"CheckExEnv\")\n>     > base::cat(\"read_net\", base::get(\".format_ptime\", pos =\n> 'CheckExEnv')(get(\".dptime\", pos = \"CheckExEnv\")), \"\\n\",\n> file=base::get(\".ExTimings\", pos = 'CheckExEnv'), append=TRUE, sep=\"\\t\")\n>     > ### * <FOOTER>\n>     > ###\n>     > cleanEx()\n>     > options(digits = 7L)\n>     > base::cat(\"Time elapsed: \", proc.time() - base::g\n>     + Error: unexpected end of input\n>     Execution halted\n> \n> The code without the offending comment is available here:\n> \n>     https://github.com/rob-ward-psych/iac\n> \n> at revision c2f3529.  To add the offending comment, change line 318 of\n> R/iac_networks.R to\n> \n>     #' # Ken is a burglar in the Sharks, what is retrieved from his name\n> \n> and run roxygen on the package, so the long comment ends up in the\n> examples section of man/read_net.Rd instead of the empty comment that is\n> there on Github.\n> \n> At first it appeared to require devtools::check(), but in fact the error\n> comes from R CMD check --timings .  One thing that may be related is\n> that an earlier example had this code:\n> \n>     file.edit(iac_example(\"what_where.yaml\"))\n\nI could reproduce the check error on Ubuntu for some settings of EDITOR.\n\n- For EDITOR=\"nano\", the output below file.edit() in iac-Ex.Rout showed \ncontent from the first few lines of the yaml file and then\nToo many errors from stdin\n\n- For EDITOR=\"vi\", iac-Ex.Rout showed\nVim: Warning: Output is not to a terminal\nVim: Warning: Input is not from a terminal\nPress ENTER or type command to continue\n... some content from the yaml file ...\nVim: Error reading input, exiting...\n\nOTOH,\nEDITOR=\"nonexistent\" resulted in a successful check run with file.edit() \noutput\nsh: 1: nonexistent: not found\nWarning: error in running command\n\nwhereas EDITOR=\"emacs\" would open the GUI while \"* checking examples \n...\", waiting for me to finish editing.\n\nI agree that the package should conditionalize a [file.]edit() example \non the R session being interactive(). I'm wondering, however, whether R \nCMD check should itself generally set the \"editor\" option to a read-only \nvariant, e.g., a function that just calls file.show() with a warning \nwhen it runs the (massaged) examples. For related reasons, I guess, it \nalready sets the \"pager\" option on Windows to \"console\". Alternatively, \nif the massaged \"editor\" option called stop() (similar to T and F \nproducing errors), such examples would really need to be conditioned on \ninteractive().\n\n\tSebastian Meyer\n\n> \n> If that line is skipped (by conditioning on interactive()), the error\n> goes away.  But this might be unrelated, since deleting that comment\n> also makes the error go away.\n> \n> Duncan Murdoch\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Am 02.07.23 um 18:01 schrieb Duncan Murdoch:\n> This SO post: https://stackoverflow.com/q/76583828 describes a strange R\n> CMD check error.  Depending on the contents of a comment in one of the\n> examp",
+      "thread_id": "thread-621ab3c93695",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-de1a7e7d2060",
+      "message_id": "<d4fc6647-9838-76ea-3bce-b348ecd3dc32@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2023-07-02T14:44:34-04:00",
+      "subject": "[Rd] Strange error in R CMD check --timings",
+      "subject_clean": "Strange error in R CMD check --timings",
+      "in_reply_to": "<c3fa82ce-8941-e606-8229-131fa2fe03b0@fau.de>",
+      "references": [
+        "<fb0340ef-f2f0-4b52-ae15-900d3cf2fdeb@gmail.com>",
+        "<c3fa82ce-8941-e606-8229-131fa2fe03b0@fau.de>"
+      ],
+      "body_plain": "On 02/07/2023 2:34 p.m., Sebastian Meyer wrote:\n> Am 02.07.23 um 18:01 schrieb Duncan Murdoch:\n>> This SO post: https://stackoverflow.com/q/76583828 describes a strange R\n>> CMD check error.  Depending on the contents of a comment in one of the\n>> examples sections of a help page, an error like this could be triggered:\n>>\n>>      > base::assign(\".dptime\", (proc.time() - get(\".ptime\", pos =\n>> \"CheckExEnv\")), pos = \"CheckExEnv\")\n>>      > base::cat(\"read_net\", base::get(\".format_ptime\", pos =\n>> 'CheckExEnv')(get(\".dptime\", pos = \"CheckExEnv\")), \"\\n\",\n>> file=base::get(\".ExTimings\", pos = 'CheckExEnv'), append=TRUE, sep=\"\\t\")\n>>      > ### * <FOOTER>\n>>      > ###\n>>      > cleanEx()\n>>      > options(digits = 7L)\n>>      > base::cat(\"Time elapsed: \", proc.time() - base::g\n>>      + Error: unexpected end of input\n>>      Execution halted\n>>\n>> The code without the offending comment is available here:\n>>\n>>      https://github.com/rob-ward-psych/iac\n>>\n>> at revision c2f3529.  To add the offending comment, change line 318 of\n>> R/iac_networks.R to\n>>\n>>      #' # Ken is a burglar in the Sharks, what is retrieved from his name\n>>\n>> and run roxygen on the package, so the long comment ends up in the\n>> examples section of man/read_net.Rd instead of the empty comment that is\n>> there on Github.\n>>\n>> At first it appeared to require devtools::check(), but in fact the error\n>> comes from R CMD check --timings .  One thing that may be related is\n>> that an earlier example had this code:\n>>\n>>      file.edit(iac_example(\"what_where.yaml\"))\n> \n> I could reproduce the check error on Ubuntu for some settings of EDITOR.\n> \n> - For EDITOR=\"nano\", the output below file.edit() in iac-Ex.Rout showed\n> content from the first few lines of the yaml file and then\n> Too many errors from stdin\n> \n> - For EDITOR=\"vi\", iac-Ex.Rout showed\n> Vim: Warning: Output is not to a terminal\n> Vim: Warning: Input is not from a terminal\n> Press ENTER or type command to continue\n> ... some content from the yaml file ...\n> Vim: Error reading input, exiting...\n> \n> OTOH,\n> EDITOR=\"nonexistent\" resulted in a successful check run with file.edit()\n> output\n> sh: 1: nonexistent: not found\n> Warning: error in running command\n> \n> whereas EDITOR=\"emacs\" would open the GUI while \"* checking examples\n> ...\", waiting for me to finish editing.\n> \n> I agree that the package should conditionalize a [file.]edit() example\n> on the R session being interactive(). I'm wondering, however, whether R\n> CMD check should itself generally set the \"editor\" option to a read-only\n> variant, e.g., a function that just calls file.show() with a warning\n> when it runs the (massaged) examples. For related reasons, I guess, it\n> already sets the \"pager\" option on Windows to \"console\". Alternatively,\n> if the massaged \"editor\" option called stop() (similar to T and F\n> producing errors), such examples would really need to be conditioned on\n> interactive().\n\nGiven how variable the results are, I think the last option (calling \nfile.edit() non-interactively should be an error) would be my choice.\n\nDuncan Murdoch\n\n> \n> \tSebastian Meyer\n> \n>>\n>> If that line is skipped (by conditioning on interactive()), the error\n>> goes away.  But this might be unrelated, since deleting that comment\n>> also makes the error go away.\n>>\n>> Duncan Murdoch\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On 02/07/2023 2:34 p.m., Sebastian Meyer wrote:\n> Am 02.07.23 um 18:01 schrieb Duncan Murdoch:\n>> This SO post: https://stackoverflow.com/q/76583828 describes a strange R\n>> CMD check error.  Dependin",
+      "thread_id": "thread-621ab3c93695",
+      "thread_depth": 2,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-73573a485d15",
+      "message_id": "<674F4E4B-9A97-4185-A09B-A5E38CA6D2AC@gmail.com>",
+      "from_name": "Dipterix Wang",
+      "from_email_hash": "63b8dffbca4be898fba634fc40fe06adea228cff1d8712930ba22a536d2ee296",
+      "date": "2023-07-06T02:37:22-04:00",
+      "subject": "[Rd] numeric_version doesn't like numeric versions anymore?",
+      "subject_clean": "numeric_version doesn't like numeric versions anymore?",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Dear R devs,\n\nI installed the recent devel R to test a package error when I intercept this warning when loading packages:\n\n```\nWarning in .make_numeric_version(x, strict, .standard_regexps()$valid_numeric_version) :\n  invalid non-character version specification 'x' (type: double)\n```\n\nAfter a long debugging, I realize that `numeric_version` in base does not support numerical input x by default now. \n\nA reproducible example: \n\nR 4.4\n\n```\n> numeric_version(1.5)\nWarning in .make_numeric_version(x, strict, .standard_regexps()$valid_numeric_version) :\n  invalid non-character version specification 'x' (type: double)\n[1] ?1.5?\n```\n\n\nR 4.3.1\n\n```\n> numeric_version(1.5)\n[1] ?1.5?\n```\n\nAccording to help document, `strict=TRUE` should result in errors, then the 4.3 behavior was actually incorrect. According to pkgload maintainer, Kurt has sent him an email to fix this, suggesting this on-going change is intentional.\n \nMay I ask is there any benefit of changing the behavior?\n\nThanks,\n- D\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear R devs,\n\nI installed the recent devel R to test a package error when I intercept this warning when loading packages:\n\n```\nWarning in .make_numeric_version(x, strict, .standard_regexps()$valid_num",
+      "thread_id": "thread-73573a485d15",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-152169cf416d",
+      "message_id": "<0ac19a97-ff57-6325-1744-41707d3b71ba@fau.de>",
+      "from_name": "Sebastian Meyer",
+      "from_email_hash": "b32c09dd3a31073d640ca6b0e4a9622b24387f298b03dc425beea12447839a33",
+      "date": "2023-07-06T09:52:59+02:00",
+      "subject": "[Rd] numeric_version doesn't like numeric versions anymore?",
+      "subject_clean": "numeric_version doesn't like numeric versions anymore?",
+      "in_reply_to": "<674F4E4B-9A97-4185-A09B-A5E38CA6D2AC@gmail.com>",
+      "references": [
+        "<674F4E4B-9A97-4185-A09B-A5E38CA6D2AC@gmail.com>"
+      ],
+      "body_plain": "Please see <https://bugs.r-project.org/show_bug.cgi?id=18548> for the \nbackground. The documentation has always said that the input needs to be \na character vector. Implicit conversion of numeric input to character is \naffected by R options (OutDec and scipen), but it is also error-prone in \nthis context:\n\nR> package_version(\"1.3\") > 1.20\n[1] TRUE\n\nThis now warns for a good reason in my opinion.\n\nBest regards,\n\n\tSebastian Meyer\n\n\nAm 06.07.23 um 08:37 schrieb Dipterix Wang:\n> Dear R devs,\n> \n> I installed the recent devel R to test a package error when I intercept this warning when loading packages:\n> \n> ```\n> Warning in .make_numeric_version(x, strict, .standard_regexps()$valid_numeric_version) :\n>    invalid non-character version specification 'x' (type: double)\n> ```\n> \n> After a long debugging, I realize that `numeric_version` in base does not support numerical input x by default now.\n> \n> A reproducible example:\n> \n> R 4.4\n> \n> ```\n>> numeric_version(1.5)\n> Warning in .make_numeric_version(x, strict, .standard_regexps()$valid_numeric_version) :\n>    invalid non-character version specification 'x' (type: double)\n> [1] ?1.5?\n> ```\n> \n> \n> R 4.3.1\n> \n> ```\n>> numeric_version(1.5)\n> [1] ?1.5?\n> ```\n> \n> According to help document, `strict=TRUE` should result in errors, then the 4.3 behavior was actually incorrect. According to pkgload maintainer, Kurt has sent him an email to fix this, suggesting this on-going change is intentional.\n>   \n> May I ask is there any benefit of changing the behavior?\n> \n> Thanks,\n> - D\n> \t[[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Please see <https://bugs.r-project.org/show_bug.cgi?id=18548> for the \nbackground. The documentation has always said that the input needs to be \na character vector. Implicit conversion of numeric inpu",
+      "thread_id": "thread-73573a485d15",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-710d1b8a80ae",
+      "message_id": "<730ed025-b919-6d76-4263-6462d37f40e8@gmail.com>",
+      "from_name": "Mikael Jagan",
+      "from_email_hash": "4bef0ec6e88ca2d9a2d39dae930cd5ac951a48aafc09e210705e7cdcf3fd5964",
+      "date": "2023-07-06T11:32:00-04:00",
+      "subject": "[Rd] logic tweak needed for as.data.frame.<class> deprecation warning",
+      "subject_clean": "logic tweak needed for as.data.frame.<class> deprecation warning",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Continuing the thread started on R-package-devel, here:\nhttps://stat.ethz.ch/pipermail/r-package-devel/2023q3/009307.html\n\nThe logic of the now soft-deprecated as.data.frame.<class>,\n\n > body(as.data.frame.integer)[[2L]]\nif ((sys.nframe() <= 1L || sys.call(-1L)[[1L]] != quote(as.data.frame)) &&\n     nzchar(Sys.getenv(\"_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_\"))) \n.Deprecated(msg = gettextf(\"Direct call of '%s()' is deprecated.  Use '%s()' or \n'%s()' instead\",\n     \"as.data.frame.integer\", \"as.data.frame.vector\", \"as.data.frame\"))\n\nmay need adjustment to avoid false positives such as this one:\n\n > Sys.setenv(\"_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_\" = TRUE)\n > f <- as.data.frame\n > f(0L)\n   0L\n1  0\nWarning message:\nDirect call of 'as.data.frame.integer()' is deprecated.  Use \n'as.data.frame.vector()' or 'as.data.frame()' instead\n\ni.e., the condition sys.call(-1L)[[1L]] != quote(as.data.frame) is not precise\nenough ... would !identical(sys.function(-1L), as.data.frame) work instead?\n\nMikael",
+      "body_snippet": "Continuing the thread started on R-package-devel, here:\nhttps://stat.ethz.ch/pipermail/r-package-devel/2023q3/009307.html\n\nThe logic of the now soft-deprecated as.data.frame.<class>,\n\n > body(as.data.",
+      "thread_id": "thread-710d1b8a80ae",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-1f2ea8c4af29",
+      "message_id": "<25766.59441.59514.211464@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2023-07-06T18:13:37+02:00",
+      "subject": "[Rd] Warning 'as.data.frame.POSIXct()' is deprecated",
+      "subject_clean": "Warning 'as.data.frame.POSIXct()' is deprecated",
+      "in_reply_to": "<4d7bc097-0ea9-96b2-81ea-36203a7f7310@hiddenelephants.co.uk>",
+      "references": [
+        "<CALnEB16CAR28kTtkvVcEOQj3Tmyc_rwCjckwexnQsA3_ZkFPCg@mail.gmail.com>",
+        "<1e8bc3aa-1614-3cd4-f0db-01735c152e7f@hiddenelephants.co.uk>",
+        "<15178f56-0d28-e7fa-000f-959c00dd63ca@hiddenelephants.co.uk>",
+        "<CALnEB17VsNZC5U_usC+qxXgx4ngZFwGpO2W_Tg8L6WQ9rm83Qg@mail.gmail.com>",
+        "<87wmzdcg23.fsf@aldus>",
+        "<4d7bc097-0ea9-96b2-81ea-36203a7f7310@hiddenelephants.co.uk>"
+      ],
+      "body_plain": ">>>>> Tim Taylor \n>>>>>     on Thu, 6 Jul 2023 15:11:41 +0100 writes:\n\n    > Ah yes ... and reading the as.data.frame help we see (emphasis mine):\n    > \"... Direct calls to as.data.frame.<class>() are still possible (*base \n    > package!*), for 12 atomic base classes, but will deprecated ...\"\n\n    > So it does seem that a lot of these warnings are triggered by base R and \n    > updating this code may be a work in progress.\n\n\n    > A little tangential (but related) to this though is still the fact that \n    > we can trigger the warning with:\n\n    > lapply(Sys.Date(), as.data.frame)\n\n    > so I wonder if the code in base/R/zzz.R \n    > (https://github.com/wch/r-source/blob/9f1940663f902174034a01197e55fd17c767213a/src/library/base/R/zzz.R#L664-L686) \n    > does need tweaking?\n\nYes, thank you, Tim for your analysis.\nI've started looking at the issue a couple of hours ago,\n{notably as I am the originator of the issue ...}\n\n    > At this stage this is probably more a question for R-devel though.\n\n    > Tim\n\n(( not only at this stage. This would have belonged there from the\n   start.... but nothing is perfect....\n   ==> This reply now *GOES* to R-devel ))\n\n\nYes, this a buglet / imperfection in the deprecation warnings.\nI have spent already time to fix the  lapply() case {and similar} cases.\nIn the mean time there *is* also a very related message on\nR-devel by Mikael Jagan.\n\nAs the plan was that this is only \"ad interim\", namely\nbefore those explicit  as.data.frame.<something> methods will be\ncompletely gone from base -- because they are all currently\nidentical(*) to as.data.frame.vector(),\nI did add that hack in zzz.R  to create deprecation warnings\nthat should be correct most of the time - unless people do funny things.\n--\n*) apart from the fact that 12 method functions all got their deprec.warning.\n\n\n    > On 06/07/2023 14:42, Enrico Schumann wrote:\n    >> On Thu, 06 Jul 2023, Vincent van Hees writes:\n    >> \n    >>> Thanks, in that case the REPLEX for the issue may need to be:\n    >>> \n    >>>> remember = Sys.getenv(\"_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_\")\n    >>>> Sys.setenv(\"_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_\" = TRUE)\n    >>>> data.frame(time = Sys.time())\n    >>> time\n    >>> 1 2023-07-06 14:29:37\n    >>>> data.frame(time = as.POSIXlt(Sys.time()))\n    >>> time\n    >>> 1 2023-07-06 14:29:37\n    >>> Warning message:\n    >>> Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use\n    >>> 'as.data.frame.vector()' or 'as.data.frame()' instead\n    >>>> Sys.setenv(\"_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_\" = remember)\n    >> \n    >> I think it happens because\n    >> \n    >> data.frame(<POSIXlt>)\n    >> \n    >> calls 'as.data.frame.POSIXlt' (per its S3-class), which\n    >> in turn directly calls 'as.data.frame.POSIXct':\n    >> \n    >> ## as.data.frame.POSIXlt\n    >> function (x, row.names = NULL, optional = FALSE, ...)\n    >> {\n    >> value <- as.data.frame.POSIXct(as.POSIXct(x), row.names,\n    >> optional, ...)\n    >> if (!optional)\n    >> names(value) <- deparse1(substitute(x))\n    >> value\n    >> }\n    >> <environment: namespace:base>\n    >> \n    >> Kind regards\n    >> Enrico\n\nIndeed, thank you, Enrico!\n\nThat's another such case, that my \"hack\" (see above) overlooked;\nsomewhat embarrassingly, but also astonishingly to me as I hoped\nto find relevant cases by warnings appearing within the base R\nchecks...  {and it is I think even easier to fix than the\nlapply(.)  case..}.\n\nMartin\n\n\nMartin Maechler\nETH Zurich  and  R Core team\n\n\n    >>> Vincent\n    >>> \n    >>> On Thu, 6 Jul 2023 at 10:41, Tim Taylor <tim.taylor at hiddenelephants.co.uk>\n    >>> wrote:\n    >>> \n    >>>> Apologies - I've not had enough caffeine just yet. The reprex below\n    >>>> highlights the issue but I think the code which implemented the change\n    >>>> *may* need tweaking not lapply.\n    >>>> \n    >>>> Tim\n    >>>> \n    >>>> On 06/07/2023 09:26, Tim Taylor wrote:\n    >>>>> This *may* be an issue in lapply.  Let's see what others day. Reprex\n    >>>>> below\n    >>>>> \n    >>>>> Sys.setenv(\"_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_\" = TRUE)\n    >>>>> dat <- Sys.Date()\n    >>>>> as.data.frame(dat)\n    >>>>> #>          dat\n    >>>>> #> 1 2023-07-06\n    >>>>> lapply(dat, as.data.frame)\n    >>>>> #> Warning: Direct call of 'as.data.frame.Date()' is deprecated.  Use\n    >>>>> #> 'as.data.frame.vector()' or 'as.data.frame()' instead\n    >>>>> #> [[1]]\n    >>>>> #>       X[[i]]\n    >>>>> #> 1 2023-07-06\n    >>>>> \n    >>>>> Tim\n    >>>>> \n    >>>>> On 06/07/2023 08:54, Vincent van Hees wrote:\n>>>>> Dear all,\n    >>>>>> \n>>>>> I see the following warning in my package test results:\n    >>>>>> \n>>>>> ```\n>>>>> Warning\n>>>>> Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use\n>>>>> 'as.data.frame.vector()' or 'as.data.frame()' instead\n>>>>> ```\n    >>>>>> \n>>>>> The warning is not always there and I struggle to make it\n>>>>> reproducible. I\n>>>>> have encountered it in both Ubuntu 22.04 and in Windows 11, in both R\n>>>>> 4.3.0\n>>>>> and 4.3.1, in both RStudio and in an GitHub Actions environment (example\n>>>>> <https://github.com/wadpac/GGIR/actions/runs/5463862340/jobs/9945096566>).\n>>>>> The warning gives the impression that I am doing something that R no\n>>>>> longer\n>>>>> supports. However, I am not using the command as.data.frame.POSIXct()\n>>>>> anywhere directly in my code.\n    >>>>>> \n>>>>> When I dive into the code where the warnings occur I see patterns like:\n    >>>>>> \n>>>>> ```\n>>>>> now = Sys.time()\n>>>>> df = data.frame (time = seq(now, now + 10, by =1),  B  = 1:11)\n>>>>> ```\n    >>>>>> \n>>>>> (this is a simplification of for example:\n    >>>>>> \n    >>>> https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_read.myacc.csv.R\n>>>>> )\n    >>>>>> \n>>>>> Does this mean I am discouraged from putting a vector with POSIXct\n>>>>> values\n>>>>> in a data.frame?\n>>>>> If yes, what would be the recommended work around?\n    >>>>>> \n>>>>> I have been trying to find documentation or online discussions about\n>>>>> this\n>>>>> warning but no luck so far. I see R NEWS\n>>>>> <https://cran.r-project.org/doc/manuals/r-release/NEWS.html> mentions\n>>>>> updates to POSIXct related objects several times in the past year but\n>>>>> those\n>>>>> seem to be different issues.\n\n>>>>> Best,\n>>>>> Vincent",
+      "body_snippet": ">>>>> Tim Taylor \n>>>>>     on Thu, 6 Jul 2023 15:11:41 +0100 writes:\n\n    > Ah yes ... and reading the as.data.frame help we see (emphasis mine):\n    > \"... Direct calls to as.data.frame.<class>() ar",
+      "thread_id": "thread-1f2ea8c4af29",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-e51f83b5b052",
+      "message_id": "<56c8be34-f804-be1a-765a-898b649475f6@gmail.com>",
+      "from_name": "Mikael Jagan",
+      "from_email_hash": "4bef0ec6e88ca2d9a2d39dae930cd5ac951a48aafc09e210705e7cdcf3fd5964",
+      "date": "2023-07-06T12:54:11-04:00",
+      "subject": "[Rd] logic tweak needed for as.data.frame.<class> deprecation warning",
+      "subject_clean": "logic tweak needed for as.data.frame.<class> deprecation warning",
+      "in_reply_to": "<730ed025-b919-6d76-4263-6462d37f40e8@gmail.com>",
+      "references": [
+        "<730ed025-b919-6d76-4263-6462d37f40e8@gmail.com>"
+      ],
+      "body_plain": "Another issue raised in the earlier thread is that as.data.frame.POSIXlt\nstill calls as.data.frame.POSIXct.  Hence another path to a false positive\ndeprecation warning would be:\n\n > Sys.setenv(\"_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_\" = TRUE)\n > as.data.frame(as.POSIXlt(.POSIXct(0, \"UTC\")))\n   as.POSIXlt(.POSIXct(0, \"UTC\"))\n1                     1970-01-01\nWarning message:\nDirect call of 'as.data.frame.POSIXct()' is deprecated.  Use \n'as.data.frame.vector()' or 'as.data.frame()' instead\n\nas.data.frame.POSIXlt could simply change to using as.data.frame.vector.\n\nI glanced at the other non-deprecated as.data.frame.<class> and did not\nsee other usage of the deprecated ones ... a more systematic check could\nbe worth doing.\n\nMikael\n\nOn 2023-07-06 11:32 am, Mikael Jagan wrote:\n> Continuing the thread started on R-package-devel, here:\n> https://stat.ethz.ch/pipermail/r-package-devel/2023q3/009307.html\n> \n> The logic of the now soft-deprecated as.data.frame.<class>,\n> \n>   > body(as.data.frame.integer)[[2L]]\n> if ((sys.nframe() <= 1L || sys.call(-1L)[[1L]] != quote(as.data.frame)) &&\n>       nzchar(Sys.getenv(\"_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_\")))\n> .Deprecated(msg = gettextf(\"Direct call of '%s()' is deprecated.  Use '%s()' or\n> '%s()' instead\",\n>       \"as.data.frame.integer\", \"as.data.frame.vector\", \"as.data.frame\"))\n> \n> may need adjustment to avoid false positives such as this one:\n> \n>   > Sys.setenv(\"_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_\" = TRUE)\n>   > f <- as.data.frame\n>   > f(0L)\n>     0L\n> 1  0\n> Warning message:\n> Direct call of 'as.data.frame.integer()' is deprecated.  Use\n> 'as.data.frame.vector()' or 'as.data.frame()' instead\n> \n> i.e., the condition sys.call(-1L)[[1L]] != quote(as.data.frame) is not precise\n> enough ... would !identical(sys.function(-1L), as.data.frame) work instead?\n> \n> Mikael",
+      "body_snippet": "Another issue raised in the earlier thread is that as.data.frame.POSIXlt\nstill calls as.data.frame.POSIXct.  Hence another path to a false positive\ndeprecation warning would be:\n\n > Sys.setenv(\"_R_CHE",
+      "thread_id": "thread-710d1b8a80ae",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-0ddf1554bea9",
+      "message_id": "<25768.16746.938255.645014@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2023-07-07T18:46:34+02:00",
+      "subject": "[Rd] logic tweak needed for as.data.frame.<class> deprecation warning",
+      "subject_clean": "logic tweak needed for as.data.frame.<class> deprecation warning",
+      "in_reply_to": "<730ed025-b919-6d76-4263-6462d37f40e8@gmail.com>",
+      "references": [
+        "<730ed025-b919-6d76-4263-6462d37f40e8@gmail.com>"
+      ],
+      "body_plain": ">>>>> Mikael Jagan \n>>>>>     on Thu, 6 Jul 2023 11:32:00 -0400 writes:\n\n    > Continuing the thread started on R-package-devel, here:\n    > https://stat.ethz.ch/pipermail/r-package-devel/2023q3/009307.html\n\n    > The logic of the now soft-deprecated as.data.frame.<class>,\n\n    >> body(as.data.frame.integer)[[2L]]\n    > if ((sys.nframe() <= 1L || sys.call(-1L)[[1L]] != quote(as.data.frame)) &&\n    > nzchar(Sys.getenv(\"_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_\"))) \n    > .Deprecated(msg = gettextf(\"Direct call of '%s()' is deprecated.  Use '%s()' or \n    > '%s()' instead\",\n    > \"as.data.frame.integer\", \"as.data.frame.vector\", \"as.data.frame\"))\n\n    > may need adjustment to avoid false positives such as this one:\n\n    >> Sys.setenv(\"_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_\" = TRUE)\n    >> f <- as.data.frame\n    >> f(0L)\n    > 0L\n    > 1  0\n    > Warning message:\n    > Direct call of 'as.data.frame.integer()' is deprecated.  Use \n    > 'as.data.frame.vector()' or 'as.data.frame()' instead\n\n    > i.e., the condition sys.call(-1L)[[1L]] != quote(as.data.frame) is not precise\n    > enough ... would !identical(sys.function(-1L), as.data.frame) work instead?\n\n\n    > Mikael\n\n\nThank you, Mikael!\n\nIndeed, as I see that it seems not even more costly than using sys.call(),\n*and* because you gave me a case, where the previous, even\nupdated code, even lead to an error:\n\n  > mapply(as.data.frame, x=1:10, row.names=letters[1:10])\n  Error in (c1 <- sys.call(-1L)[[1L]]) != quote(as.data.frame) :\n      comparison (!=) is possible only for atomic and list types\n\nI have amended the code, using sys.function(-1L) in the first check\nwhich does fix the above error and catches more false positives.\n\nThis is now in  R-devel svn rev >=  84653\nand is planned to eventually be ported to the R 4.3.x series,\ni.e., currently \"R 4.3.1 patched\".\n\nMartin",
+      "body_snippet": ">>>>> Mikael Jagan \n>>>>>     on Thu, 6 Jul 2023 11:32:00 -0400 writes:\n\n    > Continuing the thread started on R-package-devel, here:\n    > https://stat.ethz.ch/pipermail/r-package-devel/2023q3/00930",
+      "thread_id": "thread-710d1b8a80ae",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-7aa87f015584",
+      "message_id": "<20230710183730.16f332b8@arachnoid>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "72bda76034efaa18cd166b722c373c5159885b988468de351df8992020f3856a",
+      "date": "2023-07-10T18:37:30+03:00",
+      "subject": "[Rd] [R] Errors in \"An introduction to R\"",
+      "subject_clean": "Errors in \"An introduction to R\"",
+      "in_reply_to": "<4caaf4ba-0072-8040-5e0b-77a2f5725004@gmail.com>",
+      "references": [
+        "<4caaf4ba-0072-8040-5e0b-77a2f5725004@gmail.com>"
+      ],
+      "body_plain": "Dear Jarkko,\n\nThank you for spotting these problems and suggesting fixes for them! I\nam forwarding your e-mail to the R-devel mailing list (removing the\nR-help list, which is for different kind of R problems), together with\na patch implementing your suggested changes.\n\n? Thu, 6 Jul 2023 10:12:16 +0300\nJarkko Toivonen <jarkko.toivonen.19 at gmail.com> ?????:\n> I noticed a few errors in Version 4.3.1 (2023-06-16)\n\n--- doc/manual/R-intro.texi\t(revision 84676)\n+++ doc/manual/R-intro.texi\t(working copy)\n@@ -2594,7 +2594,7 @@\n \n @noindent\n does not replace the component @code{u} of the data frame, but rather\n-masks it with another variable @code{u} in the working directory at\n+masks it with another variable @code{u} in the workspace at\n @w{position 1} on the search path.  To make a permanent change to the\n data frame itself, the simplest way is to resort once again to the\n @code{$} notation:\n@@ -2631,7 +2631,7 @@\n @subsection Working with data frames\n \n A useful convention that allows you to work with many different problems\n-comfortably together in the same working directory is\n+comfortably together in the same workspace is\n \n @itemize @bullet\n @item\n@@ -2639,7 +2639,7 @@\n in a data frame under a suitably informative name;\n @item\n when working with a problem attach the appropriate data frame at\n- at w{position 2}, and use the working directory at @w{level 1} for\n+ at w{position 2}, and use the workspace at @w{level 1} for\n operational quantities and temporary variables;\n @item\n before leaving a problem, add any variables you wish to keep for future\n@@ -2646,7 +2646,7 @@\n reference to the data frame using the @code{$} form of assignment, and\n then @code{detach()};\n @item\n-finally remove all unwanted variables from the working directory and\n+finally remove all unwanted variables from the workspace and\n keep it as clean of left-over temporary variables as possible.\n @end itemize\n \n@@ -2718,7 +2718,7 @@\n rather inflexible.  There is a clear presumption by the designers of\n @R{} that you will be able to modify your input files using other tools,\n such as file editors or Perl at footnote{Under UNIX, the utilities\n- at command{sed} or at command{awk} can be used.} to fit in with the\n+ at command{sed} or @command{awk} can be used.} to fit in with the\n requirements of @R{}.  Generally this is very simple.\n \n If variables are to be held mainly in data frames, as we strongly\n@@ -3576,8 +3576,15 @@\n following to use it safely.\n \n Thus given a @math{n} by @math{1} vector @math{y} and an @math{n} by\n- at math{p} matrix @math{X} then @math{X \\ y} is defined as\n+ at math{p} matrix @math{X} then\n @ifnottex\n+ at math{X \\ y}\n+ at end ifnottex\n+ at tex\n+ at math{X \\\\ y}\n+ at end tex\n+is defined as\n+ at ifnottex\n (X'X)^@{-@}X'y, where (X'X)^@{-@}\n @end ifnottex\n @tex\n\nI chose to replace the \"working directory\" metaphor with \"workspace\". I\nsuch word use here is correct.\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "Dear Jarkko,\n\nThank you for spotting these problems and suggesting fixes for them! I\nam forwarding your e-mail to the R-devel mailing list (removing the\nR-help list, which is for different kind of R p",
+      "thread_id": "thread-7aa87f015584",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-7170c911563f",
+      "message_id": "<25773.6260.362980.712859@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2023-07-11T10:53:08+02:00",
+      "subject": "[Rd] [R] Errors in \"An introduction to R\"",
+      "subject_clean": "Errors in \"An introduction to R\"",
+      "in_reply_to": "<20230710183730.16f332b8@arachnoid>",
+      "references": [
+        "<4caaf4ba-0072-8040-5e0b-77a2f5725004@gmail.com>",
+        "<20230710183730.16f332b8@arachnoid>"
+      ],
+      "body_plain": ">>>>> Ivan Krylov \n>>>>>     on Mon, 10 Jul 2023 18:37:30 +0300 writes:\n\n    > Dear Jarkko, Thank you for spotting these problems and\n    > suggesting fixes for them! I am forwarding your e-mail to\n    > the R-devel mailing list (removing the R-help list, which\n    > is for different kind of R problems), together with a\n    > patch implementing your suggested changes.\n\n\nThank you, both, Jarkko  and Ivan for your respective work!\nI've committed the changes from Ivan's patch to the sources.\n\n\n    > ? Thu, 6 Jul 2023 10:12:16 +0300 Jarkko Toivonen\n    > <jarkko.toivonen.19 at gmail.com> ?????:\n    >> I noticed a few errors in Version 4.3.1 (2023-06-16)\n\n    > --- doc/manual/R-intro.texi (revision 84676)\n    > +++ doc/manual/R-intro.texi (working copy)\n\n  [...............]\n  [...............]\n\n    > I chose to replace the \"working directory\" metaphor with\n    > \"workspace\". I such word use here is correct.\n\nIn other parts of the R-intro the  \"working directory\" actually\nhas been correct use (not even metaphoric).\n\n    > -- \n    > Best regards, Ivan\n\nThank you again,\nMartin",
+      "body_snippet": ">>>>> Ivan Krylov \n>>>>>     on Mon, 10 Jul 2023 18:37:30 +0300 writes:\n\n    > Dear Jarkko, Thank you for spotting these problems and\n    > suggesting fixes for them! I am forwarding your e-mail to\n  ",
+      "thread_id": "thread-7aa87f015584",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-0dc3195d569c",
+      "message_id": "<a777a5e6-7363-35ed-3f30-ea526937cdff@gmail.com>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2023-07-11T18:01:32-04:00",
+      "subject": "[Rd] question about an R idiom: eval()ing a quoted block",
+      "subject_clean": "question about an R idiom: eval()ing a quoted block",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "In a few places in the R source code, such as the $initialize element \nof `family` objects, and in the body of power.t.test() (possibly other \npower.* functions), sets of instructions that will need to be run later \nare encapsulated by saving them as an expression and later applying \neval(), rather than as a function. This seems weird to me; the only \nreason I can think of for doing it this way is to avoid having to pass \nback multiple objects and assign them in the calling environment (since \nR doesn't have a particularly nice form of Python's tuple-unpacking idiom).\n\n   Am I missing something?\n\n  cheers\n    Ben\n\n\nhttps://github.com/r-devel/r-svn/blob/eac72e66a4d2c2aba50867bd80643b978febf5a3/src/library/stats/R/power.R#L38-L52\n\nhttps://github.com/r-devel/r-svn/blob/master/src/library/stats/R/family.R#L166-L171",
+      "body_snippet": "In a few places in the R source code, such as the $initialize element \nof `family` objects, and in the body of power.t.test() (possibly other \npower.* functions), sets of instructions that will need t",
+      "thread_id": "thread-0dc3195d569c",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-ccee7294e16e",
+      "message_id": "<d7998a5d-8b43-9373-dfd7-b1145dffa8af@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2023-07-11T20:24:14-04:00",
+      "subject": "[Rd] question about an R idiom: eval()ing a quoted block",
+      "subject_clean": "question about an R idiom: eval()ing a quoted block",
+      "in_reply_to": "<a777a5e6-7363-35ed-3f30-ea526937cdff@gmail.com>",
+      "references": [
+        "<a777a5e6-7363-35ed-3f30-ea526937cdff@gmail.com>"
+      ],
+      "body_plain": "On 11/07/2023 6:01 p.m., Ben Bolker wrote:\n>     In a few places in the R source code, such as the $initialize element\n> of `family` objects, and in the body of power.t.test() (possibly other\n> power.* functions), sets of instructions that will need to be run later\n> are encapsulated by saving them as an expression and later applying\n> eval(), rather than as a function. This seems weird to me; the only\n> reason I can think of for doing it this way is to avoid having to pass\n> back multiple objects and assign them in the calling environment (since\n> R doesn't have a particularly nice form of Python's tuple-unpacking idiom).\n> \n>     Am I missing something?\n> \n>    cheers\n>      Ben\n> \n> \n> https://github.com/r-devel/r-svn/blob/eac72e66a4d2c2aba50867bd80643b978febf5a3/src/library/stats/R/power.R#L38-L52\n> \n> https://github.com/r-devel/r-svn/blob/master/src/library/stats/R/family.R#L166-L171\n\nThose examples are very old (the second is at least 20 years old).  It \nmay be they were written by someone who was thinking in S rather than in \nR.\n\nAs far as I recall (but I might be wrong), S didn't have the same \nscoping rules for accessing and modifying local variables in a function \nfrom a nested function.\n\nDuncan Murdoch",
+      "body_snippet": "On 11/07/2023 6:01 p.m., Ben Bolker wrote:\n>     In a few places in the R source code, such as the $initialize element\n> of `family` objects, and in the body of power.t.test() (possibly other\n> power.",
+      "thread_id": "thread-0dc3195d569c",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-90436b5903bf",
+      "message_id": "<1c77cc95-ac33-b50e-94e1-2801e71b5faa@gmail.com>",
+      "from_name": "Jarkko Toivonen",
+      "from_email_hash": "6c8555b78d17e064020d3537c6232df6e80a39362a1b190d309264c6a0104aeb",
+      "date": "2023-07-12T16:15:52+03:00",
+      "subject": "[Rd] [R] Errors in \"An introduction to R\"",
+      "subject_clean": "Errors in \"An introduction to R\"",
+      "in_reply_to": "<25773.6260.362980.712859@stat.math.ethz.ch>",
+      "references": [
+        "<4caaf4ba-0072-8040-5e0b-77a2f5725004@gmail.com>",
+        "<20230710183730.16f332b8@arachnoid>",
+        "<25773.6260.362980.712859@stat.math.ethz.ch>"
+      ],
+      "body_plain": "Hi all,\n\nI originally sent my correction suggestions to R-help list since the\nR-intro document contains the following sentence:\n\"Comments and corrections are always welcome. Please address email \ncorrespondence to\nR-help at R-project.org.\"\n\nMaybe that email address needs updating as well.\n\nJarkko\n\nOn 11.7.2023 11.53, Martin Maechler wrote:\n>>>>>> Ivan Krylov\n>>>>>>      on Mon, 10 Jul 2023 18:37:30 +0300 writes:\n>      > Dear Jarkko, Thank you for spotting these problems and\n>      > suggesting fixes for them! I am forwarding your e-mail to\n>      > the R-devel mailing list (removing the R-help list, which\n>      > is for different kind of R problems), together with a\n>      > patch implementing your suggested changes.\n>\n>\n> Thank you, both, Jarkko  and Ivan for your respective work!\n> I've committed the changes from Ivan's patch to the sources.\n>\n>\n>      > ? Thu, 6 Jul 2023 10:12:16 +0300 Jarkko Toivonen\n>      > <jarkko.toivonen.19 at gmail.com> ?????:\n>      >> I noticed a few errors in Version 4.3.1 (2023-06-16)\n>\n>      > --- doc/manual/R-intro.texi (revision 84676)\n>      > +++ doc/manual/R-intro.texi (working copy)\n>\n>    [...............]\n>    [...............]\n>\n>      > I chose to replace the \"working directory\" metaphor with\n>      > \"workspace\". I such word use here is correct.\n>\n> In other parts of the R-intro the  \"working directory\" actually\n> has been correct use (not even metaphoric).\n>\n>      > --\n>      > Best regards, Ivan\n>\n> Thank you again,\n> Martin",
+      "body_snippet": "Hi all,\n\nI originally sent my correction suggestions to R-help list since the\nR-intro document contains the following sentence:\n\"Comments and corrections are always welcome. Please address email \ncorr",
+      "thread_id": "thread-7aa87f015584",
+      "thread_depth": 2,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-c93cda307776",
+      "message_id": "<69F17DDB-3725-42F7-AE2B-5682C4AE82AA@gmail.com>",
+      "from_name": "Will McClennan",
+      "from_email_hash": "e1f8f4dc42170f146c710b2060ddf81b28dbddf765683e3c3d3a44ae8ec2e6e3",
+      "date": "2023-07-12T18:26:56-04:00",
+      "subject": "[Rd] Incorrect type in malloc in Rscript.c",
+      "subject_clean": "Incorrect type in malloc in Rscript.c",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I downloaded and compiled R-4.3.1 from cran.rstudio.com and on line 405 of Rscript.c in src/unix the line of code\n\nchar *buf=(char*) malloc((size_t) (len+1)*sizeof(char *));\n\nappears to be wrong to me. If an array of char* is being allocated then the argument to sizeof should be char and not char*. On a 64 bit machine this will allocate 8 times as much memory as needed. For this reason the code works but it is an incorrect. Not a big issue though.\n\nWill McClennan",
+      "body_snippet": "I downloaded and compiled R-4.3.1 from cran.rstudio.com and on line 405 of Rscript.c in src/unix the line of code\n\nchar *buf=(char*) malloc((size_t) (len+1)*sizeof(char *));\n\nappears to be wrong to me",
+      "thread_id": "thread-c93cda307776",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-ff9129cfb2ea",
+      "message_id": "<95590b13-e657-16af-b6a8-8d2921ec8c5e@gmail.com>",
+      "from_name": "Tomas Kalibera",
+      "from_email_hash": "7af110c9340339e5307bd348f1ec524e2fd1c8f104d583e9993022c5550711f4",
+      "date": "2023-07-13T08:59:01+02:00",
+      "subject": "[Rd] Incorrect type in malloc in Rscript.c",
+      "subject_clean": "Incorrect type in malloc in Rscript.c",
+      "in_reply_to": "<69F17DDB-3725-42F7-AE2B-5682C4AE82AA@gmail.com>",
+      "references": [
+        "<69F17DDB-3725-42F7-AE2B-5682C4AE82AA@gmail.com>"
+      ],
+      "body_plain": "On 7/13/23 00:26, Will McClennan wrote:\n> I downloaded and compiled R-4.3.1 from cran.rstudio.com and on line 405 of Rscript.c in src/unix the line of code\n>\n> char *buf=(char*) malloc((size_t) (len+1)*sizeof(char *));\n>\n> appears to be wrong to me. If an array of char* is being allocated then the argument to sizeof should be char and not char*. On a 64 bit machine this will allocate 8 times as much memory as needed. For this reason the code works but it is an incorrect. Not a big issue though.\n\nThanks, fixed now.\n\nTomas\n\n>\n> Will McClennan\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On 7/13/23 00:26, Will McClennan wrote:\n> I downloaded and compiled R-4.3.1 from cran.rstudio.com and on line 405 of Rscript.c in src/unix the line of code\n>\n> char *buf=(char*) malloc((size_t) (len+1",
+      "thread_id": "thread-c93cda307776",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-87dd194b437a",
+      "message_id": "<CACSKKm=DcN2zy+0QmmU39gSStX2YU4K-MEJaOWcoK6XANswc5Q@mail.gmail.com>",
+      "from_name": "Durga Prasad G me14d059",
+      "from_email_hash": "016273620d0cae635cd63feae0981b673387c991823e67f6e424bb5c000967a0",
+      "date": "2023-07-16T11:31:18+05:30",
+      "subject": "[Rd] Concerns with SVD",
+      "subject_clean": "Concerns with SVD",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Respected Development Team,\n\nThis is Durga Prasad reaching out to you regarding an issue/concern related\nto Singular Value Decomposition SVD in R software package. I am attaching a\ndetailed attachment with this letter which depicts real issues with SVD in\nR.\n\nTo reach the concern the expressions for the exponential of a matrix using\nSVD and\nprojection tensors are obtained from series expansion. However, numerical\ninconsistency is observed between the exponential of matrix obtained using\nthe function(svd()) used in R software.\n\nHowever, it is observed that most of the researchers fraternity is engaged\nin utilising R software for their research purposes and to the extent of my\nunderstanding such an error in SVD in R software might raise the concern\nabout authenticity of the simulation results produced and published by\nresearchers across the globe.\n\nFurther, I am very sure that the R software development team is well versed\nwith the happening and they have any specific and resilient reasons for\ndoing so. I would request you kindly, to guide me through the concern.\n\nThank you very much.\n\n-------------- next part --------------\nA non-text attachment was scrubbed...\nName: Concerns with SVD.pdf\nType: application/pdf\nSize: 128838 bytes\nDesc: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20230716/3fad35ca/attachment.pdf>",
+      "body_snippet": "Respected Development Team,\n\nThis is Durga Prasad reaching out to you regarding an issue/concern related\nto Singular Value Decomposition SVD in R software package. I am attaching a\ndetailed attachment",
+      "thread_id": "thread-87dd194b437a",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-2e79d9017d0e",
+      "message_id": "<c21e618c-bbbb-42b9-2adb-56df0fb32673@gmail.com>",
+      "from_name": "J C Nash",
+      "from_email_hash": "3c186aece47b9fdb3cc7c9c4b2429fcf77a95534a068b908c57a0b272b212c98",
+      "date": "2023-07-16T13:30:57-04:00",
+      "subject": "[Rd] Concerns with SVD",
+      "subject_clean": "Concerns with SVD",
+      "in_reply_to": "<CACSKKm=DcN2zy+0QmmU39gSStX2YU4K-MEJaOWcoK6XANswc5Q@mail.gmail.com>",
+      "references": [
+        "<CACSKKm=DcN2zy+0QmmU39gSStX2YU4K-MEJaOWcoK6XANswc5Q@mail.gmail.com>"
+      ],
+      "body_plain": "Better check your definitions of SVD -- there are several forms, but all I\nam aware of (and I wrote a couple of the codes in the early 1970s for the SVD)\nhave positive singular values.\n\nJN\n\n\nOn 2023-07-16 02:01, Durga Prasad G me14d059 wrote:\n> Respected Development Team,\n> \n> This is Durga Prasad reaching out to you regarding an issue/concern related\n> to Singular Value Decomposition SVD in R software package. I am attaching a\n> detailed attachment with this letter which depicts real issues with SVD in\n> R.\n> \n> To reach the concern the expressions for the exponential of a matrix using\n> SVD and\n> projection tensors are obtained from series expansion. However, numerical\n> inconsistency is observed between the exponential of matrix obtained using\n> the function(svd()) used in R software.\n> \n> However, it is observed that most of the researchers fraternity is engaged\n> in utilising R software for their research purposes and to the extent of my\n> understanding such an error in SVD in R software might raise the concern\n> about authenticity of the simulation results produced and published by\n> researchers across the globe.\n> \n> Further, I am very sure that the R software development team is well versed\n> with the happening and they have any specific and resilient reasons for\n> doing so. I would request you kindly, to guide me through the concern.\n> \n> Thank you very much.\n> \n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Better check your definitions of SVD -- there are several forms, but all I\nam aware of (and I wrote a couple of the codes in the early 1970s for the SVD)\nhave positive singular values.\n\nJN\n\n\nOn 2023-0",
+      "thread_id": "thread-87dd194b437a",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-af1e4a7fd759",
+      "message_id": "<25780.65318.292886.397047@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2023-07-17T10:43:18+02:00",
+      "subject": "[Rd] Concerns with SVD -- and the Matrix Exponential",
+      "subject_clean": "Concerns with SVD -- and the Matrix Exponential",
+      "in_reply_to": "<c21e618c-bbbb-42b9-2adb-56df0fb32673@gmail.com>",
+      "references": [
+        "<CACSKKm=DcN2zy+0QmmU39gSStX2YU4K-MEJaOWcoK6XANswc5Q@mail.gmail.com>",
+        "<c21e618c-bbbb-42b9-2adb-56df0fb32673@gmail.com>"
+      ],
+      "body_plain": ">>>>> J C Nash \n>>>>>     on Sun, 16 Jul 2023 13:30:57 -0400 writes:\n\n    > Better check your definitions of SVD -- there are several\n    > forms, but all I am aware of (and I wrote a couple of the\n    > codes in the early 1970s for the SVD) have positive\n    > singular values.\n\n    > JN\n\nIndeed.\n\nMore generally, the decomposition     A = U D V'\n(with diagonal D and orthogonal U,V)\nis not at all unique.\n\nThere are not only many possible different choices of the sign\nof the diagonal entries, but also the *ordering* of the singular values\nis non unique.\nThat's why R and 'Lapack', the world-standard for\n  computer/numerical linear algebra, and others I think,\nmake the decomposition unique by requiring\nnon-negative entries in D and have them *sorted* decreasingly.\n\nThe latter is what the help page   help(svd)  always said\n(and you should have studied that before raising such concerns).\n\n-----------------------------------------------------------------\n\nTo your second point (in the document), the matrix exponential:\nIt is less known, but still has been known among experts for\nmany years (and I think even among students of a class on\nnumerical linear algebra), that there are quite a\nfew mathematically equivalent ways to compute the matrix exponential,\n*BUT* that most of these may be numerically disastrous, for several\ndifferent reasons depending on the case.\n\nThis has been known for close to 50 years now:\n\n Cleve Moler and Charles Van Loan  (1978)\n Nineteen Dubious Ways to Compute the Exponential of a Matrix\n SIAM Review Vol. 20(4)\n https://doi.org/10.1137/1020098\n\nWhere as that publication had been important and much cited at\nthe time, the same authors (known world experts in the field)\nwrote a review of that review 25 years later which I think (and\nhope) is even more widely cited  (in R's man/*.Rd syntax) :\n\n  Cleve Moler and Charles Van Loan (2003)\n  Nineteen dubious ways to compute the exponential of a matrix,\n  twenty-five years later. \\emph{SIAM Review} \\bold{45}, 1, 3--49.\n  \\doi{10.1137/S00361445024180}\ni.e.  https://doi.org/10.1137/S00361445024180\n\nIt is BTW also cited on the Wikipedia page on the matrix\nexponential:\n\n\n==> For this reason, Professor Douglas Bates, the initial\ncreator of R's Matrix package (which comes with R) has added the\nMatrix exponential very early to the package:\n------------------------------------------------------------------------\nr461 | bates | 2005-01-29\n\nAdd expm function\n------------------------------------------------------------------------\n\nLater, I've fixed an \"infamous\" bug :\n------------------------------------------------------------------------\nr2127 | maechler | 2008-03-07\n\nfix the infamous expm() bug also in \"Matrix\" (duh!)\n------------------------------------------------------------------------\n\nThen, Vincent Goulet and Christophe Dutang wanted to provide more\nversions of expm() and we collaborated, also providing expm()\nfor complex matrices and created the CRAN package {expm}\n  --> https://CRAN.R-project.org/package=expm\nwhich already provided half a dozen different expm algorithms.\n\nBut research and algorithms did not stop there.  In 2008, Higham\nand collaborators even improved on the best known algorithms\nand I had the chance to co-supervise a smart Master's student\nMichael Stadelmann to implement Higham's algorithm and we even\nallowed to tweak it {with optional arguments} as that was seen\nto be beneficial sometimes.\n\nSee e.g., https://www.rdocumentation.org/packages/expm/versions/0.999-7/topics/expm\n\n\n    > On 2023-07-16 02:01, Durga Prasad G me14d059 wrote:\n    >> Respected Development Team,\n    >> \n    >> This is Durga Prasad reaching out to you regarding an\n    >> issue/concern related to Singular Value Decomposition SVD\n    >> in R software package. I am attaching a detailed\n    >> attachment with this letter which depicts real issues\n    >> with SVD in R.\n    >> \n    >> To reach the concern the expressions for the exponential\n    >> of a matrix using SVD and projection tensors are obtained\n    >> from series expansion. However, numerical inconsistency\n    >> is observed between the exponential of matrix obtained\n    >> using the function(svd()) used in R software.\n    >> \n    >> However, it is observed that most of the researchers\n    >> fraternity is engaged in utilising R software for their\n    >> research purposes and to the extent of my understanding\n    >> such an error in SVD in R software might raise the\n    >> concern about authenticity of the simulation results\n    >> produced and published by researchers across the globe.\n    >> \n    >> Further, I am very sure that the R software development\n    >> team is well versed with the happening and they have any\n    >> specific and resilient reasons for doing so. I would\n    >> request you kindly, to guide me through the concern.\n    >> \n    >> Thank you very much.",
+      "body_snippet": ">>>>> J C Nash \n>>>>>     on Sun, 16 Jul 2023 13:30:57 -0400 writes:\n\n    > Better check your definitions of SVD -- there are several\n    > forms, but all I am aware of (and I wrote a couple of the\n  ",
+      "thread_id": "thread-87dd194b437a",
+      "thread_depth": 2,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-ef673c3b76d8",
+      "message_id": "<98d06aba-4292-130c-145f-8e11d83c0a2e@stats.ox.ac.uk>",
+      "from_name": "Prof Brian Ripley",
+      "from_email_hash": "818dae4fdf4016331d08ab8b5065ff3f981ce989ce3ae70303f20f145d5949e1",
+      "date": "2023-07-18T10:18:20+01:00",
+      "subject": "[Rd] Installation of R-4.3.1 with intel 2022",
+      "subject_clean": "Installation of R-4.3.1 with intel 2022",
+      "in_reply_to": "<a92fb92f-db4d-7c0e-5b88-696dc05c83f1@gmail.com>",
+      "references": [
+        "<D3CA6786-F972-46D6-AC83-8A026BDA10B9@cmcc.it>",
+        "<a92fb92f-db4d-7c0e-5b88-696dc05c83f1@gmail.com>"
+      ],
+      "body_plain": "Note that 'intel 2022' is a bit vague.  The current version is 2023.1.0, \nand that has both the 'classic' (icc/icpc/ifort which it seems you used) \nand new (icx/ixpx/ifx) compilers -- the former are said to be going to \nbe discontinued later this year.  R did not know about ifx so did not \nbuild with the new set.\n\nThe parts of the manual Tomas referred to were about the old compilers: \nthe manual has now been re-written in R-devel and R-patched to major on \nthe newer ones.  We have patched the code to work with both old and new \ncompilers, pending a more thorough investigation of matherr.\n\nIn our experiments Intel Fortran only worked in conjunction with oneAPI \nMKL -- see the manual.  It seems ifx is still under development, so it \nshould pay to use only the latest versions.\n\nThis is the first report on Intel compilers since 2015, so they are \nrather low priority for the R developers.\n\n\nOn 21/06/2023 08:10, Tomas Kalibera wrote:\n> \n> On 6/20/23 18:47, Giuseppe Cal? wrote:\n>> Hi all,\n>> I have the issue:\n>>\n>> icc -std=c99 -std=gnu11 -I../../src/extra -I../../src/extra/xdr -I. \n>> -I../../src/include -I../../src/include? -I/usr/local/include \n>> -I../../src/nmath -DHAVE_CONFIG_H?? -fopenmp -fpic? -g -O3 -wd188 -ip \n>> -mp? -c eval.c -o eval.o\n>> arithmetic.c(66): warning #274: declaration is not visible outside of \n>> function\n>> ?? int matherr(struct exception *exc)\n>> ????????????????????? ^\n>>\n>> arithmetic.c(68): error: pointer to incomplete class type is not allowed\n>> ?????? switch (exc->type) {\n>> ?????????????? ^\n>>\n>> arithmetic.c(69): error: identifier \"DOMAIN\" is undefined\n>> ?????? case DOMAIN:\n>> ??????????? ^\n>>\n>> arithmetic.c(70): error: identifier \"SING\" is undefined\n>> ?????? case SING:\n>> ??????????? ^\n>>\n>> arithmetic.c(73): error: identifier \"OVERFLOW\" is undefined\n>> ?????? case OVERFLOW:\n>> ??????????? ^\n>>\n>> arithmetic.c(76): error: identifier \"UNDERFLOW\" is undefined\n>> ?????? case UNDERFLOW:\n>> ??????????? ^\n>>\n>> arithmetic.c(77): error: pointer to incomplete class type is not allowed\n>> ?????? exc->retval = 0.0;\n>>\n>> icc -std=c99 -std=gnu11 -I../../src/extra -I../../src/extra/xdr -I. \n>> -I../../src/include -I../../src/include? -I/usr/local/include \n>> -I../../src/nmath -DHAVE_CONFIG_H?? -fopenmp -fpic? -g -O3 -wd188 -ip \n>> -mp? -c flexiblas.c -o flexiblas.o\n>> icc: command line remark #10148: option '-mp' not supported\n>> compilation aborted for arithmetic.c (code 2)\n>> make[3]: *** [../../Makeconf:129: arithmetic.o] Error 2\n>> make[3]: *** Waiting for unfinished jobs....\n>> icc: command line remark #10148: option '-mp' not supported\n>> make[3]: Leaving directory '/opt/sources/R/R-4.3.1-intel21/src/main'\n>> make[2]: *** [Makefile:140: R] Error 2\n>> make[2]: Leaving directory '/opt/sources/R/R-4.3.1-intel21/src/main'\n>> make[1]: *** [Makefile:28: R] Error 1\n>> make[1]: Leaving directory '/opt/sources/R/R-4.3.1-intel21/src'\n>> make: *** [Makefile:62: R] Error 1\n>>\n>> with oneapi-2022.1.0/compiler-rt/2022.1.0; \n>> oneapi-2022.1.0/mkl/2022.1.0 while building R-4.3.1 on redhat 8.4 \n>> glibc2.28-189\n>>\n>> I followed a workaround proposed:\n>> https://community.intel.com/t5/Intel-C-Compiler/Error-when-compiling-R-from-source-code-ubuntu-18-04/m-p/1176401/thread-id/36575 <https://community.intel.com/t5/Intel-C-Compiler/Error-when-compiling-R-from-source-code-ubuntu-18-04/m-p/1176401/thread-id/36575>\n>>\n>> Deactivate? HAVE_MATHERR macro in src/include/config.h\n> \n> Hi Giuseppe,\n> \n> thanks for the report. Undefining HAVE_MATHERR seems a valid work-around \n> to me, based on reading the thread above and the sources.\n> \n> We could improve this in R, if keeping this code, at least improve the \n> configure check so that it also tests for the presence of the macros.\n> \n>> Using this workaroud I get R with:\n>>\n>> BLAS/LAPACK: \n>> /opt/intel/oneapi_2022.2.0/mkl/2022.1.0/lib/intel64/libmkl_intel_lp64.so.2;? LAPACK version 3.9.0\n>>\n>> is correct?\n>>\n>> Is these a way to avoid arithmetic issue?\n>>\n>> My configure is:\n>>\n>> module load intel-2021.6.0/2021.6.0 oneapi-2022.1.0/mkl\n>> MKL=\"-L${MKLROOT}/lib/intel64 -lmkl_gf_lp64 -lmkl_core \n>> -lmkl_gnu_thread -dl -fopenmp\"\n>> export CC=\"icc -std=c99\"\n>> export CFLAGS=\"-g -O3 -wd188 -ip -mp\"\n>> export FC=ifort\n>> export FLAGS=\"-g -O3 -mp\"\n>> export CXX=icpc\n>> export CXXFLAGS=\"-g -O3 -mp\"\n>> SHLIB_CXXLD=icpc\n>> export MKL_INTERFACE_LAYER=GNU,LP64\n>> export MKL_THREADING_LAYER=GNU\n>> ./configure --prefix=/opt/intel-2021.6.0/R/4.3.1 --with-blas=\"$MKL\" \n>> --with-lapack? --enable-memory-profiling --enable-BLAS-shlib \n>> --enable-R-shlib --enable-R-static-lib --with-pcre2\n> \n> AFAIK, neither icc nor MKL is regularly tested with R/CRAN packages, so \n> the risk of running into some issues is somewhat higher than for say GCC \n> and the reference BLAS/LAPACK.\n> \n> Some hints on using icc and MKL can be found in the R Admin manual, \n> https://cran.r-project.org/doc/manuals/r-release/R-admin.html. Unless \n> you have done that already, you might want to check your configuration \n> against those, I didn't spot any obvious issue. If you find any other \n> problem, please report, so that it could be fixed or the hints updated.\n> \n> Thanks,\n> Tomas\n> \n>>\n>> Thanks a lot,\n>> Giuseppe.\n>>\n>> ???????????????????????????????????????\n>> Giuseppe Cal?\n>>\n>> Fondazione CMCC\n>> Centro Euro-Mediterraneo sui Cambiamenti Climatici presso Complesso \n>> Ecotekne\n>> Universit? del Salento - Strada Prov.le Lecce - Monteroni 73100 Lecce? IT\n>> http://www.cmcc.it <http://www.cmcc.it/>\n>> https://goo.gl/maps/wtahPDbNVen\n>>\n>> mobile: (+39) 3208190020\n>> email: giuseppe.calo at cmcc.it\n>>\n>> Le informazioni contenute in questo messaggio di posta elettronica e \n>> negli allegati se presenti sono riservate e confidenziali: ne ? \n>> vietata la diffusione in qualsiasi modo o forma (GDPR 2016/679).\n>> Qualora lei non fosse il destinatario del messaggio, la invito a non \n>> diffonderlo e ad eliminarlo dandone gentilmente comunicazione al \n>> mittente.\n>>\n>> The information included in this e-mail and any attachments are \n>> confidential and may also be privileged (GDPR 2016/679).\n>> If you are not the correct recipient, you are kindly requested to \n>> notify the sender immediately, to cancel it and not disclose the \n>> contents to any other person.\n>>\n>>\n>>\n>>\n>>\n>> ????[[alternative HTML version deleted]]\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nBrian D. Ripley,                  ripley at stats.ox.ac.uk\nEmeritus Professor of Applied Statistics, University of Oxford",
+      "body_snippet": "Note that 'intel 2022' is a bit vague.  The current version is 2023.1.0, \nand that has both the 'classic' (icc/icpc/ifort which it seems you used) \nand new (icx/ixpx/ifx) compilers -- the former are s",
+      "thread_id": "thread-ef673c3b76d8",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-c13b7ba09231",
+      "message_id": "<818117af-0467-7c86-207d-3a01eda66896@gmail.com>",
+      "from_name": "Mikael Jagan",
+      "from_email_hash": "4bef0ec6e88ca2d9a2d39dae930cd5ac951a48aafc09e210705e7cdcf3fd5964",
+      "date": "2023-07-19T03:20:18-04:00",
+      "subject": "[Rd] proposal for WRE: clarify that use of S4 classes implies use of superclasses",
+      "subject_clean": "proposal for WRE: clarify that use of S4 classes implies use of superclasses",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "If a package has\n\n     importClassesFrom(P, C)\n\nin its NAMESPACE, then should it _also_ have\n\n     importClassesFrom(P, <superclasses of C exported from P>)\n     importClassesFrom(Q, <superclasses of C exported from Q>)\n     ## and so on\n\n... ?  I think that WRE could be more clear on this point, and in any case\nI _think_ that the answer is yes.\n\nNotably, I think that this rule would resolve some of the problems\nwith stale caches that I described in this thread from September:\n\n     https://stat.ethz.ch/pipermail/r-devel/2022-September/081971.html\n\nI've attached a script demonstrating my point.  It creates and installs a\npackage named TestPackage with\n\n     importClassesFrom(Matrix, dgCMatrix, CsparseMatrix)\n\nin NAMESPACE and\n\n     setClass(\"whatever\", contains = \"dgCMatrix\")\n\nin R/*.R.  After installing the package, I see:\n\n\n > ns <- asNamespace(\"TestPackage\")\n > names(ns)\n  [1] \".__C__generalMatrix\"  \".__C__Matrix\"         \".__C__sparseMatrix\"\n  [4] \".__C__compMatrix\"     \".__C__whatever\"       \"zzz\"\n  [7] \".packageName\"         \".__C__dsparseMatrix\"  \".__NAMESPACE__.\"\n[10] \".__C__dMatrix\"        \".__S3MethodsTable__.\"\n > sort(names(ns))\n  [1] \".__C__Matrix\"         \".__C__compMatrix\"     \".__C__dMatrix\"\n  [4] \".__C__dsparseMatrix\"  \".__C__generalMatrix\"  \".__C__sparseMatrix\"\n  [7] \".__C__whatever\"       \".__NAMESPACE__.\"      \".__S3MethodsTable__.\"\n[10] \".packageName\"         \"zzz\"\n > sort(names(parent.env(ns)))\n[1] \".__C__CsparseMatrix\" \".__C__dgCMatrix\"     \"setClass\"\n\n\ni.e., the imported classes are cached in the parent of the namespace (the\nimports environment), and superclasses of dgCMatrix that are _not_ imported\nare cached in the namespace itself.  The caching of superclasses does _not_\noccur if I add all of the superclasses to the importClassesFrom directive\nin NAMESPACE _or_ if I delete the call to setClass in R/*.R.\n\nIt is precisely these cached superclasses that are liable to become stale,\nbecause, if I understand correctly, the namespace is populated and serialized\nat _install_ time, whereas the imports environment is populated at _load_ time.\n\nHence by clarifying in WRE that packages should import exported superclasses\nof classes that they extend, etc., we could stem some of the \"staleness\" on\nCRAN ...\n\nBut maybe my analysis is mistaken, so I'll wait for comments from others ...\n\nMikael\n-------------- next part --------------\nAn embedded and charset-unspecified text was scrubbed...\nName: cache.txt\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20230719/aa9f04f1/attachment.txt>",
+      "body_snippet": "If a package has\n\n     importClassesFrom(P, C)\n\nin its NAMESPACE, then should it _also_ have\n\n     importClassesFrom(P, <superclasses of C exported from P>)\n     importClassesFrom(Q, <superclasses of ",
+      "thread_id": "thread-c13b7ba09231",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-8be6ec3e4b9c",
+      "message_id": "<20230719175425.59e8cdc4@arachnoid>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "72bda76034efaa18cd166b722c373c5159885b988468de351df8992020f3856a",
+      "date": "2023-07-19T17:54:25+03:00",
+      "subject": "[Rd] _R_CHECK_DEPENDS_ONLY_ vs. packages in .Library [was: Check package without suggests]",
+      "subject_clean": "_R_CHECK_DEPENDS_ONLY_ vs. packages in .Library [was: Check package without suggests]",
+      "in_reply_to": "<CAFDcVCR_931ZkBY4b+EFnEm0cE0Os5rfaK1xkmrD7v46u6Z8tw@mail.gmail.com>",
+      "references": [
+        "<CANAiAiVZ-xP_1BO8O5QZStcs506ZnVJyw1eYFuPr=ZSpcNOXOA@mail.gmail.com>",
+        "<CADH2hDmUtXXXcXYXmub1dbTST+NyH6tPVW=y907ZEdgY1NykRA@mail.gmail.com>",
+        "<CAFDcVCR_931ZkBY4b+EFnEm0cE0Os5rfaK1xkmrD7v46u6Z8tw@mail.gmail.com>"
+      ],
+      "body_plain": "(Moving this one idea to R-devel)\n\n? Wed, 19 Jul 2023 09:21:46 +0200\nHenrik Bengtsson <henrik.bengtsson at gmail.com> ?????:\n\n> If you're on macOS, and have installed R the default way, it takes\n> more work to test on that platform. It works out of the box on Linux\n> and MS Windows.  See the '[R-SIG-Mac] CRAN installer for macOS -\n> directory permissions' thread started in April 2022\n> <https://stat.ethz.ch/pipermail/r-sig-mac/2022-April/014371.html>,\n> continued in May 2022\n> <https://stat.ethz.ch/pipermail/r-sig-mac/2022-May/thread.html>, and\n> June 2022\n> <https://stat.ethz.ch/pipermail/r-sig-mac/2022-June/014469.html>. It\n> was then renamed to 'System-wide site library [Was: CRAN installer\n> for macOS - directory permissions]' in June 2022\n> <https://stat.ethz.ch/pipermail/r-sig-mac/2022-June/014501.html>.\n\nCurrently, a check with _R_CHECK_DEPENDS_ONLY_=TRUE assumes that\n.Library only has base and recommended packages. This assumption can be\nbroken on macOS, and also on other operating systems when R is\ninstalled into a writeable directory or is running without installation\n(e.g. R-devel from an SVN checkout) and the user doesn't pre-create a\nseparate library.\n\nWhat would be the downsides to implementing _R_CHECK_DEPENDS_ONLY_ the\nsame way that _R_CHECK_NO_RECOMMENDED_ is already implemented? The\nlatter works by creating fake packages (with a DESCRIPTION and an empty\nfile called \"dummy_for_check\" but nothing else in them) in a temporary\nlibrary that take precedence over the ones in .Library and fail loading.\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "(Moving this one idea to R-devel)\n\n? Wed, 19 Jul 2023 09:21:46 +0200\nHenrik Bengtsson <henrik.bengtsson at gmail.com> ?????:\n\n> If you're on macOS, and have installed R the default way, it takes\n> mor",
+      "thread_id": "thread-8be6ec3e4b9c",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-1faeafe32dd8",
+      "message_id": "<8CA91101-F362-4104-B527-8FE1E808D0AF@gmail.com>",
+      "from_name": "peter dalgaard",
+      "from_email_hash": "5d0f61ffffc9a67fd86f4b9a1ea3fac7d731c19e1d8679b6ae315232b22874e8",
+      "date": "2023-07-20T09:46:33+02:00",
+      "subject": "[Rd] question about an R idiom: eval()ing a quoted block",
+      "subject_clean": "question about an R idiom: eval()ing a quoted block",
+      "in_reply_to": "<a777a5e6-7363-35ed-3f30-ea526937cdff@gmail.com>",
+      "references": [
+        "<a777a5e6-7363-35ed-3f30-ea526937cdff@gmail.com>"
+      ],
+      "body_plain": "In the case of power.t.test, there is a situation where you want to create 4 different functions with the same function body, in order to pass them to uniroot(). I think that at the time, it just seemed convenient to express that idea with a quote-eval (macro-like) construction, rather than figure out how to do it with functions. I suppose that it could have been done neatly enough along the lines of\n\ng <- function(x1, x2, x3, x4)\n{\n  f <- function(x1, x2, x3, x4) {...body...}\n  if (is.null(x1)\n     x1 <- uniroot(function(x1) {target - f(x1, x2, x3, x4)}, ....)$root\n  ....\n}\n\nThis adds an extra layer of function call, but probably makes the byte compiler happier!\n\nYou might also use the ... argument to uniroot() as in\n\nx1 <- uniroot(f, x2=x2, x3=x3, x4=x4, ..other args..)$root\n\nbut that gets a bit clunky.\n\n-pd\n\n> On 12 Jul 2023, at 00:01 , Ben Bolker <bbolker at gmail.com> wrote:\n> \n>  In a few places in the R source code, such as the $initialize element of `family` objects, and in the body of power.t.test() (possibly other power.* functions), sets of instructions that will need to be run later are encapsulated by saving them as an expression and later applying eval(), rather than as a function. This seems weird to me; the only reason I can think of for doing it this way is to avoid having to pass back multiple objects and assign them in the calling environment (since R doesn't have a particularly nice form of Python's tuple-unpacking idiom).\n> \n>  Am I missing something?\n> \n> cheers\n>   Ben\n> \n> \n> https://github.com/r-devel/r-svn/blob/eac72e66a4d2c2aba50867bd80643b978febf5a3/src/library/stats/R/power.R#L38-L52\n> \n> https://github.com/r-devel/r-svn/blob/master/src/library/stats/R/family.R#L166-L171\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nOffice: A 4.23\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com",
+      "body_snippet": "In the case of power.t.test, there is a situation where you want to create 4 different functions with the same function body, in order to pass them to uniroot(). I think that at the time, it just seem",
+      "thread_id": "thread-0dc3195d569c",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-6da636bf6796",
+      "message_id": "<CAEKh8uj31==e2XAHPC+VfZgvhKADJz9hFav7RFz_11P+yin1bg@mail.gmail.com>",
+      "from_name": "Antoine Fabri",
+      "from_email_hash": "a96e27bebd37f329c3e61761e8193ac169c557e8190e6ae94b092e50cc1fcdd8",
+      "date": "2023-07-20T21:41:44+02:00",
+      "subject": "[Rd] tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "subject_clean": "tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Dear r-devel,\n\nI've tried tools::parseLatex() to parse some documentation files, it works\ngenerally well but it  it has some issues when \"\\\\verb{}\" is used.\n\n```\ntools::parseLatex(\"\\\\code{hello}\")\n# \\code{hello}\ntools::parseLatex(\"\\\\anything{hello}\")\n# \\anything{hello}\ntools::parseLatex(\"\\\\verb{hello}\")\n# crashes the session\n```\n\nThanks,\n\nAntoine\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear r-devel,\n\nI've tried tools::parseLatex() to parse some documentation files, it works\ngenerally well but it  it has some issues when \"\\\\verb{}\" is used.\n\n```\ntools::parseLatex(\"\\\\code{hello}\")\n# \\",
+      "thread_id": "thread-6da636bf6796",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-b9b94bc4f268",
+      "message_id": "<20230720234844.004b13c2@Tarkus>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "72bda76034efaa18cd166b722c373c5159885b988468de351df8992020f3856a",
+      "date": "2023-07-20T23:48:44+03:00",
+      "subject": "[Rd] tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "subject_clean": "tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "in_reply_to": "<CAEKh8uj31==e2XAHPC+VfZgvhKADJz9hFav7RFz_11P+yin1bg@mail.gmail.com>",
+      "references": [
+        "<CAEKh8uj31==e2XAHPC+VfZgvhKADJz9hFav7RFz_11P+yin1bg@mail.gmail.com>"
+      ],
+      "body_plain": "On Thu, 20 Jul 2023 21:41:44 +0200\nAntoine Fabri <antoine.fabri at gmail.com> wrote:\n\n> tools::parseLatex(\"\\\\verb{hello}\")\n> # crashes the session\n\nLooking at the source [*], this seems to be happening because\nparseLatex expects the \\verb macro to use the same character as the\ndelimiter on both sides:\n\ntools::parseLatex('\\\\verb!hello!')\n# \\verb!hello!\n\nWhat the loop doesn't have is a check for EOF, which leads TEXT_PUSH()\nto increase the temporary buffer exponentially until unsigned int\nnstext overflows and results in a 0-byte allocation, which is then\noverrun, corrupting the heap. Any other unterminated \\verb!... would\nhave caused the same crash.\n\nHere's a patch that prevents this particular crash:\n\n--- src/library/tools/src/gramLatex.y\t(revision 84714)\n+++ src/library/tools/src/gramLatex.y\t(working copy)\n@@ -846,8 +846,8 @@\n     \n     TEXT_PUSH('\\\\'); TEXT_PUSH('v'); TEXT_PUSH('e'); TEXT_PUSH('r'); TEXT_PUSH('b');\n     TEXT_PUSH(c);\n-    while ((c = xxgetc()) != delim) TEXT_PUSH(c);\n-    TEXT_PUSH(c);\n+    while (((c = xxgetc()) != delim) && c != R_EOF) TEXT_PUSH(c);\n+    if (c != R_EOF) TEXT_PUSH(c);\n     \n     PRESERVE_SV(yylval = mkString2(stext, bp - stext));\n     if(stext != st0) free(stext);\n\nThis seems to have been the only remaining while loop in gramLatex.y\nthat didn't check for R_EOF.\n\nMore correctness work is needed: mkMarkup() should avoid calling\nmkVerb(R_EOF) when running tools::parseLatex('\\\\verb'), since otherwise\n0xFF becomes a part of the resulting text. All declarations of unsigned\nint nstext should probably be replaced by size_t nstext... but then\nwe'd have an annoying visit from the OOM killer instead of a much faster\ncrash in case of a runaway TEXT_PUSH(), and nobody expects to parse 4\nGB of LaTeX source anyway. TEXT_PUSH() probably needs an integer\noverflow check and to free the temporary buffer before calling error().\n\n-- \nBest regards,\nIvan\n\n[*]\nhttps://github.com/r-devel/r-svn/blob/f145419cc4dae162719206a61a29082adff2043d/src/library/tools/src/gramLatex.y#L845-L850",
+      "body_snippet": "On Thu, 20 Jul 2023 21:41:44 +0200\nAntoine Fabri <antoine.fabri at gmail.com> wrote:\n\n> tools::parseLatex(\"\\\\verb{hello}\")\n> # crashes the session\n\nLooking at the source [*], this seems to be happenin",
+      "thread_id": "thread-6da636bf6796",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-26c1e5b10f8f",
+      "message_id": "<59DC45FE-D666-4484-8724-DCB25548BA37@cmcc.it>",
+      "from_name": "Giuseppe Calò",
+      "from_email_hash": "daec7cd2fa18b0a52bcc8f37e5e18ba4be408e6797c8252914197fd4386353ce",
+      "date": "2023-07-21T07:27:45+02:00",
+      "subject": "[Rd] Installation of R-4.3.1 with intel 2022",
+      "subject_clean": "Installation of R-4.3.1 with intel 2022",
+      "in_reply_to": "<98d06aba-4292-130c-145f-8e11d83c0a2e@stats.ox.ac.uk>",
+      "references": [
+        "<D3CA6786-F972-46D6-AC83-8A026BDA10B9@cmcc.it>",
+        "<a92fb92f-db4d-7c0e-5b88-696dc05c83f1@gmail.com>",
+        "<98d06aba-4292-130c-145f-8e11d83c0a2e@stats.ox.ac.uk>"
+      ],
+      "body_plain": "Thanks Prof. Brian,\nCurrent I?m using oneapi 2022.1.0 in particular ifort 2021.6.0 20220226 (not ifx).\n\nThanks for the clarification.\n\nRegards,\nGiuseppe.\n\n???????????????????????????????????????\nGiuseppe Cal?\n\nFondazione CMCC\nCentro Euro-Mediterraneo sui Cambiamenti Climatici presso Complesso Ecotekne \nUniversit? del Salento - Strada Prov.le Lecce - Monteroni 73100 Lecce  IT\nhttp://www.cmcc.it\nhttps://goo.gl/maps/wtahPDbNVen\n\nmobile: (+39) 3208190020\nemail: giuseppe.calo at cmcc.it\n\nLe informazioni contenute in questo messaggio di posta elettronica e negli allegati se presenti sono riservate e confidenziali: ne ? vietata la diffusione in qualsiasi modo o forma (GDPR 2016/679).\nQualora lei non fosse il destinatario del messaggio, la invito a non diffonderlo e ad eliminarlo dandone gentilmente comunicazione al mittente.\n\nThe information included in this e-mail and any attachments are confidential and may also be privileged (GDPR 2016/679).\nIf you are not the correct recipient, you are kindly requested to notify the sender immediately, to cancel it and not disclose the contents to any other person.\n\n\n\n\n> On 18 Jul 2023, at 11:18, Prof Brian Ripley <ripley at stats.ox.ac.uk> wrote:\n> \n> Note that 'intel 2022' is a bit vague.  The current version is 2023.1.0, and that has both the 'classic' (icc/icpc/ifort which it seems you used) and new (icx/ixpx/ifx) compilers -- the former are said to be going to be discontinued later this year.  R did not know about ifx so did not build with the new set.\n> \n> The parts of the manual Tomas referred to were about the old compilers: the manual has now been re-written in R-devel and R-patched to major on the newer ones.  We have patched the code to work with both old and new compilers, pending a more thorough investigation of matherr.\n> \n> In our experiments Intel Fortran only worked in conjunction with oneAPI MKL -- see the manual.  It seems ifx is still under development, so it should pay to use only the latest versions.\n> \n> This is the first report on Intel compilers since 2015, so they are rather low priority for the R developers.\n> \n> \n> On 21/06/2023 08:10, Tomas Kalibera wrote:\n>> On 6/20/23 18:47, Giuseppe Cal? wrote:\n>>> Hi all,\n>>> I have the issue:\n>>> \n>>> icc -std=c99 -std=gnu11 -I../../src/extra -I../../src/extra/xdr -I. -I../../src/include -I../../src/include  -I/usr/local/include -I../../src/nmath -DHAVE_CONFIG_H   -fopenmp -fpic  -g -O3 -wd188 -ip -mp  -c eval.c -o eval.o\n>>> arithmetic.c(66): warning #274: declaration is not visible outside of function\n>>>    int matherr(struct exception *exc)\n>>>                       ^\n>>> \n>>> arithmetic.c(68): error: pointer to incomplete class type is not allowed\n>>>        switch (exc->type) {\n>>>                ^\n>>> \n>>> arithmetic.c(69): error: identifier \"DOMAIN\" is undefined\n>>>        case DOMAIN:\n>>>             ^\n>>> \n>>> arithmetic.c(70): error: identifier \"SING\" is undefined\n>>>        case SING:\n>>>             ^\n>>> \n>>> arithmetic.c(73): error: identifier \"OVERFLOW\" is undefined\n>>>        case OVERFLOW:\n>>>             ^\n>>> \n>>> arithmetic.c(76): error: identifier \"UNDERFLOW\" is undefined\n>>>        case UNDERFLOW:\n>>>             ^\n>>> \n>>> arithmetic.c(77): error: pointer to incomplete class type is not allowed\n>>>        exc->retval = 0.0;\n>>> \n>>> icc -std=c99 -std=gnu11 -I../../src/extra -I../../src/extra/xdr -I. -I../../src/include -I../../src/include  -I/usr/local/include -I../../src/nmath -DHAVE_CONFIG_H   -fopenmp -fpic  -g -O3 -wd188 -ip -mp  -c flexiblas.c -o flexiblas.o\n>>> icc: command line remark #10148: option '-mp' not supported\n>>> compilation aborted for arithmetic.c (code 2)\n>>> make[3]: *** [../../Makeconf:129: arithmetic.o] Error 2\n>>> make[3]: *** Waiting for unfinished jobs....\n>>> icc: command line remark #10148: option '-mp' not supported\n>>> make[3]: Leaving directory '/opt/sources/R/R-4.3.1-intel21/src/main'\n>>> make[2]: *** [Makefile:140: R] Error 2\n>>> make[2]: Leaving directory '/opt/sources/R/R-4.3.1-intel21/src/main'\n>>> make[1]: *** [Makefile:28: R] Error 1\n>>> make[1]: Leaving directory '/opt/sources/R/R-4.3.1-intel21/src'\n>>> make: *** [Makefile:62: R] Error 1\n>>> \n>>> with oneapi-2022.1.0/compiler-rt/2022.1.0; oneapi-2022.1.0/mkl/2022.1.0 while building R-4.3.1 on redhat 8.4 glibc2.28-189\n>>> \n>>> I followed a workaround proposed:\n>>> https://community.intel.com/t5/Intel-C-Compiler/Error-when-compiling-R-from-source-code-ubuntu-18-04/m-p/1176401/thread-id/36575 <https://community.intel.com/t5/Intel-C-Compiler/Error-when-compiling-R-from-source-code-ubuntu-18-04/m-p/1176401/thread-id/36575>\n>>> \n>>> Deactivate  HAVE_MATHERR macro in src/include/config.h\n>> Hi Giuseppe,\n>> thanks for the report. Undefining HAVE_MATHERR seems a valid work-around to me, based on reading the thread above and the sources.\n>> We could improve this in R, if keeping this code, at least improve the configure check so that it also tests for the presence of the macros.\n>>> Using this workaroud I get R with:\n>>> \n>>> BLAS/LAPACK: /opt/intel/oneapi_2022.2.0/mkl/2022.1.0/lib/intel64/libmkl_intel_lp64.so.2;  LAPACK version 3.9.0\n>>> \n>>> is correct?\n>>> \n>>> Is these a way to avoid arithmetic issue?\n>>> \n>>> My configure is:\n>>> \n>>> module load intel-2021.6.0/2021.6.0 oneapi-2022.1.0/mkl\n>>> MKL=\"-L${MKLROOT}/lib/intel64 -lmkl_gf_lp64 -lmkl_core -lmkl_gnu_thread -dl -fopenmp\"\n>>> export CC=\"icc -std=c99\"\n>>> export CFLAGS=\"-g -O3 -wd188 -ip -mp\"\n>>> export FC=ifort\n>>> export FLAGS=\"-g -O3 -mp\"\n>>> export CXX=icpc\n>>> export CXXFLAGS=\"-g -O3 -mp\"\n>>> SHLIB_CXXLD=icpc\n>>> export MKL_INTERFACE_LAYER=GNU,LP64\n>>> export MKL_THREADING_LAYER=GNU\n>>> ./configure --prefix=/opt/intel-2021.6.0/R/4.3.1 --with-blas=\"$MKL\" --with-lapack  --enable-memory-profiling --enable-BLAS-shlib --enable-R-shlib --enable-R-static-lib --with-pcre2\n>> AFAIK, neither icc nor MKL is regularly tested with R/CRAN packages, so the risk of running into some issues is somewhat higher than for say GCC and the reference BLAS/LAPACK.\n>> Some hints on using icc and MKL can be found in the R Admin manual, https://cran.r-project.org/doc/manuals/r-release/R-admin.html. Unless you have done that already, you might want to check your configuration against those, I didn't spot any obvious issue. If you find any other problem, please report, so that it could be fixed or the hints updated.\n>> Thanks,\n>> Tomas\n>>> \n>>> Thanks a lot,\n>>> Giuseppe.\n>>> \n>>> ???????????????????????????????????????\n>>> Giuseppe Cal?\n>>> \n>>> Fondazione CMCC\n>>> Centro Euro-Mediterraneo sui Cambiamenti Climatici presso Complesso Ecotekne\n>>> Universit? del Salento - Strada Prov.le Lecce - Monteroni 73100 Lecce  IT\n>>> http://www.cmcc.it <http://www.cmcc.it/>\n>>> https://goo.gl/maps/wtahPDbNVen\n>>> \n>>> mobile: (+39) 3208190020\n>>> email: giuseppe.calo at cmcc.it\n>>> \n>>> Le informazioni contenute in questo messaggio di posta elettronica e negli allegati se presenti sono riservate e confidenziali: ne ? vietata la diffusione in qualsiasi modo o forma (GDPR 2016/679).\n>>> Qualora lei non fosse il destinatario del messaggio, la invito a non diffonderlo e ad eliminarlo dandone gentilmente comunicazione al mittente.\n>>> \n>>> The information included in this e-mail and any attachments are confidential and may also be privileged (GDPR 2016/679).\n>>> If you are not the correct recipient, you are kindly requested to notify the sender immediately, to cancel it and not disclose the contents to any other person.\n>>> \n>>> \n>>> \n>>> \n>>> \n>>>     [[alternative HTML version deleted]]\n>>> \n>>> ______________________________________________\n>>> R-devel at r-project.org mailing list\n>>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n> \n> -- \n> Brian D. Ripley,                  ripley at stats.ox.ac.uk\n> Emeritus Professor of Applied Statistics, University of Oxford\n> \n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thanks Prof. Brian,\nCurrent I?m using oneapi 2022.1.0 in particular ifort 2021.6.0 20220226 (not ifx).\n\nThanks for the clarification.\n\nRegards,\nGiuseppe.\n\n???????????????????????????????????????\nGiuse",
+      "thread_id": "thread-ef673c3b76d8",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-0ad338d6ad86",
+      "message_id": "<CAMJ4y9CTfR7=Ab9Y7nuLB=isiK2Vr6C_CqBmgJkAzKZiNY4zQQ@mail.gmail.com>",
+      "from_name": "Giuseppe Calò",
+      "from_email_hash": "daec7cd2fa18b0a52bcc8f37e5e18ba4be408e6797c8252914197fd4386353ce",
+      "date": "2023-07-21T07:32:47+02:00",
+      "subject": "[Rd] Installation of R-4.3.1 with intel 2022",
+      "subject_clean": "Installation of R-4.3.1 with intel 2022",
+      "in_reply_to": "<98d06aba-4292-130c-145f-8e11d83c0a2e@stats.ox.ac.uk>",
+      "references": [
+        "<D3CA6786-F972-46D6-AC83-8A026BDA10B9@cmcc.it>",
+        "<a92fb92f-db4d-7c0e-5b88-696dc05c83f1@gmail.com>",
+        "<98d06aba-4292-130c-145f-8e11d83c0a2e@stats.ox.ac.uk>"
+      ],
+      "body_plain": "Thanks Prof. Brian,\nCurrently I?m using oneapi 2022.1.0 in particular ifort 2021.6.0 20220226\n(not ifx).\n\nThanks for the clarification.\n\nRegards,\nGiuseppe.\n???????????????????????????????????????\nGiuseppe Cal?\n\nFondazione CMCC\nCentro Euro-Mediterraneo sui Cambiamenti Climatici presso Complesso\nEcotekne\nUniversit? del Salento - Strada Prov.le Lecce - Monteroni 73100 Lecce  IT\nhttp://www.cmcc.it\nhttps://goo.gl/maps/wtahPDbNVen\n\nmobile: (+39) 3208190020\nemail: giuseppe.calo at cmcc.it\n\n\n*Le informazioni contenute in questo messaggio di posta elettronica e\nnegli allegati se presenti sono riservate e confidenziali: ne ? vietata la\ndiffusione in qualsiasi modo o forma (GDPR 2016/679).Qualora lei non fosse\nil destinatario del messaggio, la invito a non diffonderlo e ad eliminarlo\ndandone gentilmente comunicazione al mittente.*\n\n*The information included in this e-mail and any attachments are\nconfidential and may also be privileged (GDPR 2016/679).*\n*If you are not the correct recipient, you are kindly requested to notify\nthe sender immediately, to cancel it and not disclose the contents to any\nother person.*\n\nIl giorno mar 18 lug 2023 alle ore 11:18 Prof Brian Ripley <\nripley at stats.ox.ac.uk> ha scritto:\n\n> Note that 'intel 2022' is a bit vague.  The current version is 2023.1.0,\n> and that has both the 'classic' (icc/icpc/ifort which it seems you used)\n> and new (icx/ixpx/ifx) compilers -- the former are said to be going to\n> be discontinued later this year.  R did not know about ifx so did not\n> build with the new set.\n>\n> The parts of the manual Tomas referred to were about the old compilers:\n> the manual has now been re-written in R-devel and R-patched to major on\n> the newer ones.  We have patched the code to work with both old and new\n> compilers, pending a more thorough investigation of matherr.\n>\n> In our experiments Intel Fortran only worked in conjunction with oneAPI\n> MKL -- see the manual.  It seems ifx is still under development, so it\n> should pay to use only the latest versions.\n>\n> This is the first report on Intel compilers since 2015, so they are\n> rather low priority for the R developers.\n>\n>\n> On 21/06/2023 08:10, Tomas Kalibera wrote:\n> >\n> > On 6/20/23 18:47, Giuseppe Cal? wrote:\n> >> Hi all,\n> >> I have the issue:\n> >>\n> >> icc -std=c99 -std=gnu11 -I../../src/extra -I../../src/extra/xdr -I.\n> >> -I../../src/include -I../../src/include  -I/usr/local/include\n> >> -I../../src/nmath -DHAVE_CONFIG_H   -fopenmp -fpic  -g -O3 -wd188 -ip\n> >> -mp  -c eval.c -o eval.o\n> >> arithmetic.c(66): warning #274: declaration is not visible outside of\n> >> function\n> >>    int matherr(struct exception *exc)\n> >>                       ^\n> >>\n> >> arithmetic.c(68): error: pointer to incomplete class type is not allowed\n> >>        switch (exc->type) {\n> >>                ^\n> >>\n> >> arithmetic.c(69): error: identifier \"DOMAIN\" is undefined\n> >>        case DOMAIN:\n> >>             ^\n> >>\n> >> arithmetic.c(70): error: identifier \"SING\" is undefined\n> >>        case SING:\n> >>             ^\n> >>\n> >> arithmetic.c(73): error: identifier \"OVERFLOW\" is undefined\n> >>        case OVERFLOW:\n> >>             ^\n> >>\n> >> arithmetic.c(76): error: identifier \"UNDERFLOW\" is undefined\n> >>        case UNDERFLOW:\n> >>             ^\n> >>\n> >> arithmetic.c(77): error: pointer to incomplete class type is not allowed\n> >>        exc->retval = 0.0;\n> >>\n> >> icc -std=c99 -std=gnu11 -I../../src/extra -I../../src/extra/xdr -I.\n> >> -I../../src/include -I../../src/include  -I/usr/local/include\n> >> -I../../src/nmath -DHAVE_CONFIG_H   -fopenmp -fpic  -g -O3 -wd188 -ip\n> >> -mp  -c flexiblas.c -o flexiblas.o\n> >> icc: command line remark #10148: option '-mp' not supported\n> >> compilation aborted for arithmetic.c (code 2)\n> >> make[3]: *** [../../Makeconf:129: arithmetic.o] Error 2\n> >> make[3]: *** Waiting for unfinished jobs....\n> >> icc: command line remark #10148: option '-mp' not supported\n> >> make[3]: Leaving directory '/opt/sources/R/R-4.3.1-intel21/src/main'\n> >> make[2]: *** [Makefile:140: R] Error 2\n> >> make[2]: Leaving directory '/opt/sources/R/R-4.3.1-intel21/src/main'\n> >> make[1]: *** [Makefile:28: R] Error 1\n> >> make[1]: Leaving directory '/opt/sources/R/R-4.3.1-intel21/src'\n> >> make: *** [Makefile:62: R] Error 1\n> >>\n> >> with oneapi-2022.1.0/compiler-rt/2022.1.0;\n> >> oneapi-2022.1.0/mkl/2022.1.0 while building R-4.3.1 on redhat 8.4\n> >> glibc2.28-189\n> >>\n> >> I followed a workaround proposed:\n> >>\n> https://community.intel.com/t5/Intel-C-Compiler/Error-when-compiling-R-from-source-code-ubuntu-18-04/m-p/1176401/thread-id/36575\n> <\n> https://community.intel.com/t5/Intel-C-Compiler/Error-when-compiling-R-from-source-code-ubuntu-18-04/m-p/1176401/thread-id/36575\n> >\n> >>\n> >> Deactivate  HAVE_MATHERR macro in src/include/config.h\n> >\n> > Hi Giuseppe,\n> >\n> > thanks for the report. Undefining HAVE_MATHERR seems a valid work-around\n> > to me, based on reading the thread above and the sources.\n> >\n> > We could improve this in R, if keeping this code, at least improve the\n> > configure check so that it also tests for the presence of the macros.\n> >\n> >> Using this workaroud I get R with:\n> >>\n> >> BLAS/LAPACK:\n> >>\n> /opt/intel/oneapi_2022.2.0/mkl/2022.1.0/lib/intel64/libmkl_intel_lp64.so.2;\n> LAPACK version 3.9.0\n> >>\n> >> is correct?\n> >>\n> >> Is these a way to avoid arithmetic issue?\n> >>\n> >> My configure is:\n> >>\n> >> module load intel-2021.6.0/2021.6.0 oneapi-2022.1.0/mkl\n> >> MKL=\"-L${MKLROOT}/lib/intel64 -lmkl_gf_lp64 -lmkl_core\n> >> -lmkl_gnu_thread -dl -fopenmp\"\n> >> export CC=\"icc -std=c99\"\n> >> export CFLAGS=\"-g -O3 -wd188 -ip -mp\"\n> >> export FC=ifort\n> >> export FLAGS=\"-g -O3 -mp\"\n> >> export CXX=icpc\n> >> export CXXFLAGS=\"-g -O3 -mp\"\n> >> SHLIB_CXXLD=icpc\n> >> export MKL_INTERFACE_LAYER=GNU,LP64\n> >> export MKL_THREADING_LAYER=GNU\n> >> ./configure --prefix=/opt/intel-2021.6.0/R/4.3.1 --with-blas=\"$MKL\"\n> >> --with-lapack  --enable-memory-profiling --enable-BLAS-shlib\n> >> --enable-R-shlib --enable-R-static-lib --with-pcre2\n> >\n> > AFAIK, neither icc nor MKL is regularly tested with R/CRAN packages, so\n> > the risk of running into some issues is somewhat higher than for say GCC\n> > and the reference BLAS/LAPACK.\n> >\n> > Some hints on using icc and MKL can be found in the R Admin manual,\n> > https://cran.r-project.org/doc/manuals/r-release/R-admin.html. Unless\n> > you have done that already, you might want to check your configuration\n> > against those, I didn't spot any obvious issue. If you find any other\n> > problem, please report, so that it could be fixed or the hints updated.\n> >\n> > Thanks,\n> > Tomas\n> >\n> >>\n> >> Thanks a lot,\n> >> Giuseppe.\n> >>\n> >> ???????????????????????????????????????\n> >> Giuseppe Cal?\n> >>\n> >> Fondazione CMCC\n> >> Centro Euro-Mediterraneo sui Cambiamenti Climatici presso Complesso\n> >> Ecotekne\n> >> Universit? del Salento - Strada Prov.le Lecce - Monteroni 73100 Lecce\n> IT\n> >> http://www.cmcc.it <http://www.cmcc.it/>\n> >> https://goo.gl/maps/wtahPDbNVen\n> >>\n> >> mobile: (+39) 3208190020\n> >> email: giuseppe.calo at cmcc.it\n> >>\n> >> Le informazioni contenute in questo messaggio di posta elettronica e\n> >> negli allegati se presenti sono riservate e confidenziali: ne ?\n> >> vietata la diffusione in qualsiasi modo o forma (GDPR 2016/679).\n> >> Qualora lei non fosse il destinatario del messaggio, la invito a non\n> >> diffonderlo e ad eliminarlo dandone gentilmente comunicazione al\n> >> mittente.\n> >>\n> >> The information included in this e-mail and any attachments are\n> >> confidential and may also be privileged (GDPR 2016/679).\n> >> If you are not the correct recipient, you are kindly requested to\n> >> notify the sender immediately, to cancel it and not disclose the\n> >> contents to any other person.\n> >>\n> >>\n> >>\n> >>\n> >>\n> >>     [[alternative HTML version deleted]]\n> >>\n> >> ______________________________________________\n> >> R-devel at r-project.org mailing list\n> >> https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n> --\n> Brian D. Ripley,                  ripley at stats.ox.ac.uk\n> Emeritus Professor of Applied Statistics, University of Oxford\n>\n>\n\n-- \n\n--------------------------------------------------------------------\n\nGiuseppe Cal?\n\nFondazione CMCC - Supercomputing Center\n\npresso Complesso Ecotekne - Universit? del Salento\n\nProv.le Lecce - Monteroni - 73100 Lecce  IT\n\nhttp://www.cmcc.it/supercomputingcenter\n\n\n\nMobile (+39) 320 8190020\n\nMail   giuseppe.calo at cmcc.it\n\n--------------------------------------------------------------------\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thanks Prof. Brian,\nCurrently I?m using oneapi 2022.1.0 in particular ifort 2021.6.0 20220226\n(not ifx).\n\nThanks for the clarification.\n\nRegards,\nGiuseppe.\n???????????????????????????????????????\nGius",
+      "thread_id": "thread-ef673c3b76d8",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-a06a65565692",
+      "message_id": "<CAEKh8ujGhfPKJZwLOpVmpGMZ_ux2+DbusCOzzEUUOR=S74vxNQ@mail.gmail.com>",
+      "from_name": "Antoine Fabri",
+      "from_email_hash": "a96e27bebd37f329c3e61761e8193ac169c557e8190e6ae94b092e50cc1fcdd8",
+      "date": "2023-07-21T15:14:09+02:00",
+      "subject": "[Rd] tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "subject_clean": "tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "in_reply_to": "<mailman.53613.7.1689933601.44324.r-devel@r-project.org>",
+      "references": [
+        "<mailman.53613.7.1689933601.44324.r-devel@r-project.org>"
+      ],
+      "body_plain": "Surprisingly this invalid latex syntax is still formatted \"right\" in the\nhtml output.\nOn a closer look it seems like roxygen2 introduces those, when using\nmarkdown backtick quoting, if the quoted content is not syntactic. For\ninstance:\n\n#' `c(c(1)`\n#' `c(c(1))`\n\nWill convert the first line to `\\verb{c(c(1)}` and the second to\n`\\code{c(c(1))}`.\n\nI've opened a ticket there FYI:\nhttps://github.com/r-lib/roxygen2/issues/1503\n\n------------------------------\n>\n> Message: 2\n> Date: Thu, 20 Jul 2023 23:48:44 +0300\n> From: Ivan Krylov <krylov.r00t at gmail.com>\n> To: Antoine Fabri <antoine.fabri at gmail.com>\n> Cc: R-devel <r-devel at r-project.org>\n> Subject: Re: [Rd] tools::parseLatex() crashes on \"\\\\verb{}\"\n> Message-ID: <20230720234844.004b13c2 at Tarkus>\n> Content-Type: text/plain; charset=\"us-ascii\"\n>\n> On Thu, 20 Jul 2023 21:41:44 +0200\n> Antoine Fabri <antoine.fabri at gmail.com> wrote:\n>\n> > tools::parseLatex(\"\\\\verb{hello}\")\n> > # crashes the session\n>\n> Looking at the source [*], this seems to be happening because\n> parseLatex expects the \\verb macro to use the same character as the\n> delimiter on both sides:\n>\n> tools::parseLatex('\\\\verb!hello!')\n> # \\verb!hello!\n>\n> What the loop doesn't have is a check for EOF, which leads TEXT_PUSH()\n> to increase the temporary buffer exponentially until unsigned int\n> nstext overflows and results in a 0-byte allocation, which is then\n> overrun, corrupting the heap. Any other unterminated \\verb!... would\n> have caused the same crash.\n>\n> Here's a patch that prevents this particular crash:\n>\n> --- src/library/tools/src/gramLatex.y   (revision 84714)\n> +++ src/library/tools/src/gramLatex.y   (working copy)\n> @@ -846,8 +846,8 @@\n>\n>      TEXT_PUSH('\\\\'); TEXT_PUSH('v'); TEXT_PUSH('e'); TEXT_PUSH('r');\n> TEXT_PUSH('b');\n>      TEXT_PUSH(c);\n> -    while ((c = xxgetc()) != delim) TEXT_PUSH(c);\n> -    TEXT_PUSH(c);\n> +    while (((c = xxgetc()) != delim) && c != R_EOF) TEXT_PUSH(c);\n> +    if (c != R_EOF) TEXT_PUSH(c);\n>\n>      PRESERVE_SV(yylval = mkString2(stext, bp - stext));\n>      if(stext != st0) free(stext);\n>\n> This seems to have been the only remaining while loop in gramLatex.y\n> that didn't check for R_EOF.\n>\n> More correctness work is needed: mkMarkup() should avoid calling\n> mkVerb(R_EOF) when running tools::parseLatex('\\\\verb'), since otherwise\n> 0xFF becomes a part of the resulting text. All declarations of unsigned\n> int nstext should probably be replaced by size_t nstext... but then\n> we'd have an annoying visit from the OOM killer instead of a much faster\n> crash in case of a runaway TEXT_PUSH(), and nobody expects to parse 4\n> GB of LaTeX source anyway. TEXT_PUSH() probably needs an integer\n> overflow check and to free the temporary buffer before calling error().\n>\n> --\n> Best regards,\n> Ivan\n>\n> [*]\n>\n> https://github.com/r-devel/r-svn/blob/f145419cc4dae162719206a61a29082adff2043d/src/library/tools/src/gramLatex.y#L845-L850\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Surprisingly this invalid latex syntax is still formatted \"right\" in the\nhtml output.\nOn a closer look it seems like roxygen2 introduces those, when using\nmarkdown backtick quoting, if the quoted cont",
+      "thread_id": "thread-a06a65565692",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-c2bffbbb87f1",
+      "message_id": "<20230721171851.25d0c402@parabola>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "72bda76034efaa18cd166b722c373c5159885b988468de351df8992020f3856a",
+      "date": "2023-07-21T17:18:51+03:00",
+      "subject": "[Rd] tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "subject_clean": "tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "in_reply_to": "<CAEKh8ujGhfPKJZwLOpVmpGMZ_ux2+DbusCOzzEUUOR=S74vxNQ@mail.gmail.com>",
+      "references": [
+        "<mailman.53613.7.1689933601.44324.r-devel@r-project.org>",
+        "<CAEKh8ujGhfPKJZwLOpVmpGMZ_ux2+DbusCOzzEUUOR=S74vxNQ@mail.gmail.com>"
+      ],
+      "body_plain": "? Fri, 21 Jul 2023 15:14:09 +0200\nAntoine Fabri <antoine.fabri at gmail.com> ?????:\n\n> On a closer look it seems like roxygen2 introduces those, when using\n> markdown backtick quoting, if the quoted content is not syntactic. For\n> instance:\n> \n> #' `c(c(1)`\n> #' `c(c(1))`\n> \n> Will convert the first line to `\\verb{c(c(1)}` and the second to\n> `\\code{c(c(1))}`.\n\nroxygen2 tries to do the right thing here. As defined in \"Parsing Rd\nfiles\" [*], \\code{} blocks are supposed to contain syntactically valid\nR code. When something that is not valid R is given in a Markdown code\nblock, roxygen2 should not output \\code{}, so it outputs \\verb{}.\n\nAlso, unlike in LaTeX as understood by tools::parseLatex(), \\verb{}\nblocks use the {} braces in R documentation, and are understood\ncorrectly by tools::parse_Rd(). Perhaps you also need tools::parse_Rd()?\n\n-- \nBest regards,\nIvan\n\n[*] https://developer.r-project.org/parseRd.pdf",
+      "body_snippet": "? Fri, 21 Jul 2023 15:14:09 +0200\nAntoine Fabri <antoine.fabri at gmail.com> ?????:\n\n> On a closer look it seems like roxygen2 introduces those, when using\n> markdown backtick quoting, if the quoted c",
+      "thread_id": "thread-a06a65565692",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-31c8f65a76e3",
+      "message_id": "<CAEKh8ui=syESUuTxYkqj7n70xQv4NE_-KREgvXa5mxVTV8HvfA@mail.gmail.com>",
+      "from_name": "Antoine Fabri",
+      "from_email_hash": "a96e27bebd37f329c3e61761e8193ac169c557e8190e6ae94b092e50cc1fcdd8",
+      "date": "2023-07-21T17:34:29+02:00",
+      "subject": "[Rd] tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "subject_clean": "tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "in_reply_to": "<20230721171851.25d0c402@parabola>",
+      "references": [
+        "<mailman.53613.7.1689933601.44324.r-devel@r-project.org>",
+        "<CAEKh8ujGhfPKJZwLOpVmpGMZ_ux2+DbusCOzzEUUOR=S74vxNQ@mail.gmail.com>",
+        "<20230721171851.25d0c402@parabola>"
+      ],
+      "body_plain": "Do I understand correctly that we don't want Rd files to be valid latex ?\nThis seems odd to me.\nI see that `tools::parse_Rd()` doesn't like `\\verb!foo!` so maybe roxygen2\nis actually doing the right thing (as opposed to just trying to) ?\n\n`parse_Rd() ` is probably what I need indeed, for some reason I hadn't\nfound it, so that should fix my own issue here thanks a lot.\n\nLe ven. 21 juil. 2023 ? 16:18, Ivan Krylov <krylov.r00t at gmail.com> a ?crit :\n\n> ? Fri, 21 Jul 2023 15:14:09 +0200\n> Antoine Fabri <antoine.fabri at gmail.com> ?????:\n>\n> > On a closer look it seems like roxygen2 introduces those, when using\n> > markdown backtick quoting, if the quoted content is not syntactic. For\n> > instance:\n> >\n> > #' `c(c(1)`\n> > #' `c(c(1))`\n> >\n> > Will convert the first line to `\\verb{c(c(1)}` and the second to\n> > `\\code{c(c(1))}`.\n>\n> roxygen2 tries to do the right thing here. As defined in \"Parsing Rd\n> files\" [*], \\code{} blocks are supposed to contain syntactically valid\n> R code. When something that is not valid R is given in a Markdown code\n> block, roxygen2 should not output \\code{}, so it outputs \\verb{}.\n>\n> Also, unlike in LaTeX as understood by tools::parseLatex(), \\verb{}\n> blocks use the {} braces in R documentation, and are understood\n> correctly by tools::parse_Rd(). Perhaps you also need tools::parse_Rd()?\n>\n> --\n> Best regards,\n> Ivan\n>\n> [*] https://developer.r-project.org/parseRd.pdf\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Do I understand correctly that we don't want Rd files to be valid latex ?\nThis seems odd to me.\nI see that `tools::parse_Rd()` doesn't like `\\verb!foo!` so maybe roxygen2\nis actually doing the right t",
+      "thread_id": "thread-a06a65565692",
+      "thread_depth": 2,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-e6c7a4bd925c",
+      "message_id": "<b0211957-5b44-961e-1292-eb41b09abcb9@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2023-07-21T12:38:39-04:00",
+      "subject": "[Rd] tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "subject_clean": "tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "in_reply_to": "<CAEKh8ui=syESUuTxYkqj7n70xQv4NE_-KREgvXa5mxVTV8HvfA@mail.gmail.com>",
+      "references": [
+        "<mailman.53613.7.1689933601.44324.r-devel@r-project.org>",
+        "<CAEKh8ujGhfPKJZwLOpVmpGMZ_ux2+DbusCOzzEUUOR=S74vxNQ@mail.gmail.com>",
+        "<20230721171851.25d0c402@parabola>",
+        "<CAEKh8ui=syESUuTxYkqj7n70xQv4NE_-KREgvXa5mxVTV8HvfA@mail.gmail.com>"
+      ],
+      "body_plain": "On 21/07/2023 11:34 a.m., Antoine Fabri wrote:\n> Do I understand correctly that we don't want Rd files to be valid latex ?\n\nYes, it needs to be valid Rd format, which is \"a simple markup language \nmuch of which closely resembles (La)TeX\".  For more details see section \n2.1 of Writing R Extensions, which includes links to even more detail.\n\nDuncan Murdoch\n\n\n> This seems odd to me.\n> I see that `tools::parse_Rd()` doesn't like `\\verb!foo!` so maybe roxygen2\n> is actually doing the right thing (as opposed to just trying to) ?\n> \n> `parse_Rd() ` is probably what I need indeed, for some reason I hadn't\n> found it, so that should fix my own issue here thanks a lot.\n> \n> Le ven. 21 juil. 2023 ? 16:18, Ivan Krylov <krylov.r00t at gmail.com> a ?crit :\n> \n>> ? Fri, 21 Jul 2023 15:14:09 +0200\n>> Antoine Fabri <antoine.fabri at gmail.com> ?????:\n>>\n>>> On a closer look it seems like roxygen2 introduces those, when using\n>>> markdown backtick quoting, if the quoted content is not syntactic. For\n>>> instance:\n>>>\n>>> #' `c(c(1)`\n>>> #' `c(c(1))`\n>>>\n>>> Will convert the first line to `\\verb{c(c(1)}` and the second to\n>>> `\\code{c(c(1))}`.\n>>\n>> roxygen2 tries to do the right thing here. As defined in \"Parsing Rd\n>> files\" [*], \\code{} blocks are supposed to contain syntactically valid\n>> R code. When something that is not valid R is given in a Markdown code\n>> block, roxygen2 should not output \\code{}, so it outputs \\verb{}.\n>>\n>> Also, unlike in LaTeX as understood by tools::parseLatex(), \\verb{}\n>> blocks use the {} braces in R documentation, and are understood\n>> correctly by tools::parse_Rd(). Perhaps you also need tools::parse_Rd()?\n>>\n>> --\n>> Best regards,\n>> Ivan\n>>\n>> [*] https://developer.r-project.org/parseRd.pdf\n>>\n> \n> \t[[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On 21/07/2023 11:34 a.m., Antoine Fabri wrote:\n> Do I understand correctly that we don't want Rd files to be valid latex ?\n\nYes, it needs to be valid Rd format, which is \"a simple markup language \nmuc",
+      "thread_id": "thread-a06a65565692",
+      "thread_depth": 3,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-e495b7b459f0",
+      "message_id": "<28f36f7d-084e-1a51-01c4-92b75c31fa45@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2023-07-23T16:29:10-04:00",
+      "subject": "[Rd] Bug in perl=TRUE regexp matching?",
+      "subject_clean": "Bug in perl=TRUE regexp matching?",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "The help page for `?gsub` says (in the context of performance \nconsiderations):\n\n\n\"... just one UTF-8 string will force all the matching to be done in \nUnicode\"\n\n\nHowever, this thread on SO:  https://stackoverflow.com/q/76749529 gives \nsome indication that this is not true for `perl = TRUE`.  Specifically:\n\n > strings <- c(\"89 562\", \"John Smith\", \"??????? ????????????\", \n\"Jean-Fran?ois Dupuis\")\n > Encoding(strings)\n[1] \"unknown\" \"unknown\" \"UTF-8\"   \"UTF-8\"\n > regex <- \"\\\\B\\\\w+| +\"\n > gsub(regex, \"\", strings)\n[1] \"85\"   \"JS\"   \"??\"   \"J-FD\"\n\n > gsub(regex, \"\", strings, perl = TRUE)\n[1] \"85\"                  \"JS\"                  \"???????????????????\" \n\"J-F?oD\"\n\nand the website https://regex101.com/r/QDFrOE/1 gives the first answer \nwhen the regex option /u (\"match with full Unicode) is specified, but \nthe second answer when it is not.\n\nNow I'm not at all sure that that website is authoritative, but this \nlooks like a flag may have been missed in the `perl = TRUE` case.\n\nDuncan Murdoch",
+      "body_snippet": "The help page for `?gsub` says (in the context of performance \nconsiderations):\n\n\n\"... just one UTF-8 string will force all the matching to be done in \nUnicode\"\n\n\nHowever, this thread on SO:  https://",
+      "thread_id": "thread-e495b7b459f0",
+      "thread_depth": 0,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-2b8cd1be43e6",
+      "message_id": "<c6eeaf6f-37bb-054e-4297-e776303092c0@yahoo.com>",
+      "from_name": "Brodie Gaslam",
+      "from_email_hash": "671f5402c186de5945c34deb8b8157b8adc470325b32745c09602547421baa39",
+      "date": "2023-07-23T21:01:39-04:00",
+      "subject": "[Rd] Bug in perl=TRUE regexp matching?",
+      "subject_clean": "Bug in perl=TRUE regexp matching?",
+      "in_reply_to": "<28f36f7d-084e-1a51-01c4-92b75c31fa45@gmail.com>",
+      "references": [
+        "<28f36f7d-084e-1a51-01c4-92b75c31fa45@gmail.com>"
+      ],
+      "body_plain": "On 7/23/23 4:29 PM, Duncan Murdoch wrote:\n> The help page for `?gsub` says (in the context of performance \n> considerations):\n> \n> \n> \"... just one UTF-8 string will force all the matching to be done in \n> Unicode\"\n\nIt's been a little while since I looked at the code but IIRC this just \nmeans that strings are converted to UTF-8 before matching.  The problem \nhere seems to be more about the interpretation of the \"\\\\w+\" token by \nPCRE.  I think this makes it a little clearer what's going on:\n\n     gsub(\"\\\\w\", \"a\", \"?\", perl=TRUE)\n     [1] \"?\"\n\nSo no match.  The PCRE docs \nhttps://www.pcre.org/original/doc/html/pcrepattern.html (this might be \nthe old docs, but it works for our purposes here) mention we can turn on \nunicode property matching with the \"(*UCP)\" token:\n\n      gsub(\"(*UCP)\\\\w\", \"a\", \"?\", perl=TRUE)\n      [1] \"a\"\n\nSo there are two layers at play here.  The first one is whether R \nconverts strings to UTF-8, which I think is what the documentation is \nabout.  The other is whether the PCRE engine is configured to recognize \nUnicode properties, which at least in both of our configurations for \nthis specific case it appears like it is not.\n\nBest,\n\nB.\n\n\n> \n> \n> However, this thread on SO:? https://stackoverflow.com/q/76749529 gives \n> some indication that this is not true for `perl = TRUE`.? Specifically:\n> \n>  > strings <- c(\"89 562\", \"John Smith\", \"??????? ????????????\", \n> \"Jean-Fran?ois Dupuis\")\n>  > Encoding(strings)\n> [1] \"unknown\" \"unknown\" \"UTF-8\"?? \"UTF-8\"\n>  > regex <- \"\\\\B\\\\w+| +\"\n>  > gsub(regex, \"\", strings)\n> [1] \"85\"?? \"JS\"?? \"??\"?? \"J-FD\"\n> \n>  > gsub(regex, \"\", strings, perl = TRUE)\n> [1] \"85\"????????????????? \"JS\"????????????????? \"???????????????????\" \n> \"J-F?oD\"\n> \n> and the website https://regex101.com/r/QDFrOE/1 gives the first answer \n> when the regex option /u (\"match with full Unicode) is specified, but \n> the second answer when it is not.\n> \n> Now I'm not at all sure that that website is authoritative, but this \n> looks like a flag may have been missed in the `perl = TRUE` case.\n> \n> Duncan Murdoch\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On 7/23/23 4:29 PM, Duncan Murdoch wrote:\n> The help page for `?gsub` says (in the context of performance \n> considerations):\n> \n> \n> \"... just one UTF-8 string will force all the matching to be done ",
+      "thread_id": "thread-e495b7b459f0",
+      "thread_depth": 1,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-4eb6d93cfd1e",
+      "message_id": "<53181bfa-593e-e423-147b-523a9c636ed3@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2023-07-24T04:10:32-04:00",
+      "subject": "[Rd] Bug in perl=TRUE regexp matching?",
+      "subject_clean": "Bug in perl=TRUE regexp matching?",
+      "in_reply_to": "<c6eeaf6f-37bb-054e-4297-e776303092c0@yahoo.com>",
+      "references": [
+        "<28f36f7d-084e-1a51-01c4-92b75c31fa45@gmail.com>",
+        "<c6eeaf6f-37bb-054e-4297-e776303092c0@yahoo.com>"
+      ],
+      "body_plain": "On 23/07/2023 9:01 p.m., Brodie Gaslam wrote:\n> \n> \n> On 7/23/23 4:29 PM, Duncan Murdoch wrote:\n>> The help page for `?gsub` says (in the context of performance\n>> considerations):\n>>\n>>\n>> \"... just one UTF-8 string will force all the matching to be done in\n>> Unicode\"\n> \n> It's been a little while since I looked at the code but IIRC this just\n> means that strings are converted to UTF-8 before matching.  The problem\n> here seems to be more about the interpretation of the \"\\\\w+\" token by\n> PCRE.  I think this makes it a little clearer what's going on:\n> \n>       gsub(\"\\\\w\", \"a\", \"?\", perl=TRUE)\n>       [1] \"?\"\n> \n> So no match.  The PCRE docs\n> https://www.pcre.org/original/doc/html/pcrepattern.html (this might be\n> the old docs, but it works for our purposes here) mention we can turn on\n> unicode property matching with the \"(*UCP)\" token:\n> \n>        gsub(\"(*UCP)\\\\w\", \"a\", \"?\", perl=TRUE)\n>        [1] \"a\"\n> \n> So there are two layers at play here.  The first one is whether R\n> converts strings to UTF-8, which I think is what the documentation is\n> about.  The other is whether the PCRE engine is configured to recognize\n> Unicode properties, which at least in both of our configurations for\n> this specific case it appears like it is not.\n\n From the surrounding context, I think the docs are talking about more \nthan just conversion to UTF-8.  The full paragraph reads like this:\n\n\"If you are working in a single-byte locale (though not common since R \n4.2) and have marked UTF-8 strings that are representable in that \nlocale, convert them first as just one UTF-8 string will force all the \nmatching to be done in Unicode, which attracts a penalty of around\n3? for the default POSIX 1003.2 mode.\"\n\ni.e. it says the presence of UTF-8 strings slows things down by a factor \nof 3, so it's faster to convert everything to the local encoding.  If it \nwas just conversion, I don't think that would be true.\n\nBut maybe \"for the default POSIX 1003.2 mode\" applies to the whole \nparagraph, not just to the penalty, so this is intentional.\n\nDuncan Murdoch\n> \n> Best,\n> \n> B.\n> \n> \n>>\n>>\n>> However, this thread on SO:? https://stackoverflow.com/q/76749529 gives\n>> some indication that this is not true for `perl = TRUE`.? Specifically:\n>>\n>>   > strings <- c(\"89 562\", \"John Smith\", \"??????? ????????????\",\n>> \"Jean-Fran?ois Dupuis\")\n>>   > Encoding(strings)\n>> [1] \"unknown\" \"unknown\" \"UTF-8\"?? \"UTF-8\"\n>>   > regex <- \"\\\\B\\\\w+| +\"\n>>   > gsub(regex, \"\", strings)\n>> [1] \"85\"?? \"JS\"?? \"??\"?? \"J-FD\"\n>>\n>>   > gsub(regex, \"\", strings, perl = TRUE)\n>> [1] \"85\"????????????????? \"JS\"????????????????? \"???????????????????\"\n>> \"J-F?oD\"\n>>\n>> and the website https://regex101.com/r/QDFrOE/1 gives the first answer\n>> when the regex option /u (\"match with full Unicode) is specified, but\n>> the second answer when it is not.\n>>\n>> Now I'm not at all sure that that website is authoritative, but this\n>> looks like a flag may have been missed in the `perl = TRUE` case.\n>>\n>> Duncan Murdoch\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On 23/07/2023 9:01 p.m., Brodie Gaslam wrote:\n> \n> \n> On 7/23/23 4:29 PM, Duncan Murdoch wrote:\n>> The help page for `?gsub` says (in the context of performance\n>> considerations):\n>>\n>>\n>> \"... just ",
+      "thread_id": "thread-e495b7b459f0",
+      "thread_depth": 2,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-abc3352ced72",
+      "message_id": "<7189ca5b-56b5-03b6-97ca-6e2933b20d0a@yahoo.com>",
+      "from_name": "Brodie Gaslam",
+      "from_email_hash": "671f5402c186de5945c34deb8b8157b8adc470325b32745c09602547421baa39",
+      "date": "2023-07-24T21:13:36-04:00",
+      "subject": "[Rd] Bug in perl=TRUE regexp matching?",
+      "subject_clean": "Bug in perl=TRUE regexp matching?",
+      "in_reply_to": "<53181bfa-593e-e423-147b-523a9c636ed3@gmail.com>",
+      "references": [
+        "<28f36f7d-084e-1a51-01c4-92b75c31fa45@gmail.com>",
+        "<c6eeaf6f-37bb-054e-4297-e776303092c0@yahoo.com>",
+        "<53181bfa-593e-e423-147b-523a9c636ed3@gmail.com>"
+      ],
+      "body_plain": "On 7/24/23 4:10 AM, Duncan Murdoch wrote:\n> On 23/07/2023 9:01 p.m., Brodie Gaslam wrote:\n>>\n>>\n>> On 7/23/23 4:29 PM, Duncan Murdoch wrote:\n>>> The help page for `?gsub` says (in the context of performance\n>>> considerations):\n>>>\n>>>\n>>> \"... just one UTF-8 string will force all the matching to be done in\n>>> Unicode\"\n>>\n>> It's been a little while since I looked at the code but IIRC this just\n>> means that strings are converted to UTF-8 before matching.? The problem\n>> here seems to be more about the interpretation of the \"\\\\w+\" token by\n>> PCRE.? I think this makes it a little clearer what's going on:\n>>\n>> ????? gsub(\"\\\\w\", \"a\", \"?\", perl=TRUE)\n>> ????? [1] \"?\"\n>>\n>> So no match.? The PCRE docs\n>> https://www.pcre.org/original/doc/html/pcrepattern.html (this might be\n>> the old docs, but it works for our purposes here) mention we can turn on\n>> unicode property matching with the \"(*UCP)\" token:\n>>\n>> ?????? gsub(\"(*UCP)\\\\w\", \"a\", \"?\", perl=TRUE)\n>> ?????? [1] \"a\"\n>>\n>> So there are two layers at play here.? The first one is whether R\n>> converts strings to UTF-8, which I think is what the documentation is\n>> about.? The other is whether the PCRE engine is configured to recognize\n>> Unicode properties, which at least in both of our configurations for\n>> this specific case it appears like it is not.\n> \n>  From the surrounding context, I think the docs are talking about more \n> than just conversion to UTF-8.? The full paragraph reads like this:\n> \n> \"If you are working in a single-byte locale (though not common since R \n> 4.2) and have marked UTF-8 strings that are representable in that \n> locale, convert them first as just one UTF-8 string will force all the \n> matching to be done in Unicode, which attracts a penalty of around\n> 3? for the default POSIX 1003.2 mode.\"\n> \n> i.e. it says the presence of UTF-8 strings slows things down by a factor \n> of 3, so it's faster to convert everything to the local encoding.? If it \n> was just conversion, I don't think that would be true.\n> \n> But maybe \"for the default POSIX 1003.2 mode\" applies to the whole \n> paragraph, not just to the penalty, so this is intentional.\n\nAgreed, I don't think this whole issue is just about the conversion. \nWhat I'm trying to highlight is the distinction between what R does \n(converts input to Unicode - UTF-8 for PCRE[1], wchar_t for \nPOSIX/TRE[2]), and what the regular expression engines then do (match \nthat Unicode per their own semantics).  This for the case of any UTF-8 \nin the input.\n\nPCRE is behaving as documented[3]:\n\n > By default, characters whose code points are greater than 127 never \nmatch \\d, \\s, or \\w, and always match \\D, \\S, and \\W, although this may \nbe different for characters in the range 128-255 when locale-specific \nmatching is happening. These escape sequences retain their original \nmeanings from before Unicode support was available, mainly for \nefficiency reasons. If the PCRE2_UCP option is set, the behaviour is \nchanged so that Unicode properties are used to determine character \ntypes, as follows...\n\nSo this doesn't seem like a bug to me.\n\nDoes that mean that the following is incorrect?\n\n > one UTF-8 string will force all the matching to be done in Unicode\n\nIt depends on how you want to interpret \"done in\".  Less ambiguous could be:\n\n > one UTF-8 string will force all strings to be converted to Unicode \nprior to matching.\n\nBest,\n\nB\n\n[1]: \nhttps://github.com/r-devel/r-svn/blob/a8a3c4d6902525e4222e0bbf5b512f36e2ceac3d/src/main/grep.c#L1385\n[2]: \nhttps://github.com/r-devel/r-svn/blob/a8a3c4d6902525e4222e0bbf5b512f36e2ceac3d/src/main/grep.c#L1378\n[3]: https://pcre.org/current/doc/html/pcre2pattern.html\n\n> \n> Duncan Murdoch\n>>\n>> Best,\n>>\n>> B.\n>>\n>>\n>>>\n>>>\n>>> However, this thread on SO:? https://stackoverflow.com/q/76749529 gives\n>>> some indication that this is not true for `perl = TRUE`.? Specifically:\n>>>\n>>> ? > strings <- c(\"89 562\", \"John Smith\", \"??????? ????????????\",\n>>> \"Jean-Fran?ois Dupuis\")\n>>> ? > Encoding(strings)\n>>> [1] \"unknown\" \"unknown\" \"UTF-8\"?? \"UTF-8\"\n>>> ? > regex <- \"\\\\B\\\\w+| +\"\n>>> ? > gsub(regex, \"\", strings)\n>>> [1] \"85\"?? \"JS\"?? \"??\"?? \"J-FD\"\n>>>\n>>> ? > gsub(regex, \"\", strings, perl = TRUE)\n>>> [1] \"85\"????????????????? \"JS\"????????????????? \"???????????????????\"\n>>> \"J-F?oD\"\n>>>\n>>> and the website https://regex101.com/r/QDFrOE/1 gives the first answer\n>>> when the regex option /u (\"match with full Unicode) is specified, but\n>>> the second answer when it is not.\n>>>\n>>> Now I'm not at all sure that that website is authoritative, but this\n>>> looks like a flag may have been missed in the `perl = TRUE` case.\n>>>\n>>> Duncan Murdoch\n>>>\n>>> ______________________________________________\n>>> R-devel at r-project.org mailing list\n>>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>",
+      "body_snippet": "On 7/24/23 4:10 AM, Duncan Murdoch wrote:\n> On 23/07/2023 9:01 p.m., Brodie Gaslam wrote:\n>>\n>>\n>> On 7/23/23 4:29 PM, Duncan Murdoch wrote:\n>>> The help page for `?gsub` says (in the context of perfo",
+      "thread_id": "thread-e495b7b459f0",
+      "thread_depth": 3,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-c3a7c6cc52bd",
+      "message_id": "<f32135f8-4c28-4627-1821-70379f833b12@gmail.com>",
+      "from_name": "Tomas Kalibera",
+      "from_email_hash": "7af110c9340339e5307bd348f1ec524e2fd1c8f104d583e9993022c5550711f4",
+      "date": "2023-07-31T13:01:55+02:00",
+      "subject": "[Rd] Bug in perl=TRUE regexp matching?",
+      "subject_clean": "Bug in perl=TRUE regexp matching?",
+      "in_reply_to": "<7189ca5b-56b5-03b6-97ca-6e2933b20d0a@yahoo.com>",
+      "references": [
+        "<28f36f7d-084e-1a51-01c4-92b75c31fa45@gmail.com>",
+        "<c6eeaf6f-37bb-054e-4297-e776303092c0@yahoo.com>",
+        "<53181bfa-593e-e423-147b-523a9c636ed3@gmail.com>",
+        "<7189ca5b-56b5-03b6-97ca-6e2933b20d0a@yahoo.com>"
+      ],
+      "body_plain": "On 7/25/23 03:13, Brodie Gaslam via R-devel wrote:\n>\n>\n> On 7/24/23 4:10 AM, Duncan Murdoch wrote:\n>> On 23/07/2023 9:01 p.m., Brodie Gaslam wrote:\n>>>\n>>>\n>>> On 7/23/23 4:29 PM, Duncan Murdoch wrote:\n>>>> The help page for `?gsub` says (in the context of performance\n>>>> considerations):\n>>>>\n>>>>\n>>>> \"... just one UTF-8 string will force all the matching to be done in\n>>>> Unicode\"\n>>>\n>>> It's been a little while since I looked at the code but IIRC this just\n>>> means that strings are converted to UTF-8 before matching. The problem\n>>> here seems to be more about the interpretation of the \"\\\\w+\" token by\n>>> PCRE.? I think this makes it a little clearer what's going on:\n>>>\n>>> ????? gsub(\"\\\\w\", \"a\", \"?\", perl=TRUE)\n>>> ????? [1] \"?\"\n>>>\n>>> So no match.? The PCRE docs\n>>> https://www.pcre.org/original/doc/html/pcrepattern.html (this might be\n>>> the old docs, but it works for our purposes here) mention we can \n>>> turn on\n>>> unicode property matching with the \"(*UCP)\" token:\n>>>\n>>> ?????? gsub(\"(*UCP)\\\\w\", \"a\", \"?\", perl=TRUE)\n>>> ?????? [1] \"a\"\n>>>\n>>> So there are two layers at play here.? The first one is whether R\n>>> converts strings to UTF-8, which I think is what the documentation is\n>>> about.? The other is whether the PCRE engine is configured to recognize\n>>> Unicode properties, which at least in both of our configurations for\n>>> this specific case it appears like it is not.\n>>\n>> ?From the surrounding context, I think the docs are talking about \n>> more than just conversion to UTF-8.? The full paragraph reads like this:\n>>\n>> \"If you are working in a single-byte locale (though not common since \n>> R 4.2) and have marked UTF-8 strings that are representable in that \n>> locale, convert them first as just one UTF-8 string will force all \n>> the matching to be done in Unicode, which attracts a penalty of around\n>> 3? for the default POSIX 1003.2 mode.\"\n>>\n>> i.e. it says the presence of UTF-8 strings slows things down by a \n>> factor of 3, so it's faster to convert everything to the local \n>> encoding.? If it was just conversion, I don't think that would be true.\n>>\n>> But maybe \"for the default POSIX 1003.2 mode\" applies to the whole \n>> paragraph, not just to the penalty, so this is intentional.\n>\n> Agreed, I don't think this whole issue is just about the conversion. \n> What I'm trying to highlight is the distinction between what R does \n> (converts input to Unicode - UTF-8 for PCRE[1], wchar_t for \n> POSIX/TRE[2]), and what the regular expression engines then do (match \n> that Unicode per their own semantics).? This for the case of any UTF-8 \n> in the input.\n>\n> PCRE is behaving as documented[3]:\n>\n> > By default, characters whose code points are greater than 127 never \n> match \\d, \\s, or \\w, and always match \\D, \\S, and \\W, although this \n> may be different for characters in the range 128-255 when \n> locale-specific matching is happening. These escape sequences retain \n> their original meanings from before Unicode support was available, \n> mainly for efficiency reasons. If the PCRE2_UCP option is set, the \n> behaviour is changed so that Unicode properties are used to determine \n> character types, as follows...\n>\n> So this doesn't seem like a bug to me.\n>\n> Does that mean that the following is incorrect?\n>\n> > one UTF-8 string will force all the matching to be done in Unicode\n>\n> It depends on how you want to interpret \"done in\".? Less ambiguous \n> could be:\n>\n> > one UTF-8 string will force all strings to be converted to Unicode \n> prior to matching.\n\nI've added a note to ?regexp about enabling Unicode properties in \npatterns using (*UCP). I understand that it may be surprising to users \nthese are not fully enabled by default (PCRE2_UCP not set), but then it \nis the default behavior of PCRE2 and most likely chosen for performance \nreasons (see [3]), and ?regexp refers to PCRE documentation.\n\nRe ?gsub, I think it is ok, the matching is in Unicode/UTF-8. Whether \nthe Unicode property support is available or how to fully enable it is \nanother matter, not discussed in this part of the documentation.\n\nBest\nTomas\n\n>\n> Best,\n>\n> B\n>\n> [1]: \n> https://github.com/r-devel/r-svn/blob/a8a3c4d6902525e4222e0bbf5b512f36e2ceac3d/src/main/grep.c#L1385\n> [2]: \n> https://github.com/r-devel/r-svn/blob/a8a3c4d6902525e4222e0bbf5b512f36e2ceac3d/src/main/grep.c#L1378\n> [3]: https://pcre.org/current/doc/html/pcre2pattern.html\n>\n>>\n>> Duncan Murdoch\n>>>\n>>> Best,\n>>>\n>>> B.\n>>>\n>>>\n>>>>\n>>>>\n>>>> However, this thread on SO: https://stackoverflow.com/q/76749529 gives\n>>>> some indication that this is not true for `perl = TRUE`. Specifically:\n>>>>\n>>>> ? > strings <- c(\"89 562\", \"John Smith\", \"??????? ????????????\",\n>>>> \"Jean-Fran?ois Dupuis\")\n>>>> ? > Encoding(strings)\n>>>> [1] \"unknown\" \"unknown\" \"UTF-8\"?? \"UTF-8\"\n>>>> ? > regex <- \"\\\\B\\\\w+| +\"\n>>>> ? > gsub(regex, \"\", strings)\n>>>> [1] \"85\"?? \"JS\"?? \"??\"?? \"J-FD\"\n>>>>\n>>>> ? > gsub(regex, \"\", strings, perl = TRUE)\n>>>> [1] \"85\"????????????????? \"JS\" \"???????????????????\"\n>>>> \"J-F?oD\"\n>>>>\n>>>> and the website https://regex101.com/r/QDFrOE/1 gives the first answer\n>>>> when the regex option /u (\"match with full Unicode) is specified, but\n>>>> the second answer when it is not.\n>>>>\n>>>> Now I'm not at all sure that that website is authoritative, but this\n>>>> looks like a flag may have been missed in the `perl = TRUE` case.\n>>>>\n>>>> Duncan Murdoch\n>>>>\n>>>> ______________________________________________\n>>>> R-devel at r-project.org mailing list\n>>>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On 7/25/23 03:13, Brodie Gaslam via R-devel wrote:\n>\n>\n> On 7/24/23 4:10 AM, Duncan Murdoch wrote:\n>> On 23/07/2023 9:01 p.m., Brodie Gaslam wrote:\n>>>\n>>>\n>>> On 7/23/23 4:29 PM, Duncan Murdoch wrote",
+      "thread_id": "thread-e495b7b459f0",
+      "thread_depth": 4,
+      "month": "2023-07"
+    },
+    {
+      "id": "msg-ddf0983277f6",
+      "message_id": "<1cb2c074-ad70-6b47-aff0-957bb9a8a3e9@pburns.seanet.com>",
+      "from_name": "Patrick Burns",
+      "from_email_hash": "6596710623376f6af46947be082f4d1b3117c982ef595da12b91b11eaf35f8e0",
+      "date": "2023-07-31T16:43:17+01:00",
+      "subject": "[Rd] random network disconnects",
+      "subject_clean": "random network disconnects",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I'm experiencing a weird issue, and wondering if anyone has seen this, \nand better yet has a solution.\n\nAt work we are getting lots of issues with 'permission denied' or \n'network not found' and so forth when reading and writing between our \nmachines and a file server.  This happens randomly so the following \nfunction solves the problem for 'cat' commands:\n\ncatSafer <-\nfunction (..., ReTries = 20, ThrowError = TRUE)\n{\n     for (catsi in seq_len(ReTries)) {\n         res <- try(cat(...))\n         if (!inherits(res, \"try-error\"))\n             break\n     }\n     if (inherits(res, \"try-error\")) {\n         if (ThrowError) {\n             stop(\"file connection failed\")\n         }\n         else {\n             warning(\"file connection failed\")\n         }\n     }\n}\n\nPeople have done network traces and such, but so far nothing has been seen.\n\nThanks,\nPat\n\n-- \nPatrick Burns\npburns at pburns.seanet.com\nhttp://www.portfolioprobe.com/blog\nhttp://www.burns-stat.com\n(home of:\n  'Impatient R'\n  'The R Inferno'\n  'Tao Te Programming')",
+      "body_snippet": "I'm experiencing a weird issue, and wondering if anyone has seen this, \nand better yet has a solution.\n\nAt work we are getting lots of issues with 'permission denied' or \n'network not found' and so fo",
+      "thread_id": "thread-ddf0983277f6",
+      "thread_depth": 0,
+      "month": "2023-07"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-621ab3c93695",
+      "subject": "Strange error in R CMD check --timings",
+      "message_count": 3,
+      "participants": [
+        "Duncan Murdoch",
+        "Sebastian Meyer"
+      ],
+      "started": "2023-07-02T12:01:03-04:00",
+      "last_reply": "2023-07-02T14:44:34-04:00",
+      "root_message_id": "msg-621ab3c93695"
+    },
+    {
+      "id": "thread-73573a485d15",
+      "subject": "numeric_version doesn't like numeric versions anymore?",
+      "message_count": 2,
+      "participants": [
+        "Dipterix Wang",
+        "Sebastian Meyer"
+      ],
+      "started": "2023-07-06T02:37:22-04:00",
+      "last_reply": "2023-07-06T09:52:59+02:00",
+      "root_message_id": "msg-73573a485d15"
+    },
+    {
+      "id": "thread-710d1b8a80ae",
+      "subject": "logic tweak needed for as.data.frame.<class> deprecation warning",
+      "message_count": 3,
+      "participants": [
+        "Martin Maechler",
+        "Mikael Jagan"
+      ],
+      "started": "2023-07-06T11:32:00-04:00",
+      "last_reply": "2023-07-07T18:46:34+02:00",
+      "root_message_id": "msg-710d1b8a80ae"
+    },
+    {
+      "id": "thread-1f2ea8c4af29",
+      "subject": "Warning 'as.data.frame.POSIXct()' is deprecated",
+      "message_count": 1,
+      "participants": [
+        "Martin Maechler"
+      ],
+      "started": "2023-07-06T18:13:37+02:00",
+      "last_reply": "2023-07-06T18:13:37+02:00",
+      "root_message_id": "msg-1f2ea8c4af29"
+    },
+    {
+      "id": "thread-7aa87f015584",
+      "subject": "Errors in \"An introduction to R\"",
+      "message_count": 3,
+      "participants": [
+        "Ivan Krylov",
+        "Jarkko Toivonen",
+        "Martin Maechler"
+      ],
+      "started": "2023-07-10T18:37:30+03:00",
+      "last_reply": "2023-07-12T16:15:52+03:00",
+      "root_message_id": "msg-7aa87f015584"
+    },
+    {
+      "id": "thread-0dc3195d569c",
+      "subject": "question about an R idiom: eval()ing a quoted block",
+      "message_count": 3,
+      "participants": [
+        "Ben Bolker",
+        "Duncan Murdoch",
+        "peter dalgaard"
+      ],
+      "started": "2023-07-11T18:01:32-04:00",
+      "last_reply": "2023-07-20T09:46:33+02:00",
+      "root_message_id": "msg-0dc3195d569c"
+    },
+    {
+      "id": "thread-c93cda307776",
+      "subject": "Incorrect type in malloc in Rscript.c",
+      "message_count": 2,
+      "participants": [
+        "Tomas Kalibera",
+        "Will McClennan"
+      ],
+      "started": "2023-07-12T18:26:56-04:00",
+      "last_reply": "2023-07-13T08:59:01+02:00",
+      "root_message_id": "msg-c93cda307776"
+    },
+    {
+      "id": "thread-87dd194b437a",
+      "subject": "Concerns with SVD",
+      "message_count": 3,
+      "participants": [
+        "Durga Prasad G me14d059",
+        "J C Nash",
+        "Martin Maechler"
+      ],
+      "started": "2023-07-16T11:31:18+05:30",
+      "last_reply": "2023-07-17T10:43:18+02:00",
+      "root_message_id": "msg-87dd194b437a"
+    },
+    {
+      "id": "thread-ef673c3b76d8",
+      "subject": "Installation of R-4.3.1 with intel 2022",
+      "message_count": 3,
+      "participants": [
+        "Giuseppe Calò",
+        "Prof Brian Ripley"
+      ],
+      "started": "2023-07-18T10:18:20+01:00",
+      "last_reply": "2023-07-21T07:32:47+02:00",
+      "root_message_id": "msg-ef673c3b76d8"
+    },
+    {
+      "id": "thread-c13b7ba09231",
+      "subject": "proposal for WRE: clarify that use of S4 classes implies use of superclasses",
+      "message_count": 1,
+      "participants": [
+        "Mikael Jagan"
+      ],
+      "started": "2023-07-19T03:20:18-04:00",
+      "last_reply": "2023-07-19T03:20:18-04:00",
+      "root_message_id": "msg-c13b7ba09231"
+    },
+    {
+      "id": "thread-8be6ec3e4b9c",
+      "subject": "_R_CHECK_DEPENDS_ONLY_ vs. packages in .Library [was: Check package without suggests]",
+      "message_count": 1,
+      "participants": [
+        "Ivan Krylov"
+      ],
+      "started": "2023-07-19T17:54:25+03:00",
+      "last_reply": "2023-07-19T17:54:25+03:00",
+      "root_message_id": "msg-8be6ec3e4b9c"
+    },
+    {
+      "id": "thread-6da636bf6796",
+      "subject": "tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "message_count": 2,
+      "participants": [
+        "Antoine Fabri",
+        "Ivan Krylov"
+      ],
+      "started": "2023-07-20T21:41:44+02:00",
+      "last_reply": "2023-07-20T23:48:44+03:00",
+      "root_message_id": "msg-6da636bf6796"
+    },
+    {
+      "id": "thread-a06a65565692",
+      "subject": "tools::parseLatex() crashes on \"\\\\verb{}\"",
+      "message_count": 4,
+      "participants": [
+        "Antoine Fabri",
+        "Duncan Murdoch",
+        "Ivan Krylov"
+      ],
+      "started": "2023-07-21T15:14:09+02:00",
+      "last_reply": "2023-07-21T12:38:39-04:00",
+      "root_message_id": "msg-a06a65565692"
+    },
+    {
+      "id": "thread-e495b7b459f0",
+      "subject": "Bug in perl=TRUE regexp matching?",
+      "message_count": 5,
+      "participants": [
+        "Brodie Gaslam",
+        "Duncan Murdoch",
+        "Tomas Kalibera"
+      ],
+      "started": "2023-07-23T16:29:10-04:00",
+      "last_reply": "2023-07-31T13:01:55+02:00",
+      "root_message_id": "msg-e495b7b459f0"
+    },
+    {
+      "id": "thread-ddf0983277f6",
+      "subject": "random network disconnects",
+      "message_count": 1,
+      "participants": [
+        "Patrick Burns"
+      ],
+      "started": "2023-07-31T16:43:17+01:00",
+      "last_reply": "2023-07-31T16:43:17+01:00",
+      "root_message_id": "msg-ddf0983277f6"
+    }
+  ]
+}

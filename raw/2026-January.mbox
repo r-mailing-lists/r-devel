@@ -1,0 +1,4659 @@
+From Thom@@@SOEIRO @end|ng |rom @p-hm@|r  Fri Jan  2 09:54:19 2026
+From: Thom@@@SOEIRO @end|ng |rom @p-hm@|r (SOEIRO Thomas)
+Date: Fri, 2 Jan 2026 08:54:19 +0000
+Subject: [Rd] Plans for the pipe bind operator?
+Message-ID: <66a0952283344d6cb87ab339bfe4c31f@ap-hm.fr>
+
+Hello,
+
+The experimental (undocumented?) pipe bind operator (=>) was introduced in January 2021 (https://stat.ethz.ch/pipermail/r-devel/2021-January/080396.html). In December 2021, Luke Tierney said that it might be dropped (https://stat.ethz.ch/pipermail/r-devel/2021-December/081384.html).
+
+It is still present in R-devel (to become R 4.6):
+
+mtcars |> (\(x) lm(mpg ~ disp, data = x))()
+mtcars$mpg |> quantile() |> (\(x) sprintf("%.1f (%.1f, %.1f)", x[3], x[2], x[4]))()
+
+Sys.setenv("_R_USE_PIPEBIND_" = TRUE)
+mtcars |> x => lm(mpg ~ disp, data = x)
+mtcars$mpg |> quantile() |> x => sprintf("%.1f (%.1f, %.1f)", x[3], x[2], x[4])
+
+Since a few years have passed, are there now any plans regarding the pipe bind operator?
+
+I still hope it will be officially supported, as I find it a very readable alternative to anonymous functions in pipe chains (for cases where the placeholder is not supported). It might be easily adopted, since similar syntax exists in other widely used languages (e.g., arrow functions in ES6/JS).
+
+Best,
+Thomas
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Fri Jan  2 17:07:05 2026
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Fri, 2 Jan 2026 10:07:05 -0600 (CST)
+Subject: [Rd] [External]  Plans for the pipe bind operator?
+In-Reply-To: <66a0952283344d6cb87ab339bfe4c31f@ap-hm.fr>
+References: <66a0952283344d6cb87ab339bfe4c31f@ap-hm.fr>
+Message-ID: <7dd1a496-5f2d-868c-fbef-769481f9264f@uiowa.edu>
+
+No current plans, too many more pressing issues.
+
+Best,
+
+luke
+
+On Fri, 2 Jan 2026, SOEIRO Thomas via R-devel wrote:
+
+> Hello,
+>
+> The experimental (undocumented?) pipe bind operator (=>) was introduced in January 2021 (https://stat.ethz.ch/pipermail/r-devel/2021-January/080396.html). In December 2021, Luke Tierney said that it might be dropped (https://stat.ethz.ch/pipermail/r-devel/2021-December/081384.html).
+>
+> It is still present in R-devel (to become R 4.6):
+>
+> mtcars |> (\(x) lm(mpg ~ disp, data = x))()
+> mtcars$mpg |> quantile() |> (\(x) sprintf("%.1f (%.1f, %.1f)", x[3], x[2], x[4]))()
+>
+> Sys.setenv("_R_USE_PIPEBIND_" = TRUE)
+> mtcars |> x => lm(mpg ~ disp, data = x)
+> mtcars$mpg |> quantile() |> x => sprintf("%.1f (%.1f, %.1f)", x[3], x[2], x[4])
+>
+> Since a few years have passed, are there now any plans regarding the pipe bind operator?
+>
+> I still hope it will be officially supported, as I find it a very readable alternative to anonymous functions in pipe chains (for cases where the placeholder is not supported). It might be easily adopted, since similar syntax exists in other widely used languages (e.g., arrow functions in ES6/JS).
+>
+> Best,
+> Thomas
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+From |kry|ov @end|ng |rom d|@root@org  Sat Jan  3 22:25:05 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 4 Jan 2026 00:25:05 +0300
+Subject: [Rd] non-API ATTRIB and SET_ATTRIB will be dropped soon
+In-Reply-To: <53ffc423-b184-fc87-6f98-5f0b952bf473@uiowa.edu>
+References: <53ffc423-b184-fc87-6f98-5f0b952bf473@uiowa.edu>
+Message-ID: <20260104002505.147944ea@Tarkus>
+
+Dear Luke,
+
+On Sat, 20 Dec 2025 08:10:30 -0600 (CST)
+luke-tierney--- via R-devel <r-devel at r-project.org> wrote:
+
+> The 'Working with attributes' section in the 'Writing R Extensions'
+> list some alternatives. Additional functions for working with
+> attributes, without exposing internal attributes structure, could be
+> added if they are needed.
+
+Two tangentially related questions:
+
+1. Should packages use the return value of Rf_setAttrib()? I've noticed
+that some branches taken by the code (e.g. setAttrib(foo,
+R_CommentSymbol, bar)) return R_NilValue, while others return the newly
+installed attribute value.
+
+I'm asking because data.table needs to resize a temporary data frame
+that it owns, and for this purpose it needs to mutate its 'row.names'
+attribute in compact integer form. The current code walks the ATTRIB()
+list in search of the desired attribute, since Rf_getAttrib() would
+return an ALTREP form instead. We'll probably replace it with
+R_mapAttrib(), but I'm curious about alternatives.
+
+2. In R_mapAttrib(), while walking ATTRIB(), the code always protects
+the current pair 'a', and then it protects CAR(a) and TAG(a) before
+calling the user-provided callback. Why protect TAG(a)? Because it's a
+good practice to protect arguments of user callbacks, or because it's
+really possible for TAG() of an attribute pair to become
+garbage-collected?
+
+-- 
+Best regards,
+Ivan
+
+
+From j|r|@c@mor@vec @end|ng |rom gm@||@com  Mon Jan  5 04:30:43 2026
+From: j|r|@c@mor@vec @end|ng |rom gm@||@com (=?UTF-8?B?SmnFmcOtIE1vcmF2ZWM=?=)
+Date: Mon, 5 Jan 2026 16:30:43 +1300
+Subject: [Rd] Assign in place and reference counting
+Message-ID: <c785d3f9-9b02-4ef1-bd90-306fd38f88ec@gmail.com>
+
+I am trying to figure out limits of R with respect to assign in place.
+
+Canonically, only environments are fully pass-by-reference.
+However, there is an optimization that allows assign-in-place in a 
+certain context:
+
+ ??? vec = vector("numeric", 8)
+ ??? vec[1] = 5
+
+assign 5 to position 1 without changing the address of `vec`,
+this can be verified either by first running tracemem(vec) or
+calling `.Internal(inspect(vec))` before and after the assignment.
+
+The mechanismus used to be NAMED, but was replaced by `reference counting`.
+Unfortunately, I have failed to find the full documentation of it.
+But the way it seems to be working is that if there is only a single 
+reference to the given object,
+the object will be updated in place (if the types permit this).
+
+However, this doesn't seem to be guaranteed, the following doesn't work
+(at least on my computer):
+
+ ??? env = new.env(parent = emptyenv()
+ ??? env$vec = vector("numeric", 8)
+ ??? env$vec[1] = 5 # so far so good, but
+ ??? env2 = env # env is passed by reference
+ ??? env$vec[2] = 6 # memory changed
+
+Aliasing env as env2, normally safe thing for environments, seems to 
+"confuse"
+the reference counter which stops performing the optimization despite 
+`vec` having REF(1).
+
+---
+
+1. Is there documentation of `reference counting`?
+2. Is the demonstrated behaviour a bug?
+3. I would guess that assign in place in this case is 
+implementation-specific detail and not specified behaviour, so one 
+shouldn't rely on it.
+4. Is there way how to do this (i.e., fixed buffer) in base R without 
+relying on C with .Call?
+
+The following pages mention this behaviour, but don't fully describe it:
+
+* 
+https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Named-objects-and-copying
+* 
+https://cran.r-project.org/doc/manuals/r-release/R-ints.html#Rest-of-header
+* 
+https://cran.r-project.org/doc/manuals/r-release/R-ints.html#Argument-evaluation
+* 
+https://cran.r-project.org/doc/manuals/r-release/R-ints.html#g_t_002eInternal-vs-_002ePrimitive
+
+
+Thanks,
+Jirka
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Jan  6 11:39:01 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 6 Jan 2026 13:39:01 +0300
+Subject: [Rd] Assign in place and reference counting
+In-Reply-To: <c785d3f9-9b02-4ef1-bd90-306fd38f88ec@gmail.com>
+References: <c785d3f9-9b02-4ef1-bd90-306fd38f88ec@gmail.com>
+Message-ID: <20260106133901.24ed7f8c@Tarkus>
+
+? Mon, 5 Jan 2026 16:30:43 +1300
+Ji?? Moravec <jiri.c.moravec at gmail.com> ?????:
+
+> 1. Is there documentation of `reference counting`?
+
+There is a short description at
+<https://developer.r-project.org/Refcnt.html>. The general rule for
+package developers is "Except in very special and well understood
+circumstances, an argument passed down to C code should not be modified
+if it has a positive reference count, even if that count is equal to
+one".
+
+For an example of when a reference count of 1 is not safe, consider:
+
+foo <- bar <- baz <- list(x = 42+0) # make a fresh numeric vector
+.Call(modify_me, foo$x)
+
+foo$x has a reference count of only 1, so NOT_SHARED() is true. On the
+other hand, since the bindings 'foo', 'bar', 'baz' all share the same
+list (whose reference count is 3), altering foo$x by reference from C
+code would also change the values of 'bar' and 'baz', which violates
+the value semantics of lists in R.
+
+> 2. Is the demonstrated behaviour a bug?
+
+In this particular case, you've shown the duplication could have been
+avoided, so at the very least you've got a feature request to make
+complex assignment more efficient. Now the question is, why does the
+duplication happen and how hard it is to avoid performing it without
+breaking anything?
+
+The complex assignment rules are described here:
+
+https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Subset-assignment-1
+
+If you call tracemem(env$vec) and set a breakpoint in
+memtrace_report(), you can see that env$vec is duplicated in eval.c,
+function evalseq():
+
+(gdb) l evalseq
+(gdb) b 3201
+Breakpoint 2 at 0x55555569dacb: file eval.c, line 3201.
+(gdb) commands 2
+>call Rf_PrintValue(nexpr)
+>c
+>end
+(gdb) b 3209
+Breakpoint 3 at 0x55555569dad3: file eval.c, line 3209.
+(gdb) commands 3
+>call R_inspect(nval)
+>call R_inspect(val)
+>c
+>end
+
+In both cases, the expression being evaluated is `*tmp*`$vec, with
+`*tmp*` aliased to `env` without incrementing its reference count. When
+evaluating the first assignment, `env$vec[1] <- 5`, `nval` is the
+vector being updated, and `val` is a special, non-reference-counting
+pairlist containing `env` and `as.name("env")`:
+
+Breakpoint 3, evalseq <...> at eval.c:3209
+# first the 'nval', note REF(1)
+@55555615f588 14 REALSXP g0c4 [REF(1)] (len=8, tl=0) 5,0,0,0,0,...
+# next the 'val', note REF(1) for its first element
+@555557df5fb0 02 LISTSXP g0c0 [STP]
+  @555557d0a3b8 04 ENVSXP g0c0 [REF(1)] <0x555557d0a3b8>
+<...>
+  @555555a2ae88 01 SYMSXP g0c0 [MARK,REF(1785)] "env"
+
+Next, after `env2 <- env`, we attempt an assignment again:
+
+Breakpoint 3, evalseq <...> at eval.c:3209
+# again, 'nval' has a reference count of 1
+@55555615f588 14 REALSXP g0c4 [REF(1)] (len=8, tl=0) 5,0,0,0,0,...
+# but now 'env' has a reference count of 2
+@555557dfd108 02 LISTSXP g0c0 [STP]
+  @555557d0a3b8 04 ENVSXP g0c0 [REF(2)] <0x555557d0a3b8> # <-- here
+<...>
+  @555555a2ae88 01 SYMSXP g0c0 [MARK,REF(1787)] "env"
+
+Since `env` is referenced twice, it's MAYBE_SHARED, so the condition
+
+if (MAYBE_REFERENCED(nval) &&
+    (MAYBE_SHARED(nval) || MAYBE_SHARED(CAR(val))))
+
+is true, and `nval` (env$x) is duplicated before the assignment.
+
+This would've been necessary if 'env' was a list (or another
+value-semantics object; see the first example above).
+
+> 3. I would guess that assign in place in this case is 
+> implementation-specific detail and not specified behaviour, so one 
+> shouldn't rely on it.
+
+True. R's copy-on-write is an optimisation, although a very useful one.
+
+> 4. Is there way how to do this (i.e., fixed buffer) in base R without 
+> relying on C with .Call?
+
+This is a kludge, but if you allow your environment to be enclosed by
+the base environment, you can perform the sub-assignment directly
+inside it, without invoking complex assignment:
+
+env3 <- new.env(parent = baseenv())
+env3$vec <- vector("numeric", 8)
+tracemem(env3$vec)
+eval(substitute(vec[i] <- v, list(i = 1, v = 5)), env3)
+env4 <- env3
+eval(substitute(vec[i] <- v, list(i = 2, v = 6)), env3)
+# still not duplicated
+
+(I've also tried substitute(..., list(`<-` = base::`<-`)) for use in an
+empty environment, but that breaks when it tries to invoke `[<-`.)
+
+What is the overall problem you would like to solve?
+
+-- 
+Best regards,
+Ivan
+
+
+From j|r|@c@mor@vec @end|ng |rom gm@||@com  Tue Jan  6 21:29:11 2026
+From: j|r|@c@mor@vec @end|ng |rom gm@||@com (=?UTF-8?B?SmnFmcOtIE1vcmF2ZWM=?=)
+Date: Wed, 7 Jan 2026 09:29:11 +1300
+Subject: [Rd] Assign in place and reference counting
+In-Reply-To: <20260106133901.24ed7f8c@Tarkus>
+References: <c785d3f9-9b02-4ef1-bd90-306fd38f88ec@gmail.com>
+ <20260106133901.24ed7f8c@Tarkus>
+Message-ID: <7d00d979-1c4f-4f31-9df7-5e473f3ba566@gmail.com>
+
+Hi Ivan,
+
+can't say that I fully understand yet the described mechanism,
+namely given what you have described at the end,
+something I found myself with:
+
+ ? env = parent.env() # doesn't work with emptyenv()
+ ? env$vec = c("a","b")
+ ? .Internal(address(env$vec))
+ ? env2 = env
+ ? with(env, {vec[1] = "foo"})
+
+Where `with` runs eval(substitute())` internally.
+
+---
+
+I am just playing with fixed buffers or stacks, I previously was able to 
+do stack with:
+
+ ??? new_stack = function(){
+ ??????? size = 0
+ ??????? items = vector("character", 8)
+
+ ??????? add = function(x){
+ ??????????? size <<- size + 1
+ ??????????? items[size] <<- x
+ ??????????? }
+
+ ??????? get = function(){
+ ??????????? items[seq_len(size)]
+ ??????????? }
+
+ ??????? environment()
+ ??????? }
+
+ ??? stack = new_stack()
+ ??? tracemem(stack$items)
+ ??? stack2 = stack
+ ??? .Internal(address(stack$items))
+ ??? stack$add("foo")
+ ??? stack$add("bar")
+ ??? # Memory is the same
+ ??? .Internal(address(stack$items))
+ ??? # stack2 is the same as stack
+ ??? stack2$get() # [1] "foo" "bar"
+
+Which works, is really cool, and allows memory efficient (or so I hope) 
+shared resources with reference-like schematic with other type that 
+environments.
+I just hoped that further simplification would be possible.
+
+I believe this works because the function "add" is evaluated in the same 
+environment (a with the `with`), but I don't fully get _why_.
+
+I will spend some time reading the subset assignment section.
+
+
+On 6/01/26 23:39, Ivan Krylov wrote:
+> ? Mon, 5 Jan 2026 16:30:43 +1300
+> Ji?? Moravec <jiri.c.moravec at gmail.com> ?????:
+>
+>> 1. Is there documentation of `reference counting`?
+> There is a short description at
+> <https://developer.r-project.org/Refcnt.html>. The general rule for
+> package developers is "Except in very special and well understood
+> circumstances, an argument passed down to C code should not be modified
+> if it has a positive reference count, even if that count is equal to
+> one".
+>
+> For an example of when a reference count of 1 is not safe, consider:
+>
+> foo <- bar <- baz <- list(x = 42+0) # make a fresh numeric vector
+> .Call(modify_me, foo$x)
+>
+> foo$x has a reference count of only 1, so NOT_SHARED() is true. On the
+> other hand, since the bindings 'foo', 'bar', 'baz' all share the same
+> list (whose reference count is 3), altering foo$x by reference from C
+> code would also change the values of 'bar' and 'baz', which violates
+> the value semantics of lists in R.
+>
+>> 2. Is the demonstrated behaviour a bug?
+> In this particular case, you've shown the duplication could have been
+> avoided, so at the very least you've got a feature request to make
+> complex assignment more efficient. Now the question is, why does the
+> duplication happen and how hard it is to avoid performing it without
+> breaking anything?
+>
+> The complex assignment rules are described here:
+>
+> https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Subset-assignment-1
+>
+> If you call tracemem(env$vec) and set a breakpoint in
+> memtrace_report(), you can see that env$vec is duplicated in eval.c,
+> function evalseq():
+>
+> (gdb) l evalseq
+> (gdb) b 3201
+> Breakpoint 2 at 0x55555569dacb: file eval.c, line 3201.
+> (gdb) commands 2
+>> call Rf_PrintValue(nexpr)
+>> c
+>> end
+> (gdb) b 3209
+> Breakpoint 3 at 0x55555569dad3: file eval.c, line 3209.
+> (gdb) commands 3
+>> call R_inspect(nval)
+>> call R_inspect(val)
+>> c
+>> end
+> In both cases, the expression being evaluated is `*tmp*`$vec, with
+> `*tmp*` aliased to `env` without incrementing its reference count. When
+> evaluating the first assignment, `env$vec[1] <- 5`, `nval` is the
+> vector being updated, and `val` is a special, non-reference-counting
+> pairlist containing `env` and `as.name("env")`:
+>
+> Breakpoint 3, evalseq <...> at eval.c:3209
+> # first the 'nval', note REF(1)
+> @55555615f588 14 REALSXP g0c4 [REF(1)] (len=8, tl=0) 5,0,0,0,0,...
+> # next the 'val', note REF(1) for its first element
+> @555557df5fb0 02 LISTSXP g0c0 [STP]
+>    @555557d0a3b8 04 ENVSXP g0c0 [REF(1)] <0x555557d0a3b8>
+> <...>
+>    @555555a2ae88 01 SYMSXP g0c0 [MARK,REF(1785)] "env"
+>
+> Next, after `env2 <- env`, we attempt an assignment again:
+>
+> Breakpoint 3, evalseq <...> at eval.c:3209
+> # again, 'nval' has a reference count of 1
+> @55555615f588 14 REALSXP g0c4 [REF(1)] (len=8, tl=0) 5,0,0,0,0,...
+> # but now 'env' has a reference count of 2
+> @555557dfd108 02 LISTSXP g0c0 [STP]
+>    @555557d0a3b8 04 ENVSXP g0c0 [REF(2)] <0x555557d0a3b8> # <-- here
+> <...>
+>    @555555a2ae88 01 SYMSXP g0c0 [MARK,REF(1787)] "env"
+>
+> Since `env` is referenced twice, it's MAYBE_SHARED, so the condition
+>
+> if (MAYBE_REFERENCED(nval) &&
+>      (MAYBE_SHARED(nval) || MAYBE_SHARED(CAR(val))))
+>
+> is true, and `nval` (env$x) is duplicated before the assignment.
+>
+> This would've been necessary if 'env' was a list (or another
+> value-semantics object; see the first example above).
+>
+>> 3. I would guess that assign in place in this case is
+>> implementation-specific detail and not specified behaviour, so one
+>> shouldn't rely on it.
+> True. R's copy-on-write is an optimisation, although a very useful one.
+>
+>> 4. Is there way how to do this (i.e., fixed buffer) in base R without
+>> relying on C with .Call?
+> This is a kludge, but if you allow your environment to be enclosed by
+> the base environment, you can perform the sub-assignment directly
+> inside it, without invoking complex assignment:
+>
+> env3 <- new.env(parent = baseenv())
+> env3$vec <- vector("numeric", 8)
+> tracemem(env3$vec)
+> eval(substitute(vec[i] <- v, list(i = 1, v = 5)), env3)
+> env4 <- env3
+> eval(substitute(vec[i] <- v, list(i = 2, v = 6)), env3)
+> # still not duplicated
+>
+> (I've also tried substitute(..., list(`<-` = base::`<-`)) for use in an
+> empty environment, but that breaks when it tries to invoke `[<-`.)
+>
+> What is the overall problem you would like to solve?
+>
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue Jan  6 23:12:51 2026
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 7 Jan 2026 11:12:51 +1300
+Subject: [Rd] Assign in place and reference counting
+In-Reply-To: <7d00d979-1c4f-4f31-9df7-5e473f3ba566@gmail.com>
+References: <c785d3f9-9b02-4ef1-bd90-306fd38f88ec@gmail.com>
+ <20260106133901.24ed7f8c@Tarkus>
+ <7d00d979-1c4f-4f31-9df7-5e473f3ba566@gmail.com>
+Message-ID: <D8ACFFD3-68A6-4F11-9007-648B383195B9@R-project.org>
+
+
+
+> On 7/01/2026, at 09:29, Ji?? Moravec <jiri.c.moravec at gmail.com> wrote:
+> 
+> Hi Ivan,
+> 
+> can't say that I fully understand yet the described mechanism,
+> namely given what you have described at the end,
+> something I found myself with:
+> 
+>   env = parent.env() # doesn't work with emptyenv()
+>   env$vec = c("a","b")
+>   .Internal(address(env$vec))
+>   env2 = env
+>   with(env, {vec[1] = "foo"})
+> 
+> Where `with` runs eval(substitute())` internally.
+> 
+> ---
+> 
+> I am just playing with fixed buffers or stacks, I previously was able to do stack with:
+> 
+>     new_stack = function(){
+>         size = 0
+>         items = vector("character", 8)
+> 
+>         add = function(x){
+>             size <<- size + 1
+>             items[size] <<- x
+>             }
+> 
+>         get = function(){
+>             items[seq_len(size)]
+>             }
+> 
+>         environment()
+>         }
+> 
+>     stack = new_stack()
+>     tracemem(stack$items)
+>     stack2 = stack
+>     .Internal(address(stack$items))
+>     stack$add("foo")
+>     stack$add("bar")
+>     # Memory is the same
+>     .Internal(address(stack$items))
+>     # stack2 is the same as stack
+>     stack2$get() # [1] "foo" "bar"
+> 
+> Which works, is really cool, and allows memory efficient (or so I hope) shared resources with reference-like schematic with other type that environments.
+> I just hoped that further simplification would be possible.
+> 
+
+
+You are re-inventing the reference classes (or R6 if you prefer package space). By definition, environments are the only mutable objects in R, no other objects are, so what you are doing is adding a reference wrapper around an immutable object.
+
+The fact that `items` can be modified in place is orthogonal to that: as Ivan said, that's just an under-the-hood optimization. The language definition says that the `items` before and after the subassignment are two different objects - both immutable. From user's perspective there is no difference, but R is smart enough to optimize away the copy if it is safe, i.e., when it knows for sure that no one can access the original object so it can cheat and re-use the original object instead, but that fact is intended to be entirely invisible to the user.
+
+Clearly, for the example above the entire discussion is irrelevant, since copies are much cheaper than function calls so unless you have a stack of billions it makes no difference. In addition, your get() will always return a copy regardless, because you are forcing it by the subsetting, so, paradoxically, the na?ve (yet more readable) implementation
+
+        items = character()
+        add = function(x) items <<- c(items, x)
+        get = function() items
+
+is actually faster if you have comparable number of gets and adds since gets don't need to copy (and uses less memory). My recommendation would be to not worry about internal optimisations because a) they change all the time so your assumptions about undefined behavior may be broken and backfire, b) the time you spend on it is many orders of magnitude more than any potential savings and c) trying to exploit specific behavior makes code less readable and thus more error-prone.
+
+Cheers,
+?imon
+
+
+> I believe this works because the function "add" is evaluated in the same environment (a with the `with`), but I don't fully get _why_.
+> 
+> I will spend some time reading the subset assignment section.
+> 
+> 
+> On 6/01/26 23:39, Ivan Krylov wrote:
+>> ? Mon, 5 Jan 2026 16:30:43 +1300
+>> Ji?? Moravec <jiri.c.moravec at gmail.com> ?????:
+>> 
+>>> 1. Is there documentation of `reference counting`?
+>> There is a short description at
+>> <https://developer.r-project.org/Refcnt.html>. The general rule for
+>> package developers is "Except in very special and well understood
+>> circumstances, an argument passed down to C code should not be modified
+>> if it has a positive reference count, even if that count is equal to
+>> one".
+>> 
+>> For an example of when a reference count of 1 is not safe, consider:
+>> 
+>> foo <- bar <- baz <- list(x = 42+0) # make a fresh numeric vector
+>> .Call(modify_me, foo$x)
+>> 
+>> foo$x has a reference count of only 1, so NOT_SHARED() is true. On the
+>> other hand, since the bindings 'foo', 'bar', 'baz' all share the same
+>> list (whose reference count is 3), altering foo$x by reference from C
+>> code would also change the values of 'bar' and 'baz', which violates
+>> the value semantics of lists in R.
+>> 
+>>> 2. Is the demonstrated behaviour a bug?
+>> In this particular case, you've shown the duplication could have been
+>> avoided, so at the very least you've got a feature request to make
+>> complex assignment more efficient. Now the question is, why does the
+>> duplication happen and how hard it is to avoid performing it without
+>> breaking anything?
+>> 
+>> The complex assignment rules are described here:
+>> 
+>> https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Subset-assignment-1
+>> 
+>> If you call tracemem(env$vec) and set a breakpoint in
+>> memtrace_report(), you can see that env$vec is duplicated in eval.c,
+>> function evalseq():
+>> 
+>> (gdb) l evalseq
+>> (gdb) b 3201
+>> Breakpoint 2 at 0x55555569dacb: file eval.c, line 3201.
+>> (gdb) commands 2
+>>> call Rf_PrintValue(nexpr)
+>>> c
+>>> end
+>> (gdb) b 3209
+>> Breakpoint 3 at 0x55555569dad3: file eval.c, line 3209.
+>> (gdb) commands 3
+>>> call R_inspect(nval)
+>>> call R_inspect(val)
+>>> c
+>>> end
+>> In both cases, the expression being evaluated is `*tmp*`$vec, with
+>> `*tmp*` aliased to `env` without incrementing its reference count. When
+>> evaluating the first assignment, `env$vec[1] <- 5`, `nval` is the
+>> vector being updated, and `val` is a special, non-reference-counting
+>> pairlist containing `env` and `as.name("env")`:
+>> 
+>> Breakpoint 3, evalseq <...> at eval.c:3209
+>> # first the 'nval', note REF(1)
+>> @55555615f588 14 REALSXP g0c4 [REF(1)] (len=8, tl=0) 5,0,0,0,0,...
+>> # next the 'val', note REF(1) for its first element
+>> @555557df5fb0 02 LISTSXP g0c0 [STP]
+>>   @555557d0a3b8 04 ENVSXP g0c0 [REF(1)] <0x555557d0a3b8>
+>> <...>
+>>   @555555a2ae88 01 SYMSXP g0c0 [MARK,REF(1785)] "env"
+>> 
+>> Next, after `env2 <- env`, we attempt an assignment again:
+>> 
+>> Breakpoint 3, evalseq <...> at eval.c:3209
+>> # again, 'nval' has a reference count of 1
+>> @55555615f588 14 REALSXP g0c4 [REF(1)] (len=8, tl=0) 5,0,0,0,0,...
+>> # but now 'env' has a reference count of 2
+>> @555557dfd108 02 LISTSXP g0c0 [STP]
+>>   @555557d0a3b8 04 ENVSXP g0c0 [REF(2)] <0x555557d0a3b8> # <-- here
+>> <...>
+>>   @555555a2ae88 01 SYMSXP g0c0 [MARK,REF(1787)] "env"
+>> 
+>> Since `env` is referenced twice, it's MAYBE_SHARED, so the condition
+>> 
+>> if (MAYBE_REFERENCED(nval) &&
+>>     (MAYBE_SHARED(nval) || MAYBE_SHARED(CAR(val))))
+>> 
+>> is true, and `nval` (env$x) is duplicated before the assignment.
+>> 
+>> This would've been necessary if 'env' was a list (or another
+>> value-semantics object; see the first example above).
+>> 
+>>> 3. I would guess that assign in place in this case is
+>>> implementation-specific detail and not specified behaviour, so one
+>>> shouldn't rely on it.
+>> True. R's copy-on-write is an optimisation, although a very useful one.
+>> 
+>>> 4. Is there way how to do this (i.e., fixed buffer) in base R without
+>>> relying on C with .Call?
+>> This is a kludge, but if you allow your environment to be enclosed by
+>> the base environment, you can perform the sub-assignment directly
+>> inside it, without invoking complex assignment:
+>> 
+>> env3 <- new.env(parent = baseenv())
+>> env3$vec <- vector("numeric", 8)
+>> tracemem(env3$vec)
+>> eval(substitute(vec[i] <- v, list(i = 1, v = 5)), env3)
+>> env4 <- env3
+>> eval(substitute(vec[i] <- v, list(i = 2, v = 6)), env3)
+>> # still not duplicated
+>> 
+>> (I've also tried substitute(..., list(`<-` = base::`<-`)) for use in an
+>> empty environment, but that breaks when it tries to invoke `[<-`.)
+>> 
+>> What is the overall problem you would like to solve?
+>> 
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+
+
+From j|r|@c@mor@vec @end|ng |rom gm@||@com  Wed Jan  7 02:25:28 2026
+From: j|r|@c@mor@vec @end|ng |rom gm@||@com (=?UTF-8?B?SmnFmcOtIE1vcmF2ZWM=?=)
+Date: Wed, 7 Jan 2026 14:25:28 +1300
+Subject: [Rd] Assign in place and reference counting
+In-Reply-To: <D8ACFFD3-68A6-4F11-9007-648B383195B9@R-project.org>
+References: <c785d3f9-9b02-4ef1-bd90-306fd38f88ec@gmail.com>
+ <20260106133901.24ed7f8c@Tarkus>
+ <7d00d979-1c4f-4f31-9df7-5e473f3ba566@gmail.com>
+ <D8ACFFD3-68A6-4F11-9007-648B383195B9@R-project.org>
+Message-ID: <b80e4cc6-f542-4c91-ba1c-8a643ddc5592@gmail.com>
+
+Hi Simon (?imon?),
+
+ > You are re-inventing the reference classes (or R6 if you prefer 
+package space). By definition, environments are the only mutable objects 
+in R, no other objects are, so what you are doing is adding a reference 
+wrapper around an immutable object.
+
+yes, what I am doing is essentially very barebone RC or R6, but in pure 
+base R in fewer lines of code.
+
+I stole it from R6 benchmarks: 
+https://r6.r-lib.org/articles/Performance.html#environment-created-by-a-function-call-without-class-attribute
+
+and from https://github.com/r-lib/testthat/blob/main/R/stack.R
+
+In the actual code, I am using an environment as a hidden state object, 
+specifically to track test results:
+
+https://github.com/J-Moravec/mutr/blob/master/mutr.r#L6-L13
+
+so I need an environment object (or bunch of global variables).
+
+ > Clearly, for the example above the entire discussion is irrelevant, 
+since copies are much cheaper than function calls so unless you have a 
+stack of billions it makes no difference. In addition, your get() will 
+always return a copy regardless, because you are forcing it by the 
+subsetting, so, paradoxically, the na?ve (yet more readable) implementation
+
+I guess I was so scared of the Second Circle that I fell in the Eight.
+
+https://www.burns-stat.com/pages/Tutor/R_inferno.pdf
+
+I didn't realized that the "get" will force a copy, and after testing, 
+the performance is better for growing variant (I guess since R is now 
+internally pre-allocating for short vectors, but as you said, internal 
+details :) ).
+
+I guess I can keep it simple then and don't need to be as worried about 
+re-allocating small vectors.
+
+https://gist.github.com/J-Moravec/07bde03068ece71495976b0388c4b519
+
+Thanks, this was nice learning experience,
+
+
+-- Jirka
+
+On 7/01/26 11:12, Simon Urbanek wrote:
+>
+>> On 7/01/2026, at 09:29, Ji?? Moravec <jiri.c.moravec at gmail.com> wrote:
+>>
+>> Hi Ivan,
+>>
+>> can't say that I fully understand yet the described mechanism,
+>> namely given what you have described at the end,
+>> something I found myself with:
+>>
+>>    env = parent.env() # doesn't work with emptyenv()
+>>    env$vec = c("a","b")
+>>    .Internal(address(env$vec))
+>>    env2 = env
+>>    with(env, {vec[1] = "foo"})
+>>
+>> Where `with` runs eval(substitute())` internally.
+>>
+>> ---
+>>
+>> I am just playing with fixed buffers or stacks, I previously was able to do stack with:
+>>
+>>      new_stack = function(){
+>>          size = 0
+>>          items = vector("character", 8)
+>>
+>>          add = function(x){
+>>              size <<- size + 1
+>>              items[size] <<- x
+>>              }
+>>
+>>          get = function(){
+>>              items[seq_len(size)]
+>>              }
+>>
+>>          environment()
+>>          }
+>>
+>>      stack = new_stack()
+>>      tracemem(stack$items)
+>>      stack2 = stack
+>>      .Internal(address(stack$items))
+>>      stack$add("foo")
+>>      stack$add("bar")
+>>      # Memory is the same
+>>      .Internal(address(stack$items))
+>>      # stack2 is the same as stack
+>>      stack2$get() # [1] "foo" "bar"
+>>
+>> Which works, is really cool, and allows memory efficient (or so I hope) shared resources with reference-like schematic with other type that environments.
+>> I just hoped that further simplification would be possible.
+>>
+>
+> You are re-inventing the reference classes (or R6 if you prefer package space). By definition, environments are the only mutable objects in R, no other objects are, so what you are doing is adding a reference wrapper around an immutable object.
+>
+> The fact that `items` can be modified in place is orthogonal to that: as Ivan said, that's just an under-the-hood optimization. The language definition says that the `items` before and after the subassignment are two different objects - both immutable. From user's perspective there is no difference, but R is smart enough to optimize away the copy if it is safe, i.e., when it knows for sure that no one can access the original object so it can cheat and re-use the original object instead, but that fact is intended to be entirely invisible to the user.
+>
+> Clearly, for the example above the entire discussion is irrelevant, since copies are much cheaper than function calls so unless you have a stack of billions it makes no difference. In addition, your get() will always return a copy regardless, because you are forcing it by the subsetting, so, paradoxically, the na?ve (yet more readable) implementation
+>
+>          items = character()
+>          add = function(x) items <<- c(items, x)
+>          get = function() items
+>
+> is actually faster if you have comparable number of gets and adds since gets don't need to copy (and uses less memory). My recommendation would be to not worry about internal optimisations because a) they change all the time so your assumptions about undefined behavior may be broken and backfire, b) the time you spend on it is many orders of magnitude more than any potential savings and c) trying to exploit specific behavior makes code less readable and thus more error-prone.
+>
+> Cheers,
+> ?imon
+>
+>
+>> I believe this works because the function "add" is evaluated in the same environment (a with the `with`), but I don't fully get _why_.
+>>
+>> I will spend some time reading the subset assignment section.
+>>
+>>
+>> On 6/01/26 23:39, Ivan Krylov wrote:
+>>> ? Mon, 5 Jan 2026 16:30:43 +1300
+>>> Ji?? Moravec <jiri.c.moravec at gmail.com> ?????:
+>>>
+>>>> 1. Is there documentation of `reference counting`?
+>>> There is a short description at
+>>> <https://developer.r-project.org/Refcnt.html>. The general rule for
+>>> package developers is "Except in very special and well understood
+>>> circumstances, an argument passed down to C code should not be modified
+>>> if it has a positive reference count, even if that count is equal to
+>>> one".
+>>>
+>>> For an example of when a reference count of 1 is not safe, consider:
+>>>
+>>> foo <- bar <- baz <- list(x = 42+0) # make a fresh numeric vector
+>>> .Call(modify_me, foo$x)
+>>>
+>>> foo$x has a reference count of only 1, so NOT_SHARED() is true. On the
+>>> other hand, since the bindings 'foo', 'bar', 'baz' all share the same
+>>> list (whose reference count is 3), altering foo$x by reference from C
+>>> code would also change the values of 'bar' and 'baz', which violates
+>>> the value semantics of lists in R.
+>>>
+>>>> 2. Is the demonstrated behaviour a bug?
+>>> In this particular case, you've shown the duplication could have been
+>>> avoided, so at the very least you've got a feature request to make
+>>> complex assignment more efficient. Now the question is, why does the
+>>> duplication happen and how hard it is to avoid performing it without
+>>> breaking anything?
+>>>
+>>> The complex assignment rules are described here:
+>>>
+>>> https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Subset-assignment-1
+>>>
+>>> If you call tracemem(env$vec) and set a breakpoint in
+>>> memtrace_report(), you can see that env$vec is duplicated in eval.c,
+>>> function evalseq():
+>>>
+>>> (gdb) l evalseq
+>>> (gdb) b 3201
+>>> Breakpoint 2 at 0x55555569dacb: file eval.c, line 3201.
+>>> (gdb) commands 2
+>>>> call Rf_PrintValue(nexpr)
+>>>> c
+>>>> end
+>>> (gdb) b 3209
+>>> Breakpoint 3 at 0x55555569dad3: file eval.c, line 3209.
+>>> (gdb) commands 3
+>>>> call R_inspect(nval)
+>>>> call R_inspect(val)
+>>>> c
+>>>> end
+>>> In both cases, the expression being evaluated is `*tmp*`$vec, with
+>>> `*tmp*` aliased to `env` without incrementing its reference count. When
+>>> evaluating the first assignment, `env$vec[1] <- 5`, `nval` is the
+>>> vector being updated, and `val` is a special, non-reference-counting
+>>> pairlist containing `env` and `as.name("env")`:
+>>>
+>>> Breakpoint 3, evalseq <...> at eval.c:3209
+>>> # first the 'nval', note REF(1)
+>>> @55555615f588 14 REALSXP g0c4 [REF(1)] (len=8, tl=0) 5,0,0,0,0,...
+>>> # next the 'val', note REF(1) for its first element
+>>> @555557df5fb0 02 LISTSXP g0c0 [STP]
+>>>    @555557d0a3b8 04 ENVSXP g0c0 [REF(1)] <0x555557d0a3b8>
+>>> <...>
+>>>    @555555a2ae88 01 SYMSXP g0c0 [MARK,REF(1785)] "env"
+>>>
+>>> Next, after `env2 <- env`, we attempt an assignment again:
+>>>
+>>> Breakpoint 3, evalseq <...> at eval.c:3209
+>>> # again, 'nval' has a reference count of 1
+>>> @55555615f588 14 REALSXP g0c4 [REF(1)] (len=8, tl=0) 5,0,0,0,0,...
+>>> # but now 'env' has a reference count of 2
+>>> @555557dfd108 02 LISTSXP g0c0 [STP]
+>>>    @555557d0a3b8 04 ENVSXP g0c0 [REF(2)] <0x555557d0a3b8> # <-- here
+>>> <...>
+>>>    @555555a2ae88 01 SYMSXP g0c0 [MARK,REF(1787)] "env"
+>>>
+>>> Since `env` is referenced twice, it's MAYBE_SHARED, so the condition
+>>>
+>>> if (MAYBE_REFERENCED(nval) &&
+>>>      (MAYBE_SHARED(nval) || MAYBE_SHARED(CAR(val))))
+>>>
+>>> is true, and `nval` (env$x) is duplicated before the assignment.
+>>>
+>>> This would've been necessary if 'env' was a list (or another
+>>> value-semantics object; see the first example above).
+>>>
+>>>> 3. I would guess that assign in place in this case is
+>>>> implementation-specific detail and not specified behaviour, so one
+>>>> shouldn't rely on it.
+>>> True. R's copy-on-write is an optimisation, although a very useful one.
+>>>
+>>>> 4. Is there way how to do this (i.e., fixed buffer) in base R without
+>>>> relying on C with .Call?
+>>> This is a kludge, but if you allow your environment to be enclosed by
+>>> the base environment, you can perform the sub-assignment directly
+>>> inside it, without invoking complex assignment:
+>>>
+>>> env3 <- new.env(parent = baseenv())
+>>> env3$vec <- vector("numeric", 8)
+>>> tracemem(env3$vec)
+>>> eval(substitute(vec[i] <- v, list(i = 1, v = 5)), env3)
+>>> env4 <- env3
+>>> eval(substitute(vec[i] <- v, list(i = 2, v = 6)), env3)
+>>> # still not duplicated
+>>>
+>>> (I've also tried substitute(..., list(`<-` = base::`<-`)) for use in an
+>>> empty environment, but that breaks when it tries to invoke `[<-`.)
+>>>
+>>> What is the overall problem you would like to solve?
+>>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+
+
+From ch|r|com @end|ng |rom goog|e@com  Wed Jan 14 23:47:08 2026
+From: ch|r|com @end|ng |rom goog|e@com (Michael Chirico)
+Date: Wed, 14 Jan 2026 14:47:08 -0800
+Subject: [Rd] Non-deterministic POSIXlt tzone in Europe/London around UTC 0
+Message-ID: <CAD7Bkx_Sxg3YB4CP9xVawQX3+iWKQY2LxWzCWeMuMGqQUOpXFQ@mail.gmail.com>
+
+As a test case I have code running 'as.POSIXlt(1:10)', which can
+unfortunately produce non-deterministic results:
+
+TZ=Europe/London R
+attr(as.POSIXlt(as.numeric(1:10)), 'tzone')
+# [1] "Europe/London" "GMT"           "BST"
+attr(as.POSIXlt(as.numeric(1:10)), 'tzone')
+# [1] "Europe/London" "BST"           "BST"
+
+Is this intended behavior? I don't see this possibility described in
+any of ?DateTimeClasses, ?strptime, ?timezones, or ?as.POSIXlt. Some
+caching is mentioned around .sys.timezone, but the above snippets
+don't have any relationship that I can see.
+
+Mike C
+
+
+From bbo|ker @end|ng |rom gm@||@com  Thu Jan 15 00:21:37 2026
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 14 Jan 2026 18:21:37 -0500
+Subject: [Rd] 
+ Non-deterministic POSIXlt tzone in Europe/London around UTC 0
+In-Reply-To: <CAD7Bkx_Sxg3YB4CP9xVawQX3+iWKQY2LxWzCWeMuMGqQUOpXFQ@mail.gmail.com>
+References: <CAD7Bkx_Sxg3YB4CP9xVawQX3+iWKQY2LxWzCWeMuMGqQUOpXFQ@mail.gmail.com>
+Message-ID: <520d1ee1-10ac-4607-9340-d0e5e58c152b@gmail.com>
+
+   It seems not so much non-deterministic, as different on the first vs. 
+following invocations ...
+
+
+$ cat tz.R
+Sys.setenv(TZ="Europe/London")
+for (i in 1:10) {
+    print(attr(as.POSIXlt(as.numeric(1:10)), 'tzone'))
+
+$ Rscript  tz.R
+[1] "Europe/London" "GMT"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+
+$ Rscript  tz.R
+[1] "Europe/London" "GMT"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+
+$ Rscript  tz.R
+[1] "Europe/London" "GMT"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+[1] "Europe/London" "BST"           "BST"
+
+
+On 1/14/26 17:47, Michael Chirico via R-devel wrote:
+> As a test case I have code running 'as.POSIXlt(1:10)', which can
+> unfortunately produce non-deterministic results:
+> 
+> TZ=Europe/London R
+> attr(as.POSIXlt(as.numeric(1:10)), 'tzone')
+> # [1] "Europe/London" "GMT"           "BST"
+> attr(as.POSIXlt(as.numeric(1:10)), 'tzone')
+> # [1] "Europe/London" "BST"           "BST"
+> 
+> Is this intended behavior? I don't see this possibility described in
+> any of ?DateTimeClasses, ?strptime, ?timezones, or ?as.POSIXlt. Some
+> caching is mentioned around .sys.timezone, but the above snippets
+> don't have any relationship that I can see.
+> 
+> Mike C
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Associate chair (graduate), Mathematics & Statistics
+Director, School of Computational Science and Engineering
+* E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Thu Jan 15 12:42:07 2026
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Thu, 15 Jan 2026 11:42:07 +0000
+Subject: [Rd] 
+ Non-deterministic POSIXlt tzone in Europe/London around UTC 0
+In-Reply-To: <520d1ee1-10ac-4607-9340-d0e5e58c152b@gmail.com>
+References: <CAD7Bkx_Sxg3YB4CP9xVawQX3+iWKQY2LxWzCWeMuMGqQUOpXFQ@mail.gmail.com>
+ <520d1ee1-10ac-4607-9340-d0e5e58c152b@gmail.com>
+Message-ID: <f530f216-6671-4ce9-92da-ecc287f6c7b9@sapo.pt>
+
+?s 23:21 de 14/01/2026, Ben Bolker escreveu:
+>  ? It seems not so much non-deterministic, as different on the first vs. 
+> following invocations ...
+> 
+> 
+> $ cat tz.R
+> Sys.setenv(TZ="Europe/London")
+> for (i in 1:10) {
+>  ?? print(attr(as.POSIXlt(as.numeric(1:10)), 'tzone'))
+> 
+> $ Rscript? tz.R
+> [1] "Europe/London" "GMT"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> 
+> $ Rscript? tz.R
+> [1] "Europe/London" "GMT"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> 
+> $ Rscript? tz.R
+> [1] "Europe/London" "GMT"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> [1] "Europe/London" "BST"?????????? "BST"
+> 
+> 
+> On 1/14/26 17:47, Michael Chirico via R-devel wrote:
+>> As a test case I have code running 'as.POSIXlt(1:10)', which can
+>> unfortunately produce non-deterministic results:
+>>
+>> TZ=Europe/London R
+>> attr(as.POSIXlt(as.numeric(1:10)), 'tzone')
+>> # [1] "Europe/London" "GMT"?????????? "BST"
+>> attr(as.POSIXlt(as.numeric(1:10)), 'tzone')
+>> # [1] "Europe/London" "BST"?????????? "BST"
+>>
+>> Is this intended behavior? I don't see this possibility described in
+>> any of ?DateTimeClasses, ?strptime, ?timezones, or ?as.POSIXlt. Some
+>> caching is mentioned around .sys.timezone, but the above snippets
+>> don't have any relationship that I can see.
+>>
+>> Mike C
+>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+Hello,
+
+This also happens with a different timezone.
+(Note: Lisbon time is GMT, also.)
+
+
+Sys.setenv(TZ="Europe/Lisbon")
+for (i in 1:10) {
+    print(attr(as.POSIXlt(as.numeric(1:10)), 'tzone'))
+}
+[1] "Europe/Lisbon" "WET"           "WEST"
+[1] "Europe/Lisbon" "CET"           "WEST"
+[1] "Europe/Lisbon" "CET"           "WEST"
+[1] "Europe/Lisbon" "CET"           "WEST"
+[1] "Europe/Lisbon" "CET"           "WEST"
+[1] "Europe/Lisbon" "CET"           "WEST"
+[1] "Europe/Lisbon" "CET"           "WEST"
+[1] "Europe/Lisbon" "CET"           "WEST"
+[1] "Europe/Lisbon" "CET"           "WEST"
+[1] "Europe/Lisbon" "CET"           "WEST"
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From net|kj@ @end|ng |rom gm@||@com  Thu Jan 15 15:15:56 2026
+From: net|kj@ @end|ng |rom gm@||@com (=?UTF-8?Q?Jan_Net=C3=ADk?=)
+Date: Thu, 15 Jan 2026 15:15:56 +0100
+Subject: [Rd] [Windows] grDevices::cairo_pdf fails to map certain font
+ families (vs Cairo::CairoPDF)
+Message-ID: <CA+6hu7c7Fay_QVOzBaeo05yVRrWfgHWOJa=8r1LkJxegV4cpkQ@mail.gmail.com>
+
+Dear R-Devel list members,
+
+I would like to report an inconsistency in how grDevices::cairo_pdf()
+handles font discovery on Windows compared to the CRAN Cairo package.
+On Windows, grDevices::cairo_pdf() fails to render specific installed
+fonts (falling back to Helvetica/Arial), whereas Cairo::CairoPDF()
+locates and renders the exact same font correctly. Specifically, it
+applies to the Ubuntu Condensed true type font (I was not successful
+replicating the issue with other fonts, surprisingly).
+
+Since the Cairo package works, I suspect the font file itself is valid
+and accessible by the OS. This suggests the issue may lie in the
+specific version or configuration of the Pango/Cairo libraries bundled
+with Base R for Windows. Interestingly, there was no such issue in R
+3.6.3 (checked today). Maybe it could relate to
+https://blog.r-project.org/2020/04/17/changes-to-symbol-fonts-for-cairo-graphics-devices/
+though that might be a red herring.
+
+The following code reproduces the issue on Windows, with R 4.5.2
+(requires the Cairo package for comparison and the TTF font file):
+
+```r
+# get the font from Google Fonts, and install it as an admin (or "for all")
+download.file(
+  "https://fonts.gstatic.com/s/ubuntucondensed/v17/u-4k0rCzjgs5J7oXnJcM_0kACGMtf-fVqvHoJXw.ttf",
+  "Ubuntu Condensed-regular.ttf",
+  mode = "wb"
+)
+
+
+# get the "native" R PDF Cairo device and the one from Cairo package
+gr_devices <- c(
+  grDevices_pdf_device = grDevices::cairo_pdf,
+  Cairo_pdf_device = Cairo::CairoPDF
+)
+
+# for each device, create a PDF with text in Ubuntu Condensed font
+# and open it
+lapply(
+  names(gr_devices),
+  \(dev_name) {
+    figure_file <- paste0(dev_name, ".pdf")
+
+    gr_devices[[dev_name]](figure_file, width = 6, height = 6)
+
+    grid::grid.newpage()
+
+    grid::grid.text(
+      "This should be typed in\nUbuntu Condensed\nfont",
+      gp = grid::gpar(
+        fontfamily = "Ubuntu Condensed",
+        fontsize = 30
+      )
+    )
+
+    dev.off()
+  }
+)
+```
+
+Thank you for looking into it.
+
+Best regards,
+Jan Net?k
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Jan 15 21:39:36 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 15 Jan 2026 23:39:36 +0300
+Subject: [Rd] [Windows] grDevices::cairo_pdf fails to map certain font
+ families (vs Cairo::CairoPDF)
+In-Reply-To: <CA+6hu7c7Fay_QVOzBaeo05yVRrWfgHWOJa=8r1LkJxegV4cpkQ@mail.gmail.com>
+References: <CA+6hu7c7Fay_QVOzBaeo05yVRrWfgHWOJa=8r1LkJxegV4cpkQ@mail.gmail.com>
+Message-ID: <20260115233936.002ae847@Tarkus>
+
+Dear Jan Net?k,
+
+Thank you for providing an easily reproduced example!
+
+? Thu, 15 Jan 2026 15:15:56 +0100
+Jan Net?k <netikja at gmail.com> ?????:
+
+> On Windows, grDevices::cairo_pdf() fails to render specific installed
+> fonts (falling back to Helvetica/Arial), whereas Cairo::CairoPDF()
+> locates and renders the exact same font correctly.
+
+This seems to be fixed in both R-devel and the Cairo package on CRAN:
+https://bugs.r-project.org/show_bug.cgi?id=18955
+
+(I've tried your example and it works in R-to-be-4.6.0, but not R-4.5.)
+
+-- 
+Best regards,
+Ivan
+
+
+From net|kj@ @end|ng |rom gm@||@com  Thu Jan 15 22:02:00 2026
+From: net|kj@ @end|ng |rom gm@||@com (=?UTF-8?Q?Jan_Net=C3=ADk?=)
+Date: Thu, 15 Jan 2026 22:02:00 +0100
+Subject: [Rd] [Windows] grDevices::cairo_pdf fails to map certain font
+ families (vs Cairo::CairoPDF)
+In-Reply-To: <20260115233936.002ae847@Tarkus>
+References: <CA+6hu7c7Fay_QVOzBaeo05yVRrWfgHWOJa=8r1LkJxegV4cpkQ@mail.gmail.com>
+ <20260115233936.002ae847@Tarkus>
+Message-ID: <CA+6hu7eVk9ZG8gbM0+LbgL2O52_SPABCLxUQu0f1ydRiyW0egQ@mail.gmail.com>
+
+Dear Ivan,
+
+I apologize for skipping the Bugzilla "inspection" and R-devel testing
+phase (I had only limited access to a Windows machine). However, my
+colleague just installed R-devel, and cairo_pdf() works like a charm
+again!
+
+Many thanks for resolving this ? I know it was driving people mad for
+several months!
+
+Best,
+Jan
+
+?t 15. 1. 2026 v 21:39 odes?latel Ivan Krylov <ikrylov at disroot.org> napsal:
+>
+> Dear Jan Net?k,
+>
+> Thank you for providing an easily reproduced example!
+>
+> ? Thu, 15 Jan 2026 15:15:56 +0100
+> Jan Net?k <netikja at gmail.com> ?????:
+>
+> > On Windows, grDevices::cairo_pdf() fails to render specific installed
+> > fonts (falling back to Helvetica/Arial), whereas Cairo::CairoPDF()
+> > locates and renders the exact same font correctly.
+>
+> This seems to be fixed in both R-devel and the Cairo package on CRAN:
+> https://bugs.r-project.org/show_bug.cgi?id=18955
+>
+> (I've tried your example and it works in R-to-be-4.6.0, but not R-4.5.)
+>
+> --
+> Best regards,
+> Ivan
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Fri Jan 16 19:48:44 2026
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Fri, 16 Jan 2026 10:48:44 -0800
+Subject: [Rd] check for \value in R CMD check
+Message-ID: <CAL3ufULzgyVaNpdS0SYuAYdWhObc3gDWewqSFROHPJ7Kb1919A@mail.gmail.com>
+
+I received a (valid) CRAN rejection which said
+
+"Please add \value to .Rd files regarding exported methods and explain
+
+the functions results in the documentation."
+
+
+My Rd file contained the following which is in the same spirit as the
+\value but misplaced.
+
+\details{
+> \code{encode()} returns a \link[blob:blob]{blob::blob} object which is a
+> list of raw vectors.
+> If an error is encountered in \code{decode()} the result will be an NA.
+> }
+
+
+This seems to be a new requirement from CRAN and I've failed this on new
+packages a handful of times (sorry, team!). It would be great to have this
+for all packages, frankly.
+
+Are there any plans to have R CMD check catch this?
+
+I think it could save everyone time and energy.
+
+Thanks!
+
+- Josiah
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Fri Jan 16 23:00:09 2026
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Fri, 16 Jan 2026 17:00:09 -0500
+Subject: [Rd] check for \value in R CMD check
+In-Reply-To: <CAL3ufULzgyVaNpdS0SYuAYdWhObc3gDWewqSFROHPJ7Kb1919A@mail.gmail.com>
+References: <CAL3ufULzgyVaNpdS0SYuAYdWhObc3gDWewqSFROHPJ7Kb1919A@mail.gmail.com>
+Message-ID: <CABghstTxFe132sesHwoN1OoM_qJ-GKbR=FFvXrH71txZUCRHhA@mail.gmail.com>
+
+  For what it's worth, I suspect this level of checking is only done
+for *new* (or returned-from-archiving) packages. I agree that having
+an option to have it checked by R CMD check would be valuable.
+
+  To repeat a question I've asked before: is there a canonical list
+somewhere of the environment variables that control R CMD check's
+behaviour, e.g. _R_CHECK_DEPENDS_ONLY_. R_CHECK_ENVIRON, etc. - I
+found one in https://cran.r-project.org/doc/manuals/r-devel/R-ints.html#Tools
+, is that complete?
+
+On Fri, Jan 16, 2026 at 1:49?PM Josiah Parry <josiah.parry at gmail.com> wrote:
+>
+> I received a (valid) CRAN rejection which said
+>
+> "Please add \value to .Rd files regarding exported methods and explain
+>
+> the functions results in the documentation."
+>
+>
+> My Rd file contained the following which is in the same spirit as the
+> \value but misplaced.
+>
+> \details{
+> > \code{encode()} returns a \link[blob:blob]{blob::blob} object which is a
+> > list of raw vectors.
+> > If an error is encountered in \code{decode()} the result will be an NA.
+> > }
+>
+>
+> This seems to be a new requirement from CRAN and I've failed this on new
+> packages a handful of times (sorry, team!). It would be great to have this
+> for all packages, frankly.
+>
+> Are there any plans to have R CMD check catch this?
+>
+> I think it could save everyone time and energy.
+>
+> Thanks!
+>
+> - Josiah
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Sat Jan 17 09:55:32 2026
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Sat, 17 Jan 2026 09:55:32 +0100
+Subject: [Rd] check for \value in R CMD check
+In-Reply-To: <CABghstTxFe132sesHwoN1OoM_qJ-GKbR=FFvXrH71txZUCRHhA@mail.gmail.com>
+References: <CAL3ufULzgyVaNpdS0SYuAYdWhObc3gDWewqSFROHPJ7Kb1919A@mail.gmail.com>
+ <CABghstTxFe132sesHwoN1OoM_qJ-GKbR=FFvXrH71txZUCRHhA@mail.gmail.com>
+Message-ID: <26987.20100.389307.808430@hornik.net>
+
+>>>>> Ben Bolker writes:
+
+>   For what it's worth, I suspect this level of checking is only done
+> for *new* (or returned-from-archiving) packages. I agree that having
+> an option to have it checked by R CMD check would be valuable.
+
+>   To repeat a question I've asked before: is there a canonical list
+> somewhere of the environment variables that control R CMD check's
+> behaviour, e.g. _R_CHECK_DEPENDS_ONLY_. R_CHECK_ENVIRON, etc. - I
+> found one in https://cran.r-project.org/doc/manuals/r-devel/R-ints.html#Tools
+> , is that complete?
+
+More or less, perhaps excluding the env vars that are really meant as
+internal and hence not documented :-)
+
+-k
+
+> On Fri, Jan 16, 2026 at 1:49?PM Josiah Parry <josiah.parry at gmail.com> wrote:
+>> 
+>> I received a (valid) CRAN rejection which said
+>> 
+>> "Please add \value to .Rd files regarding exported methods and explain
+>> 
+>> the functions results in the documentation."
+>> 
+>> 
+>> My Rd file contained the following which is in the same spirit as the
+>> \value but misplaced.
+>> 
+>> \details{
+>> > \code{encode()} returns a \link[blob:blob]{blob::blob} object which is a
+>> > list of raw vectors.
+>> > If an error is encountered in \code{decode()} the result will be an NA.
+>> > }
+>> 
+>> 
+>> This seems to be a new requirement from CRAN and I've failed this on new
+>> packages a handful of times (sorry, team!). It would be great to have this
+>> for all packages, frankly.
+>> 
+>> Are there any plans to have R CMD check catch this?
+>> 
+>> I think it could save everyone time and energy.
+>> 
+>> Thanks!
+>> 
+>> - Josiah
+>> 
+>> [[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From ||u|@@rev|||@ @end|ng |rom gm@||@com  Sat Jan 17 13:10:15 2026
+From: ||u|@@rev|||@ @end|ng |rom gm@||@com (=?UTF-8?Q?Llu=C3=ADs_Revilla?=)
+Date: Sat, 17 Jan 2026 13:10:15 +0100
+Subject: [Rd] Round trip between package_version and character
+Message-ID: <CAN+W6_vnr9hw-br6YraEqBk3rrdzQY17GCoUkpK5bDNpySppdQ@mail.gmail.com>
+
+Hi all,
+
+I was trying to download the source code of a package using the versioned
+urls (https://CRAN.R-project.org/package=%s&version=%s). I used
+packageVersion to get the version number but it failed because it uses the
+function pacakge_version that replaces the "-" the version number had.
+
+Indeed, the examples show that package_version("1.2-4") represents it as
+"1.2.4". However, when converted back to characters (via as.character or
+similar approaches) it keeps the "." instead of reverting back to "-". The
+work around is essay enough: packageVersion(pkg, field = "Version") so my
+code is fixed but it might not be obvious in other cases.
+
+Could the round trip revert to the original package version provided by the
+maintainer ( so that identical(as.character(package_version("1.2-4")),
+"1.2-4") is TRUE) ?
+This would simplify manipulations of package versions (currently ~2000
+packages on CRAN use "-" on their version).
+
+Cheers,
+
+Llu?s Revilla
+
+PS: The description at the top of the help page ?download.packages doesn't
+fully match the content. I think it refers to the functions documented on
+?update.packages. Perhaps something from the first paragraph on details can
+be moved to the description
+
+	[[alternative HTML version deleted]]
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Sat Jan 17 19:28:57 2026
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Sat, 17 Jan 2026 10:28:57 -0800
+Subject: [Rd] Round trip between package_version and character
+In-Reply-To: <CAN+W6_vnr9hw-br6YraEqBk3rrdzQY17GCoUkpK5bDNpySppdQ@mail.gmail.com>
+References: <CAN+W6_vnr9hw-br6YraEqBk3rrdzQY17GCoUkpK5bDNpySppdQ@mail.gmail.com>
+Message-ID: <CAFDcVCRSFxCFNMgZOMq2qH0FojUEDvM0p-2yuRAzK+ap5eEpmA@mail.gmail.com>
+
+A possible solution could be to preserve the original version string
+as an attribute, which then as.character() could use, e.g.
+
+> str(v)
+List of 1
+ $ :Classes 'package_version', 'numeric_version'  hidden list of 1
+  ..$ : int [1:3] 1 2 4
+ - attr(*, "class")= chr [1:2] "package_version" "numeric_version"
+ - attr(*, "source")= chr "1.2-4"
+
+I don't want to divert this "feature request", but a related
+discussion is whether we really need to support anything but x.y.z?
+Would it make sense to deprecate support for hyphenated version
+components? The one argument I recall for supporting hyphens was for
+"date" versions, e.g. YYYY-MM-DD, but R has dropped leading zeros for
+a while now;
+
+> package_version("2026-01-17")
+[1] '2026.1.17'
+
+and CRAN doesn't accept them;
+
+* checking CRAN incoming feasibility (4.1s)
+   ...
+   Version contains leading zeroes (2026-01-17)
+
+/Henrik
+
+PS.I didn't know that
+<https://CRAN.R-project.org/package=%s&version=%s> works -it downloads
+<package>_<version>.tar.gz. Thanks.
+
+On Sat, Jan 17, 2026 at 4:10?AM Llu?s Revilla <lluis.revilla at gmail.com> wrote:
+>
+> Hi all,
+>
+> I was trying to download the source code of a package using the versioned
+> urls (https://CRAN.R-project.org/package=%s&version=%s). I used
+> packageVersion to get the version number but it failed because it uses the
+> function pacakge_version that replaces the "-" the version number had.
+>
+> Indeed, the examples show that package_version("1.2-4") represents it as
+> "1.2.4". However, when converted back to characters (via as.character or
+> similar approaches) it keeps the "." instead of reverting back to "-". The
+> work around is essay enough: packageVersion(pkg, field = "Version") so my
+> code is fixed but it might not be obvious in other cases.
+>
+> Could the round trip revert to the original package version provided by the
+> maintainer ( so that identical(as.character(package_version("1.2-4")),
+> "1.2-4") is TRUE) ?
+> This would simplify manipulations of package versions (currently ~2000
+> packages on CRAN use "-" on their version).
+>
+> Cheers,
+>
+> Llu?s Revilla
+>
+> PS: The description at the top of the help page ?download.packages doesn't
+> fully match the content. I think it refers to the functions documented on
+> ?update.packages. Perhaps something from the first paragraph on details can
+> be moved to the description
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Sat Jan 17 20:02:12 2026
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Sat, 17 Jan 2026 11:02:12 -0800
+Subject: [Rd] Round trip between package_version and character
+In-Reply-To: <CAFDcVCRSFxCFNMgZOMq2qH0FojUEDvM0p-2yuRAzK+ap5eEpmA@mail.gmail.com>
+References: <CAN+W6_vnr9hw-br6YraEqBk3rrdzQY17GCoUkpK5bDNpySppdQ@mail.gmail.com>
+ <CAFDcVCRSFxCFNMgZOMq2qH0FojUEDvM0p-2yuRAzK+ap5eEpmA@mail.gmail.com>
+Message-ID: <CAL3ufUKNryNXbgmD4Rw48fdxaFUcjZzFjXO+HGNZdgRArAFXeA@mail.gmail.com>
+
+It would be really nice if the full semantic versioning spec was supported
+in R. I can understand why only major.minor.patch would be supported for
+CRAN. But for an R package in a development stage, it would be wonderful to
+support pre-release and build metadata.
+
+Use of `-` in semver to determine pre-release:
+https://semver.org/#spec-item-9
+
+The semver package does a pretty decent job of handling the semver spec:
+
+ver_str <- "1.0.0-alpha+commit-hash"
+package_version(ver_str)
+#> Error: invalid version specification '1.0.0-alpha+commit-hash'
+
+(sv <- semver::parse_version(ver_str))
+#> [1] Maj: 1 Min: 0 Pat: 0 Pre: alpha Bld: commit-hash
+as.character(sv)
+#> [1] "1.0.0-alpha+commit-hash"
+
+
+On Sat, Jan 17, 2026 at 10:29?AM Henrik Bengtsson <
+henrik.bengtsson at gmail.com> wrote:
+
+> A possible solution could be to preserve the original version string
+> as an attribute, which then as.character() could use, e.g.
+>
+> > str(v)
+> List of 1
+>  $ :Classes 'package_version', 'numeric_version'  hidden list of 1
+>   ..$ : int [1:3] 1 2 4
+>  - attr(*, "class")= chr [1:2] "package_version" "numeric_version"
+>  - attr(*, "source")= chr "1.2-4"
+>
+> I don't want to divert this "feature request", but a related
+> discussion is whether we really need to support anything but x.y.z?
+> Would it make sense to deprecate support for hyphenated version
+> components? The one argument I recall for supporting hyphens was for
+> "date" versions, e.g. YYYY-MM-DD, but R has dropped leading zeros for
+> a while now;
+>
+> > package_version("2026-01-17")
+> [1] '2026.1.17'
+>
+> and CRAN doesn't accept them;
+>
+> * checking CRAN incoming feasibility (4.1s)
+>    ...
+>    Version contains leading zeroes (2026-01-17)
+>
+> /Henrik
+>
+> PS.I didn't know that
+> <https://CRAN.R-project.org/package=%s&version=%s> works -it downloads
+> <package>_<version>.tar.gz. Thanks.
+>
+> On Sat, Jan 17, 2026 at 4:10?AM Llu?s Revilla <lluis.revilla at gmail.com>
+> wrote:
+> >
+> > Hi all,
+> >
+> > I was trying to download the source code of a package using the versioned
+> > urls (https://CRAN.R-project.org/package=%s&version=%s). I used
+> > packageVersion to get the version number but it failed because it uses
+> the
+> > function pacakge_version that replaces the "-" the version number had.
+> >
+> > Indeed, the examples show that package_version("1.2-4") represents it as
+> > "1.2.4". However, when converted back to characters (via as.character or
+> > similar approaches) it keeps the "." instead of reverting back to "-".
+> The
+> > work around is essay enough: packageVersion(pkg, field = "Version") so my
+> > code is fixed but it might not be obvious in other cases.
+> >
+> > Could the round trip revert to the original package version provided by
+> the
+> > maintainer ( so that identical(as.character(package_version("1.2-4")),
+> > "1.2-4") is TRUE) ?
+> > This would simplify manipulations of package versions (currently ~2000
+> > packages on CRAN use "-" on their version).
+> >
+> > Cheers,
+> >
+> > Llu?s Revilla
+> >
+> > PS: The description at the top of the help page ?download.packages
+> doesn't
+> > fully match the content. I think it refers to the functions documented on
+> > ?update.packages. Perhaps something from the first paragraph on details
+> can
+> > be moved to the description
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Sat Jan 17 22:02:45 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Sat, 17 Jan 2026 22:02:45 +0100
+Subject: [Rd] 
+ Non-deterministic POSIXlt tzone in Europe/London around UTC 0
+In-Reply-To: <fake-VM-id.9d85fcb0116e28b21fe51daa3c0f49f4@talos.iv>
+References: <CAD7Bkx_Sxg3YB4CP9xVawQX3+iWKQY2LxWzCWeMuMGqQUOpXFQ@mail.gmail.com>
+ <520d1ee1-10ac-4607-9340-d0e5e58c152b@gmail.com>
+Message-ID: <26987.63733.576349.826262@stat.math.ethz.ch>
+
+>>>>> Ben Bolker 
+>>>>>     on Wed, 14 Jan 2026 18:21:37 -0500 writes:
+
+    > It seems not so much non-deterministic, as different on the first vs. 
+    > following invocations ...
+
+Thank you, Ben!   Indeed, I can confirm "deterministic",
+but even stranger (see below)..
+
+    > $ cat tz.R
+    > Sys.setenv(TZ="Europe/London")
+    > for (i in 1:10) {
+    > print(attr(as.POSIXlt(as.numeric(1:10)), 'tzone'))
+
+    > $ Rscript  tz.R
+    > [1] "Europe/London" "GMT"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+
+    > $ Rscript  tz.R
+    > [1] "Europe/London" "GMT"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+
+    > $ Rscript  tz.R
+    > [1] "Europe/London" "GMT"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+
+
+    > On 1/14/26 17:47, Michael Chirico via R-devel wrote:
+    >> As a test case I have code running 'as.POSIXlt(1:10)', which can
+    >> unfortunately produce non-deterministic results:
+    >> 
+    >> TZ=Europe/London R
+    >> attr(as.POSIXlt(as.numeric(1:10)), 'tzone')
+    >> # [1] "Europe/London" "GMT"           "BST"
+    >> attr(as.POSIXlt(as.numeric(1:10)), 'tzone')
+    >> # [1] "Europe/London" "BST"           "BST"
+    >> 
+    >> Is this intended behavior? I don't see this possibility described in
+    >> any of ?DateTimeClasses, ?strptime, ?timezones, or ?as.POSIXlt. Some
+    >> caching is mentioned around .sys.timezone, but the above snippets
+    >> don't have any relationship that I can see.
+
+This is true.  I've also checked   .sys.timezone and not seen
+anything.
+
+For those (like me who did not know):
+BST today is "British Summer Time"  (and *not* "British Standard
+Time" as I first guessed).
+
+For the example  as.POSIXlt(1) , it is clearly wrong as  Jan 1  is
+not summer time in London ... OTOH, at that time maybe there was
+confusion .. (?).
+I see that indeed  `gmtoff = 3600` which would also say that
+London was off UTC by  1 hour, as in "real summer time"...
+
+The behaviour we see is actually much older than .sys.timezone
+(which exists only since R 4.0.0); 
+The format()ing  / print()ing of such times also changes, but
+seems to be *correct* (depending on "Summer" / "Winter") and
+doing so +- correctly (see below).. whereas indeed there must be C level
+state variable which is at the first call and then used...
+
+You can use my R script tz.R  (which I also attach with MIME type text/plain)
+and also provide, to be safe (from E-mail mangling etc):
+Alternatively use
+   https://people.math.ethz.ch/~maechler/R/tz/tz.R
+e.g.,    
+
+  download.file("https://people.math.ethz.ch/~maechler/R/tz/tz.R",
+                destfile="/tmp/tz.R")
+
+When I run it with a close to 10 year old version of R 
+via
+      `R-3.3.0 RHOME`/bin/Rscript --vanilla tz.R
+I get 
+
+R version 3.3.0 (2016-05-03)
+"Non-deterministic" POSIXlt tzone in Europe/London around UTC 0
+Europe/London
+-------- no print(), only cat(..  format(*) ..) : -------------------------
+-2, lt(5.3949e+06): 1970-03-04 11:34:40 BST | GMT BST =>> changed to BST BST
+-1, lt(5.5123e+06): 1970-03-05 20:12:20 BST | BST BST
+ 0, lt(     6e+06): 1970-03-11 11:40:00 BST | BST BST
+ 1, lt(6.5123e+06): 1970-03-17 09:59:00 BST | BST BST
+ 2, lt(7.3949e+06): 1970-03-27 15:08:00 BST | BST BST
+ 3, lt(1.0499e+07): 1970-05-02 13:17:00 BST | BST BST
+ 4, lt(2.0636e+07): 1970-08-27 21:16:00 BST | BST BST
+ 5, lt(4.7062e+07): 1971-06-29 17:55:00 BST | BST BST
+ 6, lt(1.0496e+08): 1973-04-29 19:24:00 BST | BST BST =>> changed to GMT BST
+ 7, lt( 2.169e+08): 1976-11-15 09:33:00 GMT | GMT BST
+ 8, lt(4.1436e+08): 1983-02-17 19:12:00 GMT | GMT BST
+ 9, lt(7.3916e+08): 1993-06-04 04:31:00 BST | GMT BST
+10, lt( 1.245e+09): 2009-06-14 18:20:00 BST | GMT BST
+ 9, lt(7.3916e+08): 1993-06-04 04:31:00 BST | GMT BST
+ 8, lt(4.1436e+08): 1983-02-17 19:12:00 GMT | GMT BST
+ 7, lt( 2.169e+08): 1976-11-15 09:33:00 GMT | GMT BST
+ 6, lt(1.0496e+08): 1973-04-29 19:24:00 BST | GMT BST
+ 5, lt(4.7062e+07): 1971-06-29 17:55:00 BST | GMT BST =>> changed to BST BST
+ 4, lt(2.0636e+07): 1970-08-27 21:16:00 BST | BST BST
+ 3, lt(1.0499e+07): 1970-05-02 13:17:00 BST | BST BST
+ 2, lt(7.3949e+06): 1970-03-27 15:08:00 BST | BST BST
+ 1, lt(6.5123e+06): 1970-03-17 09:59:00 BST | BST BST
+ 0, lt(     6e+06): 1970-03-11 11:40:00 BST | BST BST
+-1, lt(5.5123e+06): 1970-03-05 20:12:20 BST | BST BST
+-2, lt(5.3949e+06): 1970-03-04 11:34:40 BST | BST BST
+$
+
+and this *identical* (apart from the R.version.string at the start)
+to running it in my current version of R-devel and also to
+running R version 3.1.0 (2014-04-10).
+
+It seems the "state changing" effect happens
+indicated by     "==>  changed ..."    above only when the
+current time is relatively close to 1970-01-01 (the POSIXct time origin).
+
+So, at least this is not at all a new problem,
+*BUT* it also not "infinitely old":
+It does *not* happen for me, with  R 3.0.0, where I see
+
+$ `R-3.0.0 RHOME`/bin/Rscript --vanilla tz.R
+R version 3.0.0 (2013-04-03)
+"Non-deterministic" POSIXlt tzone in Europe/London around UTC 0
+Europe/London
+-------- no print(), only cat(..  format(*) ..) : -------------------------
+-2, lt(5.3949e+06): 1970-03-04 11:34:40 BST | BST BST
+-1, lt(5.5123e+06): 1970-03-05 20:12:20 BST | BST BST
+ 0, lt(     6e+06): 1970-03-11 11:40:00 BST | BST BST
+ 1, lt(6.5123e+06): 1970-03-17 09:59:00 BST | BST BST
+ 2, lt(7.3949e+06): 1970-03-27 15:08:00 BST | BST BST
+ 3, lt(1.0499e+07): 1970-05-02 13:17:00 BST | BST BST
+ 4, lt(2.0636e+07): 1970-08-27 21:16:00 BST | BST BST
+ 5, lt(4.7062e+07): 1971-06-29 17:55:00 BST | BST BST
+ 6, lt(1.0496e+08): 1973-04-29 19:24:00 BST | GMT BST
+ 7, lt( 2.169e+08): 1976-11-15 09:33:00 GMT | GMT BST
+ 8, lt(4.1436e+08): 1983-02-17 19:12:00 GMT | GMT BST
+ 9, lt(7.3916e+08): 1993-06-04 04:31:00 BST | GMT BST
+10, lt( 1.245e+09): 2009-06-14 18:20:00 BST | GMT BST
+ 9, lt(7.3916e+08): 1993-06-04 04:31:00 BST | GMT BST
+ 8, lt(4.1436e+08): 1983-02-17 19:12:00 GMT | GMT BST
+ 7, lt( 2.169e+08): 1976-11-15 09:33:00 GMT | GMT BST
+ 6, lt(1.0496e+08): 1973-04-29 19:24:00 BST | GMT BST
+ 5, lt(4.7062e+07): 1971-06-29 17:55:00 BST | BST BST
+ 4, lt(2.0636e+07): 1970-08-27 21:16:00 BST | BST BST
+ 3, lt(1.0499e+07): 1970-05-02 13:17:00 BST | BST BST
+ 2, lt(7.3949e+06): 1970-03-27 15:08:00 BST | BST BST
+ 1, lt(6.5123e+06): 1970-03-17 09:59:00 BST | BST BST
+ 0, lt(     6e+06): 1970-03-11 11:40:00 BST | BST BST
+-1, lt(5.5123e+06): 1970-03-05 20:12:20 BST | BST BST
+-2, lt(5.3949e+06): 1970-03-04 11:34:40 BST | BST BST
+$
+
+(notably, no  "=>> changed to ...."  marks !)
+
+The above is in the Linux default
+
+  > sessionInfo()$tzcode
+  [1] "system (glibc)"
+
+OTOH, if using the R internal tzcode
+[via     configure --with-internal-tzcode  ]
+the above "=>> changed to ...."  marks do *not* appear and the
+tzone entries shown above are "constant", always  " | GMT BST "
+So, there is a problem with "system (glibc)"'s behaviour, or in
+the logic of our interface to that..
+
+.. and I am happy I see no changes to the C code (datetime.c) by me between
+spring 2013 and 2014 , so chances are high that this time it was
+not me ;-)  ... but yes, indeed, there were quite a few changes
+there, also fixing problems with tzone
+(svn rev 62314, *622,*623, 64233,..., 65798, 65159).
+
+............
+
+Ok, that's enough material for a new R Bugzilla PR ..
+
+Martin
+
+
+From cboett|g @end|ng |rom berke|ey@edu  Sun Jan 18 01:06:35 2026
+From: cboett|g @end|ng |rom berke|ey@edu (Carl Boettiger)
+Date: Sat, 17 Jan 2026 16:06:35 -0800
+Subject: [Rd] Rust/Cargo version on CRAN?
+Message-ID: <CAOLzYxx3oA_EWpa+kCXh+EKRw-g_ptke59sORxrQLd3M26YCdA@mail.gmail.com>
+
+Hello,
+
+Just wanted to inquire if there are plans for CRAN's winbuilder to
+support Cargo 1.85.0?  The current version is 1.81.0, which does not
+support Rust edition 2024.
+
+Should packages binding rust libraries indicate a Rust version in the
+System Requirements?
+
+Thank you for your time and for maintaining CRAN's build infrastructure.
+
+Best,
+
+Carl Boettiger
+
+---
+http://carlboettiger.info
+
+
+From ch@r|e@-||@te@+rd @end|ng |rom p|e@@y@org  Sun Jan 18 02:39:34 2026
+From: ch@r|e@-||@te@+rd @end|ng |rom p|e@@y@org (Charles Plessy)
+Date: Sun, 18 Jan 2026 10:39:34 +0900
+Subject: [Rd] Round trip between package_version and character
+In-Reply-To: <CAL3ufUKNryNXbgmD4Rw48fdxaFUcjZzFjXO+HGNZdgRArAFXeA@mail.gmail.com>
+References: <CAN+W6_vnr9hw-br6YraEqBk3rrdzQY17GCoUkpK5bDNpySppdQ@mail.gmail.com>
+ <CAFDcVCRSFxCFNMgZOMq2qH0FojUEDvM0p-2yuRAzK+ap5eEpmA@mail.gmail.com>
+ <CAL3ufUKNryNXbgmD4Rw48fdxaFUcjZzFjXO+HGNZdgRArAFXeA@mail.gmail.com>
+Message-ID: <aWwe2OR8eULj-RIz@bubu.igloo>
+
+Le Sat, Jan 17, 2026 at 11:02:12AM -0800, Josiah Parry a ?crit :
+>It would be really nice if the full semantic versioning spec was supported
+>in R. I can understand why only major.minor.patch would be supported for
+>CRAN. But for an R package in a development stage, it would be wonderful to
+>support pre-release and build metadata.
+>
+>Use of `-` in semver to determine pre-release:
+>https://semver.org/#spec-item-9
+
+In Debian we have long handled this use?case by using a tilde (~) in
+version strings?well before semver was formalized. If you like the
+semantics of pre?release identifiers but want to avoid changing the
+meaning of - in existing R versioning, adopting ~ might be a practical
+alternative.
+
+Relevant documentation:
+https://www.debian.org/doc/debian-policy/ch-controlfields.html#version
+
+Have a nice week-end,
+
+Charles Plessy
+
+
+From georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk  Sun Jan 18 13:08:59 2026
+From: georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk (Georgi Boshnakov)
+Date: Sun, 18 Jan 2026 12:08:59 +0000
+Subject: [Rd] Non-deterministic POSIXlt tzone in Europe/London around UTC 0
+In-Reply-To: <mailman.55208.3.1768734001.56453.r-devel@r-project.org>
+References: <mailman.55208.3.1768734001.56453.r-devel@r-project.org>
+Message-ID: <LO0P265MB63251E9F7957C2DD8E705EDEAE8BA@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+
+
+> For the example  as.POSIXlt(1) , it is clearly wrong as  Jan 1  is
+not summer time in London ... OTOH, at that time maybe there was
+confusion .. (?).
+I see that indeed  `gmtoff = 3600` which would also say that
+London was off UTC by  1 hour, as in "real summer time"...
+
+Indeed, Jan 1 is not summer but it was 'summer time' then. Around 1969-1970 there had been 
+an experiment in the UK to drop the switch from/to summer time and stay permanently in GMT+1.
+so the whole years were in summer time.
+
+Georgi Boshnakov
+
+------------------------------
+
+Message: 4
+Date: Sat, 17 Jan 2026 22:02:45 +0100
+From: Martin Maechler <maechler at stat.math.ethz.ch>
+To: Ben Bolker <bbolker at gmail.com>
+Cc: <r-devel at r-project.org>
+Subject: Re: [Rd]  Non-deterministic POSIXlt tzone in Europe/London
+        around UTC 0
+Message-ID: <26987.63733.576349.826262 at stat.math.ethz.ch>
+Content-Type: text/plain; charset="us-ascii"
+
+>>>>> Ben Bolker
+>>>>>     on Wed, 14 Jan 2026 18:21:37 -0500 writes:
+
+    > It seems not so much non-deterministic, as different on the first vs.
+    > following invocations ...
+
+Thank you, Ben!   Indeed, I can confirm "deterministic",
+but even stranger (see below)..
+
+    > $ cat tz.R
+    > Sys.setenv(TZ="Europe/London")
+    > for (i in 1:10) {
+    > print(attr(as.POSIXlt(as.numeric(1:10)), 'tzone'))
+
+    > $ Rscript  tz.R
+    > [1] "Europe/London" "GMT"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+
+    > $ Rscript  tz.R
+    > [1] "Europe/London" "GMT"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+
+    > $ Rscript  tz.R
+    > [1] "Europe/London" "GMT"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+
+
+    > On 1/14/26 17:47, Michael Chirico via R-devel wrote:
+    >> As a test case I have code running 'as.POSIXlt(1:10)', which can
+    >> unfortunately produce non-deterministic results:
+    >>
+    >> TZ=Europe/London R
+    >> attr(as.POSIXlt(as.numeric(1:10)), 'tzone')
+    >> # [1] "Europe/London" "GMT"           "BST"
+    >> attr(as.POSIXlt(as.numeric(1:10)), 'tzone')
+    >> # [1] "Europe/London" "BST"           "BST"
+    >>
+    >> Is this intended behavior? I don't see this possibility described in
+    >> any of ?DateTimeClasses, ?strptime, ?timezones, or ?as.POSIXlt. Some
+    >> caching is mentioned around .sys.timezone, but the above snippets
+    >> don't have any relationship that I can see.
+
+This is true.  I've also checked   .sys.timezone and not seen
+anything.
+
+For those (like me who did not know):
+BST today is "British Summer Time"  (and *not* "British Standard
+Time" as I first guessed).
+
+For the example  as.POSIXlt(1) , it is clearly wrong as  Jan 1  is
+not summer time in London ... OTOH, at that time maybe there was
+confusion .. (?).
+I see that indeed  `gmtoff = 3600` which would also say that
+London was off UTC by  1 hour, as in "real summer time"...
+
+The behaviour we see is actually much older than .sys.timezone
+(which exists only since R 4.0.0);
+The format()ing  / print()ing of such times also changes, but
+seems to be *correct* (depending on "Summer" / "Winter") and
+doing so +- correctly (see below).. whereas indeed there must be C level
+state variable which is at the first call and then used...
+
+You can use my R script tz.R  (which I also attach with MIME type text/plain)
+and also provide, to be safe (from E-mail mangling etc):
+Alternatively use
+   https://urldefense.com/v3/__https://people.math.ethz.ch/*maechler/R/tz/tz.R__;fg!!PDiH4ENfjr2_Jw!DsL6aUImJ9mtOi2fEAHS7ugtedE6xRKuNJXKZ1prDgVCGxV_tR2V8D6cvIRpnhIDbScni2bkezrQgcpB5zjecYIvvlzHjN3BP7eDx2qlbnY$ [people[.]math[.]ethz[.]ch]
+e.g.,
+
+  download.file("https://urldefense.com/v3/__https://people.math.ethz.ch/*maechler/R/tz/tz.R__;fg!!PDiH4ENfjr2_Jw!DsL6aUImJ9mtOi2fEAHS7ugtedE6xRKuNJXKZ1prDgVCGxV_tR2V8D6cvIRpnhIDbScni2bkezrQgcpB5zjecYIvvlzHjN3BP7eDx2qlbnY$ [people[.]math[.]ethz[.]ch]",
+                destfile="/tmp/tz.R")
+
+When I run it with a close to 10 year old version of R
+via
+      `R-3.3.0 RHOME`/bin/Rscript --vanilla tz.R
+I get
+
+R version 3.3.0 (2016-05-03)
+"Non-deterministic" POSIXlt tzone in Europe/London around UTC 0
+Europe/London
+-------- no print(), only cat(..  format(*) ..) : -------------------------
+-2, lt(5.3949e+06): 1970-03-04 11:34:40 BST | GMT BST =>> changed to BST BST
+-1, lt(5.5123e+06): 1970-03-05 20:12:20 BST | BST BST
+ 0, lt(     6e+06): 1970-03-11 11:40:00 BST | BST BST
+ 1, lt(6.5123e+06): 1970-03-17 09:59:00 BST | BST BST
+ 2, lt(7.3949e+06): 1970-03-27 15:08:00 BST | BST BST
+ 3, lt(1.0499e+07): 1970-05-02 13:17:00 BST | BST BST
+ 4, lt(2.0636e+07): 1970-08-27 21:16:00 BST | BST BST
+ 5, lt(4.7062e+07): 1971-06-29 17:55:00 BST | BST BST
+ 6, lt(1.0496e+08): 1973-04-29 19:24:00 BST | BST BST =>> changed to GMT BST
+ 7, lt( 2.169e+08): 1976-11-15 09:33:00 GMT | GMT BST
+ 8, lt(4.1436e+08): 1983-02-17 19:12:00 GMT | GMT BST
+ 9, lt(7.3916e+08): 1993-06-04 04:31:00 BST | GMT BST
+10, lt( 1.245e+09): 2009-06-14 18:20:00 BST | GMT BST
+ 9, lt(7.3916e+08): 1993-06-04 04:31:00 BST | GMT BST
+ 8, lt(4.1436e+08): 1983-02-17 19:12:00 GMT | GMT BST
+ 7, lt( 2.169e+08): 1976-11-15 09:33:00 GMT | GMT BST
+ 6, lt(1.0496e+08): 1973-04-29 19:24:00 BST | GMT BST
+ 5, lt(4.7062e+07): 1971-06-29 17:55:00 BST | GMT BST =>> changed to BST BST
+ 4, lt(2.0636e+07): 1970-08-27 21:16:00 BST | BST BST
+ 3, lt(1.0499e+07): 1970-05-02 13:17:00 BST | BST BST
+ 2, lt(7.3949e+06): 1970-03-27 15:08:00 BST | BST BST
+ 1, lt(6.5123e+06): 1970-03-17 09:59:00 BST | BST BST
+ 0, lt(     6e+06): 1970-03-11 11:40:00 BST | BST BST
+-1, lt(5.5123e+06): 1970-03-05 20:12:20 BST | BST BST
+-2, lt(5.3949e+06): 1970-03-04 11:34:40 BST | BST BST
+$
+
+and this *identical* (apart from the R.version.string at the start)
+to running it in my current version of R-devel and also to
+running R version 3.1.0 (2014-04-10).
+
+It seems the "state changing" effect happens
+indicated by     "==>  changed ..."    above only when the
+current time is relatively close to 1970-01-01 (the POSIXct time origin).
+
+So, at least this is not at all a new problem,
+*BUT* it also not "infinitely old":
+It does *not* happen for me, with  R 3.0.0, where I see
+
+$ `R-3.0.0 RHOME`/bin/Rscript --vanilla tz.R
+R version 3.0.0 (2013-04-03)
+"Non-deterministic" POSIXlt tzone in Europe/London around UTC 0
+Europe/London
+-------- no print(), only cat(..  format(*) ..) : -------------------------
+-2, lt(5.3949e+06): 1970-03-04 11:34:40 BST | BST BST
+-1, lt(5.5123e+06): 1970-03-05 20:12:20 BST | BST BST
+ 0, lt(     6e+06): 1970-03-11 11:40:00 BST | BST BST
+ 1, lt(6.5123e+06): 1970-03-17 09:59:00 BST | BST BST
+ 2, lt(7.3949e+06): 1970-03-27 15:08:00 BST | BST BST
+ 3, lt(1.0499e+07): 1970-05-02 13:17:00 BST | BST BST
+ 4, lt(2.0636e+07): 1970-08-27 21:16:00 BST | BST BST
+ 5, lt(4.7062e+07): 1971-06-29 17:55:00 BST | BST BST
+ 6, lt(1.0496e+08): 1973-04-29 19:24:00 BST | GMT BST
+ 7, lt( 2.169e+08): 1976-11-15 09:33:00 GMT | GMT BST
+ 8, lt(4.1436e+08): 1983-02-17 19:12:00 GMT | GMT BST
+ 9, lt(7.3916e+08): 1993-06-04 04:31:00 BST | GMT BST
+10, lt( 1.245e+09): 2009-06-14 18:20:00 BST | GMT BST
+ 9, lt(7.3916e+08): 1993-06-04 04:31:00 BST | GMT BST
+ 8, lt(4.1436e+08): 1983-02-17 19:12:00 GMT | GMT BST
+ 7, lt( 2.169e+08): 1976-11-15 09:33:00 GMT | GMT BST
+ 6, lt(1.0496e+08): 1973-04-29 19:24:00 BST | GMT BST
+ 5, lt(4.7062e+07): 1971-06-29 17:55:00 BST | BST BST
+ 4, lt(2.0636e+07): 1970-08-27 21:16:00 BST | BST BST
+ 3, lt(1.0499e+07): 1970-05-02 13:17:00 BST | BST BST
+ 2, lt(7.3949e+06): 1970-03-27 15:08:00 BST | BST BST
+ 1, lt(6.5123e+06): 1970-03-17 09:59:00 BST | BST BST
+ 0, lt(     6e+06): 1970-03-11 11:40:00 BST | BST BST
+-1, lt(5.5123e+06): 1970-03-05 20:12:20 BST | BST BST
+-2, lt(5.3949e+06): 1970-03-04 11:34:40 BST | BST BST
+$
+
+(notably, no  "=>> changed to ...."  marks !)
+
+The above is in the Linux default
+
+  > sessionInfo()$tzcode
+  [1] "system (glibc)"
+
+OTOH, if using the R internal tzcode
+[via     configure --with-internal-tzcode  ]
+the above "=>> changed to ...."  marks do *not* appear and the
+tzone entries shown above are "constant", always  " | GMT BST "
+So, there is a problem with "system (glibc)"'s behaviour, or in
+the logic of our interface to that..
+
+.. and I am happy I see no changes to the C code (datetime.c) by me between
+spring 2013 and 2014 , so chances are high that this time it was
+not me ;-)  ... but yes, indeed, there were quite a few changes
+there, also fixing problems with tzone
+(svn rev 62314, *622,*623, 64233,..., 65798, 65159).
+
+............
+
+Ok, that's enough material for a new R Bugzilla PR ..
+
+Martin
+
+
+From ||u|@@rev|||@ @end|ng |rom gm@||@com  Sun Jan 18 18:02:07 2026
+From: ||u|@@rev|||@ @end|ng |rom gm@||@com (=?UTF-8?Q?Llu=C3=ADs_Revilla?=)
+Date: Sun, 18 Jan 2026 18:02:07 +0100
+Subject: [Rd] Round trip between package_version and character
+In-Reply-To: <aWwe2OR8eULj-RIz@bubu.igloo>
+References: <CAN+W6_vnr9hw-br6YraEqBk3rrdzQY17GCoUkpK5bDNpySppdQ@mail.gmail.com>
+ <CAFDcVCRSFxCFNMgZOMq2qH0FojUEDvM0p-2yuRAzK+ap5eEpmA@mail.gmail.com>
+ <CAL3ufUKNryNXbgmD4Rw48fdxaFUcjZzFjXO+HGNZdgRArAFXeA@mail.gmail.com>
+ <aWwe2OR8eULj-RIz@bubu.igloo>
+Message-ID: <CAN+W6_tCJTs35BzoQMTEiFfkSu-GouOUKSugRpvuHe-a3_M-hQ@mail.gmail.com>
+
+It is good to see so much interest in version numbers!
+
+R doesn't require Calendar versioning (https://calver.org/), Semantic
+Versioning or Debian versions.
+The package_version describe the version numbers as:
+
+> Numeric versions are sequences of one or more non-negative integers, usually (e.g., in package ?DESCRIPTION? files) represented as character strings with the elements of the sequence concatenated and separated by single ??.?? or ??-?? characters. R package versions consist of at least two such integers
+
+The R-extension manual describes them in the section "The DESCRIPTION file":
+> This is a sequence of at least two (and usually three) non-negative integers separated by single ?.? or ?-? characters. The canonical form is as shown in the example, and a version such as ?0.01? or ?0.01.0? will be handled as if it were ?0.1-0?.
+
+Note that here there are some versions with a leading 0 (which
+package_version accepts!).
+
+I think fully supporting any of these versions schemes would involve
+changing how R itself resolves dependencies for packages (mainly to
+cover the [:alpha:] characters).
+This is a much larger patch/project than what I asked for and in any
+way R still would need to manipulate (and compre) them easily.
+
+In terms of implementation if the attribute approach is added it could
+be used by format.numeric_version.
+But I'm not sure if any package relies on this to remove any "-" and
+leading 0 present...
+>From a quick check on the first 40 packages from 100 that use the
+function none would be impacted as it is primarily used to enable or
+disable features according to the versions of dependencies installed.
+
+
+
+Missatge de Charles Plessy <charles-listes+rd at plessy.org> del dia dg.,
+18 de gen. 2026 a les 2:40:
+>
+> Le Sat, Jan 17, 2026 at 11:02:12AM -0800, Josiah Parry a ?crit :
+> >It would be really nice if the full semantic versioning spec was supported
+> >in R. I can understand why only major.minor.patch would be supported for
+> >CRAN. But for an R package in a development stage, it would be wonderful to
+> >support pre-release and build metadata.
+> >
+> >Use of `-` in semver to determine pre-release:
+> >https://semver.org/#spec-item-9
+>
+> In Debian we have long handled this use?case by using a tilde (~) in
+> version strings?well before semver was formalized. If you like the
+> semantics of pre?release identifiers but want to avoid changing the
+> meaning of - in existing R versioning, adopting ~ might be a practical
+> alternative.
+>
+> Relevant documentation:
+> https://www.debian.org/doc/debian-policy/ch-controlfields.html#version
+>
+> Have a nice week-end,
+>
+> Charles Plessy
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @uh@rto_@nggono @end|ng |rom y@hoo@com  Tue Jan 20 09:52:57 2026
+From: @uh@rto_@nggono @end|ng |rom y@hoo@com (Suharto Anggono Suharto Anggono)
+Date: Tue, 20 Jan 2026 08:52:57 +0000 (UTC)
+Subject: [Rd] 
+ Non-deterministic POSIXlt tzone in Europe/London around UTC 0
+References: <1110718593.192845.1768899177787.ref@mail.yahoo.com>
+Message-ID: <1110718593.192845.1768899177787@mail.yahoo.com>
+
+In R 4.0.3 on Windows, which uses internal tzcode, using as.POSIXlt(., origin = "1970-1-1") , yes, always GMT BST.
+
+However,
+
+Sys.setenv(TZ="Europe/London")
+for (i in 1:10)
+print(attr(as.POSIXlt(.POSIXct(as.numeric(1:10))), 'tzone'))
+
+also gives GMT BST for the first and BST BST for subsequent invocations.
+
+The same result is obtained by first defining
+
+origin <- as.POSIXct("1970-1-1", tz = "UTC")
+
+and using as.POSIXlt(., origin = origin) .
+
+=================
+Martin Maechler
+on Sat Jan 17 22:02:45 CET 2026 writes:
+>>>>> Ben Bolker 
+>>>>>     on Wed, 14 Jan 2026 18:21:37 -0500 writes:
+
+    > It seems not so much non-deterministic, as different on the first vs. 
+    > following invocations ...
+
+Thank you, Ben!   Indeed, I can confirm "deterministic",
+but even stranger (see below)..
+
+    > $ cat tz.R
+    > Sys.setenv(TZ="Europe/London")
+    > for (i in 1:10) {
+    > print(attr(as.POSIXlt(as.numeric(1:10)), 'tzone'))
+
+    > $ Rscript  tz.R
+    > [1] "Europe/London" "GMT"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+
+    > $ Rscript  tz.R
+    > [1] "Europe/London" "GMT"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+
+    > $ Rscript  tz.R
+    > [1] "Europe/London" "GMT"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+    > [1] "Europe/London" "BST"           "BST"
+
+
+    > On 1/14/26 17:47, Michael Chirico via R-devel wrote:
+    >> As a test case I have code running 'as.POSIXlt(1:10)', which can
+    >> unfortunately produce non-deterministic results:
+    >> 
+    >> TZ=Europe/London R
+    >> attr(as.POSIXlt(as.numeric(1:10)), 'tzone')
+    >> # [1] "Europe/London" "GMT"           "BST"
+    >> attr(as.POSIXlt(as.numeric(1:10)), 'tzone')
+    >> # [1] "Europe/London" "BST"           "BST"
+    >> 
+    >> Is this intended behavior? I don't see this possibility described in
+    >> any of ?DateTimeClasses, ?strptime, ?timezones, or ?as.POSIXlt. Some
+    >> caching is mentioned around .sys.timezone, but the above snippets
+    >> don't have any relationship that I can see.
+
+This is true.  I've also checked   .sys.timezone and not seen
+anything.
+
+For those (like me who did not know):
+BST today is "British Summer Time"  (and *not* "British Standard
+Time" as I first guessed).
+
+For the example  as.POSIXlt(1) , it is clearly wrong as  Jan 1  is
+not summer time in London ... OTOH, at that time maybe there was
+confusion .. (?).
+I see that indeed  `gmtoff = 3600` which would also say that
+London was off UTC by  1 hour, as in "real summer time"...
+
+The behaviour we see is actually much older than .sys.timezone
+(which exists only since R 4.0.0); 
+The format()ing  / print()ing of such times also changes, but
+seems to be *correct* (depending on "Summer" / "Winter") and
+doing so +- correctly (see below).. whereas indeed there must be C level
+state variable which is at the first call and then used...
+
+You can use my R script tz.R  (which I also attach with MIME type text/plain)
+and also provide, to be safe (from E-mail mangling etc):
+Alternatively use
+   https://people.math.ethz.ch/~maechler/R/tz/tz.R
+e.g.,    
+
+  download.file("https://people.math.ethz.ch/~maechler/R/tz/tz.R",
+                destfile="/tmp/tz.R")
+
+When I run it with a close to 10 year old version of R 
+via
+      `R-3.3.0 RHOME`/bin/Rscript --vanilla tz.R
+I get 
+
+R version 3.3.0 (2016-05-03)
+"Non-deterministic" POSIXlt tzone in Europe/London around UTC 0
+Europe/London
+-------- no print(), only cat(..  format(*) ..) : -------------------------
+-2, lt(5.3949e+06): 1970-03-04 11:34:40 BST | GMT BST =>> changed to BST BST
+-1, lt(5.5123e+06): 1970-03-05 20:12:20 BST | BST BST
+ 0, lt(     6e+06): 1970-03-11 11:40:00 BST | BST BST
+ 1, lt(6.5123e+06): 1970-03-17 09:59:00 BST | BST BST
+ 2, lt(7.3949e+06): 1970-03-27 15:08:00 BST | BST BST
+ 3, lt(1.0499e+07): 1970-05-02 13:17:00 BST | BST BST
+ 4, lt(2.0636e+07): 1970-08-27 21:16:00 BST | BST BST
+ 5, lt(4.7062e+07): 1971-06-29 17:55:00 BST | BST BST
+ 6, lt(1.0496e+08): 1973-04-29 19:24:00 BST | BST BST =>> changed to GMT BST
+ 7, lt( 2.169e+08): 1976-11-15 09:33:00 GMT | GMT BST
+ 8, lt(4.1436e+08): 1983-02-17 19:12:00 GMT | GMT BST
+ 9, lt(7.3916e+08): 1993-06-04 04:31:00 BST | GMT BST
+10, lt( 1.245e+09): 2009-06-14 18:20:00 BST | GMT BST
+ 9, lt(7.3916e+08): 1993-06-04 04:31:00 BST | GMT BST
+ 8, lt(4.1436e+08): 1983-02-17 19:12:00 GMT | GMT BST
+ 7, lt( 2.169e+08): 1976-11-15 09:33:00 GMT | GMT BST
+ 6, lt(1.0496e+08): 1973-04-29 19:24:00 BST | GMT BST
+ 5, lt(4.7062e+07): 1971-06-29 17:55:00 BST | GMT BST =>> changed to BST BST
+ 4, lt(2.0636e+07): 1970-08-27 21:16:00 BST | BST BST
+ 3, lt(1.0499e+07): 1970-05-02 13:17:00 BST | BST BST
+ 2, lt(7.3949e+06): 1970-03-27 15:08:00 BST | BST BST
+ 1, lt(6.5123e+06): 1970-03-17 09:59:00 BST | BST BST
+ 0, lt(     6e+06): 1970-03-11 11:40:00 BST | BST BST
+-1, lt(5.5123e+06): 1970-03-05 20:12:20 BST | BST BST
+-2, lt(5.3949e+06): 1970-03-04 11:34:40 BST | BST BST
+$
+
+and this *identical* (apart from the R.version.string at the start)
+to running it in my current version of R-devel and also to
+running R version 3.1.0 (2014-04-10).
+
+It seems the "state changing" effect happens
+indicated by     "==>  changed ..."    above only when the
+current time is relatively close to 1970-01-01 (the POSIXct time origin).
+
+So, at least this is not at all a new problem,
+*BUT* it also not "infinitely old":
+It does *not* happen for me, with  R 3.0.0, where I see
+
+$ `R-3.0.0 RHOME`/bin/Rscript --vanilla tz.R
+R version 3.0.0 (2013-04-03)
+"Non-deterministic" POSIXlt tzone in Europe/London around UTC 0
+Europe/London
+-------- no print(), only cat(..  format(*) ..) : -------------------------
+-2, lt(5.3949e+06): 1970-03-04 11:34:40 BST | BST BST
+-1, lt(5.5123e+06): 1970-03-05 20:12:20 BST | BST BST
+ 0, lt(     6e+06): 1970-03-11 11:40:00 BST | BST BST
+ 1, lt(6.5123e+06): 1970-03-17 09:59:00 BST | BST BST
+ 2, lt(7.3949e+06): 1970-03-27 15:08:00 BST | BST BST
+ 3, lt(1.0499e+07): 1970-05-02 13:17:00 BST | BST BST
+ 4, lt(2.0636e+07): 1970-08-27 21:16:00 BST | BST BST
+ 5, lt(4.7062e+07): 1971-06-29 17:55:00 BST | BST BST
+ 6, lt(1.0496e+08): 1973-04-29 19:24:00 BST | GMT BST
+ 7, lt( 2.169e+08): 1976-11-15 09:33:00 GMT | GMT BST
+ 8, lt(4.1436e+08): 1983-02-17 19:12:00 GMT | GMT BST
+ 9, lt(7.3916e+08): 1993-06-04 04:31:00 BST | GMT BST
+10, lt( 1.245e+09): 2009-06-14 18:20:00 BST | GMT BST
+ 9, lt(7.3916e+08): 1993-06-04 04:31:00 BST | GMT BST
+ 8, lt(4.1436e+08): 1983-02-17 19:12:00 GMT | GMT BST
+ 7, lt( 2.169e+08): 1976-11-15 09:33:00 GMT | GMT BST
+ 6, lt(1.0496e+08): 1973-04-29 19:24:00 BST | GMT BST
+ 5, lt(4.7062e+07): 1971-06-29 17:55:00 BST | BST BST
+ 4, lt(2.0636e+07): 1970-08-27 21:16:00 BST | BST BST
+ 3, lt(1.0499e+07): 1970-05-02 13:17:00 BST | BST BST
+ 2, lt(7.3949e+06): 1970-03-27 15:08:00 BST | BST BST
+ 1, lt(6.5123e+06): 1970-03-17 09:59:00 BST | BST BST
+ 0, lt(     6e+06): 1970-03-11 11:40:00 BST | BST BST
+-1, lt(5.5123e+06): 1970-03-05 20:12:20 BST | BST BST
+-2, lt(5.3949e+06): 1970-03-04 11:34:40 BST | BST BST
+$
+
+(notably, no  "=>> changed to ...."  marks !)
+
+The above is in the Linux default
+
+  > sessionInfo()$tzcode
+  [1] "system (glibc)"
+
+OTOH, if using the R internal tzcode
+[via     configure --with-internal-tzcode  ]
+the above "=>> changed to ...."  marks do *not* appear and the
+tzone entries shown above are "constant", always  " | GMT BST "
+So, there is a problem with "system (glibc)"'s behaviour, or in
+the logic of our interface to that..
+
+.. and I am happy I see no changes to the C code (datetime.c) by me between
+spring 2013 and 2014 , so chances are high that this time it was
+not me ;-)  ... but yes, indeed, there were quite a few changes
+there, also fixing problems with tzone
+(svn rev 62314, *622,*623, 64233,..., 65798, 65159).
+
+............
+
+Ok, that's enough material for a new R Bugzilla PR ..
+
+Martin
+
+
+From ht @end|ng |rom he@therturner@net  Tue Jan 20 11:38:57 2026
+From: ht @end|ng |rom he@therturner@net (Heather Turner)
+Date: Tue, 20 Jan 2026 10:38:57 +0000
+Subject: [Rd] R Dev Day @ Rencontres R 2026, Fri 19 June,
+ Nantes University | Virtual
+Message-ID: <8ed2e65a-75b6-452f-b6d8-cf6e5d8f7b01@app.fastmail.com>
+
+Dear All,
+
+A hybrid R Dev Day will be held at Nantes University, France on Friday 19 June (9am - 5pm UTC+2).
+
+Join this open, collaborative event to work on contributions to the code and documentation of base R, or to infrastructure that supports such contribution. Both new and experienced contributors are welcome!
+
+Read more details and register for an in-person or virtual ticket: https://pretix.eu/r-contributors/r-dev-day-rr2026/
+
+**Deadline: Friday 29 May (midnight UTC+2).**
+
+The latest information for all upcoming R Dev Days can be found on the contributor site: https://contributor.r-project.org/events/r-dev-days/.
+
+Best wishes,
+
+Heather
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Tue Jan 20 19:14:45 2026
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Tue, 20 Jan 2026 13:14:45 -0500
+Subject: [Rd] Error when building R (89301+) on Windows 11 - but not every
+ platform
+Message-ID: <CAL6gwnJ8cMh7zjxXjj6PawV1c4wRsG9800D3E7XeMXwn3NjaZA@mail.gmail.com>
+
+I am compiling R on two different Windows 11 platforms. On one, my
+home desktop, the process completes (89301) and passes check-all. On
+my work laptop, however, the process consistently (89301, 89303,
+89309) errors out during the making of the manuals right after
+building refman.pdf. Please see below for the actual error. On both
+platforms I use Rtools45, always up to date, and MikTex, always up to
+date. The only functional difference I can think of is that my laptop
+has severe security restrictions. I actually have some folders
+whitelisted by my IT department solely to allow me to build R from
+source. However, I have no idea which restrictions?if any?are
+interfering. The fullrefman.log file seems to end without an issue
+(see below). Line 127 in /trunk/doc/manual/Makefile.win is
+opt="$(R_RD4PDF)"; \. Why that would be an issue on the laptop and not
+my desktop is beyond me, especially as I am not even sure what that is
+doing.
+
+I ran this by Tomas on r-sig-windows first, thinking it may be a
+windows issue, but he believes it is not.
+
+Any thoughts, suggestions, or corrections would be appreciated.
+
+Thank you,
+
+Avi
+
+### ERROR MESSAGE:
+<C:\Users\AvrahamAdler\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600
+\tctt1000.pk> <C:\Users\AvrahamAdler\AppData\Local\MiKTeX\fonts/pk/ljfour/jknap
+pen/ec/dpi600\tctt0900.pk><C:/Users/AvrahamAdler/AppData/Local/Programs/MiKTeX/
+fonts/type1/public/inconsolata/Inconsolata-zi4b.pfb><C:/Users/AvrahamAdler/AppD
+ata/Local/Programs/MiKTeX/fonts/type1/public/inconsolata/Inconsolata-zi4r.pfb><
+C:/Users/AvrahamAdler/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts
+/cmextra/cmbsy7.pfb><C:/Users/AvrahamAdler/AppData/Local/Programs/MiKTeX/fonts/
+type1/public/amsfonts/cm/cmbx10.pfb><C:/Users/AvrahamAdler/AppData/Local/Progra
+ms/MiKTeX/fonts/type1/public/amsfonts/cm/cmex10.pfb><C:/Users/AvrahamAdler/AppD
+ata/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/A
+vrahamAdler/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi5.
+pfb><C:/Users/AvrahamAdler/AppData/Local/Programs/MiKTeX/fonts/type1/public/ams
+fonts/cm/cmmi7.pfb><C:/Users/AvrahamAdler/AppData/Local/Programs/MiKTeX/fonts/t
+ype1/public/amsfonts/cm/cmmib10.pfb><C:/Users/AvrahamAdler/AppData/Local/Progra
+ms/MiKTeX/fonts/type1/public/amsfonts/cm/cmr10.pfb><C:/Users/AvrahamAdler/AppDa
+ta/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr5.pfb><C:/Users/Avra
+hamAdler/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr7.pfb>
+<C:/Users/AvrahamAdler/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfont
+s/cm/cmss8.pfb><C:/Users/AvrahamAdler/AppData/Local/Programs/MiKTeX/fonts/type1
+/public/amsfonts/cm/cmsy10.pfb><C:/Users/AvrahamAdler/AppData/Local/Programs/Mi
+KTeX/fonts/type1/public/amsfonts/cm/cmsy5.pfb><C:/Users/AvrahamAdler/AppData/Lo
+cal/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy7.pfb><C:/Users/AvrahamA
+dler/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmtt10.pfb><C
+:/Users/AvrahamAdler/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/
+symbols/msbm10.pfb><C:/Users/AvrahamAdler/AppData/Local/Programs/MiKTeX/fonts/t
+ype1/urw/helvetic/uhvr8a.pfb><C:/Users/AvrahamAdler/AppData/Local/Programs/MiKT
+eX/fonts/type1/urw/times/utmb8a.pfb><C:/Users/AvrahamAdler/AppData/Local/Progra
+ms/MiKTeX/fonts/type1/urw/times/utmbi8a.pfb><C:/Users/AvrahamAdler/AppData/Loca
+l/Programs/MiKTeX/fonts/type1/urw/times/utmr8a.pfb><C:/Users/AvrahamAdler/AppDa
+ta/Local/Programs/MiKTeX/fonts/type1/urw/times/utmr8a.pfb><C:/Users/AvrahamAdle
+r/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmri8a.pfb>
+Output written on fullrefman.pdf (3759 pages, 9838240 bytes).
+Transcript written on fullrefman.log.
+make[2]: *** [Makefile.win:127: fullrefman.pdf] Error 1
+make[1]: *** [Makefile:339: manuals] Error 2
+make: *** [Makefile:394: distribution] Error 2
+
+### END OF fullrefman.log
+pdfTeX warning (dest): name{Rfn.chron} has been referenced but does not exist,
+replaced by a fixed one
+
+ <C:\Users\Avrah\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\tctt10
+00.pk> <C:\Users\Avrah\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\
+tctt0900.pk><C:/Users/Avrah/AppData/Local/Programs/MiKTeX/fonts/type1/public/in
+consolata/Inconsolata-zi4b.pfb><C:/Users/Avrah/AppData/Local/Programs/MiKTeX/fo
+nts/type1/public/inconsolata/Inconsolata-zi4r.pfb><C:/Users/Avrah/AppData/Local
+/Programs/MiKTeX/fonts/type1/public/amsfonts/cmextra/cmbsy7.pfb><C:/Users/Avrah
+/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmbx10.pfb><C:/Us
+ers/Avrah/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmex10.p
+fb><C:/Users/Avrah/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm
+/cmmi10.pfb><C:/Users/Avrah/AppData/Local/Programs/MiKTeX/fonts/type1/public/am
+sfonts/cm/cmmi5.pfb><C:/Users/Avrah/AppData/Local/Programs/MiKTeX/fonts/type1/p
+ublic/amsfonts/cm/cmmi7.pfb><C:/Users/Avrah/AppData/Local/Programs/MiKTeX/fonts
+/type1/public/amsfonts/cm/cmmib10.pfb><C:/Users/Avrah/AppData/Local/Programs/Mi
+KTeX/fonts/type1/public/amsfonts/cm/cmr10.pfb><C:/Users/Avrah/AppData/Local/Pro
+grams/MiKTeX/fonts/type1/public/amsfonts/cm/cmr5.pfb><C:/Users/Avrah/AppData/Lo
+cal/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr7.pfb><C:/Users/Avrah/App
+Data/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmss8.pfb><C:/Users/A
+vrah/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C
+:/Users/Avrah/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy
+5.pfb><C:/Users/Avrah/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts
+/cm/cmsy7.pfb><C:/Users/Avrah/AppData/Local/Programs/MiKTeX/fonts/type1/public/
+amsfonts/cm/cmtt10.pfb><C:/Users/Avrah/AppData/Local/Programs/MiKTeX/fonts/type
+1/public/amsfonts/symbols/msbm10.pfb><C:/Users/Avrah/AppData/Local/Programs/MiK
+TeX/fonts/type1/urw/helvetic/uhvr8a.pfb><C:/Users/Avrah/AppData/Local/Programs/
+MiKTeX/fonts/type1/urw/times/utmb8a.pfb><C:/Users/Avrah/AppData/Local/Programs/
+MiKTeX/fonts/type1/urw/times/utmbi8a.pfb><C:/Users/Avrah/AppData/Local/Programs
+/MiKTeX/fonts/type1/urw/times/utmr8a.pfb><C:/Users/Avrah/AppData/Local/Programs
+/MiKTeX/fonts/type1/urw/times/utmr8a.pfb><C:/Users/Avrah/AppData/Local/Programs
+/MiKTeX/fonts/type1/urw/times/utmri8a.pfb>
+Output written on fullrefman.pdf (3958 pages, 10422767 bytes).
+PDF statistics:
+ 103572 PDF objects out of 114338 (max. 8388607)
+ 98570 compressed objects within 986 object streams
+ 32943 named destinations out of 38293 (max. 500000)
+ 20936 words of extra memory for PDF output out of 24883 (max. 10000000)
+
+
+From @eb@meyer @end|ng |rom |@u@de  Tue Jan 20 22:27:49 2026
+From: @eb@meyer @end|ng |rom |@u@de (Sebastian Meyer)
+Date: Tue, 20 Jan 2026 22:27:49 +0100
+Subject: [Rd] 
+ Error when building R (89301+) on Windows 11 - but not every
+ platform
+In-Reply-To: <CAL6gwnJ8cMh7zjxXjj6PawV1c4wRsG9800D3E7XeMXwn3NjaZA@mail.gmail.com>
+References: <CAL6gwnJ8cMh7zjxXjj6PawV1c4wRsG9800D3E7XeMXwn3NjaZA@mail.gmail.com>
+Message-ID: <28ddae6c-6aaa-44e5-b7da-e1c086f6f069@fau.de>
+
+Am 20.01.26 um 19:14 schrieb Avraham Adler:
+> The fullrefman.log file seems to end without an issue
+
+You should scan the complete log for error messages. That a PDF was 
+produced does not imply there were no errors (pdflatex is run with 
+-interaction=nonstopmode), but a non-zero exit code usually means there 
+were.
+
+> Line 127 in /trunk/doc/manual/Makefile.win is
+> opt="$(R_RD4PDF)"; \
+
+This is probably unrelated. Maybe the reported line number does not 
+match the "physical" lines in the Makefile because some recipe lines are 
+split. I believe the error happens in the first pdflatex run. You could 
+call make with --trace to see more (force printing the recipe lines 
+during execution), but you should really check the LaTeX log. I guess 
+there is a problem with one of your LaTeX installations.
+
+	Sebastian Meyer
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sun Jan 25 11:32:20 2026
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sun, 25 Jan 2026 10:32:20 +0000
+Subject: [Rd] rep.int and rep_len do not drop names attribute
+Message-ID: <5e00bdb8-23e7-4f7a-89c4-ebf2e2db79b6@sapo.pt>
+
+Hello,
+
+In the documentation for ?rep, sections Value and Note say that
+
+
+ > Value
+ > An object of the same type as x.
+
+ > rep.int and rep_len return no attributes (except the class if 
+returning a factor).
+
+ > The default method of rep gives the result names (which will almost 
+always contain duplicates) if x had names, but retains no other 
+attributes.
+
+
+ > Note
+ > Function rep.int is a simple case which was provided as a separate 
+function partly for S compatibility and partly for speed (especially 
+when names can be dropped). The performance of rep has been improved 
+since, but rep.int is still at least twice as fast when x has names.
+
+
+And this works as documented.
+
+
+y <- 1:4
+names(y) <- letters[1:4]
+class(y) <- "new_class"
+attr(y, "this") <- "that"
+
+y
+#> a b c d
+#> 1 2 3 4
+#> attr(,"class")
+#> [1] "new_class"
+#> attr(,"this")
+#> [1] "that"
+
+rep(y, 2)      # keeps names only
+#> a b c d a b c d
+#> 1 2 3 4 1 2 3 4
+
+rep.int(y, 2)  # no names and no other attributes
+#> [1] 1 2 3 4 1 2 3 4
+
+rep_len(y, 2)  # no names and no other attributes
+#> [1] 1 2
+
+
+
+But in the documentation's last example, the factor example, the names 
+attribute is not dropped.
+
+
+
+## named factor
+x <- factor(LETTERS[1:4]); names(x) <- letters[1:4]
+x
+#> a b c d
+#> A B C D
+#> Levels: A B C D
+
+rep(x, 2)
+#> a b c d a b c d
+#> A B C D A B C D
+#> Levels: A B C D
+
+rep(x, each = 2)
+#> a a b b c c d d
+#> A A B B C C D D
+#> Levels: A B C D
+
+rep.int(x, 2)  # no names  <--- Wrong comment
+#> a b c d a b c d
+#> A B C D A B C D
+#> Levels: A B C D
+
+rep_len(x, 10)
+#> a b c d a b c d a b
+#> A B C D A B C D A B
+#> Levels: A B C D
+
+
+
+Further test with attributes()
+
+
+
+rep.int(x, 2) |> attributes()
+#> $names
+#> [1] "a" "b" "c" "d" "a" "b" "c" "d"
+#>
+#> $class
+#> [1] "factor"
+#>
+#> $levels
+#> [1] "A" "B" "C" "D"
+
+rep_len(x, 10) |> attributes()
+#> $names
+#>  [1] "a" "b" "c" "d" "a" "b" "c" "d" "a" "b"
+#>
+#> $class
+#> [1] "factor"
+#>
+#> $levels
+#> [1] "A" "B" "C" "D"
+
+
+
+If I'm reading the docs right, this is wrong, isn't it?
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From bbo|ker @end|ng |rom gm@||@com  Mon Jan 26 18:45:41 2026
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Mon, 26 Jan 2026 12:45:41 -0500
+Subject: [Rd] R build BLAS/LAPACK debugging ('dgemmtr_' undefined)
+Message-ID: <8f9c5bae-6354-48e2-ae1a-5bd626fdb4d2@gmail.com>
+
+
+   I'm sure I'm doing something dumb, but having trouble building R from 
+source on PopOS! 22.04 LTS (debian/Ubuntu 'jammy' derivative): 
+"undefined symbol: dgemmtr_" when trying to load stuff from LAPACK.
+
+R appears to find stuff at the configure step (FWIW I get the same error 
+below if I take out "with-blas=-lopenblas")
+
+$ ../r-devel/configure --enable-R-shlib --enable-memory-profiling 
+--with-blas=-lopenblas | grep blas
+configure: WARNING: C23 support is unavailable
+checking for dgemm_ in -lopenblas... yes
+config.status: creating src/extra/blas/Makefile
+
+Then `make` fails with:
+
+byte-compiling package 'grDevices'
+Warning in solve.default(rgb) :
+   unable to load shared object '/home/bolker/R/r-build/modules//lapack.so':
+   /home/bolker/R/r-build/lib/libRlapack.so: undefined symbol: dgemmtr_
+Error in solve.default(rgb) : LAPACK routines cannot be loaded
+
+   I do see a NEWS item from R 4.5.0 
+https://github.com/r-devel/r-svn/blob/42e81d981a540f4afc01d1002a64ab347eb5dc15/doc/NEWS.Rd#L956-L961 
+(I thought things were working until recently, but I haven't re-built 
+from scratch in a while ...)
+
+\item This update was mainly bug fixes but contained a barely
+       documented major change.  The set of BLAS routines had been
+       unchanged since 1988, so throughout \R's history.  This update
+       introduced new BLAS routines \code{dgemmtr} and \code{zgemmtr}
+       which are now used by LAPACK routines.  This means that BLAS
+       implementations are no longer interchangeable.
+
+Section A.3.1 
+https://rstudio.github.io/r-manuals/r-admin/Essential-and-useful-other-programs-under-a-Unix-alike.html:
+
+ > The configure code checks that the external BLAS is complete (as of 
+LAPACK 3.9.1: it must include all double precision and double complex 
+routines, as well as LSAME), and appears to be usable. However, an 
+external BLAS has to be usable from a shared object (so must contain 
+position-independent code), and that is not checked.
+
+   I'd be surprised if by BLAS libraries *didn't* contain PIC, but ... ??
+
+   Suggestions for diagnostics/debugging welcome ...
+
+   cheers
+    Ben Bolker
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Mon Jan 26 19:03:32 2026
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Mon, 26 Jan 2026 13:03:32 -0500
+Subject: [Rd] R build BLAS/LAPACK debugging ('dgemmtr_' undefined)
+In-Reply-To: <8f9c5bae-6354-48e2-ae1a-5bd626fdb4d2@gmail.com>
+References: <8f9c5bae-6354-48e2-ae1a-5bd626fdb4d2@gmail.com>
+Message-ID: <CAL6gwn+tsi6nsfvo0+mEJAeHAhqcS_ew7c1S11pv4J9etcnz2w@mail.gmail.com>
+
+Possibly related, ever since that change to R, I found I have to build
+OpenBLAS *with* Lapack because of the change in where OpenBLAS
+"stores" some functions. See issue 4684 in the OpenBLAS Github repo
+[1]. As a result, you will see a much larger .a file. However, the
+processor-named and unnamed (just libopenblas.a) should now be the
+same after 4692 [2]. Either one works, at least for me,
+
+Hope that helps,
+
+Avi
+
+[1] https://github.com/OpenMathLib/OpenBLAS/issues/4684
+[2] https://github.com/OpenMathLib/OpenBLAS/discussions/4692
+
+On Mon, Jan 26, 2026 at 12:45?PM Ben Bolker <bbolker at gmail.com> wrote:
+>
+>
+>    I'm sure I'm doing something dumb, but having trouble building R from
+> source on PopOS! 22.04 LTS (debian/Ubuntu 'jammy' derivative):
+> "undefined symbol: dgemmtr_" when trying to load stuff from LAPACK.
+>
+> R appears to find stuff at the configure step (FWIW I get the same error
+> below if I take out "with-blas=-lopenblas")
+>
+> $ ../r-devel/configure --enable-R-shlib --enable-memory-profiling
+> --with-blas=-lopenblas | grep blas
+> configure: WARNING: C23 support is unavailable
+> checking for dgemm_ in -lopenblas... yes
+> config.status: creating src/extra/blas/Makefile
+>
+> Then `make` fails with:
+>
+> byte-compiling package 'grDevices'
+> Warning in solve.default(rgb) :
+>    unable to load shared object '/home/bolker/R/r-build/modules//lapack.so':
+>    /home/bolker/R/r-build/lib/libRlapack.so: undefined symbol: dgemmtr_
+> Error in solve.default(rgb) : LAPACK routines cannot be loaded
+>
+>    I do see a NEWS item from R 4.5.0
+> https://github.com/r-devel/r-svn/blob/42e81d981a540f4afc01d1002a64ab347eb5dc15/doc/NEWS.Rd#L956-L961
+> (I thought things were working until recently, but I haven't re-built
+> from scratch in a while ...)
+>
+> \item This update was mainly bug fixes but contained a barely
+>        documented major change.  The set of BLAS routines had been
+>        unchanged since 1988, so throughout \R's history.  This update
+>        introduced new BLAS routines \code{dgemmtr} and \code{zgemmtr}
+>        which are now used by LAPACK routines.  This means that BLAS
+>        implementations are no longer interchangeable.
+>
+> Section A.3.1
+> https://rstudio.github.io/r-manuals/r-admin/Essential-and-useful-other-programs-under-a-Unix-alike.html:
+>
+>  > The configure code checks that the external BLAS is complete (as of
+> LAPACK 3.9.1: it must include all double precision and double complex
+> routines, as well as LSAME), and appears to be usable. However, an
+> external BLAS has to be usable from a shared object (so must contain
+> position-independent code), and that is not checked.
+>
+>    I'd be surprised if by BLAS libraries *didn't* contain PIC, but ... ??
+>
+>    Suggestions for diagnostics/debugging welcome ...
+>
+>    cheers
+>     Ben Bolker
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From edd @end|ng |rom deb|@n@org  Mon Jan 26 19:22:54 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 26 Jan 2026 12:22:54 -0600
+Subject: [Rd] R build BLAS/LAPACK debugging ('dgemmtr_' undefined)
+In-Reply-To: <8f9c5bae-6354-48e2-ae1a-5bd626fdb4d2@gmail.com>
+References: <8f9c5bae-6354-48e2-ae1a-5bd626fdb4d2@gmail.com>
+Message-ID: <26999.45310.586136.735034@paul.eddelbuettel.com>
+
+
+On 26 January 2026 at 12:45, Ben Bolker wrote:
+| 
+|    I'm sure I'm doing something dumb, but having trouble building R from 
+| source on PopOS! 22.04 LTS (debian/Ubuntu 'jammy' derivative): 
+| "undefined symbol: dgemmtr_" when trying to load stuff from LAPACK.
+| 
+| R appears to find stuff at the configure step (FWIW I get the same error 
+| below if I take out "with-blas=-lopenblas")
+| 
+| $ ../r-devel/configure --enable-R-shlib --enable-memory-profiling 
+| --with-blas=-lopenblas | grep blas
+| configure: WARNING: C23 support is unavailable
+| checking for dgemm_ in -lopenblas... yes
+| config.status: creating src/extra/blas/Makefile
+
+FWIW in all my build script(s) (for local r-devel builds, or the Debian R
+package, or container builds from source) I explicitly set the --with-blas
+and the --with-lapack flags.  As dgemm() is (well known) LAPACK routine [1] I
+think you are "simply" forgetting to link with LAPACK here.
+
+Cheers, Dirk
+
+[1] https://www.netlib.org/lapack/explore-html/dd/d09/group__gemm_ga1e899f8453bcbfde78e91a86a2dab984.html
+
+| 
+| Then `make` fails with:
+| 
+| byte-compiling package 'grDevices'
+| Warning in solve.default(rgb) :
+|    unable to load shared object '/home/bolker/R/r-build/modules//lapack.so':
+|    /home/bolker/R/r-build/lib/libRlapack.so: undefined symbol: dgemmtr_
+| Error in solve.default(rgb) : LAPACK routines cannot be loaded
+| 
+|    I do see a NEWS item from R 4.5.0 
+| https://github.com/r-devel/r-svn/blob/42e81d981a540f4afc01d1002a64ab347eb5dc15/doc/NEWS.Rd#L956-L961 
+| (I thought things were working until recently, but I haven't re-built 
+| from scratch in a while ...)
+| 
+| \item This update was mainly bug fixes but contained a barely
+|        documented major change.  The set of BLAS routines had been
+|        unchanged since 1988, so throughout \R's history.  This update
+|        introduced new BLAS routines \code{dgemmtr} and \code{zgemmtr}
+|        which are now used by LAPACK routines.  This means that BLAS
+|        implementations are no longer interchangeable.
+| 
+| Section A.3.1 
+| https://rstudio.github.io/r-manuals/r-admin/Essential-and-useful-other-programs-under-a-Unix-alike.html:
+| 
+|  > The configure code checks that the external BLAS is complete (as of 
+| LAPACK 3.9.1: it must include all double precision and double complex 
+| routines, as well as LSAME), and appears to be usable. However, an 
+| external BLAS has to be usable from a shared object (so must contain 
+| position-independent code), and that is not checked.
+| 
+|    I'd be surprised if by BLAS libraries *didn't* contain PIC, but ... ??
+| 
+|    Suggestions for diagnostics/debugging welcome ...
+| 
+|    cheers
+|     Ben Bolker
+| 
+| ______________________________________________
+| R-devel at r-project.org mailing list
+| https://stat.ethz.ch/mailman/listinfo/r-devel
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From bbo|ker @end|ng |rom gm@||@com  Mon Jan 26 19:29:47 2026
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Mon, 26 Jan 2026 13:29:47 -0500
+Subject: [Rd] R build BLAS/LAPACK debugging ('dgemmtr_' undefined)
+In-Reply-To: <26999.45310.586136.735034@paul.eddelbuettel.com>
+References: <8f9c5bae-6354-48e2-ae1a-5bd626fdb4d2@gmail.com>
+ <26999.45310.586136.735034@paul.eddelbuettel.com>
+Message-ID: <fb3d57b1-3603-4aa9-8bf0-cf1415669e15@gmail.com>
+
+   Hmm, good idea but that isn't seeming to help me?
+
+../r-devel/configure --enable-R-shlib --enable-memory-profiling 
+--with-blas=-lopenblas --with-lapack=-llapack | egrep "(lapack|blas)"
+
+configure: WARNING: C23 support is unavailable
+checking for dgemm_ in -lopenblas... yes
+checking for dpstrf_ in -llapack... yes
+config.status: creating src/extra/blas/Makefile
+config.status: creating src/modules/lapack/Makefile
+
+    Then `make` gives me the same error.  (I guess I could look at the 
+rocker Dockerfiles and try to copy them exactly?)
+
+   cheers
+    Ben
+
+
+
+On 2026-01-26 1:22 p.m., Dirk Eddelbuettel wrote:
+> 
+> On 26 January 2026 at 12:45, Ben Bolker wrote:
+> |
+> |    I'm sure I'm doing something dumb, but having trouble building R from
+> | source on PopOS! 22.04 LTS (debian/Ubuntu 'jammy' derivative):
+> | "undefined symbol: dgemmtr_" when trying to load stuff from LAPACK.
+> |
+> | R appears to find stuff at the configure step (FWIW I get the same error
+> | below if I take out "with-blas=-lopenblas")
+> |
+> | $ ../r-devel/configure --enable-R-shlib --enable-memory-profiling
+> | --with-blas=-lopenblas | grep blas
+> | configure: WARNING: C23 support is unavailable
+> | checking for dgemm_ in -lopenblas... yes
+> | config.status: creating src/extra/blas/Makefile
+> 
+> FWIW in all my build script(s) (for local r-devel builds, or the Debian R
+> package, or container builds from source) I explicitly set the --with-blas
+> and the --with-lapack flags.  As dgemm() is (well known) LAPACK routine [1] I
+> think you are "simply" forgetting to link with LAPACK here.
+> 
+> Cheers, Dirk
+> 
+> [1] https://www.netlib.org/lapack/explore-html/dd/d09/group__gemm_ga1e899f8453bcbfde78e91a86a2dab984.html
+> 
+> |
+> | Then `make` fails with:
+> |
+> | byte-compiling package 'grDevices'
+> | Warning in solve.default(rgb) :
+> |    unable to load shared object '/home/bolker/R/r-build/modules//lapack.so':
+> |    /home/bolker/R/r-build/lib/libRlapack.so: undefined symbol: dgemmtr_
+> | Error in solve.default(rgb) : LAPACK routines cannot be loaded
+> |
+> |    I do see a NEWS item from R 4.5.0
+> | https://github.com/r-devel/r-svn/blob/42e81d981a540f4afc01d1002a64ab347eb5dc15/doc/NEWS.Rd#L956-L961
+> | (I thought things were working until recently, but I haven't re-built
+> | from scratch in a while ...)
+> |
+> | \item This update was mainly bug fixes but contained a barely
+> |        documented major change.  The set of BLAS routines had been
+> |        unchanged since 1988, so throughout \R's history.  This update
+> |        introduced new BLAS routines \code{dgemmtr} and \code{zgemmtr}
+> |        which are now used by LAPACK routines.  This means that BLAS
+> |        implementations are no longer interchangeable.
+> |
+> | Section A.3.1
+> | https://rstudio.github.io/r-manuals/r-admin/Essential-and-useful-other-programs-under-a-Unix-alike.html:
+> |
+> |  > The configure code checks that the external BLAS is complete (as of
+> | LAPACK 3.9.1: it must include all double precision and double complex
+> | routines, as well as LSAME), and appears to be usable. However, an
+> | external BLAS has to be usable from a shared object (so must contain
+> | position-independent code), and that is not checked.
+> |
+> |    I'd be surprised if by BLAS libraries *didn't* contain PIC, but ... ??
+> |
+> |    Suggestions for diagnostics/debugging welcome ...
+> |
+> |    cheers
+> |     Ben Bolker
+> |
+> | ______________________________________________
+> | R-devel at r-project.org mailing list
+> | https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Associate Chair (Graduate), Department of Mathematics & Statistics
+Director, School of Computational Science and Engineering
+> E-mail is sent at my convenience; I don't expect replies outside of working hours.
+
+
+From edd @end|ng |rom deb|@n@org  Mon Jan 26 19:52:19 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 26 Jan 2026 12:52:19 -0600
+Subject: [Rd] R build BLAS/LAPACK debugging ('dgemmtr_' undefined)
+In-Reply-To: <fb3d57b1-3603-4aa9-8bf0-cf1415669e15@gmail.com>
+References: <8f9c5bae-6354-48e2-ae1a-5bd626fdb4d2@gmail.com>
+ <26999.45310.586136.735034@paul.eddelbuettel.com>
+ <fb3d57b1-3603-4aa9-8bf0-cf1415669e15@gmail.com>
+Message-ID: <26999.47075.896455.928334@paul.eddelbuettel.com>
+
+
+On 26 January 2026 at 13:29, Ben Bolker wrote:
+|    Hmm, good idea but that isn't seeming to help me?
+| 
+| ../r-devel/configure --enable-R-shlib --enable-memory-profiling 
+| --with-blas=-lopenblas --with-lapack=-llapack | egrep "(lapack|blas)"
+| 
+| configure: WARNING: C23 support is unavailable
+| checking for dgemm_ in -lopenblas... yes
+| checking for dpstrf_ in -llapack... yes
+| config.status: creating src/extra/blas/Makefile
+| config.status: creating src/modules/lapack/Makefile
+| 
+|     Then `make` gives me the same error.  (I guess I could look at the 
+| rocker Dockerfiles and try to copy them exactly?)
+
+Couple of things to try:
+
+1) I would make sure you do have the corresponding -dev packages for
+building, not just the runtime packages. I cannot look onto your machines.
+
+2) I would simplify; my builds actually just say --with-blas --with-lapack as
+the Debian (and Ubuntu and PopOS!) package management sets the right default,
+usually. So if you want openblas, install the corresponding packages (and
+these days there are several).
+
+3) If you are really lost or mad, follow reproducible steps. My Debian
+package setup is public, my Dockerfiles are public, I am sure the R
+Installation and Admin manual has things to say.
+
+Lastly, we probably should have this chat on r-sig-debian to not bore our
+good friends using windows, macos, fedora, ...
+
+Dirk
+
+| 
+|    cheers
+|     Ben
+| 
+| 
+| 
+| On 2026-01-26 1:22 p.m., Dirk Eddelbuettel wrote:
+| > 
+| > On 26 January 2026 at 12:45, Ben Bolker wrote:
+| > |
+| > |    I'm sure I'm doing something dumb, but having trouble building R from
+| > | source on PopOS! 22.04 LTS (debian/Ubuntu 'jammy' derivative):
+| > | "undefined symbol: dgemmtr_" when trying to load stuff from LAPACK.
+| > |
+| > | R appears to find stuff at the configure step (FWIW I get the same error
+| > | below if I take out "with-blas=-lopenblas")
+| > |
+| > | $ ../r-devel/configure --enable-R-shlib --enable-memory-profiling
+| > | --with-blas=-lopenblas | grep blas
+| > | configure: WARNING: C23 support is unavailable
+| > | checking for dgemm_ in -lopenblas... yes
+| > | config.status: creating src/extra/blas/Makefile
+| > 
+| > FWIW in all my build script(s) (for local r-devel builds, or the Debian R
+| > package, or container builds from source) I explicitly set the --with-blas
+| > and the --with-lapack flags.  As dgemm() is (well known) LAPACK routine [1] I
+| > think you are "simply" forgetting to link with LAPACK here.
+| > 
+| > Cheers, Dirk
+| > 
+| > [1] https://www.netlib.org/lapack/explore-html/dd/d09/group__gemm_ga1e899f8453bcbfde78e91a86a2dab984.html
+| > 
+| > |
+| > | Then `make` fails with:
+| > |
+| > | byte-compiling package 'grDevices'
+| > | Warning in solve.default(rgb) :
+| > |    unable to load shared object '/home/bolker/R/r-build/modules//lapack.so':
+| > |    /home/bolker/R/r-build/lib/libRlapack.so: undefined symbol: dgemmtr_
+| > | Error in solve.default(rgb) : LAPACK routines cannot be loaded
+| > |
+| > |    I do see a NEWS item from R 4.5.0
+| > | https://github.com/r-devel/r-svn/blob/42e81d981a540f4afc01d1002a64ab347eb5dc15/doc/NEWS.Rd#L956-L961
+| > | (I thought things were working until recently, but I haven't re-built
+| > | from scratch in a while ...)
+| > |
+| > | \item This update was mainly bug fixes but contained a barely
+| > |        documented major change.  The set of BLAS routines had been
+| > |        unchanged since 1988, so throughout \R's history.  This update
+| > |        introduced new BLAS routines \code{dgemmtr} and \code{zgemmtr}
+| > |        which are now used by LAPACK routines.  This means that BLAS
+| > |        implementations are no longer interchangeable.
+| > |
+| > | Section A.3.1
+| > | https://rstudio.github.io/r-manuals/r-admin/Essential-and-useful-other-programs-under-a-Unix-alike.html:
+| > |
+| > |  > The configure code checks that the external BLAS is complete (as of
+| > | LAPACK 3.9.1: it must include all double precision and double complex
+| > | routines, as well as LSAME), and appears to be usable. However, an
+| > | external BLAS has to be usable from a shared object (so must contain
+| > | position-independent code), and that is not checked.
+| > |
+| > |    I'd be surprised if by BLAS libraries *didn't* contain PIC, but ... ??
+| > |
+| > |    Suggestions for diagnostics/debugging welcome ...
+| > |
+| > |    cheers
+| > |     Ben Bolker
+| > |
+| > | ______________________________________________
+| > | R-devel at r-project.org mailing list
+| > | https://stat.ethz.ch/mailman/listinfo/r-devel
+| > 
+| 
+| -- 
+| Dr. Benjamin Bolker
+| Professor, Mathematics & Statistics and Biology, McMaster University
+| Associate Chair (Graduate), Department of Mathematics & Statistics
+| Director, School of Computational Science and Engineering
+| > E-mail is sent at my convenience; I don't expect replies outside of working hours.
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From edd @end|ng |rom deb|@n@org  Mon Jan 26 20:20:33 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 26 Jan 2026 13:20:33 -0600
+Subject: [Rd] R build BLAS/LAPACK debugging ('dgemmtr_' undefined)
+In-Reply-To: <26999.47075.896455.928334@paul.eddelbuettel.com>
+References: <8f9c5bae-6354-48e2-ae1a-5bd626fdb4d2@gmail.com>
+ <26999.45310.586136.735034@paul.eddelbuettel.com>
+ <fb3d57b1-3603-4aa9-8bf0-cf1415669e15@gmail.com>
+ <26999.47075.896455.928334@paul.eddelbuettel.com>
+Message-ID: <26999.48769.995104.137158@paul.eddelbuettel.com>
+
+
+On 26 January 2026 at 12:52, Dirk Eddelbuettel wrote:
+| 
+| On 26 January 2026 at 13:29, Ben Bolker wrote:
+| |    Hmm, good idea but that isn't seeming to help me?
+| | 
+| | ../r-devel/configure --enable-R-shlib --enable-memory-profiling 
+| | --with-blas=-lopenblas --with-lapack=-llapack | egrep "(lapack|blas)"
+| | 
+| | configure: WARNING: C23 support is unavailable
+| | checking for dgemm_ in -lopenblas... yes
+| | checking for dpstrf_ in -llapack... yes
+| | config.status: creating src/extra/blas/Makefile
+| | config.status: creating src/modules/lapack/Makefile
+| | 
+| |     Then `make` gives me the same error.  (I guess I could look at the 
+| | rocker Dockerfiles and try to copy them exactly?)
+| 
+| Couple of things to try:
+| 
+| 1) I would make sure you do have the corresponding -dev packages for
+| building, not just the runtime packages. I cannot look onto your machines.
+| 
+| 2) I would simplify; my builds actually just say --with-blas --with-lapack as
+| the Debian (and Ubuntu and PopOS!) package management sets the right default,
+| usually. So if you want openblas, install the corresponding packages (and
+| these days there are several).
+| 
+| 3) If you are really lost or mad, follow reproducible steps. My Debian
+| package setup is public, my Dockerfiles are public, I am sure the R
+| Installation and Admin manual has things to say.
+
+4) Kurt's configure script is also very good. You can just run re-run
+`./configure` and it should give you helpful output.
+
+Dirk
+
+| Lastly, we probably should have this chat on r-sig-debian to not bore our
+| good friends using windows, macos, fedora, ...
+| 
+| Dirk
+| 
+| | 
+| |    cheers
+| |     Ben
+| | 
+| | 
+| | 
+| | On 2026-01-26 1:22 p.m., Dirk Eddelbuettel wrote:
+| | > 
+| | > On 26 January 2026 at 12:45, Ben Bolker wrote:
+| | > |
+| | > |    I'm sure I'm doing something dumb, but having trouble building R from
+| | > | source on PopOS! 22.04 LTS (debian/Ubuntu 'jammy' derivative):
+| | > | "undefined symbol: dgemmtr_" when trying to load stuff from LAPACK.
+| | > |
+| | > | R appears to find stuff at the configure step (FWIW I get the same error
+| | > | below if I take out "with-blas=-lopenblas")
+| | > |
+| | > | $ ../r-devel/configure --enable-R-shlib --enable-memory-profiling
+| | > | --with-blas=-lopenblas | grep blas
+| | > | configure: WARNING: C23 support is unavailable
+| | > | checking for dgemm_ in -lopenblas... yes
+| | > | config.status: creating src/extra/blas/Makefile
+| | > 
+| | > FWIW in all my build script(s) (for local r-devel builds, or the Debian R
+| | > package, or container builds from source) I explicitly set the --with-blas
+| | > and the --with-lapack flags.  As dgemm() is (well known) LAPACK routine [1] I
+| | > think you are "simply" forgetting to link with LAPACK here.
+| | > 
+| | > Cheers, Dirk
+| | > 
+| | > [1] https://www.netlib.org/lapack/explore-html/dd/d09/group__gemm_ga1e899f8453bcbfde78e91a86a2dab984.html
+| | > 
+| | > |
+| | > | Then `make` fails with:
+| | > |
+| | > | byte-compiling package 'grDevices'
+| | > | Warning in solve.default(rgb) :
+| | > |    unable to load shared object '/home/bolker/R/r-build/modules//lapack.so':
+| | > |    /home/bolker/R/r-build/lib/libRlapack.so: undefined symbol: dgemmtr_
+| | > | Error in solve.default(rgb) : LAPACK routines cannot be loaded
+| | > |
+| | > |    I do see a NEWS item from R 4.5.0
+| | > | https://github.com/r-devel/r-svn/blob/42e81d981a540f4afc01d1002a64ab347eb5dc15/doc/NEWS.Rd#L956-L961
+| | > | (I thought things were working until recently, but I haven't re-built
+| | > | from scratch in a while ...)
+| | > |
+| | > | \item This update was mainly bug fixes but contained a barely
+| | > |        documented major change.  The set of BLAS routines had been
+| | > |        unchanged since 1988, so throughout \R's history.  This update
+| | > |        introduced new BLAS routines \code{dgemmtr} and \code{zgemmtr}
+| | > |        which are now used by LAPACK routines.  This means that BLAS
+| | > |        implementations are no longer interchangeable.
+| | > |
+| | > | Section A.3.1
+| | > | https://rstudio.github.io/r-manuals/r-admin/Essential-and-useful-other-programs-under-a-Unix-alike.html:
+| | > |
+| | > |  > The configure code checks that the external BLAS is complete (as of
+| | > | LAPACK 3.9.1: it must include all double precision and double complex
+| | > | routines, as well as LSAME), and appears to be usable. However, an
+| | > | external BLAS has to be usable from a shared object (so must contain
+| | > | position-independent code), and that is not checked.
+| | > |
+| | > |    I'd be surprised if by BLAS libraries *didn't* contain PIC, but ... ??
+| | > |
+| | > |    Suggestions for diagnostics/debugging welcome ...
+| | > |
+| | > |    cheers
+| | > |     Ben Bolker
+| | > |
+| | > | ______________________________________________
+| | > | R-devel at r-project.org mailing list
+| | > | https://stat.ethz.ch/mailman/listinfo/r-devel
+| | > 
+| | 
+| | -- 
+| | Dr. Benjamin Bolker
+| | Professor, Mathematics & Statistics and Biology, McMaster University
+| | Associate Chair (Graduate), Department of Mathematics & Statistics
+| | Director, School of Computational Science and Engineering
+| | > E-mail is sent at my convenience; I don't expect replies outside of working hours.
+| 
+| -- 
+| dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Jan 26 20:28:07 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 26 Jan 2026 22:28:07 +0300
+Subject: [Rd] R build BLAS/LAPACK debugging ('dgemmtr_' undefined)
+In-Reply-To: <8f9c5bae-6354-48e2-ae1a-5bd626fdb4d2@gmail.com>
+References: <8f9c5bae-6354-48e2-ae1a-5bd626fdb4d2@gmail.com>
+Message-ID: <20260126222807.3b0ece4a@Tarkus>
+
+? Mon, 26 Jan 2026 12:45:41 -0500
+Ben Bolker <bbolker at gmail.com> ?????:
+
+> Then `make` fails with:
+> 
+> byte-compiling package 'grDevices'
+> Warning in solve.default(rgb) :
+>    unable to load shared object
+> '/home/bolker/R/r-build/modules//lapack.so':
+> /home/bolker/R/r-build/lib/libRlapack.so: undefined symbol: dgemmtr_
+> Error in solve.default(rgb) : LAPACK routines cannot be loaded
+
+.../configure --with-2025blas should help with this by linking the
+subroutines missing in older versions of OpenBLAS but required by
+R-bundled LAPACK from a separate file.
+
+-- 
+Best regards,
+Ivan
+
+
+From bbo|ker @end|ng |rom gm@||@com  Mon Jan 26 21:17:18 2026
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Mon, 26 Jan 2026 15:17:18 -0500
+Subject: [Rd] R build BLAS/LAPACK debugging ('dgemmtr_' undefined)
+In-Reply-To: <20260126222807.3b0ece4a@Tarkus>
+References: <8f9c5bae-6354-48e2-ae1a-5bd626fdb4d2@gmail.com>
+ <20260126222807.3b0ece4a@Tarkus>
+Message-ID: <68264b1b-2df9-4cd3-b8e5-bb4c03ebde9c@gmail.com>
+
+   Thanks everyone, this is working now (I did a few too many things at 
+once to be sure: (1) installed lopenblas-devel; (2) used 
+--with-2025blas; (3) tried `make` without running in parallel, i.e. not 
+`make -j 10` ...)
+
+   cheers
+    Ben Bolker
+
+On 2026-01-26 2:28 p.m., Ivan Krylov wrote:
+> ? Mon, 26 Jan 2026 12:45:41 -0500
+> Ben Bolker <bbolker at gmail.com> ?????:
+> 
+>> Then `make` fails with:
+>>
+>> byte-compiling package 'grDevices'
+>> Warning in solve.default(rgb) :
+>>     unable to load shared object
+>> '/home/bolker/R/r-build/modules//lapack.so':
+>> /home/bolker/R/r-build/lib/libRlapack.so: undefined symbol: dgemmtr_
+>> Error in solve.default(rgb) : LAPACK routines cannot be loaded
+> 
+> .../configure --with-2025blas should help with this by linking the
+> subroutines missing in older versions of OpenBLAS but required by
+> R-bundled LAPACK from a separate file.
+>
+
+
+From @eb@meyer @end|ng |rom |@u@de  Tue Jan 27 10:41:08 2026
+From: @eb@meyer @end|ng |rom |@u@de (Sebastian Meyer)
+Date: Tue, 27 Jan 2026 10:41:08 +0100
+Subject: [Rd] rep.int and rep_len do not drop names attribute
+In-Reply-To: <5e00bdb8-23e7-4f7a-89c4-ebf2e2db79b6@sapo.pt>
+References: <5e00bdb8-23e7-4f7a-89c4-ebf2e2db79b6@sapo.pt>
+Message-ID: <98a30a7e-944f-4553-88b1-c2d9504d1771@fau.de>
+
+This is a consequence of the following change in R 4.0.0 (r77905):
+
+     ? When internal dispatch for ?rep.int()? and ?rep_len()?
+       fails, there is an attempt to dispatch on the equivalent
+       call to ?rep()?.
+
+I believe it wasn't intended to change the handling of factors and I 
+think it would be desirable to restore the original (and still 
+documented) behavior of dropping names for rep.int(<factor>) and 
+rep_len(<factor>), so skip the (early) 'rep' fallback if `inherits(s, 
+"factor")`.
+
+It would be good to report this in R's Bugzilla 
+<https://bugs.R-project.org/>, so there is a PR# for future reference. 
+At a first glance the patch looks simple (and should include a 
+regression test).
+
+	Sebastian Meyer
+
+
+Am 25.01.26 um 11:32 schrieb Rui Barradas:
+> Hello,
+> 
+> In the documentation for ?rep, sections Value and Note say that
+> 
+> 
+>  > Value
+>  > An object of the same type as x.
+> 
+>  > rep.int and rep_len return no attributes (except the class if 
+> returning a factor).
+> 
+>  > The default method of rep gives the result names (which will almost 
+> always contain duplicates) if x had names, but retains no other attributes.
+> 
+> 
+>  > Note
+>  > Function rep.int is a simple case which was provided as a separate 
+> function partly for S compatibility and partly for speed (especially 
+> when names can be dropped). The performance of rep has been improved 
+> since, but rep.int is still at least twice as fast when x has names.
+> 
+> 
+> And this works as documented.
+> 
+> 
+> y <- 1:4
+> names(y) <- letters[1:4]
+> class(y) <- "new_class"
+> attr(y, "this") <- "that"
+> 
+> y
+> #> a b c d
+> #> 1 2 3 4
+> #> attr(,"class")
+> #> [1] "new_class"
+> #> attr(,"this")
+> #> [1] "that"
+> 
+> rep(y, 2)????? # keeps names only
+> #> a b c d a b c d
+> #> 1 2 3 4 1 2 3 4
+> 
+> rep.int(y, 2)? # no names and no other attributes
+> #> [1] 1 2 3 4 1 2 3 4
+> 
+> rep_len(y, 2)? # no names and no other attributes
+> #> [1] 1 2
+> 
+> 
+> 
+> But in the documentation's last example, the factor example, the names 
+> attribute is not dropped.
+> 
+> 
+> 
+> ## named factor
+> x <- factor(LETTERS[1:4]); names(x) <- letters[1:4]
+> x
+> #> a b c d
+> #> A B C D
+> #> Levels: A B C D
+> 
+> rep(x, 2)
+> #> a b c d a b c d
+> #> A B C D A B C D
+> #> Levels: A B C D
+> 
+> rep(x, each = 2)
+> #> a a b b c c d d
+> #> A A B B C C D D
+> #> Levels: A B C D
+> 
+> rep.int(x, 2)? # no names? <--- Wrong comment
+> #> a b c d a b c d
+> #> A B C D A B C D
+> #> Levels: A B C D
+> 
+> rep_len(x, 10)
+> #> a b c d a b c d a b
+> #> A B C D A B C D A B
+> #> Levels: A B C D
+> 
+> 
+> 
+> Further test with attributes()
+> 
+> 
+> 
+> rep.int(x, 2) |> attributes()
+> #> $names
+> #> [1] "a" "b" "c" "d" "a" "b" "c" "d"
+> #>
+> #> $class
+> #> [1] "factor"
+> #>
+> #> $levels
+> #> [1] "A" "B" "C" "D"
+> 
+> rep_len(x, 10) |> attributes()
+> #> $names
+> #>? [1] "a" "b" "c" "d" "a" "b" "c" "d" "a" "b"
+> #>
+> #> $class
+> #> [1] "factor"
+> #>
+> #> $levels
+> #> [1] "A" "B" "C" "D"
+> 
+> 
+> 
+> If I'm reading the docs right, this is wrong, isn't it?
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Tue Jan 27 16:46:47 2026
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Tue, 27 Jan 2026 10:46:47 -0500
+Subject: [Rd] 
+ Error when building R (89301+) on Windows 11 - but not every
+ platform
+In-Reply-To: <28ddae6c-6aaa-44e5-b7da-e1c086f6f069@fau.de>
+References: <CAL6gwnJ8cMh7zjxXjj6PawV1c4wRsG9800D3E7XeMXwn3NjaZA@mail.gmail.com>
+ <28ddae6c-6aaa-44e5-b7da-e1c086f6f069@fau.de>
+Message-ID: <CAL6gwnK5gPVk0N+6o4vOEF1Oqspii6GsFMYrJVbTph0HdgzLQQ@mail.gmail.com>
+
+On Tue, Jan 20, 2026 at 4:27?PM Sebastian Meyer <seb.meyer at fau.de> wrote:
+>
+> Am 20.01.26 um 19:14 schrieb Avraham Adler:
+> > The fullrefman.log file seems to end without an issue
+>
+> You should scan the complete log for error messages. That a PDF was
+> produced does not imply there were no errors (pdflatex is run with
+> -interaction=nonstopmode), but a non-zero exit code usually means there
+> were.
+>
+> > Line 127 in /trunk/doc/manual/Makefile.win is
+> > opt="$(R_RD4PDF)"; \
+>
+> This is probably unrelated. Maybe the reported line number does not
+> match the "physical" lines in the Makefile because some recipe lines are
+> split. I believe the error happens in the first pdflatex run. You could
+> call make with --trace to see more (force printing the recipe lines
+> during execution), but you should really check the LaTeX log. I guess
+> there is a problem with one of your LaTeX installations.
+>
+>         Sebastian Meyer
+>
+
+Thank you, Sebastian, you were correct. I am not sure precisely what
+the error was, but uninstalling MikTeX and reinstalling it into an
+IT-approved whitelisted folder seems to have solved the issue.
+
+Thank you again,
+
+Avi
+
+
+From gpoo|e @end|ng |rom mont@n@@edu  Tue Jan 27 21:58:32 2026
+From: gpoo|e @end|ng |rom mont@n@@edu (Poole, Geoffrey)
+Date: Tue, 27 Jan 2026 20:58:32 +0000
+Subject: [Rd] Incorrect vector recycling in rare circumstance
+Message-ID: <4f32cd3b-d0b1-4708-8b96-b1f6e717d107@montana.edu>
+
+Synopsis:  In multistep expressions, e.g.:
+
+fun <- function(a, b, c) (a + b) / c
+
+`fun` returns an unexpected and non-intuative result when:
+ - a, b, and c are vectors
+ - c is the longest vector
+ - the lengths of a, b, and c are not even multiples of one another.
+
+In this case, because of the way vectors are being recycled:
+
+> fun(a, b, c)
+
+returns a different result from:
+
+> mapply(fun, a, b, c)
+
+Description:
+
+The R documentation in "An Introduction to R" Section 2.2 states:
+
+  "Vectors occurring in the same expression need not all be of the same length.
+  If they are not, the value of the expression is a vector with the same length
+  as the longest vector which occurs in the expression. Shorter vectors in the
+  expression are recycled as often as need be (perhaps fractionally) until they
+  match the length of the longest vector."
+
+Based on this documentation, I would expect that all vectors in an expression
+are recycled to match the length of the longest vector before element-wise
+operations are performed. However, R appears to perform recycling independently
+at each operation, which produces different results than the documented
+behavior would suggest.
+
+Minimal reproducible example:
+
+```r
+# Simple function demonstrating the issue
+f <- function(a, b, c) {
+  (a + b) / c
+}
+
+# Vectors of different lengths (not multiples of each other)
+a <- c(1, 2, 3, 4)
+b <- c(10, 20, 30)
+c <- c(100, 200, 300, 400, 500, 600, 700)
+
+# Direct call
+direct_result <- f(a, b, c)
+
+# mapply (recycles all inputs to length 7 first, then applies element-wise)
+mapply_result <- mapply(f, a, b, c)
+
+# Compare results
+cat("Direct call result:\n")
+print(direct_result)
+
+cat("\nmapply result:\n")
+print(mapply_result)
+
+cat("\nResults are identical:", identical(direct_result, mapply_result), "\n")
+
+sessionInfo()
+```
+
+Output:
+
+> f <- function(a, b, c) {
++   (a + b) / c
++ }
+>
+> a <- c(1, 2, 3, 4)
+> b <- c(10, 20, 30)
+> c <- c(100, 200, 300, 400, 500, 600, 700)
+>
+> direct_result <- f(a, b, c)
+Warning messages:
+1: In a + b :
+  longer object length is not a multiple of shorter object length
+2: In (a + b)/c :
+  longer object length is not a multiple of shorter object length
+>
+> mapply_result <- mapply(f, a, b, c)
+Warning messages:
+1: In mapply(f, a, b, c) :
+  longer argument not a multiple of length of shorter
+2: In mapply(f, a, b, c) :
+  longer argument not a multiple of length of shorter
+>
+> print(direct_result)
+[1] 0.11000000 0.11000000 0.11000000 0.03500000 0.02200000 0.03666667 0.04714286
+>
+> print(mapply_result)
+[1] 0.11000000 0.11000000 0.11000000 0.03500000 0.04200000 0.05333333 0.01857143
+
+> cat("\nResults are identical:", identical(direct_result, mapply_result), "\n")
+Results are identical: FALSE
+>
+> sessionInfo()
+R version 4.3.3 (2024-02-29)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Linux Mint 22.2
+
+Matrix products: default
+BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0
+LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.12.0
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C               LC_TIME=en_US.UTF-8
+ [4] LC_COLLATE=en_US.UTF-8     LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                  LC_ADDRESS=C
+[10] LC_TELEPHONE=C             LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C
+
+time zone: America/Denver
+tzcode source: system (glibc)
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.3.3 tools_4.3.3
+
+Explanation of what is happening:
+
+In the direct call, recycling occurs independently at each binary operation:
+
+1. `a + b` is evaluated first: `a` (length 4) and `b` (length 3) are recycled
+   to length 4, producing `[11, 22, 33, 14]`
+
+2. The length-4 result is then divided by `c` (length 7): the length-4 result
+   is recycled to length 7 as `[11, 22, 33, 14, 11, 22, 33]`, then divided by `c`
+
+3. Final result: `[0.11, 0.11, 0.11, 0.035, 0.022, 0.0367, 0.0471]`
+
+However, based on my reading of the documentation, I would expect all three
+vectors (`a`, `b`, and `c`) to be recycled to length 7 (the length of the
+longest vector in the expression) before any operations are performed, which
+is what `mapply` does:
+
+- `a` recycled to length 7: `[1, 2, 3, 4, 1, 2, 3]`
+- `b` recycled to length 7: `[10, 20, 30, 10, 20, 30, 10]`
+- `c` unchanged: `[100, 200, 300, 400, 500, 600, 700]`
+- Then `(a + b) / c` computed element-wise: `[0.11, 0.11, 0.11, 0.035, 0.042, 0.0533, 0.0186]`
+
+The key difference is at positions 5, 6, and 7. In the direct call, the
+intermediate result `(a + b)` has length 4 and is recycled independently of
+the original vectors when dividing by `c`.
+
+Question:
+
+Does this example represent a bug in R's recycling behavior, or is the
+documentation in Section 2.2 not intended to describe how recycling works in
+expressions with multiple binary operations? If the current behavior is
+intentional, could the documentation be clarified to explain that recycling
+occurs at each binary operation rather than globally across the expression?
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Jan 27 22:51:53 2026
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 27 Jan 2026 16:51:53 -0500
+Subject: [Rd] Incorrect vector recycling in rare circumstance
+In-Reply-To: <4f32cd3b-d0b1-4708-8b96-b1f6e717d107@montana.edu>
+References: <4f32cd3b-d0b1-4708-8b96-b1f6e717d107@montana.edu>
+Message-ID: <b6e7b06c-bf33-4c77-98b7-61d23b4b54d3@gmail.com>
+
+My first reaction was that you shouldn't use the Introduction document 
+as a reference, you should be using the Language Definition or the man 
+pages.
+
+The Language Definition gives an example of adding two vectors, and 
+describes the result there.  It doesn't talk about recycling rules for 
+more complex expressions.
+
+The man page `?Arithmetic` gives a more complete description, also in 
+terms of binary operations, not complex expressions.
+
+So I think things are behaving as designed, and the Introduction 
+document describes it ambiguously, but not incorrectly strictly 
+speaking, since it doesn't say exactly how the recycling will occur. 
+Maybe this would be a clearer description:
+
+"Vectors occurring in the same expression need not all be of the same 
+length.  If they are not, the value of the expression is a vector with 
+the same length as the longest vector which occurs in the expression. 
+Recycling occurs in each binary operation:  the shorter vector is 
+recycled as often as need be (perhaps fractionally) until it matches the 
+length of the longer vector."
+
+Duncan Murdoch
+
+On 2026-01-27 3:58 p.m., Poole, Geoffrey via R-devel wrote:
+> Synopsis:  In multistep expressions, e.g.:
+> 
+> fun <- function(a, b, c) (a + b) / c
+> 
+> `fun` returns an unexpected and non-intuative result when:
+>   - a, b, and c are vectors
+>   - c is the longest vector
+>   - the lengths of a, b, and c are not even multiples of one another.
+> 
+> In this case, because of the way vectors are being recycled:
+> 
+>> fun(a, b, c)
+> 
+> returns a different result from:
+> 
+>> mapply(fun, a, b, c)
+> 
+> Description:
+> 
+> The R documentation in "An Introduction to R" Section 2.2 states:
+> 
+>    "Vectors occurring in the same expression need not all be of the same length.
+>    If they are not, the value of the expression is a vector with the same length
+>    as the longest vector which occurs in the expression. Shorter vectors in the
+>    expression are recycled as often as need be (perhaps fractionally) until they
+>    match the length of the longest vector."
+> 
+> Based on this documentation, I would expect that all vectors in an expression
+> are recycled to match the length of the longest vector before element-wise
+> operations are performed. However, R appears to perform recycling independently
+> at each operation, which produces different results than the documented
+> behavior would suggest.
+> 
+> Minimal reproducible example:
+> 
+> ```r
+> # Simple function demonstrating the issue
+> f <- function(a, b, c) {
+>    (a + b) / c
+> }
+> 
+> # Vectors of different lengths (not multiples of each other)
+> a <- c(1, 2, 3, 4)
+> b <- c(10, 20, 30)
+> c <- c(100, 200, 300, 400, 500, 600, 700)
+> 
+> # Direct call
+> direct_result <- f(a, b, c)
+> 
+> # mapply (recycles all inputs to length 7 first, then applies element-wise)
+> mapply_result <- mapply(f, a, b, c)
+> 
+> # Compare results
+> cat("Direct call result:\n")
+> print(direct_result)
+> 
+> cat("\nmapply result:\n")
+> print(mapply_result)
+> 
+> cat("\nResults are identical:", identical(direct_result, mapply_result), "\n")
+> 
+> sessionInfo()
+> ```
+> 
+> Output:
+> 
+>> f <- function(a, b, c) {
+> +   (a + b) / c
+> + }
+>>
+>> a <- c(1, 2, 3, 4)
+>> b <- c(10, 20, 30)
+>> c <- c(100, 200, 300, 400, 500, 600, 700)
+>>
+>> direct_result <- f(a, b, c)
+> Warning messages:
+> 1: In a + b :
+>    longer object length is not a multiple of shorter object length
+> 2: In (a + b)/c :
+>    longer object length is not a multiple of shorter object length
+>>
+>> mapply_result <- mapply(f, a, b, c)
+> Warning messages:
+> 1: In mapply(f, a, b, c) :
+>    longer argument not a multiple of length of shorter
+> 2: In mapply(f, a, b, c) :
+>    longer argument not a multiple of length of shorter
+>>
+>> print(direct_result)
+> [1] 0.11000000 0.11000000 0.11000000 0.03500000 0.02200000 0.03666667 0.04714286
+>>
+>> print(mapply_result)
+> [1] 0.11000000 0.11000000 0.11000000 0.03500000 0.04200000 0.05333333 0.01857143
+> 
+>> cat("\nResults are identical:", identical(direct_result, mapply_result), "\n")
+> Results are identical: FALSE
+>>
+>> sessionInfo()
+> R version 4.3.3 (2024-02-29)
+> Platform: x86_64-pc-linux-gnu (64-bit)
+> Running under: Linux Mint 22.2
+> 
+> Matrix products: default
+> BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0
+> LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.12.0
+> 
+> locale:
+>   [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C               LC_TIME=en_US.UTF-8
+>   [4] LC_COLLATE=en_US.UTF-8     LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8
+>   [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                  LC_ADDRESS=C
+> [10] LC_TELEPHONE=C             LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C
+> 
+> time zone: America/Denver
+> tzcode source: system (glibc)
+> 
+> attached base packages:
+> [1] stats     graphics  grDevices utils     datasets  methods   base
+> 
+> loaded via a namespace (and not attached):
+> [1] compiler_4.3.3 tools_4.3.3
+> 
+> Explanation of what is happening:
+> 
+> In the direct call, recycling occurs independently at each binary operation:
+> 
+> 1. `a + b` is evaluated first: `a` (length 4) and `b` (length 3) are recycled
+>     to length 4, producing `[11, 22, 33, 14]`
+> 
+> 2. The length-4 result is then divided by `c` (length 7): the length-4 result
+>     is recycled to length 7 as `[11, 22, 33, 14, 11, 22, 33]`, then divided by `c`
+> 
+> 3. Final result: `[0.11, 0.11, 0.11, 0.035, 0.022, 0.0367, 0.0471]`
+> 
+> However, based on my reading of the documentation, I would expect all three
+> vectors (`a`, `b`, and `c`) to be recycled to length 7 (the length of the
+> longest vector in the expression) before any operations are performed, which
+> is what `mapply` does:
+> 
+> - `a` recycled to length 7: `[1, 2, 3, 4, 1, 2, 3]`
+> - `b` recycled to length 7: `[10, 20, 30, 10, 20, 30, 10]`
+> - `c` unchanged: `[100, 200, 300, 400, 500, 600, 700]`
+> - Then `(a + b) / c` computed element-wise: `[0.11, 0.11, 0.11, 0.035, 0.042, 0.0533, 0.0186]`
+> 
+> The key difference is at positions 5, 6, and 7. In the direct call, the
+> intermediate result `(a + b)` has length 4 and is recycled independently of
+> the original vectors when dividing by `c`.
+> 
+> Question:
+> 
+> Does this example represent a bug in R's recycling behavior, or is the
+> documentation in Section 2.2 not intended to describe how recycling works in
+> expressions with multiple binary operations? If the current behavior is
+> intentional, could the documentation be clarified to explain that recycling
+> occurs at each binary operation rather than globally across the expression?
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @oko| @end|ng |rom |n@@-tou|ou@e@|r  Wed Jan 28 09:25:24 2026
+From: @oko| @end|ng |rom |n@@-tou|ou@e@|r (Serguei Sokol)
+Date: Wed, 28 Jan 2026 09:25:24 +0100
+Subject: [Rd] Incorrect vector recycling in rare circumstance
+In-Reply-To: <b6e7b06c-bf33-4c77-98b7-61d23b4b54d3@gmail.com>
+References: <4f32cd3b-d0b1-4708-8b96-b1f6e717d107@montana.edu>
+ <b6e7b06c-bf33-4c77-98b7-61d23b4b54d3@gmail.com>
+Message-ID: <45250c1a-a189-4d4e-aa5d-271d72f20e88@insa-toulouse.fr>
+
+Le 27/01/2026 ? 22:51, Duncan Murdoch a ?crit?:
+> My first reaction was that you shouldn't use the Introduction document 
+> as a reference, you should be using the Language Definition or the man 
+> pages.
+>
+> The Language Definition gives an example of adding two vectors, and 
+> describes the result there.? It doesn't talk about recycling rules for 
+> more complex expressions.
+>
+> The man page `?Arithmetic` gives a more complete description, also in 
+> terms of binary operations, not complex expressions.
+>
+> So I think things are behaving as designed, and the Introduction 
+> document describes it ambiguously, but not incorrectly strictly 
+> speaking, since it doesn't say exactly how the recycling will occur. 
+> Maybe this would be a clearer description:
+>
+> "Vectors occurring in the same expression need not all be of the same 
+> length.? If they are not, the value of the expression is a vector with 
+> the same length as the longest vector which occurs in the expression. 
+> Recycling occurs in each binary operation:? the shorter vector is 
+> recycled as often as need be (perhaps fractionally) until it matches 
+> the length of the longer vector."
+This would eliminate ambiguity in the description but leave the 
+"problem" as is. For me the problem is that actual behavior is easy to 
+program but difficult to use in practice.
+I mean that for a programmer it is much easier to conceive a commun 
+alignment for all components in an expression and a complexe action on 
+it than to parse mentally an expression to follow what alignment occurs 
+at which moment.
+
+I understand that programming a commun alignment through a complex 
+expression could lead to some sever reverse compatibility issues but it 
+may be proposed a new option or something alike to give an opportunity 
+to a user to relie on a common alignement in complex expressions.
+
+Best,
+Serguei.
+
+>
+> Duncan Murdoch
+>
+> On 2026-01-27 3:58 p.m., Poole, Geoffrey via R-devel wrote:
+>> Synopsis:? In multistep expressions, e.g.:
+>>
+>> fun <- function(a, b, c) (a + b) / c
+>>
+>> `fun` returns an unexpected and non-intuative result when:
+>> ? - a, b, and c are vectors
+>> ? - c is the longest vector
+>> ? - the lengths of a, b, and c are not even multiples of one another.
+>>
+>> In this case, because of the way vectors are being recycled:
+>>
+>>> fun(a, b, c)
+>>
+>> returns a different result from:
+>>
+>>> mapply(fun, a, b, c)
+>>
+>> Description:
+>>
+>> The R documentation in "An Introduction to R" Section 2.2 states:
+>>
+>> ?? "Vectors occurring in the same expression need not all be of the 
+>> same length.
+>> ?? If they are not, the value of the expression is a vector with the 
+>> same length
+>> ?? as the longest vector which occurs in the expression. Shorter 
+>> vectors in the
+>> ?? expression are recycled as often as need be (perhaps fractionally) 
+>> until they
+>> ?? match the length of the longest vector."
+>>
+>> Based on this documentation, I would expect that all vectors in an 
+>> expression
+>> are recycled to match the length of the longest vector before 
+>> element-wise
+>> operations are performed. However, R appears to perform recycling 
+>> independently
+>> at each operation, which produces different results than the documented
+>> behavior would suggest.
+>>
+>> Minimal reproducible example:
+>>
+>> ```r
+>> # Simple function demonstrating the issue
+>> f <- function(a, b, c) {
+>> ?? (a + b) / c
+>> }
+>>
+>> # Vectors of different lengths (not multiples of each other)
+>> a <- c(1, 2, 3, 4)
+>> b <- c(10, 20, 30)
+>> c <- c(100, 200, 300, 400, 500, 600, 700)
+>>
+>> # Direct call
+>> direct_result <- f(a, b, c)
+>>
+>> # mapply (recycles all inputs to length 7 first, then applies 
+>> element-wise)
+>> mapply_result <- mapply(f, a, b, c)
+>>
+>> # Compare results
+>> cat("Direct call result:\n")
+>> print(direct_result)
+>>
+>> cat("\nmapply result:\n")
+>> print(mapply_result)
+>>
+>> cat("\nResults are identical:", identical(direct_result, 
+>> mapply_result), "\n")
+>>
+>> sessionInfo()
+>> ```
+>>
+>> Output:
+>>
+>>> f <- function(a, b, c) {
+>> +?? (a + b) / c
+>> + }
+>>>
+>>> a <- c(1, 2, 3, 4)
+>>> b <- c(10, 20, 30)
+>>> c <- c(100, 200, 300, 400, 500, 600, 700)
+>>>
+>>> direct_result <- f(a, b, c)
+>> Warning messages:
+>> 1: In a + b :
+>> ?? longer object length is not a multiple of shorter object length
+>> 2: In (a + b)/c :
+>> ?? longer object length is not a multiple of shorter object length
+>>>
+>>> mapply_result <- mapply(f, a, b, c)
+>> Warning messages:
+>> 1: In mapply(f, a, b, c) :
+>> ?? longer argument not a multiple of length of shorter
+>> 2: In mapply(f, a, b, c) :
+>> ?? longer argument not a multiple of length of shorter
+>>>
+>>> print(direct_result)
+>> [1] 0.11000000 0.11000000 0.11000000 0.03500000 0.02200000 0.03666667 
+>> 0.04714286
+>>>
+>>> print(mapply_result)
+>> [1] 0.11000000 0.11000000 0.11000000 0.03500000 0.04200000 0.05333333 
+>> 0.01857143
+>>
+>>> cat("\nResults are identical:", identical(direct_result, 
+>>> mapply_result), "\n")
+>> Results are identical: FALSE
+>>>
+>>> sessionInfo()
+>> R version 4.3.3 (2024-02-29)
+>> Platform: x86_64-pc-linux-gnu (64-bit)
+>> Running under: Linux Mint 22.2
+>>
+>> Matrix products: default
+>> BLAS:?? /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0
+>> LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.12.0
+>>
+>> locale:
+>> ? [1] LC_CTYPE=en_US.UTF-8?????? LC_NUMERIC=C LC_TIME=en_US.UTF-8
+>> ? [4] LC_COLLATE=en_US.UTF-8???? LC_MONETARY=en_US.UTF-8 
+>> LC_MESSAGES=en_US.UTF-8
+>> ? [7] LC_PAPER=en_US.UTF-8?????? LC_NAME=C LC_ADDRESS=C
+>> [10] LC_TELEPHONE=C???????????? LC_MEASUREMENT=en_US.UTF-8 
+>> LC_IDENTIFICATION=C
+>>
+>> time zone: America/Denver
+>> tzcode source: system (glibc)
+>>
+>> attached base packages:
+>> [1] stats???? graphics? grDevices utils???? datasets? methods base
+>>
+>> loaded via a namespace (and not attached):
+>> [1] compiler_4.3.3 tools_4.3.3
+>>
+>> Explanation of what is happening:
+>>
+>> In the direct call, recycling occurs independently at each binary 
+>> operation:
+>>
+>> 1. `a + b` is evaluated first: `a` (length 4) and `b` (length 3) are 
+>> recycled
+>> ??? to length 4, producing `[11, 22, 33, 14]`
+>>
+>> 2. The length-4 result is then divided by `c` (length 7): the 
+>> length-4 result
+>> ??? is recycled to length 7 as `[11, 22, 33, 14, 11, 22, 33]`, then 
+>> divided by `c`
+>>
+>> 3. Final result: `[0.11, 0.11, 0.11, 0.035, 0.022, 0.0367, 0.0471]`
+>>
+>> However, based on my reading of the documentation, I would expect all 
+>> three
+>> vectors (`a`, `b`, and `c`) to be recycled to length 7 (the length of 
+>> the
+>> longest vector in the expression) before any operations are 
+>> performed, which
+>> is what `mapply` does:
+>>
+>> - `a` recycled to length 7: `[1, 2, 3, 4, 1, 2, 3]`
+>> - `b` recycled to length 7: `[10, 20, 30, 10, 20, 30, 10]`
+>> - `c` unchanged: `[100, 200, 300, 400, 500, 600, 700]`
+>> - Then `(a + b) / c` computed element-wise: `[0.11, 0.11, 0.11, 
+>> 0.035, 0.042, 0.0533, 0.0186]`
+>>
+>> The key difference is at positions 5, 6, and 7. In the direct call, the
+>> intermediate result `(a + b)` has length 4 and is recycled 
+>> independently of
+>> the original vectors when dividing by `c`.
+>>
+>> Question:
+>>
+>> Does this example represent a bug in R's recycling behavior, or is the
+>> documentation in Section 2.2 not intended to describe how recycling 
+>> works in
+>> expressions with multiple binary operations? If the current behavior is
+>> intentional, could the documentation be clarified to explain that 
+>> recycling
+>> occurs at each binary operation rather than globally across the 
+>> expression?
+>>
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+>
+>
+>
+
+
+-- 
+Serguei Sokol
+Ingenieur de recherche INRAE
+
+Cellule Math?matiques
+TBI, INSA/INRAE UMR 792, INSA/CNRS UMR 5504
+135 Avenue de Rangueil
+31077 Toulouse Cedex 04
+
+tel: +33 5 61 55 98 49
+email: sokol at insa-toulouse.fr
+https://www.toulouse-biotechnology-institute.fr/en/plateformes-plateaux/cellule-mathematiques/
+
+
+From g@bembecker @end|ng |rom gm@||@com  Wed Jan 28 10:31:33 2026
+From: g@bembecker @end|ng |rom gm@||@com (Gabriel Becker)
+Date: Wed, 28 Jan 2026 01:31:33 -0800
+Subject: [Rd] Incorrect vector recycling in rare circumstance
+In-Reply-To: <45250c1a-a189-4d4e-aa5d-271d72f20e88@insa-toulouse.fr>
+References: <4f32cd3b-d0b1-4708-8b96-b1f6e717d107@montana.edu>
+ <b6e7b06c-bf33-4c77-98b7-61d23b4b54d3@gmail.com>
+ <45250c1a-a189-4d4e-aa5d-271d72f20e88@insa-toulouse.fr>
+Message-ID: <CAD4oTHH1aW-c6RjngfkD+b0AKAzKvf6Xxy0D=CyRJXfb+Cx4SQ@mail.gmail.com>
+
+Geoffrey,
+
+I think the key issue here is that you are expecting f(a,b,c) and mapply(f,
+a, b, c) to do similar things in the first place when, in fact, they don't.
+
+f(a,b,c) calls f (and thus evaluates your arithmetic expression) *one time*,
+with arguments of length 4, 3, and 7. Here recycling occurs within the
+arithmetic expression in order to determine the length of the result. As
+such, the recycling is done piecemeal within the complex arithmetic
+expression as you pointed out.
+
+mapply(f, a, b, c) on the other hand, calls f *max(length(a), length(b),
+length(c))* times, each time with arguments all of length 1. Here, the
+recycling occurs *to determine how many times to call f and **what
+arguments each call should receive. *As such it must occur before any call
+to f can happen at all, and no recycling occurs within f (and thus none
+occurs within the arithmetic expression).
+
+Recall also that mapply can take *any* function, not just ones whose body
+is made up of a single complex arithmetic expression. It is trivial to
+construct a function f' such that f(a, b, c) and mapply(f, a, b, c) would
+give results of the same length but whose values we would not even expect
+to be the same.
+
+On the other side of the coin, if you're arguing that (a+b)/c should act
+like mapply(f, a, b, c), remember that
+
+(a+b)/c
+
+is really
+
+`/`(`+`(a, b), c)
+
+And here the `+` operator would need information about c, which is not one
+of its arguments, in order to do the recycling that way. Also,  remember
+that due to lazy evaluation, a, b, and c aren't even evaluated until their
+values are needed. In your example, c is not needed until the `/` call
+(specifically its second argument), which is after a + b is completely
+done. But
+in the proposed new mapply like order, c would need to be evaluated before a
++ b in order to get it's length to know how to recycle a and b, which it
+does not need to do now and which violates lazy evaluation. Combine that
+with the fact that a, b, and c, could be replaced with function calls and
+functions are not *supposed* to have side effects but *are *allowed to do
+so and I think we're looking at a can of worms that I personally would not
+want to try to open.
+
+Best,
+~G
+
+
+On Wed, Jan 28, 2026 at 12:25?AM Serguei Sokol via R-devel <
+r-devel at r-project.org> wrote:
+
+> Le 27/01/2026 ? 22:51, Duncan Murdoch a ?crit :
+> > My first reaction was that you shouldn't use the Introduction document
+> > as a reference, you should be using the Language Definition or the man
+> > pages.
+> >
+> > The Language Definition gives an example of adding two vectors, and
+> > describes the result there.  It doesn't talk about recycling rules for
+> > more complex expressions.
+> >
+> > The man page `?Arithmetic` gives a more complete description, also in
+> > terms of binary operations, not complex expressions.
+> >
+> > So I think things are behaving as designed, and the Introduction
+> > document describes it ambiguously, but not incorrectly strictly
+> > speaking, since it doesn't say exactly how the recycling will occur.
+> > Maybe this would be a clearer description:
+> >
+> > "Vectors occurring in the same expression need not all be of the same
+> > length.  If they are not, the value of the expression is a vector with
+> > the same length as the longest vector which occurs in the expression.
+> > Recycling occurs in each binary operation:  the shorter vector is
+> > recycled as often as need be (perhaps fractionally) until it matches
+> > the length of the longer vector."
+> This would eliminate ambiguity in the description but leave the
+> "problem" as is. For me the problem is that actual behavior is easy to
+> program but difficult to use in practice.
+> I mean that for a programmer it is much easier to conceive a commun
+> alignment for all components in an expression and a complexe action on
+> it than to parse mentally an expression to follow what alignment occurs
+> at which moment.
+>
+> I understand that programming a commun alignment through a complex
+> expression could lead to some sever reverse compatibility issues but it
+> may be proposed a new option or something alike to give an opportunity
+> to a user to relie on a common alignement in complex expressions.
+>
+> Best,
+> Serguei.
+>
+> >
+> > Duncan Murdoch
+> >
+> > On 2026-01-27 3:58 p.m., Poole, Geoffrey via R-devel wrote:
+> >> Synopsis:  In multistep expressions, e.g.:
+> >>
+> >> fun <- function(a, b, c) (a + b) / c
+> >>
+> >> `fun` returns an unexpected and non-intuative result when:
+> >>   - a, b, and c are vectors
+> >>   - c is the longest vector
+> >>   - the lengths of a, b, and c are not even multiples of one another.
+> >>
+> >> In this case, because of the way vectors are being recycled:
+> >>
+> >>> fun(a, b, c)
+> >>
+> >> returns a different result from:
+> >>
+> >>> mapply(fun, a, b, c)
+> >>
+> >> Description:
+> >>
+> >> The R documentation in "An Introduction to R" Section 2.2 states:
+> >>
+> >>    "Vectors occurring in the same expression need not all be of the
+> >> same length.
+> >>    If they are not, the value of the expression is a vector with the
+> >> same length
+> >>    as the longest vector which occurs in the expression. Shorter
+> >> vectors in the
+> >>    expression are recycled as often as need be (perhaps fractionally)
+> >> until they
+> >>    match the length of the longest vector."
+> >>
+> >> Based on this documentation, I would expect that all vectors in an
+> >> expression
+> >> are recycled to match the length of the longest vector before
+> >> element-wise
+> >> operations are performed. However, R appears to perform recycling
+> >> independently
+> >> at each operation, which produces different results than the documented
+> >> behavior would suggest.
+> >>
+> >> Minimal reproducible example:
+> >>
+> >> ```r
+> >> # Simple function demonstrating the issue
+> >> f <- function(a, b, c) {
+> >>    (a + b) / c
+> >> }
+> >>
+> >> # Vectors of different lengths (not multiples of each other)
+> >> a <- c(1, 2, 3, 4)
+> >> b <- c(10, 20, 30)
+> >> c <- c(100, 200, 300, 400, 500, 600, 700)
+> >>
+> >> # Direct call
+> >> direct_result <- f(a, b, c)
+> >>
+> >> # mapply (recycles all inputs to length 7 first, then applies
+> >> element-wise)
+> >> mapply_result <- mapply(f, a, b, c)
+> >>
+> >> # Compare results
+> >> cat("Direct call result:\n")
+> >> print(direct_result)
+> >>
+> >> cat("\nmapply result:\n")
+> >> print(mapply_result)
+> >>
+> >> cat("\nResults are identical:", identical(direct_result,
+> >> mapply_result), "\n")
+> >>
+> >> sessionInfo()
+> >> ```
+> >>
+> >> Output:
+> >>
+> >>> f <- function(a, b, c) {
+> >> +   (a + b) / c
+> >> + }
+> >>>
+> >>> a <- c(1, 2, 3, 4)
+> >>> b <- c(10, 20, 30)
+> >>> c <- c(100, 200, 300, 400, 500, 600, 700)
+> >>>
+> >>> direct_result <- f(a, b, c)
+> >> Warning messages:
+> >> 1: In a + b :
+> >>    longer object length is not a multiple of shorter object length
+> >> 2: In (a + b)/c :
+> >>    longer object length is not a multiple of shorter object length
+> >>>
+> >>> mapply_result <- mapply(f, a, b, c)
+> >> Warning messages:
+> >> 1: In mapply(f, a, b, c) :
+> >>    longer argument not a multiple of length of shorter
+> >> 2: In mapply(f, a, b, c) :
+> >>    longer argument not a multiple of length of shorter
+> >>>
+> >>> print(direct_result)
+> >> [1] 0.11000000 0.11000000 0.11000000 0.03500000 0.02200000 0.03666667
+> >> 0.04714286
+> >>>
+> >>> print(mapply_result)
+> >> [1] 0.11000000 0.11000000 0.11000000 0.03500000 0.04200000 0.05333333
+> >> 0.01857143
+> >>
+> >>> cat("\nResults are identical:", identical(direct_result,
+> >>> mapply_result), "\n")
+> >> Results are identical: FALSE
+> >>>
+> >>> sessionInfo()
+> >> R version 4.3.3 (2024-02-29)
+> >> Platform: x86_64-pc-linux-gnu (64-bit)
+> >> Running under: Linux Mint 22.2
+> >>
+> >> Matrix products: default
+> >> BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0
+> >> LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.12.0
+> >>
+> >> locale:
+> >>   [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C LC_TIME=en_US.UTF-8
+> >>   [4] LC_COLLATE=en_US.UTF-8     LC_MONETARY=en_US.UTF-8
+> >> LC_MESSAGES=en_US.UTF-8
+> >>   [7] LC_PAPER=en_US.UTF-8       LC_NAME=C LC_ADDRESS=C
+> >> [10] LC_TELEPHONE=C             LC_MEASUREMENT=en_US.UTF-8
+> >> LC_IDENTIFICATION=C
+> >>
+> >> time zone: America/Denver
+> >> tzcode source: system (glibc)
+> >>
+> >> attached base packages:
+> >> [1] stats     graphics  grDevices utils     datasets  methods base
+> >>
+> >> loaded via a namespace (and not attached):
+> >> [1] compiler_4.3.3 tools_4.3.3
+> >>
+> >> Explanation of what is happening:
+> >>
+> >> In the direct call, recycling occurs independently at each binary
+> >> operation:
+> >>
+> >> 1. `a + b` is evaluated first: `a` (length 4) and `b` (length 3) are
+> >> recycled
+> >>     to length 4, producing `[11, 22, 33, 14]`
+> >>
+> >> 2. The length-4 result is then divided by `c` (length 7): the
+> >> length-4 result
+> >>     is recycled to length 7 as `[11, 22, 33, 14, 11, 22, 33]`, then
+> >> divided by `c`
+> >>
+> >> 3. Final result: `[0.11, 0.11, 0.11, 0.035, 0.022, 0.0367, 0.0471]`
+> >>
+> >> However, based on my reading of the documentation, I would expect all
+> >> three
+> >> vectors (`a`, `b`, and `c`) to be recycled to length 7 (the length of
+> >> the
+> >> longest vector in the expression) before any operations are
+> >> performed, which
+> >> is what `mapply` does:
+> >>
+> >> - `a` recycled to length 7: `[1, 2, 3, 4, 1, 2, 3]`
+> >> - `b` recycled to length 7: `[10, 20, 30, 10, 20, 30, 10]`
+> >> - `c` unchanged: `[100, 200, 300, 400, 500, 600, 700]`
+> >> - Then `(a + b) / c` computed element-wise: `[0.11, 0.11, 0.11,
+> >> 0.035, 0.042, 0.0533, 0.0186]`
+> >>
+> >> The key difference is at positions 5, 6, and 7. In the direct call, the
+> >> intermediate result `(a + b)` has length 4 and is recycled
+> >> independently of
+> >> the original vectors when dividing by `c`.
+> >>
+> >> Question:
+> >>
+> >> Does this example represent a bug in R's recycling behavior, or is the
+> >> documentation in Section 2.2 not intended to describe how recycling
+> >> works in
+> >> expressions with multiple binary operations? If the current behavior is
+> >> intentional, could the documentation be clarified to explain that
+> >> recycling
+> >> occurs at each binary operation rather than globally across the
+> >> expression?
+> >>
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+> >
+> >
+> >
+>
+>
+> --
+> Serguei Sokol
+> Ingenieur de recherche INRAE
+>
+> Cellule Math?matiques
+> TBI, INSA/INRAE UMR 792, INSA/CNRS UMR 5504
+> 135 Avenue de Rangueil
+> 31077 Toulouse Cedex 04
+>
+> tel: +33 5 61 55 98 49
+> email: sokol at insa-toulouse.fr
+>
+> https://www.toulouse-biotechnology-institute.fr/en/plateformes-plateaux/cellule-mathematiques/
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From gpoo|e @end|ng |rom mont@n@@edu  Thu Jan 29 23:24:48 2026
+From: gpoo|e @end|ng |rom mont@n@@edu (Poole, Geoffrey)
+Date: Thu, 29 Jan 2026 22:24:48 +0000
+Subject: [Rd] Incorrect vector recycling in rare circumstance
+In-Reply-To: <CAD4oTHH1aW-c6RjngfkD+b0AKAzKvf6Xxy0D=CyRJXfb+Cx4SQ@mail.gmail.com>
+References: <4f32cd3b-d0b1-4708-8b96-b1f6e717d107@montana.edu>
+ <b6e7b06c-bf33-4c77-98b7-61d23b4b54d3@gmail.com>
+ <45250c1a-a189-4d4e-aa5d-271d72f20e88@insa-toulouse.fr>
+ <CAD4oTHH1aW-c6RjngfkD+b0AKAzKvf6Xxy0D=CyRJXfb+Cx4SQ@mail.gmail.com>
+Message-ID: <2468bbc8-713f-4b52-a9cc-ea6f16a52656@montana.edu>
+
+Thanks, all, for your responses.  I think Serguei summarize my experience well with this:
+For me the problem is that actual behavior is easy to program but difficult to use in practice.
+That said, I certainly do understand Gabriel's point:
+On the other side of the coin, if you're arguing that (a+b)/c should act like mapply(f, a, b, c), remember that
+
+(a+b)/c
+
+is really
+
+`/`(`+`(a, b), c)
+Which gets to Duncan's point:
+it's desirable that the result in x of
+  x <- (a + b) / c
+should be the same as the result of
+  temp <- a + b
+  x <- temp / c
+and the pragmatic observation by Gabriel:
+And here the `+` operator would need information about c, which is not one of its arguments, in order to do the recycling that way. Also,  remember that due to lazy evaluation, a, b, and c aren't even evaluated until their values are needed. In your example, c is not needed until the `/` call (specifically its second argument), which is after a + b is completely done. But in the proposed new mapply like order, c would need to be evaluated before a + b in order to get it's length to know how to recycle a and b, which it does not need to do now and which violates lazy evaluation. Combine that with the fact that a, b, and c, could be replaced with function calls and  functions are not supposed to have side effects but are allowed to do so and I think we're looking at a can of worms that I personally would not want to try to open.
+I seems clear to me now why R is working the way it is.  The unfortunate (?) side effect is that the behavior indicated by the term "recycling of vectors" is undefined until it is interpreted within the context of an expressions.  Under some circumstance (specifically, three or more vectors, none of which have lengths that are even multiples of one another), one cannot know how the vectors will be recycled in the absence of investigating the structure of the expression.  I had believed that the mapply-like recycling behavior was consistent across any expression.
+
+The fact that (a + b) / c can be written as (a+b) |> {`/`}(c) and is interpreted by R as `/`(`+`(a, b), c) makes is clear why recycling behavior is, in fact, dependent upon the structure of an expression.
+
+I appreciate the discussion.
+
+-Geoff
+
+	[[alternative HTML version deleted]]
+
+
+From gpoo|e @end|ng |rom mont@n@@edu  Thu Jan 29 23:35:56 2026
+From: gpoo|e @end|ng |rom mont@n@@edu (Poole, Geoffrey)
+Date: Thu, 29 Jan 2026 22:35:56 +0000
+Subject: [Rd] Incorrect vector recycling in rare circumstance
+In-Reply-To: <CAD4oTHH1aW-c6RjngfkD+b0AKAzKvf6Xxy0D=CyRJXfb+Cx4SQ@mail.gmail.com>
+References: <4f32cd3b-d0b1-4708-8b96-b1f6e717d107@montana.edu>
+ <b6e7b06c-bf33-4c77-98b7-61d23b4b54d3@gmail.com>
+ <45250c1a-a189-4d4e-aa5d-271d72f20e88@insa-toulouse.fr>
+ <CAD4oTHH1aW-c6RjngfkD+b0AKAzKvf6Xxy0D=CyRJXfb+Cx4SQ@mail.gmail.com>
+Message-ID: <5eee0646-2ce1-47a6-b851-6cc31debcac6@montana.edu>
+
+I will add one thing...
+
+The alternate `mapply-like` behavior might not be that hard to implement.  Rather than each sub-expression "recycling" vectors independently, the programming language could specify that vectors are "precycled" -- expanded to full and equal length before being sending to the expressions.
+
+I'm not saying this is a good idea... that ship sailed a long time ago and undoing it isn't worth the effort.  Just that, conceptually, it's not that hard to enforce a fixed recycling behavior without needing to have `+` know about `c` to calculate:  `/`(`+`(a,b), c).
+
+-Geoff
+
+	[[alternative HTML version deleted]]
+
+

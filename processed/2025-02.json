@@ -1,0 +1,1097 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2025-02",
+  "messages": [
+    {
+      "id": "msg-d263084f9237",
+      "message_id": "<20250201123904.6fc253be@Tarkus>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2025-02-01T12:39:04+03:00",
+      "subject": "[Rd]  [SPAM Warning!] Suggestion to emphasize Rboolean is unrelated to LGLSXP in R-exts",
+      "subject_clean": "[SPAM Warning!] Suggestion to emphasize Rboolean is unrelated to LGLSXP in R-exts",
+      "in_reply_to": "<CAPRVBcwA_j9=nPsjo272knqzK8Bdaoi6bgsGO+5YrKLhttHvDw@mail.gmail.com>",
+      "references": [
+        "<CAPRVBcwA_j9=nPsjo272knqzK8Bdaoi6bgsGO+5YrKLhttHvDw@mail.gmail.com>"
+      ],
+      "body_plain": "On Thu, 30 Jan 2025 13:07:31 -0800\nMichael Chirico <michaelchirico4 at gmail.com> wrote:\n\n> There are at least dozens of other cases on CRAN [2],[3].\n\nSome of these involve casting an int to Rboolean. Best case, the int is\ncompared against NA_LOGICAL beforehand, avoiding any mistake (there's\nat least one like that). Worst case, NA_LOGICAL is not considered before\nthe cast, so NA will now be interpreted as TRUE. This is hard to check\nwithout actually reading the code.\n\nSome packages compare an Rboolean expression against NA_LOGICAL [1].\nThis implies having stored an int in an Rboolean value as in the\nprevious paragraph. I think that it wasn't disallowed according to the\nC standard to store NA_LOGICAL in an enumeration type wide enough to\nfit it (and it evidently worked in practice). With typedef bool\nRboolean, storing NA_LOGICAL in an Rboolean converts it to 'true', so\nthe comparison will definitely fail:\n\nDPQ src/pnchisq-it.c:530,532\nRmpfr src/convert.c:535\ncheckmate src/helper.c:102\nchron src/unpaste.c:21\ncollapse src/data.table_rbindlist.c:208,258,383,384,408,431\ndata.table (many; fixed in Git)\nff src/ordermerge.c:5074 (one declaration, many comparisons)\nnetworkDynamic src/Rinit.c:209 src/is.active.c:75,76,96-98\nslam src/util.c:258\nthis.path src/get_file_from_closure.h:13,43 src/thispath.c:14,17,19,39\n src/ext.c:25 src/setsyspath.c:8 src/get_file_from_closure.h:13,43\n\nFour packages cast int* pointers returned by LOGICAL() to Rboolean* or\nuse sizeof(Rboolean) to calculate buffer sizes in calls to memcpy()\nwith LOGICAL() buffers [2]. With typedef bool Rboolean, this is a\nserious mistake, because the memory layout of the types is no longer\ncompatible:\n\nbit64 src/integer64.c:576,603,914,929,942,955,968,981,994\ncollapse src/data.table_rbindlist.c:19,67,105\ndata.table (many; fixed in Git)\nkit src/utils.c:390\n\nI don't know Coccinelle that well and there may be additional cases I\nfailed to consider. At which point is it appropriate to start notifying\nmaintainers of the bugs not caught by their test suites?\n\n-- \nBest regards,\nIvan\n\n[1] Coccinelle script:\n@@\ntypedef Rboolean;\nRboolean E;\n@@\n* E == NA_LOGICAL\n\n[2] Coccinelle scripts:\n\n@@\ntypedef Rboolean;\nint* E;\n@@\n* (Rboolean*)E\n\nThis one will offer a diff to fix the bug:\n\n@@\nint *E1;\nint *E2;\ntypedef Rboolean;\n@@\n(\n memcpy\n|\n memmove\n)\n (E1, E2,\n <+...\n-sizeof(Rboolean)\n+sizeof(int)\n ...+>\n )",
+      "body_snippet": "On Thu, 30 Jan 2025 13:07:31 -0800\nMichael Chirico <michaelchirico4 at gmail.com> wrote:\n\n> There are at least dozens of other cases on CRAN [2],[3].\n\nSome of these involve casting an int to Rboolean.",
+      "thread_id": "thread-d263084f9237",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-080abf3b5c8e",
+      "message_id": "<20250202185058.531317c2@Tarkus>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2025-02-02T18:50:58+03:00",
+      "subject": "[Rd] Suggestion to emphasize Rboolean is unrelated to LGLSXP in R-exts",
+      "subject_clean": "Suggestion to emphasize Rboolean is unrelated to LGLSXP in R-exts",
+      "in_reply_to": "<20250201123904.6fc253be@Tarkus>",
+      "references": [
+        "<CAPRVBcwA_j9=nPsjo272knqzK8Bdaoi6bgsGO+5YrKLhttHvDw@mail.gmail.com>",
+        "<20250201123904.6fc253be@Tarkus>"
+      ],
+      "body_plain": "The good news is that without a C23-enabled compiler, the problem will\nonly happen to source files that #include <stdbool.h>. The bad news is\nthat such a source file will technically disagree with the rest of R\nabout the type of Rboolean, including the prototypes of the API\nfunctions that accept Rboolean:\n\n#include <stdbool.h>\n#include <Rinternals.h>\ntypedef void (*pordervector1)(int *, int, SEXP, Rboolean, Rboolean);\n// ...\npordervector1 f = R_orderVector1;\nf(pindx, length(indx), arg, nalast, decreasing);\n\nfoo.c:27:17: runtime error: call to function R_orderVector1 through\npointer to incorrect function type 'void (*)(int *, int, struct SEXPREC\n*, bool, bool)'\n/tmp/R-devel/src/main/sort.c:1135: note: R_orderVector1 defined here\nSUMMARY: UndefinedBehaviorSanitizer: undefined-behavior foo.c:27:17\n\nWith sanitizers disabled, this doesn't seem to cause any real problems\nthanks to the calling convention, where both 'enum's and 'bool's are\npassed and returned in a register.\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "The good news is that without a C23-enabled compiler, the problem will\nonly happen to source files that #include <stdbool.h>. The bad news is\nthat such a source file will technically disagree with the",
+      "thread_id": "thread-d263084f9237",
+      "thread_depth": 1,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-fbff3ed3fb80",
+      "message_id": "<551e7875-03a3-4a94-99e5-751ac9c496f4@icloud.com>",
+      "from_name": "Prof Brian Ripley",
+      "from_email_hash": "c5d0d8f09bc545ede8356a1fd199c0f278d5b7361e67127bf6c141458274153c",
+      "date": "2025-02-03T10:07:13Z",
+      "subject": "[Rd] Suggestion to emphasize Rboolean is unrelated to LGLSXP in R-exts",
+      "subject_clean": "Suggestion to emphasize Rboolean is unrelated to LGLSXP in R-exts",
+      "in_reply_to": "<20250202185058.531317c2@Tarkus>",
+      "references": [
+        "<CAPRVBcwA_j9=nPsjo272knqzK8Bdaoi6bgsGO+5YrKLhttHvDw@mail.gmail.com>",
+        "<20250201123904.6fc253be@Tarkus>",
+        "<20250202185058.531317c2@Tarkus>"
+      ],
+      "body_plain": "On 02/02/2025 15:50, Ivan Krylov via R-devel wrote:\n> The good news is that without a C23-enabled compiler, the problem will\n> only happen to source files that #include <stdbool.h>. The bad news is\n> that such a source file will technically disagree with the rest of R\n> about the type of Rboolean, including the prototypes of the API\n> functions that accept Rboolean:\n> \n> #include <stdbool.h>\n> #include <Rinternals.h>\n> typedef void (*pordervector1)(int *, int, SEXP, Rboolean, Rboolean);\n> // ...\n> pordervector1 f = R_orderVector1;\n> f(pindx, length(indx), arg, nalast, decreasing);\n> \n> foo.c:27:17: runtime error: call to function R_orderVector1 through\n> pointer to incorrect function type 'void (*)(int *, int, struct SEXPREC\n> *, bool, bool)'\n> /tmp/R-devel/src/main/sort.c:1135: note: R_orderVector1 defined here\n> SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior foo.c:27:17\n> \n> With sanitizers disabled, this doesn't seem to cause any real problems\n> thanks to the calling convention, where both 'enum's and 'bool's are\n> passed and returned in a register.\n\nThis is work in progress, and it was not intended to apply to R-devel \nunless configured with --with-C23 or using a compiler (such as GCC \npre-15) that defaults to C23.  We will back that out pending further \ntesting.\n\n-- \nBrian D. Ripley,                  ripley at stats.ox.ac.uk\nEmeritus Professor of Applied Statistics, University of Oxford",
+      "body_snippet": "On 02/02/2025 15:50, Ivan Krylov via R-devel wrote:\n> The good news is that without a C23-enabled compiler, the problem will\n> only happen to source files that #include <stdbool.h>. The bad news is\n> ",
+      "thread_id": "thread-d263084f9237",
+      "thread_depth": 2,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-8309fbe0cef5",
+      "message_id": "<93d0bc7e-9ad2-4193-b43e-34c1544bb1a7@icloud.com>",
+      "from_name": "Prof Brian Ripley",
+      "from_email_hash": "c5d0d8f09bc545ede8356a1fd199c0f278d5b7361e67127bf6c141458274153c",
+      "date": "2025-02-03T17:36:28Z",
+      "subject": "[Rd] boolean and logical types -draft",
+      "subject_clean": "boolean and logical types -draft",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Tomas,\n\nI am thinking of writing something for R-devel, and hope to have your \ninput first.\n\nI get moderated on R-devel as I am now subscribed as \nbrian.ripley at R-project.org which of course I cannot send from. So I am \neven more discouraged from posting there.  (R-core is bad enough with \nLuke discouraging all innovation except by him and Simon completely \nmisunderstanding the C23 status.)\n\nThanks,\n\nBrian\n\n----------------\n\nThere are several of these, and few guarantees for inter-working.\n\na) R's logical vectors, which include a value NA for its elements.\nb) R's Rboolean type in C/C++\n\nc) C++'s bool type\nd) C23's bool type\ne) C99's _Bool type to which bool is aliased if <stdbool.h> is included.\nf) Fortran's LOGICAL type\n\na) is currently implemented as a C int (so 32-bit) type with NA as the C \nvalue NA_LOGICAL which is the same a NA_INTEGER.\n\nb) is currently implemented as a C enum with two values.  I don't know \nof any guarantees on how that is stored except in char or an integer \ntype -- however it seems common practice to use a 32-bit type (int or \nunsigned int would not be distinguishable).  (C23 ?6.7.3.3)  Enums can \nhave a specified data type, but we do not.\n\nC23 states that bool has 1 value bit and some padding bits (?6.2.6.2) so \nit can be stored in char-sized storage (i.e. bytes) or multiples \nthereof.  And that _Bool is a alternative name for bool.\n\nf) is complier-dependent: for interoperability with C or R, code should \nuse c_bool from iso_c_binding (Fortran 2003).  Fortran compilers store \nLOGICAL in compiler-dependent ways, and for a long time we got away with \nassuming that was equivalent to int (so LOGICAL values could be passed \nto and from with int* on the C/R side).  But sometime around GCC 8 they \nchanged to int_least32_t, which on common platforms is the same as int \nbut does not need to be.\n\nIt seems that in all cases coercion to an integer type coerces false \nvalues to 0 and true values to 1 (and this is guaranteed by C23 at \nleast).  And C23 guarantees that when coercing from an integer type to \nbool zero values are coerced to false and non-zero ones to true (bool is \n'an unsigned integer type').  However, that does not seem to be true for \nC++ as UB sanitizers warn on coercing values other than 0/1.\n\nI believe it to be the intention that c), d) and e) have the same \nrepresentation and interwork using the same compiler, but I could not \nfind that documented and see signs that e) might differ in C17 and C23 \nmodes.\n\n----------------\n\nI need to look again at the C and C++ standards which with my vision I \nneed to do in very small chunks.  Oh for the vision I once had!\n\n-- \nBrian D. Ripley,                  ripley at stats.ox.ac.uk\nEmeritus Professor of Applied Statistics, University of Oxford",
+      "body_snippet": "Tomas,\n\nI am thinking of writing something for R-devel, and hope to have your \ninput first.\n\nI get moderated on R-devel as I am now subscribed as \nbrian.ripley at R-project.org which of course I canno",
+      "thread_id": "thread-8309fbe0cef5",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-f85770949fc9",
+      "message_id": "<fd059a61-57ab-4592-80e5-7a68b3b1d6d0@icloud.com>",
+      "from_name": "Prof Brian Ripley",
+      "from_email_hash": "c5d0d8f09bc545ede8356a1fd199c0f278d5b7361e67127bf6c141458274153c",
+      "date": "2025-02-03T17:39:07Z",
+      "subject": "[Rd] boolean and logical types -draft",
+      "subject_clean": "boolean and logical types -draft",
+      "in_reply_to": "<93d0bc7e-9ad2-4193-b43e-34c1544bb1a7@icloud.com>",
+      "references": [
+        "<93d0bc7e-9ad2-4193-b43e-34c1544bb1a7@icloud.com>"
+      ],
+      "body_plain": "Sent in error (and not moderated).\n\nOn 03/02/2025 17:36, Prof Brian Ripley via R-devel wrote:\n> Tomas,\n> \n> I am thinking of writing something for R-devel, and hope to have your \n> input first.\n> \n> I get moderated on R-devel as I am now subscribed as brian.ripley at R- \n> project.org which of course I cannot send from. So I am even more \n> discouraged from posting there.? (R-core is bad enough with Luke \n> discouraging all innovation except by him and Simon completely \n> misunderstanding the C23 status.)\n> \n> Thanks,\n> \n> Brian\n> \n> ----------------\n> \n> There are several of these, and few guarantees for inter-working.\n> \n> a) R's logical vectors, which include a value NA for its elements.\n> b) R's Rboolean type in C/C++\n> \n> c) C++'s bool type\n> d) C23's bool type\n> e) C99's _Bool type to which bool is aliased if <stdbool.h> is included.\n> f) Fortran's LOGICAL type\n> \n> a) is currently implemented as a C int (so 32-bit) type with NA as the C \n> value NA_LOGICAL which is the same a NA_INTEGER.\n> \n> b) is currently implemented as a C enum with two values.? I don't know \n> of any guarantees on how that is stored except in char or an integer \n> type -- however it seems common practice to use a 32-bit type (int or \n> unsigned int would not be distinguishable).? (C23 ?6.7.3.3)? Enums can \n> have a specified data type, but we do not.\n> \n> C23 states that bool has 1 value bit and some padding bits (?6.2.6.2) so \n> it can be stored in char-sized storage (i.e. bytes) or multiples \n> thereof.? And that _Bool is a alternative name for bool.\n> \n> f) is complier-dependent: for interoperability with C or R, code should \n> use c_bool from iso_c_binding (Fortran 2003).? Fortran compilers store \n> LOGICAL in compiler-dependent ways, and for a long time we got away with \n> assuming that was equivalent to int (so LOGICAL values could be passed \n> to and from with int* on the C/R side).? But sometime around GCC 8 they \n> changed to int_least32_t, which on common platforms is the same as int \n> but does not need to be.\n> \n> It seems that in all cases coercion to an integer type coerces false \n> values to 0 and true values to 1 (and this is guaranteed by C23 at \n> least).? And C23 guarantees that when coercing from an integer type to \n> bool zero values are coerced to false and non-zero ones to true (bool is \n> 'an unsigned integer type').? However, that does not seem to be true for \n> C++ as UB sanitizers warn on coercing values other than 0/1.\n> \n> I believe it to be the intention that c), d) and e) have the same \n> representation and interwork using the same compiler, but I could not \n> find that documented and see signs that e) might differ in C17 and C23 \n> modes.\n> \n> ----------------\n> \n> I need to look again at the C and C++ standards which with my vision I \n> need to do in very small chunks.? Oh for the vision I once had!\n> \n\n\n-- \nBrian D. Ripley,                  ripley at stats.ox.ac.uk\nEmeritus Professor of Applied Statistics, University of Oxford",
+      "body_snippet": "Sent in error (and not moderated).\n\nOn 03/02/2025 17:36, Prof Brian Ripley via R-devel wrote:\n> Tomas,\n> \n> I am thinking of writing something for R-devel, and hope to have your \n> input first.\n> \n> I",
+      "thread_id": "thread-8309fbe0cef5",
+      "thread_depth": 1,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-d5c47f517c16",
+      "message_id": "<b9e0a7c2-ea92-43d8-ac7d-db816bd31123@gmail.com>",
+      "from_name": "Tomas Kalibera",
+      "from_email_hash": "7af110c9340339e5307bd348f1ec524e2fd1c8f104d583e9993022c5550711f4",
+      "date": "2025-02-04T13:45:49+01:00",
+      "subject": "[Rd] Suggestion to emphasize Rboolean is unrelated to LGLSXP in R-exts",
+      "subject_clean": "Suggestion to emphasize Rboolean is unrelated to LGLSXP in R-exts",
+      "in_reply_to": "<20250201123904.6fc253be@Tarkus>",
+      "references": [
+        "<CAPRVBcwA_j9=nPsjo272knqzK8Bdaoi6bgsGO+5YrKLhttHvDw@mail.gmail.com>",
+        "<20250201123904.6fc253be@Tarkus>"
+      ],
+      "body_plain": "On 2/1/25 10:39, Ivan Krylov via R-devel wrote:\n> On Thu, 30 Jan 2025 13:07:31 -0800\n> Michael Chirico <michaelchirico4 at gmail.com> wrote:\n>\n>> There are at least dozens of other cases on CRAN [2],[3].\n> Some of these involve casting an int to Rboolean. Best case, the int is\n> compared against NA_LOGICAL beforehand, avoiding any mistake (there's\n> at least one like that). Worst case, NA_LOGICAL is not considered before\n> the cast, so NA will now be interpreted as TRUE. This is hard to check\n> without actually reading the code.\n>\n> Some packages compare an Rboolean expression against NA_LOGICAL [1].\n> This implies having stored an int in an Rboolean value as in the\n> previous paragraph. I think that it wasn't disallowed according to the\n> C standard to store NA_LOGICAL in an enumeration type wide enough to\n> fit it (and it evidently worked in practice). With typedef bool\n> Rboolean, storing NA_LOGICAL in an Rboolean converts it to 'true', so\n> the comparison will definitely fail:\n>\n> DPQ src/pnchisq-it.c:530,532\n> Rmpfr src/convert.c:535\n> checkmate src/helper.c:102\n> chron src/unpaste.c:21\n> collapse src/data.table_rbindlist.c:208,258,383,384,408,431\n> data.table (many; fixed in Git)\n> ff src/ordermerge.c:5074 (one declaration, many comparisons)\n> networkDynamic src/Rinit.c:209 src/is.active.c:75,76,96-98\n> slam src/util.c:258\n> this.path src/get_file_from_closure.h:13,43 src/thispath.c:14,17,19,39\n>   src/ext.c:25 src/setsyspath.c:8 src/get_file_from_closure.h:13,43\n>\n> Four packages cast int* pointers returned by LOGICAL() to Rboolean* or\n> use sizeof(Rboolean) to calculate buffer sizes in calls to memcpy()\n> with LOGICAL() buffers [2]. With typedef bool Rboolean, this is a\n> serious mistake, because the memory layout of the types is no longer\n> compatible:\n>\n> bit64 src/integer64.c:576,603,914,929,942,955,968,981,994\n> collapse src/data.table_rbindlist.c:19,67,105\n> data.table (many; fixed in Git)\n> kit src/utils.c:390\n>\n> I don't know Coccinelle that well and there may be additional cases I\n> failed to consider. At which point is it appropriate to start notifying\n> maintainers of the bugs not caught by their test suites?\n\nYes, thanks, if you have the energy, I think it would be great if you \ncould contact the maintainers directly if you find obvious problems in \ntheir packages, as much as in any open-source project. Casting int* from \nLOGICAL() to Rboolean* falls into that category.\n\nAny bug finding tool would only find a subset of the bugs, that's ok - \nhelping to fix only some packages (and not all) is still a big help.\n\nTomas",
+      "body_snippet": "On 2/1/25 10:39, Ivan Krylov via R-devel wrote:\n> On Thu, 30 Jan 2025 13:07:31 -0800\n> Michael Chirico <michaelchirico4 at gmail.com> wrote:\n>\n>> There are at least dozens of other cases on CRAN [2],[",
+      "thread_id": "thread-d263084f9237",
+      "thread_depth": 1,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-babf1eafa610",
+      "message_id": "<cd429917-a8dd-4503-b85e-36c721874950@gmail.com>",
+      "from_name": "Tomas Kalibera",
+      "from_email_hash": "7af110c9340339e5307bd348f1ec524e2fd1c8f104d583e9993022c5550711f4",
+      "date": "2025-02-05T20:54:38+01:00",
+      "subject": "[Rd] Suggestion to emphasize Rboolean is unrelated to LGLSXP in R-exts",
+      "subject_clean": "Suggestion to emphasize Rboolean is unrelated to LGLSXP in R-exts",
+      "in_reply_to": "<CAPRVBcwA_j9=nPsjo272knqzK8Bdaoi6bgsGO+5YrKLhttHvDw@mail.gmail.com>",
+      "references": [
+        "<CAPRVBcwA_j9=nPsjo272knqzK8Bdaoi6bgsGO+5YrKLhttHvDw@mail.gmail.com>"
+      ],
+      "body_plain": "On 1/30/25 22:07, Michael Chirico wrote:\n> Hello all,\n>\n> The recent change (r87656) to make Rboolean map to type 'bool', not\n> 'int', broke some tests & made me realize I've had totally the wrong\n> impression about what Rboolean actually is, and I suspect I'm not\n> alone.\n>\n> Till now, I've assumed that like Rbyte --> RAWSXP, Rboolean is the\n> _correct_ storage type for LGLSXP, while idioms like int *ip =\n> LOGICAL(...) only \"happened to work\" because Rboolean masks int, which\n> could change at any time.\n>\n> Actually, it turns out Rboolean only \"happened to be int\" because of\n> the use of 'enum', which is changing in now-and-future C standards!\n>\n> We made that mistake in 9 places [1], though only one happened to\n> break tests. There are at least dozens of other cases on CRAN [2],[3].\n>\n> Here's the current exposition on Rboolean in R-exts [4]:\n>\n>> Further, the included header R_ext/Boolean.h has enumeration constants TRUE and FALSE of type Rboolean in order to provide a way of using ?logical? variables in C consistently. This can conflict with other software: for example it conflicts with the headers in IJG?s jpeg-9 (but not earlier versions).\n> I suggest embellishing this, perhaps like so:\n>\n>> Further, the included header R_ext/Boolean.h has enumeration constants TRUE and FALSE of type Rboolean in order to provide a way of using ?logical? variables in C consistently. This has no concept of \"missingness\", and so is \\emph{not} related to the R logical type LGLSXP. This can conflict with other software: for example it conflicts with the headers in IJG?s jpeg-9 (but not earlier versions).\n\n ?Probably worth an extra sentence making this more explicit. I've added \none similar to your suggestion.\n\nTomas\n\n> It would also be nice if this mistake could be caught by the compiler,\n> but that's another issue.\n>\n> Michael Chirico\n>\n> [1] https://github.com/Rdatatable/data.table/pull/6782/files\n> [2] https://github.com/search?q=org%3Acran+%2FRboolean.*%5CbLOGICAL%2F&type=code\n> [3] https://github.com/search?q=org%3Acran+%2FLOGICAL.*sizeof%5B%28%5DRboolean%2F&type=code\n> [4] https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Mathematical-constants\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On 1/30/25 22:07, Michael Chirico wrote:\n> Hello all,\n>\n> The recent change (r87656) to make Rboolean map to type 'bool', not\n> 'int', broke some tests & made me realize I've had totally the wrong\n> i",
+      "thread_id": "thread-babf1eafa610",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-cbd0e4afe0f4",
+      "message_id": "<20250206181812.5155d6ed@arachnoid>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2025-02-06T18:18:12+03:00",
+      "subject": "[Rd] Depends: R (>= 4.1) for packages that use |> and \\(...)",
+      "subject_clean": "Depends: R (>= 4.1) for packages that use |> and \\(...)",
+      "in_reply_to": "<26514.5904.863904.292546@hornik.net>",
+      "references": [
+        "<20250116144121.5520a9cc@arachnoid>",
+        "<CAFDcVCTTVa+Ea+BoVoag0RJ7LK3P1tyPzBG9vP4U-4w6a4kKKQ@mail.gmail.com>",
+        "<26506.26949.241762.7373@hornik.net>",
+        "<26509.10892.521351.954386@hornik.net>",
+        "<26512.37984.542732.125792@hornik.net>",
+        "<CAP8nD2xthJ5TzwYdok5tjXiWyf4=Y=uGf-sf7FFQKCjzNAACOA@mail.gmail.com>",
+        "<20250123121008.4338cff0@Tarkus>",
+        "<26514.5904.863904.292546@hornik.net>"
+      ],
+      "body_plain": "On Thu, 23 Jan 2025 11:16:48 +0100\nKurt Hornik <Kurt.Hornik at wu.ac.at> wrote:\n\n> My guess would be that the new syntax is particularly prominently used\n> in examples: if so, it would be good to also have coverage for this.\n\nIn today's CRAN snapshot, there turned out to be 198 packages that use\n4.1 syntax in examples but not in code, 5 packages that use 4.2 syntax\nin examples but 4.1 in the code, and 3 packages that use 4.2 syntax in\nexamples but not the code. This may be slightly imprecise because I\ndon't have some of the Rd macro packages installed and run\nRd2ex(stages=NULL) on manually-parsed Rd files without installing the\npackages.\n\nAttaching a patch that checks the syntax used in Rd examples at the\nsame time as the main R code, not necessarily the best way to perform\nthis check. Is it perhaps worth separating R/* checks from man/*.Rd\nchecks? Should R CMD check try to reuse the Rd database from the\ninstalled copy of the package?\n\n-- \nBest regards,\nIvan\n\n-------------- next part --------------\nA non-text attachment was scrubbed...\nName: check_R_syntax_in_examples.patch\nType: text/x-patch\nSize: 4000 bytes\nDesc: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20250206/9fd89fa8/attachment.bin>",
+      "body_snippet": "On Thu, 23 Jan 2025 11:16:48 +0100\nKurt Hornik <Kurt.Hornik at wu.ac.at> wrote:\n\n> My guess would be that the new syntax is particularly prominently used\n> in examples: if so, it would be good to also",
+      "thread_id": "thread-cbd0e4afe0f4",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-295023968e37",
+      "message_id": "<01020194e1a4a011-d3f4864f-1f88-4fb4-b834-4c341ad9a5c6-000000@eu-west-1.amazonses.com>",
+      "from_name": "Tobias Verbeke",
+      "from_email_hash": "5f2f55743181bcc88a1e5b37143eaae63d5abd64de8e7d7dd7a5bb7c38dcb5f5",
+      "date": "2025-02-07T18:20:50Z",
+      "subject": "[Rd] typo in R-exts.texi",
+      "subject_clean": "typo in R-exts.texi",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "L.S.\n\nPlease find below a tiny patch for a trivial typo.\n\nKind regards,\nTobias\n\n\ndiff --git a/doc/manual/R-exts.texi b/doc/manual/R-exts.texi\nindex c9c1015da6..e84bbd53f2 100644\n--- a/doc/manual/R-exts.texi\n+++ b/doc/manual/R-exts.texi\n@@ -6814,7 +6814,7 @@ To negotiate with @I{Uwe Ligges} to host the additional components on\n @end itemize\n \n @noindent\n-Be aware that license requirements you may require you to supply the\n+Be aware that license requirements may require you to supply the\n sources for the additional components (and will if your package has a\n GPL-like license).",
+      "body_snippet": "L.S.\n\nPlease find below a tiny patch for a trivial typo.\n\nKind regards,\nTobias\n\n\ndiff --git a/doc/manual/R-exts.texi b/doc/manual/R-exts.texi\nindex c9c1015da6..e84bbd53f2 100644\n--- a/doc/manual/R-ext",
+      "thread_id": "thread-295023968e37",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-96d09a0f3474",
+      "message_id": "<26534.23519.718165.560064@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2025-02-07T20:15:43+01:00",
+      "subject": "[Rd] typo in R-exts.texi",
+      "subject_clean": "typo in R-exts.texi",
+      "in_reply_to": "<01020194e1a4a011-d3f4864f-1f88-4fb4-b834-4c341ad9a5c6-000000@eu-west-1.amazonses.com>",
+      "references": [
+        "<01020194e1a4a011-d3f4864f-1f88-4fb4-b834-4c341ad9a5c6-000000@eu-west-1.amazonses.com>"
+      ],
+      "body_plain": ">>>>> Tobias Verbeke \n>>>>>     on Fri, 7 Feb 2025 18:20:50 +0000 writes:\n\n    > L.S.  Please find below a tiny patch for a trivial typo.\n\n    > Kind regards, Tobias\n\nThank you, Tobias!\n-->  Fixed already.\n\nMartin\n\n    > diff --git a/doc/manual/R-exts.texi b/doc/manual/R-exts.texi\n    > index c9c1015da6..e84bbd53f2 100644\n    > --- a/doc/manual/R-exts.texi\n    > +++ b/doc/manual/R-exts.texi\n    > @@ -6814,7 +6814,7 @@ To negotiate with @I{Uwe Ligges} to host the additional components on\n    > @end itemize\n \n    > @noindent\n    > -Be aware that license requirements you may require you to supply the\n    > +Be aware that license requirements may require you to supply the\n    > sources for the additional components (and will if your package has a\n    > GPL-like license).",
+      "body_snippet": ">>>>> Tobias Verbeke \n>>>>>     on Fri, 7 Feb 2025 18:20:50 +0000 writes:\n\n    > L.S.  Please find below a tiny patch for a trivial typo.\n\n    > Kind regards, Tobias\n\nThank you, Tobias!\n-->  Fixed alr",
+      "thread_id": "thread-295023968e37",
+      "thread_depth": 1,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-7615d97e0d1f",
+      "message_id": "<26534.40939.338286.387898@rob.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2025-02-07T18:06:03-06:00",
+      "subject": "[Rd] Another typo in R-exts.texi",
+      "subject_clean": "Another typo in R-exts.texi",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "R Core,\n\nHere is another minor typo which I had spotted three days ago and sent to\nBrian, but have not heard back nor seen it incorporated. Doubly trivial as in\na comment but a dual typo nevertheless. Would be nice if someone could fold\nthis in. I still have the same diff here for the current r87707.\n\nCheers, Dirk\n\nedd at rob:~/svn/r-devel$ svn diff doc/manual/R-exts.texi\nIndex: doc/manual/R-exts.texi\n===================================================================\n--- doc/manual/R-exts.texi      (revision 87685)\n+++ doc/manual/R-exts.texi      (working copy)\n@@ -5904,7 +5904,7 @@\n @c RHEL 7 came with GCC 4.8, with 4.4 available.\n @c RHEL 8 has GCC 8 with 9 available\n @c RHEL 9 has GCC 11\n- at c All versions of Cwntos is now EOL.\n+ at c All versions of Centos are now EOL.\n A common error is to assume recent versions of compilers or OSes.  In\n production environments `long term support' versions of OSes may be in\n use for many years, at footnote{Ubuntu provides 5 years of support (but\nedd at rob:~/svn/r-devel$ \n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "R Core,\n\nHere is another minor typo which I had spotted three days ago and sent to\nBrian, but have not heard back nor seen it incorporated. Doubly trivial as in\na comment but a dual typo nevertheless.",
+      "thread_id": "thread-7615d97e0d1f",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-d6f599668996",
+      "message_id": "<26535.600.857402.210912@hornik.net>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "38d7001af840d889a64ba1cdcb8ec8beb738b8daf9643622801f3acb78b6052a",
+      "date": "2025-02-08T08:06:00+01:00",
+      "subject": "[Rd] Another typo in R-exts.texi",
+      "subject_clean": "Another typo in R-exts.texi",
+      "in_reply_to": "<26534.40939.338286.387898@rob.eddelbuettel.com>",
+      "references": [
+        "<26534.40939.338286.387898@rob.eddelbuettel.com>"
+      ],
+      "body_plain": ">>>>> Dirk Eddelbuettel writes:\n\nThanks: fixed now.\n\nBest\n-k\n\n> R Core,\n\n> Here is another minor typo which I had spotted three days ago and sent to\n> Brian, but have not heard back nor seen it incorporated. Doubly trivial as in\n> a comment but a dual typo nevertheless. Would be nice if someone could fold\n> this in. I still have the same diff here for the current r87707.\n\n> Cheers, Dirk\n\n> edd at rob:~/svn/r-devel$ svn diff doc/manual/R-exts.texi\n> Index: doc/manual/R-exts.texi\n> ===================================================================\n> --- doc/manual/R-exts.texi      (revision 87685)\n> +++ doc/manual/R-exts.texi      (working copy)\n> @@ -5904,7 +5904,7 @@\n>  @c RHEL 7 came with GCC 4.8, with 4.4 available.\n>  @c RHEL 8 has GCC 8 with 9 available\n>  @c RHEL 9 has GCC 11\n> - at c All versions of Cwntos is now EOL.\n> + at c All versions of Centos are now EOL.\n>  A common error is to assume recent versions of compilers or OSes.  In\n>  production environments `long term support' versions of OSes may be in\n>  use for many years, at footnote{Ubuntu provides 5 years of support (but\n> edd at rob:~/svn/r-devel$ \n\n> -- \n> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org\n\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">>>>> Dirk Eddelbuettel writes:\n\nThanks: fixed now.\n\nBest\n-k\n\n> R Core,\n\n> Here is another minor typo which I had spotted three days ago and sent to\n> Brian, but have not heard back nor seen it incorp",
+      "thread_id": "thread-7615d97e0d1f",
+      "thread_depth": 1,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-a128a158e5c3",
+      "message_id": "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+      "from_name": "Tobias Verbeke",
+      "from_email_hash": "5f2f55743181bcc88a1e5b37143eaae63d5abd64de8e7d7dd7a5bb7c38dcb5f5",
+      "date": "2025-02-10T09:08:18Z",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "L.S.\n\nAFAICS the Writing R Extensions and R Installation and Administration manuals do not explicitly discuss binary R packages on GNU/Linux. Only installation from source is mentioned (https://cran.r-project.org/doc/manuals/R-admin.html#Installing-packages-1)\nand when discussing repository layouts (https://cran.r-project.org/doc/manuals/R-admin.html#Setting-up-a-package-repository) no mention is made of conventions for GNU/Linux distributions.\n\nThe proprietary Package Manager (PPM) from Posit (https://packagemanager.posit.co/client/#/) does offer binary packages for GNU/Linux, but the usage of this service is restricted in ways that go against the principles of open source (https://posit.co/about/posit-service-terms-of-use/). By way of example, mirroring is not allowed and certain categories of users are excluded (age categories, competitors, ...). This is maybe expected to some, but this clearly does not offer a proper foundation for the distribution of open source R packages.\n\nFor this reason I am wondering whether the R project / CRAN would not be better placed and/or open to support distribution of binary R packages on GNU/Linux.\n\nA second, orthogonal question is whether the R project can advance an official convention for the repository layout related to the distribution of binary GNU/Linux packages. Our proposal would be to use something along\n\nhttp://mydomain.com/bin/linux/jammy/x86_64/contrib/4.4\n\nwhich IMHO is more elegant than\n\nhttp://mydomain.com/bin/linux/jammy-x86_64/contrib/4.4\n\n(and which mimicks the documented MacOS convention\n\nhttp://mydomain.com/bin/macosx/big-sur-x86_64/contrib/4.4).\n\nAnyone?\n\nObviously willing to work out details and collaborate on the topic.\n\nKind regards,\nTobias",
+      "body_snippet": "L.S.\n\nAFAICS the Writing R Extensions and R Installation and Administration manuals do not explicitly discuss binary R packages on GNU/Linux. Only installation from source is mentioned (https://cran.r",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-437ab6a78533",
+      "message_id": "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+      "from_name": "Simon Urbanek",
+      "from_email_hash": "0f7a36ede18d495e19236834ee83f5b20722f5d7cec3588576a59851b948b51a",
+      "date": "2025-02-10T22:33:40+13:00",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>"
+      ],
+      "body_plain": "Tobias,\n\nalthough we did discuss the possibility of extending the os/toolchain/architecture notation for binary packages beyond macOS, Linux was not necessarily on the list as Linux distributions have already established ways of providing binaries, so it does not seem productive to duplicate the effort. Can you elaborate a bit more on what you had in mind? Binaries are by design specific to toolchain, distribution and architecture, so there is no such thing as a \"GNU/Linux binary\". The only reliable way to distribute packages in Linux is from sources or by the Linux distribution repositories. Binaries are inherently tied to system dependencies and their versions, so such concept doesn't make any sense outside of the distribution. There is no such thing as a \"jammy binary\" to take up your example - it would have to depend on the distribution, toolchain and all library versions as well.\n\nCheers,\nSimon\n\n\n\n> On Feb 10, 2025, at 10:08 PM, Tobias Verbeke <tobias.verbeke at openanalytics.eu> wrote:\n> \n> L.S.\n> \n> AFAICS the Writing R Extensions and R Installation and Administration manuals do not explicitly discuss binary R packages on GNU/Linux. Only installation from source is mentioned (https://cran.r-project.org/doc/manuals/R-admin.html#Installing-packages-1)\n> and when discussing repository layouts (https://cran.r-project.org/doc/manuals/R-admin.html#Setting-up-a-package-repository) no mention is made of conventions for GNU/Linux distributions.\n> \n> The proprietary Package Manager (PPM) from Posit (https://packagemanager.posit.co/client/#/) does offer binary packages for GNU/Linux, but the usage of this service is restricted in ways that go against the principles of open source (https://posit.co/about/posit-service-terms-of-use/). By way of example, mirroring is not allowed and certain categories of users are excluded (age categories, competitors, ...). This is maybe expected to some, but this clearly does not offer a proper foundation for the distribution of open source R packages.\n> \n> For this reason I am wondering whether the R project / CRAN would not be better placed and/or open to support distribution of binary R packages on GNU/Linux.\n> \n> A second, orthogonal question is whether the R project can advance an official convention for the repository layout related to the distribution of binary GNU/Linux packages. Our proposal would be to use something along\n> \n> http://mydomain.com/bin/linux/jammy/x86_64/contrib/4.4\n> \n> which IMHO is more elegant than\n> \n> http://mydomain.com/bin/linux/jammy-x86_64/contrib/4.4\n> \n> (and which mimicks the documented MacOS convention\n> \n> http://mydomain.com/bin/macosx/big-sur-x86_64/contrib/4.4).\n> \n> Anyone?\n> \n> Obviously willing to work out details and collaborate on the topic.\n> \n> Kind regards,\n> Tobias\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>",
+      "body_snippet": "Tobias,\n\nalthough we did discuss the possibility of extending the os/toolchain/architecture notation for binary packages beyond macOS, Linux was not necessarily on the list as Linux distributions have",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 1,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-f108d4cd38a1",
+      "message_id": "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>",
+      "from_name": "Tobias Verbeke",
+      "from_email_hash": "5f2f55743181bcc88a1e5b37143eaae63d5abd64de8e7d7dd7a5bb7c38dcb5f5",
+      "date": "2025-02-10T11:00:05Z",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>"
+      ],
+      "body_plain": "Hi Simon,\n\nThank you for your prompt reply.\n\n----- Original Message -----\n> From: \"Simon Urbanek\" <simon.urbanek at R-project.org>\n> To: \"Tobias Verbeke\" <tobias.verbeke at openanalytics.eu>\n> Cc: \"r-devel at r-project.org\" <r-devel at r-project.org>\n> Sent: Monday, February 10, 2025 10:33:40 AM\n> Subject: Re: [Rd] binary R packages for GNU/Linux\n\n> Tobias,\n> \n> although we did discuss the possibility of extending the\n> os/toolchain/architecture notation for binary packages beyond macOS, Linux was\n> not necessarily on the list as Linux distributions have already established\n> ways of providing binaries, so it does not seem productive to duplicate the\n> effort. Can you elaborate a bit more on what you had in mind? Binaries are by\n> design specific to toolchain, distribution and architecture, so there is no\n> such thing as a \"GNU/Linux binary\". \n\nWe agree. It is just used as a generic term here to denote a package built for a specific version of a distribution for a specific architecture and its toolchain.\n\n> The only reliable way to distribute\n> packages in Linux is from sources or by the Linux distribution repositories.\n> Binaries are inherently tied to system dependencies and their versions, so such\n> concept doesn't make any sense outside of the distribution. There is no such\n> thing as a \"jammy binary\" to take up your example - it would have to depend on\n> the distribution, toolchain and all library versions as well.\n\njammy is a specific version of the distribution (Ubuntu 22.04 LTS) and the architecture is included in my proposal (x86_64)\n\nhttp://mydomain.com/bin/linux/jammy/x86_64/contrib/4.4\n\nIn my personal experience (~25y of GNU/Linux, mostly Debian, Ubuntu and CentOS) versions of the toolchain will not differ in a practically relevant way within a particular version of a distribution, so it is possible to build and distribute packages for a specific version of a distribution on a specific architecture for a specific series of R (4.4). I guess that if it was not possible, the effort would also not have been undertaken by PPM mentioned earlier. They offer (I skip the non-publicly available Linux distros) CentOS 7 (centos7), Rocky Linux 9 (rhel9), Ubuntu 20.04 (focal), Ubuntu 22.04 (jammy), Ubuntu 24.04 (noble), Debian 11 (bullseye), Debian 12 (bookworm). Another argument to demonstrate the feasibility is the r2u project (https://github.com/eddelbuettel/r2u). It offers CRAN as Ubuntu Binaries, but in order to build these Ubuntu Binaries it actually makes use of the binary R packages built by PPM. Quoting from https://eddelbuettel.github.io/r2u/: \"For the CRAN binaries we either repackage P3M/RSPM/PPM builds (where available) or build natively.\" They cover all CRAN packages. The usage of PPM as a source is, of course, a weakness (in the grand scheme of things), but the point here is about the feasibility of building the packages in a portable way per version of a particular distribution, architecture etc.\n\nI do understand arguments pro 'distribution binaries' (e.g. dependency resolution of system dependencies), but there are also arguments pro 'CRAN binaries' (binary builds of the R packages), since it can be convenient to allow for fast installation of arbitrary R packages without the need of more general sudo rights (required for installation of distribution binaries).\n\nIf R-core/CRAN maintainers agree that the answer to my first question is 'no', I am fine with that, but I can only know when asking.\n\nIt still leaves the answer to my second question ('official' repository layout conventions) open. It could be: 'we think it is a bad idea, so don't propose a structure' or 'we think it is a bad idea, but propose the following structure for people with bad ideas' :-).\n\nKind regards,\nTobias\n\n>> On Feb 10, 2025, at 10:08 PM, Tobias Verbeke <tobias.verbeke at openanalytics.eu>\n>> wrote:\n>> \n>> L.S.\n>> \n>> AFAICS the Writing R Extensions and R Installation and Administration manuals do\n>> not explicitly discuss binary R packages on GNU/Linux. Only installation from\n>> source is mentioned\n>> (https://cran.r-project.org/doc/manuals/R-admin.html#Installing-packages-1)\n>> and when discussing repository layouts\n>> (https://cran.r-project.org/doc/manuals/R-admin.html#Setting-up-a-package-repository)\n>> no mention is made of conventions for GNU/Linux distributions.\n>> \n>> The proprietary Package Manager (PPM) from Posit\n>> (https://packagemanager.posit.co/client/#/) does offer binary packages for\n>> GNU/Linux, but the usage of this service is restricted in ways that go against\n>> the principles of open source\n>> (https://posit.co/about/posit-service-terms-of-use/). By way of example,\n>> mirroring is not allowed and certain categories of users are excluded (age\n>> categories, competitors, ...). This is maybe expected to some, but this clearly\n>> does not offer a proper foundation for the distribution of open source R\n>> packages.\n>> \n>> For this reason I am wondering whether the R project / CRAN would not be better\n>> placed and/or open to support distribution of binary R packages on GNU/Linux.\n>> \n>> A second, orthogonal question is whether the R project can advance an official\n>> convention for the repository layout related to the distribution of binary\n>> GNU/Linux packages. Our proposal would be to use something along\n>> \n>> http://mydomain.com/bin/linux/jammy/x86_64/contrib/4.4\n>> \n>> which IMHO is more elegant than\n>> \n>> http://mydomain.com/bin/linux/jammy-x86_64/contrib/4.4\n>> \n>> (and which mimicks the documented MacOS convention\n>> \n>> http://mydomain.com/bin/macosx/big-sur-x86_64/contrib/4.4).\n>> \n>> Anyone?\n>> \n>> Obviously willing to work out details and collaborate on the topic.\n>> \n>> Kind regards,\n>> Tobias\n>> \n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Hi Simon,\n\nThank you for your prompt reply.\n\n----- Original Message -----\n> From: \"Simon Urbanek\" <simon.urbanek at R-project.org>\n> To: \"Tobias Verbeke\" <tobias.verbeke at openanalytics.eu>\n> Cc: \"r-",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 2,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-edd5d1b49753",
+      "message_id": "<26537.64093.228457.76824@rob.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2025-02-10T07:08:45-06:00",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+        "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>"
+      ],
+      "body_plain": "On 10 February 2025 at 11:00, Tobias Verbeke wrote:\n| Another argument to demonstrate the feasibility is the r2u project\n| (https://github.com/eddelbuettel/r2u). It offers CRAN as Ubuntu Binaries, but\n| in order to build these Ubuntu Binaries it actually makes use of the binary R\n| packages built by PPM. Quoting from https://eddelbuettel.github.io/r2u/: \"For\n| the CRAN binaries we  either repackage P3M/RSPM/PPM builds (where\n| available) or build natively.\" They cover all CRAN packages. The usage of PPM\n| as a source is, of course, a weakness (in the grand scheme of things), but\n| the point here is about the feasibility of building the packages in a\n| portable way per version of a particular distribution, architecture etc.\n\nAs you brought this up, allow me to clarify: The re-use (where possible) is\nsimply a shortcut \"where possible\".  Each day when I cover updated packages,\nI hit maybe 5 per cent of packages where for reasons I still cannot decipher\np3m.dev does not have a binary, so I build those 5 per cent from source.\nSimilarly for the approx 450 BioConductor packages all builds are from\nsource.\n\nRebuilding everything from source \"just because we want to\" is entirely\npossible but as it is my time waiting for binaries I currently do not force\nfull rebuilds but I easily could. Also note that about 22% of packages\ncontain native code, leaving 78% which are not. Re-use is even simpler there\nas these 78% as they contain only (portable) R processing. So if we wanted to\ncompile all native packages for Ubuntu, we could. It is a resourcing issue\nthat has not yet been a prioruty for me. Inaki does it for Fedora, Detlef\ndoes it for OpenSUSE.\n\nThe more important point of these package is the full system integration. You\ndo get _all_ binary dependencies declared, exactly as a distribution-native\npackage (of which Debian/Ubuntu have a bit over 1k) would. Guaranteed.\nReliably. Fast. That is a big step up for large deployments, for testing, for\nless experienced users.\n\nSo thanks for starting a discussion around this as 'we' as a community are\nfalling a bit short here. One open question is if we could pull something off\nthat works like the Python wheels and offers cross-distro builds, ideally\nwithout static linking. Your \"CRAN libraries\" added to the ld.so path may do\nthis. I do not know how feasible / involved this would be so so far I\nconcentrated on doing something simpler -- but feasible and reliable by\nworking exactly as the distribution packages work.\n\nAll that said, thanks for the starting this discussion!\n\nCheers, Dirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "On 10 February 2025 at 11:00, Tobias Verbeke wrote:\n| Another argument to demonstrate the feasibility is the r2u project\n| (https://github.com/eddelbuettel/r2u). It offers CRAN as Ubuntu Binaries, but",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 3,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-4bbd885f65e0",
+      "message_id": "<CALEXWq3NWC+ygA+sibqE1VdF8rEsnjvYx8dqR-xsj3JdVudYag@mail.gmail.com>",
+      "from_name": "Iñaki Ucar",
+      "from_email_hash": "0faf0f82f2ae7a03780f35561a3913efe7fa8a6118b8feae1bd8f2f6c8ab74c8",
+      "date": "2025-02-10T14:29:54+01:00",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<26537.64093.228457.76824@rob.eddelbuettel.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+        "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>",
+        "<26537.64093.228457.76824@rob.eddelbuettel.com>"
+      ],
+      "body_plain": "On Mon, 10 Feb 2025 at 14:09, Dirk Eddelbuettel <edd at debian.org> wrote:\n>\n>\n> On 10 February 2025 at 11:00, Tobias Verbeke wrote:\n> | Another argument to demonstrate the feasibility is the r2u project\n> | (https://github.com/eddelbuettel/r2u). It offers CRAN as Ubuntu Binaries, but\n> | in order to build these Ubuntu Binaries it actually makes use of the binary R\n> | packages built by PPM. Quoting from https://eddelbuettel.github.io/r2u/: \"For\n> | the CRAN binaries we  either repackage P3M/RSPM/PPM builds (where\n> | available) or build natively.\" They cover all CRAN packages. The usage of PPM\n> | as a source is, of course, a weakness (in the grand scheme of things), but\n> | the point here is about the feasibility of building the packages in a\n> | portable way per version of a particular distribution, architecture etc.\n>\n> As you brought this up, allow me to clarify: The re-use (where possible) is\n> simply a shortcut \"where possible\".  Each day when I cover updated packages,\n> I hit maybe 5 per cent of packages where for reasons I still cannot decipher\n> p3m.dev does not have a binary, so I build those 5 per cent from source.\n> Similarly for the approx 450 BioConductor packages all builds are from\n> source.\n>\n> Rebuilding everything from source \"just because we want to\" is entirely\n> possible but as it is my time waiting for binaries I currently do not force\n> full rebuilds but I easily could. Also note that about 22% of packages\n> contain native code, leaving 78% which are not. Re-use is even simpler there\n> as these 78% as they contain only (portable) R processing. So if we wanted to\n> compile all native packages for Ubuntu, we could. It is a resourcing issue\n> that has not yet been a prioruty for me. Inaki does it for Fedora, Detlef\n> does it for OpenSUSE.\n\nAnd for completeness, [1] is where we painstakingly* maintain a list\nof system dependencies, [2] is where the daily magic happens for\nkeeping track of CRAN, and [3] performs the heavy-lifting and\npublishes an RPM repository with the result.\n\n[1] https://github.com/cran4linux/sysreqs\n[2] https://github.com/cran4linux/cran2copr\n[3] https://copr.fedorainfracloud.org/coprs/iucar/cran\n\n*Because, you know, SystemRequirements.\n\n> The more important point of these package is the full system integration. You\n> do get _all_ binary dependencies declared, exactly as a distribution-native\n> package (of which Debian/Ubuntu have a bit over 1k) would. Guaranteed.\n> Reliably. Fast. That is a big step up for large deployments, for testing, for\n> less experienced users.\n>\n> So thanks for starting a discussion around this as 'we' as a community are\n> falling a bit short here.\n\nIndeed, thank you, Tobias.\n\n> One open question is if we could pull something off\n> that works like the Python wheels and offers cross-distro builds, ideally\n> without static linking. Your \"CRAN libraries\" added to the ld.so path may do\n> this. I do not know how feasible / involved this would be so so far I\n> concentrated on doing something simpler -- but feasible and reliable by\n> working exactly as the distribution packages work.\n\nIt would be perfectly feasible to maintain sync'ed builds (in terms of\nversion) of system dependencies at CRAN-provided (RPM, APT...)\nrepositories as compat packages for various distributions, then all\npackages could be built once and shipped everywhere (i.e. cross-distro\nbuilds). Collaterally, this would increase reproducibility of package\nchecks to a certain extent.\n\nI offered my help in these matters in the past, but was kindly\ndeclined. That hand remains extended.\n\nBest,\nI?aki\n\n>\n> All that said, thanks for the starting this discussion!\n>\n> Cheers, Dirk\n>\n> --\n> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n-- \nI?aki ?car",
+      "body_snippet": "On Mon, 10 Feb 2025 at 14:09, Dirk Eddelbuettel <edd at debian.org> wrote:\n>\n>\n> On 10 February 2025 at 11:00, Tobias Verbeke wrote:\n> | Another argument to demonstrate the feasibility is the r2u proj",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 4,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-0e40d62bf81b",
+      "message_id": "<CAN_1p9xrJd_YHVOJ0i8H4YzOsGg7K5mSZWcShs_VHPMDvDSDpg@mail.gmail.com>",
+      "from_name": "Carl Boettiger",
+      "from_email_hash": "70b7b9f5ae3e08bb8be9de8e019dffe6848dabb77bac6063de17918f2ae82d4e",
+      "date": "2025-02-10T07:35:06-08:00",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<CALEXWq3NWC+ygA+sibqE1VdF8rEsnjvYx8dqR-xsj3JdVudYag@mail.gmail.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+        "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>",
+        "<26537.64093.228457.76824@rob.eddelbuettel.com>",
+        "<CALEXWq3NWC+ygA+sibqE1VdF8rEsnjvYx8dqR-xsj3JdVudYag@mail.gmail.com>"
+      ],
+      "body_plain": "Great discussion.\n\nJust to note another example I don't think was mentioned -- The r-universe\nproject also builds binaries for Linux (Ubuntu latest)\nhttps://docs.r-universe.dev/install/binaries.html (as well as other targets\nincluding wasm).  It also provides binaries for Bioconductor and packages\non any git-based version control platform (e.g. GitHub).\n\nR Universe is open source and a top-level project of the R Consortium.\n\nCheers,\n\nCarl\n\n---\nCarl Boettiger\nhttp://carlboettiger.info/\n\n\nOn Mon, Feb 10, 2025 at 5:30?AM I?aki Ucar <iucar at fedoraproject.org> wrote:\n\n> On Mon, 10 Feb 2025 at 14:09, Dirk Eddelbuettel <edd at debian.org> wrote:\n> >\n> >\n> > On 10 February 2025 at 11:00, Tobias Verbeke wrote:\n> > | Another argument to demonstrate the feasibility is the r2u project\n> > | (https://github.com/eddelbuettel/r2u). It offers CRAN as Ubuntu\n> Binaries, but\n> > | in order to build these Ubuntu Binaries it actually makes use of the\n> binary R\n> > | packages built by PPM. Quoting from\n> https://eddelbuettel.github.io/r2u/: \"For\n> > | the CRAN binaries we  either repackage P3M/RSPM/PPM builds (where\n> > | available) or build natively.\" They cover all CRAN packages. The usage\n> of PPM\n> > | as a source is, of course, a weakness (in the grand scheme of things),\n> but\n> > | the point here is about the feasibility of building the packages in a\n> > | portable way per version of a particular distribution, architecture\n> etc.\n> >\n> > As you brought this up, allow me to clarify: The re-use (where possible)\n> is\n> > simply a shortcut \"where possible\".  Each day when I cover updated\n> packages,\n> > I hit maybe 5 per cent of packages where for reasons I still cannot\n> decipher\n> > p3m.dev does not have a binary, so I build those 5 per cent from source.\n> > Similarly for the approx 450 BioConductor packages all builds are from\n> > source.\n> >\n> > Rebuilding everything from source \"just because we want to\" is entirely\n> > possible but as it is my time waiting for binaries I currently do not\n> force\n> > full rebuilds but I easily could. Also note that about 22% of packages\n> > contain native code, leaving 78% which are not. Re-use is even simpler\n> there\n> > as these 78% as they contain only (portable) R processing. So if we\n> wanted to\n> > compile all native packages for Ubuntu, we could. It is a resourcing\n> issue\n> > that has not yet been a prioruty for me. Inaki does it for Fedora, Detlef\n> > does it for OpenSUSE.\n>\n> And for completeness, [1] is where we painstakingly* maintain a list\n> of system dependencies, [2] is where the daily magic happens for\n> keeping track of CRAN, and [3] performs the heavy-lifting and\n> publishes an RPM repository with the result.\n>\n> [1] https://github.com/cran4linux/sysreqs\n> [2] https://github.com/cran4linux/cran2copr\n> [3] https://copr.fedorainfracloud.org/coprs/iucar/cran\n>\n> *Because, you know, SystemRequirements.\n>\n> > The more important point of these package is the full system\n> integration. You\n> > do get _all_ binary dependencies declared, exactly as a\n> distribution-native\n> > package (of which Debian/Ubuntu have a bit over 1k) would. Guaranteed.\n> > Reliably. Fast. That is a big step up for large deployments, for\n> testing, for\n> > less experienced users.\n> >\n> > So thanks for starting a discussion around this as 'we' as a community\n> are\n> > falling a bit short here.\n>\n> Indeed, thank you, Tobias.\n>\n> > One open question is if we could pull something off\n> > that works like the Python wheels and offers cross-distro builds, ideally\n> > without static linking. Your \"CRAN libraries\" added to the ld.so path\n> may do\n> > this. I do not know how feasible / involved this would be so so far I\n> > concentrated on doing something simpler -- but feasible and reliable by\n> > working exactly as the distribution packages work.\n>\n> It would be perfectly feasible to maintain sync'ed builds (in terms of\n> version) of system dependencies at CRAN-provided (RPM, APT...)\n> repositories as compat packages for various distributions, then all\n> packages could be built once and shipped everywhere (i.e. cross-distro\n> builds). Collaterally, this would increase reproducibility of package\n> checks to a certain extent.\n>\n> I offered my help in these matters in the past, but was kindly\n> declined. That hand remains extended.\n>\n> Best,\n> I?aki\n>\n> >\n> > All that said, thanks for the starting this discussion!\n> >\n> > Cheers, Dirk\n> >\n> > --\n> > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n>\n>\n> --\n> I?aki ?car\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Great discussion.\n\nJust to note another example I don't think was mentioned -- The r-universe\nproject also builds binaries for Linux (Ubuntu latest)\nhttps://docs.r-universe.dev/install/binaries.html (",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 5,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-ed07790c8cfe",
+      "message_id": "<CAN+W6_s3pYbzKYmE0Rq=xkjSg2T-AqDTEgD_3ZGSf52-HFsg=g@mail.gmail.com>",
+      "from_name": "Lluís Revilla",
+      "from_email_hash": "76a9726a6e0e47bbb7afccdf71a32cc468fa12b74f368ad4203569f7d7fbc065",
+      "date": "2025-02-10T16:37:54+01:00",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<CAN_1p9xrJd_YHVOJ0i8H4YzOsGg7K5mSZWcShs_VHPMDvDSDpg@mail.gmail.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+        "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>",
+        "<26537.64093.228457.76824@rob.eddelbuettel.com>",
+        "<CALEXWq3NWC+ygA+sibqE1VdF8rEsnjvYx8dqR-xsj3JdVudYag@mail.gmail.com>",
+        "<CAN_1p9xrJd_YHVOJ0i8H4YzOsGg7K5mSZWcShs_VHPMDvDSDpg@mail.gmail.com>"
+      ],
+      "body_plain": "Adding a different project to this discussion:\n\nRecently at the R repository working group a project to provide them for\nmultiple distributions and toolchain was presented.\nSee the documentation about what do they (Patrick Schratz) share:\nhttps://docs.r-package-binaries.devxy.io/index.html\n\nThe existence of these projects (Alpine, RedHat, Fedora, Ubuntu, r2u, P3M,\nr-universe, ...) providing binaries show there is interest even if there\nare multiple combinations of platforms, toolchains and library versions.\nIf these projects cooperate between them (as shown by r2u project) and with\nCRAN, I think this will reduce duplicated effort and help the users (and\nrepositories).\nBinaries could be served in multiple places matching what R requires and/or\nwhat the distribution uses without much more (technical) effort.\n\nCheers,\n\nLlu?s\n\nOn Mon, 10 Feb 2025 at 16:35, Carl Boettiger <cboettig at gmail.com> wrote:\n\n> Great discussion.\n>\n> Just to note another example I don't think was mentioned -- The r-universe\n> project also builds binaries for Linux (Ubuntu latest)\n> https://docs.r-universe.dev/install/binaries.html (as well as other\n> targets\n> including wasm).  It also provides binaries for Bioconductor and packages\n> on any git-based version control platform (e.g. GitHub).\n>\n> R Universe is open source and a top-level project of the R Consortium.\n>\n> Cheers,\n>\n> Carl\n>\n> ---\n> Carl Boettiger\n> http://carlboettiger.info/\n>\n>\n> On Mon, Feb 10, 2025 at 5:30?AM I?aki Ucar <iucar at fedoraproject.org>\n> wrote:\n>\n> > On Mon, 10 Feb 2025 at 14:09, Dirk Eddelbuettel <edd at debian.org> wrote:\n> > >\n> > >\n> > > On 10 February 2025 at 11:00, Tobias Verbeke wrote:\n> > > | Another argument to demonstrate the feasibility is the r2u project\n> > > | (https://github.com/eddelbuettel/r2u). It offers CRAN as Ubuntu\n> > Binaries, but\n> > > | in order to build these Ubuntu Binaries it actually makes use of the\n> > binary R\n> > > | packages built by PPM. Quoting from\n> > https://eddelbuettel.github.io/r2u/: \"For\n> > > | the CRAN binaries we  either repackage P3M/RSPM/PPM builds (where\n> > > | available) or build natively.\" They cover all CRAN packages. The\n> usage\n> > of PPM\n> > > | as a source is, of course, a weakness (in the grand scheme of\n> things),\n> > but\n> > > | the point here is about the feasibility of building the packages in a\n> > > | portable way per version of a particular distribution, architecture\n> > etc.\n> > >\n> > > As you brought this up, allow me to clarify: The re-use (where\n> possible)\n> > is\n> > > simply a shortcut \"where possible\".  Each day when I cover updated\n> > packages,\n> > > I hit maybe 5 per cent of packages where for reasons I still cannot\n> > decipher\n> > > p3m.dev does not have a binary, so I build those 5 per cent from\n> source.\n> > > Similarly for the approx 450 BioConductor packages all builds are from\n> > > source.\n> > >\n> > > Rebuilding everything from source \"just because we want to\" is entirely\n> > > possible but as it is my time waiting for binaries I currently do not\n> > force\n> > > full rebuilds but I easily could. Also note that about 22% of packages\n> > > contain native code, leaving 78% which are not. Re-use is even simpler\n> > there\n> > > as these 78% as they contain only (portable) R processing. So if we\n> > wanted to\n> > > compile all native packages for Ubuntu, we could. It is a resourcing\n> > issue\n> > > that has not yet been a prioruty for me. Inaki does it for Fedora,\n> Detlef\n> > > does it for OpenSUSE.\n> >\n> > And for completeness, [1] is where we painstakingly* maintain a list\n> > of system dependencies, [2] is where the daily magic happens for\n> > keeping track of CRAN, and [3] performs the heavy-lifting and\n> > publishes an RPM repository with the result.\n> >\n> > [1] https://github.com/cran4linux/sysreqs\n> > [2] https://github.com/cran4linux/cran2copr\n> > [3] https://copr.fedorainfracloud.org/coprs/iucar/cran\n> >\n> > *Because, you know, SystemRequirements.\n> >\n> > > The more important point of these package is the full system\n> > integration. You\n> > > do get _all_ binary dependencies declared, exactly as a\n> > distribution-native\n> > > package (of which Debian/Ubuntu have a bit over 1k) would. Guaranteed.\n> > > Reliably. Fast. That is a big step up for large deployments, for\n> > testing, for\n> > > less experienced users.\n> > >\n> > > So thanks for starting a discussion around this as 'we' as a community\n> > are\n> > > falling a bit short here.\n> >\n> > Indeed, thank you, Tobias.\n> >\n> > > One open question is if we could pull something off\n> > > that works like the Python wheels and offers cross-distro builds,\n> ideally\n> > > without static linking. Your \"CRAN libraries\" added to the ld.so path\n> > may do\n> > > this. I do not know how feasible / involved this would be so so far I\n> > > concentrated on doing something simpler -- but feasible and reliable by\n> > > working exactly as the distribution packages work.\n> >\n> > It would be perfectly feasible to maintain sync'ed builds (in terms of\n> > version) of system dependencies at CRAN-provided (RPM, APT...)\n> > repositories as compat packages for various distributions, then all\n> > packages could be built once and shipped everywhere (i.e. cross-distro\n> > builds). Collaterally, this would increase reproducibility of package\n> > checks to a certain extent.\n> >\n> > I offered my help in these matters in the past, but was kindly\n> > declined. That hand remains extended.\n> >\n> > Best,\n> > I?aki\n> >\n> > >\n> > > All that said, thanks for the starting this discussion!\n> > >\n> > > Cheers, Dirk\n> > >\n> > > --\n> > > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org\n> > >\n> > > ______________________________________________\n> > > R-devel at r-project.org mailing list\n> > > https://stat.ethz.ch/mailman/listinfo/r-devel\n> > >\n> >\n> >\n> > --\n> > I?aki ?car\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Adding a different project to this discussion:\n\nRecently at the R repository working group a project to provide them for\nmultiple distributions and toolchain was presented.\nSee the documentation about",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 6,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-20c8d4a4822f",
+      "message_id": "<26538.10265.377602.143676@rob.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2025-02-10T10:23:53-06:00",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<CAN_1p9xrJd_YHVOJ0i8H4YzOsGg7K5mSZWcShs_VHPMDvDSDpg@mail.gmail.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+        "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>",
+        "<26537.64093.228457.76824@rob.eddelbuettel.com>",
+        "<CALEXWq3NWC+ygA+sibqE1VdF8rEsnjvYx8dqR-xsj3JdVudYag@mail.gmail.com>",
+        "<CAN_1p9xrJd_YHVOJ0i8H4YzOsGg7K5mSZWcShs_VHPMDvDSDpg@mail.gmail.com>"
+      ],
+      "body_plain": "On 10 February 2025 at 07:35, Carl Boettiger wrote:\n| Great discussion.??\n| \n| Just to note another example I don't think was mentioned -- The r-universe\n| project also builds binaries for Linux (Ubuntu latest) https://\n| docs.r-universe.dev/install/binaries.html (as well as other targets including\n| wasm).? It also provides binaries for Bioconductor and packages on any\n| git-based version control platform (e.g. GitHub).??\n\nYes ... but these are 'naked' binaries as created by 'R CMD INSTALL --build'\nbut without system integration (and as such mirror what p3m.dev does). This\nhas its merits (it is simpler, can cover more OS variants) but it is also\nmore limited.\n\nWhat we (ie Detlef, Inaki, myself) myself do for the distros is fundamentally\ndifferent. Both are merits, both can coexist, but I like the added 'oomph'\nyou get by integrating properly with the distribution you deploy on.  Ubuntu\nis a pretty useful base case.\n\nDirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "On 10 February 2025 at 07:35, Carl Boettiger wrote:\n| Great discussion.??\n| \n| Just to note another example I don't think was mentioned -- The r-universe\n| project also builds binaries for Linux (Ubun",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 6,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-f37e875836fc",
+      "message_id": "<CABdHhvH--S5OP4CViFDzqupwmBVOvxbENoCBz2HWWziZU6YE9Q@mail.gmail.com>",
+      "from_name": "Hadley Wickham",
+      "from_email_hash": "ca0ecd97ae88c22ed6e7f3889e08db1f732ad5eadb66671b2dc01d355cc20bf9",
+      "date": "2025-02-10T13:32:17-06:00",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>"
+      ],
+      "body_plain": ">\n>\n>\n> The proprietary Package Manager (PPM) from Posit (\n> https://packagemanager.posit.co/client/#/) does offer binary packages for\n> GNU/Linux, but the usage of this service is restricted in ways that go\n> against the principles of open source (\n> https://posit.co/about/posit-service-terms-of-use/). By way of example,\n> mirroring is not allowed and certain categories of users are excluded (age\n> categories, competitors, ...). This is maybe expected to some, but this\n> clearly does not offer a proper foundation for the distribution of open\n> source R packages.\n>\n\nIf this terms of service is the main sticking point, I could certainly find\nout if we could change them. From a quick read, my personal sense (with no\ninternal exploration whatsoever) is that these (a) were probably written by\na lawyer with no specific understanding of PPM, let alone that these are\nbinaries built from open-source packages, and (b) probably aren't legally\nbinding anyway (since for most PPM usage, people downloading packages never\nsee the TOS).\n\nHadley\n-- \nhttp://hadley.nz\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": ">\n>\n>\n> The proprietary Package Manager (PPM) from Posit (\n> https://packagemanager.posit.co/client/#/) does offer binary packages for\n> GNU/Linux, but the usage of this service is restricted in ways ",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 1,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-871fff413ffd",
+      "message_id": "<71866055-9368-40A9-A139-B2772D73AF41@R-project.org>",
+      "from_name": "Simon Urbanek",
+      "from_email_hash": "0f7a36ede18d495e19236834ee83f5b20722f5d7cec3588576a59851b948b51a",
+      "date": "2025-02-11T09:48:12+13:00",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<26538.10265.377602.143676@rob.eddelbuettel.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+        "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>",
+        "<26537.64093.228457.76824@rob.eddelbuettel.com>",
+        "<CALEXWq3NWC+ygA+sibqE1VdF8rEsnjvYx8dqR-xsj3JdVudYag@mail.gmail.com>",
+        "<CAN_1p9xrJd_YHVOJ0i8H4YzOsGg7K5mSZWcShs_VHPMDvDSDpg@mail.gmail.com>",
+        "<26538.10265.377602.143676@rob.eddelbuettel.com>"
+      ],
+      "body_plain": "> On Feb 11, 2025, at 5:23 AM, Dirk Eddelbuettel <edd at debian.org> wrote:\n> \n> \n> On 10 February 2025 at 07:35, Carl Boettiger wrote:\n> | Great discussion.  \n> | \n> | Just to note another example I don't think was mentioned -- The r-universe\n> | project also builds binaries for Linux (Ubuntu latest) https://\n> | docs.r-universe.dev/install/binaries.html (as well as other targets including\n> | wasm).  It also provides binaries for Bioconductor and packages on any\n> | git-based version control platform (e.g. GitHub).  \n> \n> Yes ... but these are 'naked' binaries as created by 'R CMD INSTALL --build'\n> but without system integration (and as such mirror what p3m.dev does). This\n> has its merits (it is simpler, can cover more OS variants) but it is also\n> more limited.\n> \n> What we (ie Detlef, Inaki, myself) myself do for the distros is fundamentally\n> different. Both are merits, both can coexist, but I like the added 'oomph'\n> you get by integrating properly with the distribution you deploy on.  Ubuntu\n> is a pretty useful base case.\n> \n\n\nIn case it wasn't clear - precisely this was my point, and I was counting on all those doing the hard work already like Dirk to speak up (thanks, Dirk and I?aki). I'm not convinced that \"naked\" binaries are that useful, so just creating a new subdirectory isn't a solution IMHO. It works for some cases, but not in general - many can build their specific binaries, but it doesn't mean they work for others. The real work has to be done by people that have experience like Dirk and others mentioned above, not CRAN. Any such binaries are tied to the R build (just like macOS CRAN R sets its platform/arch target so it can use the CRAN binaries), so it requires cooperation across the spectrum including the distros. That said, the Linux maintainers are certainly invited to liaise with CRAN if they think it would be beneficial to host things on CRAN - we have done in the past, but with the explosion of distros and releases the trend was to go do the distros instead.\n\nCheers,\nSimon",
+      "body_snippet": "> On Feb 11, 2025, at 5:23 AM, Dirk Eddelbuettel <edd at debian.org> wrote:\n> \n> \n> On 10 February 2025 at 07:35, Carl Boettiger wrote:\n> | Great discussion.  \n> | \n> | Just to note another example I ",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 7,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-027857667a66",
+      "message_id": "<CABFfbXv7sid-Gq+aGD-QWR0zQr0rOH_0_LBGEsu2_neBTjGCng@mail.gmail.com>",
+      "from_name": "Jeroen Ooms",
+      "from_email_hash": "6d6b57f7dfdacdb11068763c49af518a12f1ee23bc379f749098f057c1d6df69",
+      "date": "2025-02-10T23:19:28+01:00",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<71866055-9368-40A9-A139-B2772D73AF41@R-project.org>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+        "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>",
+        "<26537.64093.228457.76824@rob.eddelbuettel.com>",
+        "<CALEXWq3NWC+ygA+sibqE1VdF8rEsnjvYx8dqR-xsj3JdVudYag@mail.gmail.com>",
+        "<CAN_1p9xrJd_YHVOJ0i8H4YzOsGg7K5mSZWcShs_VHPMDvDSDpg@mail.gmail.com>",
+        "<26538.10265.377602.143676@rob.eddelbuettel.com>",
+        "<71866055-9368-40A9-A139-B2772D73AF41@R-project.org>"
+      ],
+      "body_plain": "On Mon, Feb 10, 2025 at 9:48?PM Simon Urbanek\n<simon.urbanek at r-project.org> wrote:\n>\n>\n> > On Feb 11, 2025, at 5:23 AM, Dirk Eddelbuettel <edd at debian.org> wrote:\n> >\n> >\n> > On 10 February 2025 at 07:35, Carl Boettiger wrote:\n> > | Great discussion.\n> > |\n> > | Just to note another example I don't think was mentioned -- The r-universe\n> > | project also builds binaries for Linux (Ubuntu latest) https://\n> > | docs.r-universe.dev/install/binaries.html (as well as other targets including\n> > | wasm).  It also provides binaries for Bioconductor and packages on any\n> > | git-based version control platform (e.g. GitHub).\n> >\n> > Yes ... but these are 'naked' binaries as created by 'R CMD INSTALL --build'\n> > but without system integration (and as such mirror what p3m.dev does). This\n> > has its merits (it is simpler, can cover more OS variants) but it is also\n> > more limited.\n> >\n> > What we (ie Detlef, Inaki, myself) myself do for the distros is fundamentally\n> > different. Both are merits, both can coexist, but I like the added 'oomph'\n> > you get by integrating properly with the distribution you deploy on.  Ubuntu\n> > is a pretty useful base case.\n> >\n>\n>\n> In case it wasn't clear - precisely this was my point, and I was counting on all those doing the hard work already like Dirk to speak up (thanks, Dirk and I?aki). I'm not convinced that \"naked\" binaries are that useful, so just creating a new subdirectory isn't a solution IMHO. It works for some cases, but not in general - many can build their specific binaries, but it doesn't mean they work for others.\n\nThe \"naked binaries\" are widely used, and therefore probably useful to\nmany folks, me included. Some standardisation on paths would be\nincredibly useful, even if CRAN would not offer such binaries, other\nrepositories could.\n\nNote that Dirks apt packages are literally repackaged binaries form\np3m, for convenience of ubuntu (root) users. As Dirk noted, some\npeople prefer installing binaries via apt rather than\ninstall.packages(), which is all fine, but methods both have pros and\ncons. However, any arguments against p3m based on TOS or compatibility\nwill extend to the repackaged apt binaries, so I don't think that\nargument holds.",
+      "body_snippet": "On Mon, Feb 10, 2025 at 9:48?PM Simon Urbanek\n<simon.urbanek at r-project.org> wrote:\n>\n>\n> > On Feb 11, 2025, at 5:23 AM, Dirk Eddelbuettel <edd at debian.org> wrote:\n> >\n> >\n> > On 10 February 2025 ",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 8,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-14d299bcf295",
+      "message_id": "<26538.34471.622699.127451@rob.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2025-02-10T17:07:19-06:00",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<CABFfbXv7sid-Gq+aGD-QWR0zQr0rOH_0_LBGEsu2_neBTjGCng@mail.gmail.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+        "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>",
+        "<26537.64093.228457.76824@rob.eddelbuettel.com>",
+        "<CALEXWq3NWC+ygA+sibqE1VdF8rEsnjvYx8dqR-xsj3JdVudYag@mail.gmail.com>",
+        "<CAN_1p9xrJd_YHVOJ0i8H4YzOsGg7K5mSZWcShs_VHPMDvDSDpg@mail.gmail.com>",
+        "<26538.10265.377602.143676@rob.eddelbuettel.com>",
+        "<71866055-9368-40A9-A139-B2772D73AF41@R-project.org>",
+        "<CABFfbXv7sid-Gq+aGD-QWR0zQr0rOH_0_LBGEsu2_neBTjGCng@mail.gmail.com>"
+      ],
+      "body_plain": "On 10 February 2025 at 23:19, Jeroen Ooms wrote:\n| The \"naked binaries\" are widely used, and therefore probably useful to\n| many folks, me included. Some standardisation on paths would be\n| incredibly useful, even if CRAN would not offer such binaries, other\n| repositories could.\n\nSure, but naked binaries can (and do) break more often i.e. real example from\njust last week in another project p3m served a stringr dependency via a\nstringi binary with a wrong libicu* outside of the particular release,\nbreaking.  That simply cannot and hence will not happen at r2u.\n\nBut choice is good. If people want to manually manage their system\ndependencies they surely, they can also outsource it to another layer. As you\nsay, all trade-offs and if you are happy with naked binaries more power to\nyou. I prefer the proper integration and that's what I built. \n\nDirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "On 10 February 2025 at 23:19, Jeroen Ooms wrote:\n| The \"naked binaries\" are widely used, and therefore probably useful to\n| many folks, me included. Some standardisation on paths would be\n| incredibly",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 9,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-f4ca7e1c831b",
+      "message_id": "<CALEXWq019+Y5-88aoC_zyoJBvu4-ZeeLtiQmL+T_pCrQEDtCgQ@mail.gmail.com>",
+      "from_name": "Iñaki Ucar",
+      "from_email_hash": "0faf0f82f2ae7a03780f35561a3913efe7fa8a6118b8feae1bd8f2f6c8ab74c8",
+      "date": "2025-02-11T09:07:21+01:00",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<26538.34471.622699.127451@rob.eddelbuettel.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+        "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>",
+        "<26537.64093.228457.76824@rob.eddelbuettel.com>",
+        "<CALEXWq3NWC+ygA+sibqE1VdF8rEsnjvYx8dqR-xsj3JdVudYag@mail.gmail.com>",
+        "<CAN_1p9xrJd_YHVOJ0i8H4YzOsGg7K5mSZWcShs_VHPMDvDSDpg@mail.gmail.com>",
+        "<26538.10265.377602.143676@rob.eddelbuettel.com>",
+        "<71866055-9368-40A9-A139-B2772D73AF41@R-project.org>",
+        "<CABFfbXv7sid-Gq+aGD-QWR0zQr0rOH_0_LBGEsu2_neBTjGCng@mail.gmail.com>",
+        "<26538.34471.622699.127451@rob.eddelbuettel.com>"
+      ],
+      "body_plain": "On 10 February 2025 at 23:19, Jeroen Ooms wrote:\n> some people prefer installing binaries via apt rather than\n> install.packages(), which is all fine, but methods both have pros and\n> cons.\n\nSome people prefer having all their binaries *managed* by apt/dnf, but\nstill using install.packages() to trigger that work. I count myself\nthere, and that's what I built.\n\n-- \nI?aki ?car",
+      "body_snippet": "On 10 February 2025 at 23:19, Jeroen Ooms wrote:\n> some people prefer installing binaries via apt rather than\n> install.packages(), which is all fine, but methods both have pros and\n> cons.\n\nSome peop",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 10,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-d09769e9e619",
+      "message_id": "<9E7F2C17-8641-40B1-AB1E-E5F95E76493D@collocations.de>",
+      "from_name": "Stephanie Evert",
+      "from_email_hash": "37e383762e5cc983a3042ab8f08c7ae8141238da895e1b7e5406ac4e2a2a1b12",
+      "date": "2025-02-11T10:36:53+01:00",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<26538.10265.377602.143676@rob.eddelbuettel.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+        "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>",
+        "<26537.64093.228457.76824@rob.eddelbuettel.com>",
+        "<CALEXWq3NWC+ygA+sibqE1VdF8rEsnjvYx8dqR-xsj3JdVudYag@mail.gmail.com>",
+        "<CAN_1p9xrJd_YHVOJ0i8H4YzOsGg7K5mSZWcShs_VHPMDvDSDpg@mail.gmail.com>",
+        "<26538.10265.377602.143676@rob.eddelbuettel.com>"
+      ],
+      "body_plain": "> On 10 Feb 2025, at 17:23, Dirk Eddelbuettel <edd at debian.org> wrote:\n> \n> What we (ie Detlef, Inaki, myself) myself do for the distros is fundamentally\n> different. Both are merits, both can coexist, but I like the added 'oomph'\n> you get by integrating properly with the distribution you deploy on.  Ubuntu\n> is a pretty useful base case.\n\nJust a +1 on this point and many thanks to Dirk for providing r2u, which we happily use to install R packages on our Linux servers. \n\n? Stephanie\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "> On 10 Feb 2025, at 17:23, Dirk Eddelbuettel <edd at debian.org> wrote:\n> \n> What we (ie Detlef, Inaki, myself) myself do for the distros is fundamentally\n> different. Both are merits, both can coexi",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 7,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-750f0a3faf5c",
+      "message_id": "<55bce4c2-0124-4f2d-876f-5fbe4206d45c@app.fastmail.com>",
+      "from_name": "Tim Taylor",
+      "from_email_hash": "e3071ae8257bda4085d8999a9801b324cc930f4864ac0aec1c44601958781446",
+      "date": "2025-02-11T09:38:37Z",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<CALEXWq019+Y5-88aoC_zyoJBvu4-ZeeLtiQmL+T_pCrQEDtCgQ@mail.gmail.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<45B7CFB4-A9F9-48EA-9B68-5CEA81B2F91D@R-project.org>",
+        "<01020194ef842fd9-d0ae4ebf-98bb-48ea-be9d-f72bff73eda8-000000@eu-west-1.amazonses.com>",
+        "<26537.64093.228457.76824@rob.eddelbuettel.com>",
+        "<CALEXWq3NWC+ygA+sibqE1VdF8rEsnjvYx8dqR-xsj3JdVudYag@mail.gmail.com>",
+        "<CAN_1p9xrJd_YHVOJ0i8H4YzOsGg7K5mSZWcShs_VHPMDvDSDpg@mail.gmail.com>",
+        "<26538.10265.377602.143676@rob.eddelbuettel.com>",
+        "<71866055-9368-40A9-A139-B2772D73AF41@R-project.org>",
+        "<CABFfbXv7sid-Gq+aGD-QWR0zQr0rOH_0_LBGEsu2_neBTjGCng@mail.gmail.com>",
+        "<26538.34471.622699.127451@rob.eddelbuettel.com>",
+        "<CALEXWq019+Y5-88aoC_zyoJBvu4-ZeeLtiQmL+T_pCrQEDtCgQ@mail.gmail.com>"
+      ],
+      "body_plain": "On Tue, 11 Feb 2025, at 8:07 AM, I?aki Ucar wrote:\n> On 10 February 2025 at 23:19, Jeroen Ooms wrote:\n>> some people prefer installing binaries via apt rather than\n>> install.packages(), which is all fine, but methods both have pros and\n>> cons.\n>\n> Some people prefer having all their binaries *managed* by apt/dnf, but\n> still using install.packages() to trigger that work. I count myself\n> there, and that's what I built.\n\nDitto. It really is automagical!\n\nFWIW - I think this integration with the distributions is key to a painless experience. Perhaps a better question is to ask Dirk, I?aki et al. what their pain points are and whether they need any additional assistance? E.g. I'm aware of discussions around System Requirements that could help:\n\nhttps://bugs.r-project.org/show_bug.cgi?id=18586\n\nTim",
+      "body_snippet": "On Tue, 11 Feb 2025, at 8:07 AM, I?aki Ucar wrote:\n> On 10 February 2025 at 23:19, Jeroen Ooms wrote:\n>> some people prefer installing binaries via apt rather than\n>> install.packages(), which is all ",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 11,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-d85407ef277c",
+      "message_id": "<20250211165927.7fd4f2d8@arachnoid>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2025-02-11T16:59:27+03:00",
+      "subject": "[Rd] A few problems with Sys.setLanguage()",
+      "subject_clean": "A few problems with Sys.setLanguage()",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hello R-devel,\n\nCurrently, Sys.setLanguage() interprets an empty/absent environment\nvariable LANGUAGE to mean unset=\"en\", which disagrees with gettext():\nit defaults to the LC_MESSAGES category of the current locale [1]. As a\nresult, on systems with $LANGUAGE normally unset, Sys.setLanguage(...)\nreturns \"en\" instead of the language previously in effect. I would like\nto suggest making the default unset = Sys.getlocale(\"LC_MESSAGES\")\ninstead of \"en\" so that Sys.setLanguage(Sys.setLanguage(anything))\nwould not reset language to English. Making Sys.setLanguage() accept an\nempty string or NA to reset or remove LANGUAGE (and allowing\nSys.setLanguage() to return that value) could also be an option.\n\nAdditionally, there is a number of problems with the way\nSys.setLanguage() handles R having started up in the C locale, some of\nthem easier to solve than others.\n\ngettext() disables translation lookup only when the LC_MESSAGES locale\ncategory is \"C\" or \"POSIX\", so the current test for identical(\"C\",\nSys.getlocale()) will miss the situations when not all locale\ncategories are set to \"C\". I think the correct test should be\nSys.getlocale(\"LC_MESSAGES\") %in% c(\"C\", \"POSIX\", \"C.UTF-8\", \"C.utf8\").\n(On my GNU/Linux system, setting a \"POSIX\" locale returns it as \"C\",\nbut I don't think that's guaranteed to happen everywhere.)\n\nSo what should Sys.setLanguage(lang, force=TRUE) do when the current\nLC_MESSAGES locale category disables translation? \"en_US.UTF-8\" is not\nguaranteed to be present on a given system. POSIX documents 'locale -a'\nto list available locales [2], so R could attempt something like:\n\n# any locales except C.*/POSIX which disable translation?\nsystem(\"locale -a\", intern = TRUE) |>\n setdiff(c(\"C\", \"C.UTF-8\", \"C.utf8\", \"POSIX\")) -> candidates\nlocale <- if (any(mask <- startsWith(candidates, lang))) {\n candidates[mask][[1]]\n} else if (length(candidates)) {\n candidates[[1]]\n} else {\n \"en_US.UTF-8\" # maybe it's available despite 'locale -a' failing?\n}\nlcSet <- Sys.setlocale(\"LC_MESSAGES\", locale)\n\nUnfortunately, that's not all: translations are also affected by the\nLC_CTYPE category of the current locale, and gettext() will try to\nconvert the translations into that locale's encoding before returning\nthem. What about LC_CTYPE being \"C\"? Sometimes gettext() is able to\ntransliterate:\n\n$ LC_CTYPE=C LANGUAGE=ru R -q -s -e 'foo'\nOshibka: ob``ekt 'foo' ne najden\nVy`polnenie ostanovleno\n\nAnd sometimes it's not:\n\n$ LC_CTYPE=C LANGUAGE=zh_CN R -q -s -e 'foo'\n??: ?????'foo'\n???? # <-- these are \\x3F question marks, not replacement characters\n\nThere doesn't seem to be a portable way to determine a locale with an\nencoding that would be appropriate in the current session. For example,\non my system, only 4 locales out of 11 listed by 'locale -a' use UTF-8\nas their encoding (and sometimes UTF-8 is the wrong choice when I'm\nusing 'luit' with a non-UTF-8 environment).\n\nR could try to force the same locale for LC_CTYPE as it sets\nLC_MESSAGES, or force a UTF-8 locale if it finds one, or leave LC_CTYPE\nas it is. All of these options have their downsides. How helpful is\nSys.setLanguage(force = TRUE) in practice? \n\n-- \nBest regards,\nIvan\n\n[1] The environment variables used for gettext() are listed at the\nfollowing resources:\nhttps://www.gnu.org/software/gettext/manual/html_node/Locale-Environment-Variables.html\nhttps://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html#tag_08_02\nThe exact lookup procedure is also documented here:\nhttps://pubs.opengroup.org/onlinepubs/9799919799/functions/dngettext.html\nIn short, if the LC_MESSAGES category of the current locale is\n\"C\" or \"POSIX\", gettext() does not translate. (GNU gettext additionally\ndisables translation for \"C.UTF-8\".) Otherwise it consults the LANGUAGE\nenvironment variable. If that variable is absent or empty, it uses the\nLC_MESSAGES category of the current locale. When a program calls\nsetlocale(category, \"\"), $LANG provides the default value for all\ncategories, which is overridden by the $LC_* variables for individual\ncategories, which are all overridden by $LC_ALL.\n\n[2]\nhttps://pubs.opengroup.org/onlinepubs/9799919799/utilities/locale.html",
+      "body_snippet": "Hello R-devel,\n\nCurrently, Sys.setLanguage() interprets an empty/absent environment\nvariable LANGUAGE to mean unset=\"en\", which disagrees with gettext():\nit defaults to the LC_MESSAGES category of the",
+      "thread_id": "thread-d85407ef277c",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-b7b33c639dad",
+      "message_id": "<01020194f70cfdb6-0c6b7b01-c413-4096-a1bd-349a281b5d29-000000@eu-west-1.amazonses.com>",
+      "from_name": "Tobias Verbeke",
+      "from_email_hash": "5f2f55743181bcc88a1e5b37143eaae63d5abd64de8e7d7dd7a5bb7c38dcb5f5",
+      "date": "2025-02-11T22:06:51Z",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<CABdHhvH--S5OP4CViFDzqupwmBVOvxbENoCBz2HWWziZU6YE9Q@mail.gmail.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<CABdHhvH--S5OP4CViFDzqupwmBVOvxbENoCBz2HWWziZU6YE9Q@mail.gmail.com>"
+      ],
+      "body_plain": "Thank you, Hadley. \n\nIt would be great indeed if this can be fixed!\n\nKind regards,\nTobias\n\n----- Original Message -----\n> From: \"hadley wickham\" <h.wickham at gmail.com>\n> To: \"Tobias Verbeke\" <tobias.verbeke at openanalytics.eu>\n> Cc: \"r-devel at r-project.org\" <r-devel at r-project.org>\n> Sent: Monday, February 10, 2025 8:32:17 PM\n> Subject: Re: [Rd] binary R packages for GNU/Linux\n\n>> The proprietary Package Manager (PPM) from Posit ( [\n>> https://packagemanager.posit.co/client/#/ |\n>> https://packagemanager.posit.co/client/#/ ] ) does offer binary packages for\n>> GNU/Linux, but the usage of this service is restricted in ways that go against\n>> the principles of open source ( [\n>> https://posit.co/about/posit-service-terms-of-use/ |\n>> https://posit.co/about/posit-service-terms-of-use/ ] ). By way of example,\n>> mirroring is not allowed and certain categories of users are excluded (age\n>> categories, competitors, ...). This is maybe expected to some, but this clearly\n>> does not offer a proper foundation for the distribution of open source R\n>> packages.\n\n> If this terms of service is the main sticking point, I could certainly find out\n> if we could change them. From a quick read, my personal sense (with no internal\n> exploration whatsoever) is that these (a) were probably written by a lawyer\n> with no specific understanding of PPM, let alone that these are binaries built\n> from open-source packages, and (b) probably aren't legally binding anyway\n> (since for most PPM usage, people downloading packages never see the TOS).\n\n> Hadley\n> --\n> [ http://hadley.nz/ | http://hadley.nz ]",
+      "body_snippet": "Thank you, Hadley. \n\nIt would be great indeed if this can be fixed!\n\nKind regards,\nTobias\n\n----- Original Message -----\n> From: \"hadley wickham\" <h.wickham at gmail.com>\n> To: \"Tobias Verbeke\" <tobias",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 2,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-d4b1b9a36026",
+      "message_id": "<01020194f7180cfb-9cc4c0bd-5cb9-452e-abeb-26413431629d-000000@eu-west-1.amazonses.com>",
+      "from_name": "Tobias Verbeke",
+      "from_email_hash": "5f2f55743181bcc88a1e5b37143eaae63d5abd64de8e7d7dd7a5bb7c38dcb5f5",
+      "date": "2025-02-11T22:18:56Z",
+      "subject": "[Rd] binary R packages for GNU/Linux",
+      "subject_clean": "binary R packages for GNU/Linux",
+      "in_reply_to": "<26538.34471.622699.127451@rob.eddelbuettel.com>",
+      "references": [
+        "<01020194ef1ddab7-7ce660cf-1bd2-4d56-9426-3d3930019d6a-000000@eu-west-1.amazonses.com>",
+        "<26537.64093.228457.76824@rob.eddelbuettel.com>",
+        "<CALEXWq3NWC+ygA+sibqE1VdF8rEsnjvYx8dqR-xsj3JdVudYag@mail.gmail.com>",
+        "<CAN_1p9xrJd_YHVOJ0i8H4YzOsGg7K5mSZWcShs_VHPMDvDSDpg@mail.gmail.com>",
+        "<26538.10265.377602.143676@rob.eddelbuettel.com>",
+        "<71866055-9368-40A9-A139-B2772D73AF41@R-project.org>",
+        "<CABFfbXv7sid-Gq+aGD-QWR0zQr0rOH_0_LBGEsu2_neBTjGCng@mail.gmail.com>",
+        "<26538.34471.622699.127451@rob.eddelbuettel.com>"
+      ],
+      "body_plain": "----- Original Message -----\n> From: \"Dirk Eddelbuettel\" <edd at debian.org>\n> To: \"Jeroen Ooms\" <jeroenooms at gmail.com>\n> Cc: \"Simon Urbanek\" <simon.urbanek at r-project.org>, \"r-devel at r-project.org\" <r-devel at r-project.org>, \"Dirk Eddelbuettel\"\n> <edd at debian.org>\n> Sent: Tuesday, February 11, 2025 12:07:19 AM\n> Subject: Re: [Rd] binary R packages for GNU/Linux\n\n> On 10 February 2025 at 23:19, Jeroen Ooms wrote:\n>| The \"naked binaries\" are widely used, and therefore probably useful to\n>| many folks, me included. Some standardisation on paths would be\n>| incredibly useful, even if CRAN would not offer such binaries, other\n>| repositories could.\n> \n> Sure, but naked binaries can (and do) break more often i.e. real example from\n> just last week in another project p3m served a stringr dependency via a\n> stringi binary with a wrong libicu* outside of the particular release,\n> breaking.  That simply cannot and hence will not happen at r2u.\n> \n> But choice is good. If people want to manually manage their system\n> dependencies they surely, they can also outsource it to another layer. As you\n> say, all trade-offs and if you are happy with naked binaries more power to\n> you. I prefer the proper integration and that's what I built.\n\nThank you, all, for the valuable input and reactions. Let me summarize.\n\nI. choice is good \n\nMany people find 'naked binaries' useful and many people find 'distribution binaries' useful. In our own work, we see a myriad of R deployments and installations with very different processes in place and in certain cases 'naked binaries' are more convenient than 'distribution binaries'. In other cases, it is the other way around. Both deserve their place in the R world.\n\nII. outsource to another layer\n\nIn case of 'naked binaries' dependency management indeed needs to be outsourced to another layer. People typically use either a data store (e.g. the Github repo I?aki mentioned - https://github.com/cran4linux/sysreqs or others e.g. https://github.com/r-hub/r-system-requirements). Other people add a REST API on top, which is e.g. what the PPM does (sysreqs resources in https://packagemanager.posit.co/__api__/swagger/index.html#/). To give a taste of how outsourcing to another layer looks like: to build reproducible environments we automatically generate Dockerfiles starting from the R code of a project. During the process of generating the Dockerfile, the package dependencies of the relevant packages are queried (using one of the sources above) and used to automagically insert the appropriate 'apt install' commands above and prior to the relevant install.packages commands in the Dockerfile.\n\nIII. goal in itself or ingredient for distribution packages\n\nThe building of 'naked binaries' are a necessary step in the process of building the 'distribution packages'. To some the naked binary is the end goal (often used in combination with a data source on dependencies). To others it is part of the ingredients for the end goal (distribution package). In both scenarios, it makes sense to store these naked binaries somewhere in order not to duplicate the builds. I personally think CRAN would be a good place to store these since it would be a neutral, central place that immediately gives a seal of quality and trust.\n\nIV. repository layout\n\nMany organizations have internal repositories mimicking a CRAN layout. Also many tool developers make certain assumptions on the repository layout. E.g. if one wants versioned package installs of source packages, one goes to src/contrib/Archive/$PACKAGE_NAME/ to retrieve the version. This is not explicitly documented and I am glad to hear Jeroen thinks such standardization would be\nincredibly useful. Currently, the hosting of naked binaries actually makes use of a trick to put the packages under /src/contrib as in https://cran.r-universe.dev/bin/linux/noble/4.4/src/contrib/BayesERtools_0.2.0.tar.gz\nWhile handy, it is a bit odd and may be confusing to some. We can further work out the specs, but a generalization of the repository layout that allows to also have an Archive for binary packages (for Windows, MacOS, naked binaries) would be very useful to be able to have fast versioned package installation. This is important if you want to combine performance and reproducible environments (which are impossible to achieve with the latest binary versions - even when using distribution binaries). This is not a request for CRAN to offer all versions of binary packages, but if the layout is clearly specified, other package manager infrastructure (public or internal to organizations) can fill this gap.\n\nMy message makes me think of the New Year Wish List mails Gabor Grothendieck tended to send out ~two decades ago (and maybe more recently) and I hope it triggers further discussion and ideas.\n\nThanks again!\n\nKind regards,\nTobias",
+      "body_snippet": "----- Original Message -----\n> From: \"Dirk Eddelbuettel\" <edd at debian.org>\n> To: \"Jeroen Ooms\" <jeroenooms at gmail.com>\n> Cc: \"Simon Urbanek\" <simon.urbanek at r-project.org>, \"r-devel at r-project",
+      "thread_id": "thread-a128a158e5c3",
+      "thread_depth": 10,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-7bbe15fc9fcf",
+      "message_id": "<4A3CB298-ABFF-4F42-B3BE-69F3C1F5B85C@gmail.com>",
+      "from_name": "peter dalgaard",
+      "from_email_hash": "5d0f61ffffc9a67fd86f4b9a1ea3fac7d731c19e1d8679b6ae315232b22874e8",
+      "date": "2025-02-13T15:57:22+01:00",
+      "subject": "[Rd] R 4.4.3 scheduled for February 28",
+      "subject_clean": "R 4.4.3 scheduled for February 28",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Full schedule is available on developer.r-project.org (pending update from SVN).\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nOffice: A 4.23\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com\n\n______________________________________________\nR-devel at r-project.org mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Full schedule is available on developer.r-project.org (pending update from SVN).\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg,",
+      "thread_id": "thread-7bbe15fc9fcf",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-ab9b61585a3b",
+      "message_id": "<CAPRVBcxZJF7W1=Ha6UWKHt4kFka4HsaWVR4FvZHETdim_7YrGQ@mail.gmail.com>",
+      "from_name": "Michael Chirico",
+      "from_email_hash": "c7ae14eea7523abfb41c3b0b883332081fc591538823e9bc107ad314c96d8583",
+      "date": "2025-02-14T13:40:28-08:00",
+      "subject": "[Rd] More precise documentation of on.exit() [when leaving function vs. \"context\"]",
+      "subject_clean": "More precise documentation of on.exit() [when leaving function vs. \"context\"]",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "The current documentation of ?on.exit reads [1]\n\n> `on.exit` records [`expr`] as needing to be executed when the current function exits...\n\nThis is almost always how it is used, however I don't see that as\nexplaining this other common way to use on.exit():\n\nlocal({\n  old = setwd(...)\n  on.exit(setwd(old))\n  readLines(...)\n})\n\nThere's not really a \"function\" here. It may be that the actual\nimplementation of 'local()' eventually runs this code\nindistinguishably from a function, which I'm not sure -- all I see is\nthat local() is a wrapper of eval.parent(), so it doesn't _look_ to me\nlike that's the case.\n\nI'm not sure this word has a precise meaning in R but I think of\non.exit() as running upon leaving the \"context\" in this case. Would\nthat be an improvement? Is this more an \"unintentional\" benefit that\nlocal() can be used like this?\n\nI've definitely seen usage like this [2] that I've recommended just be\nre-written with local instead:\n\n(\\(x) { old = setwd(...); on.exit(setwd(old)); readLines(...) })()\n\nI'll also note that while this approach to using on.exit() is not\nuncommon, and quite a useful idiom, it does not appear in the examples\neither in ?on.exit or in ?local [3].\n\n(I also don't see mention of these in any other R manual [4][5])\n\nMike C\n\n[1] https://github.com/r-devel/r-svn/blob/9bd62756d3c1289c3c01faec0e2b4de9e8a88d59/src/library/base/man/on.exit.Rd#L10-L13\n[2] https://github.com/rstudio/sass/blob/9228fcf39deecfe32b7cb90ed40690338a18acba/scripts/build_docs.R#L5-L23\n[3] https://github.com/r-devel/r-svn/blob/9bd62756d3c1289c3c01faec0e2b4de9e8a88d59/src/library/base/man/eval.Rd#L136-L138\n[4] https://github.com/r-devel/r-svn/blob/main/doc/manual/R-intro.texi\n[5] https://github.com/r-devel/r-svn/blob/9bd62756d3c1289c3c01faec0e2b4de9e8a88d59/doc/manual/R-lang.texi#L3755-L3757",
+      "body_snippet": "The current documentation of ?on.exit reads [1]\n\n> `on.exit` records [`expr`] as needing to be executed when the current function exits...\n\nThis is almost always how it is used, however I don't see th",
+      "thread_id": "thread-ab9b61585a3b",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-43f9282947a1",
+      "message_id": "<f151e222-a58c-93b-46aa-b165b9ee7fdd@uiowa.edu>",
+      "from_name": "iuke-tier@ey m@iii@g oii uiow@@edu",
+      "from_email_hash": "d99ccb54811d841ac041f12e5dfc823053fe0bdf1cebd8d1047b8e5f0d6a24b7",
+      "date": "2025-02-14T19:05:25-06:00",
+      "subject": "[Rd] [External] More precise documentation of on.exit() [when leaving function vs. \"context\"]",
+      "subject_clean": "[External] More precise documentation of on.exit() [when leaving function vs. \"context\"]",
+      "in_reply_to": "<CAPRVBcxZJF7W1=Ha6UWKHt4kFka4HsaWVR4FvZHETdim_7YrGQ@mail.gmail.com>",
+      "references": [
+        "<CAPRVBcxZJF7W1=Ha6UWKHt4kFka4HsaWVR4FvZHETdim_7YrGQ@mail.gmail.com>"
+      ],
+      "body_plain": "On Fri, 14 Feb 2025, Michael Chirico wrote:\n\n> The current documentation of ?on.exit reads [1]\n>\n>> `on.exit` records [`expr`] as needing to be executed when the current function exits...\n>\n> This is almost always how it is used, however I don't see that as\n> explaining this other common way to use on.exit():\n>\n> local({\n>  old = setwd(...)\n>  on.exit(setwd(old))\n>  readLines(...)\n> })\n>\n> There's not really a \"function\" here. It may be that the actual\n> implementation of 'local()' eventually runs this code\n> indistinguishably from a function, which I'm not sure -- all I see is\n> that local() is a wrapper of eval.parent(), so it doesn't _look_ to me\n> like that's the case.\n\nlocal(expr) is essentially equivalent to (function() expr)().\n\n['Essentially' because in the interpreted implementation there might\ncurrently be slight differences, though if there are we would want to\neventually get rid of them. For compiled code the two are exactly\nequivalent.]\n\nI don't see any benefits of changing this wording in ?on.exit that\nwould outweigh the costs.\n\nIn principle I don't object to noting in ?local that local(expr) is\njust syntactic sugar for (function() expr)(), but not until someone\nspends some time making sure it is exactly true for the interpreted\ncase; not something I could justify giving high priority to.\n\n> I'm not sure this word has a precise meaning in R but I think of\n> on.exit() as running upon leaving the \"context\" in this case. Would\n> that be an improvement? Is this more an \"unintentional\" benefit that\n> local() can be used like this?\n>\n> I've definitely seen usage like this [2] that I've recommended just be\n> re-written with local instead:\n>\n> (\\(x) { old = setwd(...); on.exit(setwd(old)); readLines(...) })()\n>\n> I'll also note that while this approach to using on.exit() is not\n> uncommon, and quite a useful idiom, it does not appear in the examples\n> either in ?on.exit or in ?local [3].\n\nI'm not sure I would want to encourage this. Using tryCatch with a\nfinally expression seems clearer to me:\n\nlocal({ old <- setwd(...); tryCatch(readLines(...), finally = setwd(old)) })\n\nBest,\n\nluke\n\n> (I also don't see mention of these in any other R manual [4][5])\n>\n> Mike C\n>\n> [1] https://github.com/r-devel/r-svn/blob/9bd62756d3c1289c3c01faec0e2b4de9e8a88d59/src/library/base/man/on.exit.Rd#L10-L13\n> [2] https://github.com/rstudio/sass/blob/9228fcf39deecfe32b7cb90ed40690338a18acba/scripts/build_docs.R#L5-L23\n> [3] https://github.com/r-devel/r-svn/blob/9bd62756d3c1289c3c01faec0e2b4de9e8a88d59/src/library/base/man/eval.Rd#L136-L138\n> [4] https://github.com/r-devel/r-svn/blob/main/doc/manual/R-intro.texi\n> [5] https://github.com/r-devel/r-svn/blob/9bd62756d3c1289c3c01faec0e2b4de9e8a88d59/doc/manual/R-lang.texi#L3755-L3757\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n-- \nLuke Tierney\nRalph E. Wareham Professor of Mathematical Sciences\nUniversity of Iowa                  Phone:             319-335-3386\nDepartment of Statistics and        Fax:               319-335-3017\n    Actuarial Science\n241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu\nIowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/",
+      "body_snippet": "On Fri, 14 Feb 2025, Michael Chirico wrote:\n\n> The current documentation of ?on.exit reads [1]\n>\n>> `on.exit` records [`expr`] as needing to be executed when the current function exits...\n>\n> This is ",
+      "thread_id": "thread-ab9b61585a3b",
+      "thread_depth": 1,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-e06321b47892",
+      "message_id": "<9739D808-B234-43BD-B431-C5DFB3F67F3C@gmail.com>",
+      "from_name": "peter dalgaard",
+      "from_email_hash": "5d0f61ffffc9a67fd86f4b9a1ea3fac7d731c19e1d8679b6ae315232b22874e8",
+      "date": "2025-02-15T13:17:11+01:00",
+      "subject": "[Rd] [External] More precise documentation of on.exit() [when leaving function vs. \"context\"]",
+      "subject_clean": "[External] More precise documentation of on.exit() [when leaving function vs. \"context\"]",
+      "in_reply_to": "<f151e222-a58c-93b-46aa-b165b9ee7fdd@uiowa.edu>",
+      "references": [
+        "<CAPRVBcxZJF7W1=Ha6UWKHt4kFka4HsaWVR4FvZHETdim_7YrGQ@mail.gmail.com>",
+        "<f151e222-a58c-93b-46aa-b165b9ee7fdd@uiowa.edu>"
+      ],
+      "body_plain": "It would probably be best if we can avoid going the \"syntactic sugar\" way. It also happens in with():\n\n> with(airquality,{on.exit(print(\"hi\")); print(\"ho\")})\n[1] \"ho\"\n[1] \"hi\"\n\nand I don't see a nice way of recasting that as a function call. So maybe just say something like  \"on.exit() also works in other evaluations of compound expressions in a separate scope, like local() or with()\"?\n\n-pd\n\n> On 15 Feb 2025, at 02.05, luke-tierney--- via R-devel <r-devel at r-project.org> wrote:\n> \n> On Fri, 14 Feb 2025, Michael Chirico wrote:\n> \n>> The current documentation of ?on.exit reads [1]\n>> \n>>> `on.exit` records [`expr`] as needing to be executed when the current function exits...\n>> \n>> This is almost always how it is used, however I don't see that as\n>> explaining this other common way to use on.exit():\n>> \n>> local({\n>> old = setwd(...)\n>> on.exit(setwd(old))\n>> readLines(...)\n>> })\n>> \n>> There's not really a \"function\" here. It may be that the actual\n>> implementation of 'local()' eventually runs this code\n>> indistinguishably from a function, which I'm not sure -- all I see is\n>> that local() is a wrapper of eval.parent(), so it doesn't _look_ to me\n>> like that's the case.\n> \n> local(expr) is essentially equivalent to (function() expr)().\n> \n> ['Essentially' because in the interpreted implementation there might\n> currently be slight differences, though if there are we would want to\n> eventually get rid of them. For compiled code the two are exactly\n> equivalent.]\n> \n> I don't see any benefits of changing this wording in ?on.exit that\n> would outweigh the costs.\n> \n> In principle I don't object to noting in ?local that local(expr) is\n> just syntactic sugar for (function() expr)(), but not until someone\n> spends some time making sure it is exactly true for the interpreted\n> case; not something I could justify giving high priority to.\n> \n>> I'm not sure this word has a precise meaning in R but I think of\n>> on.exit() as running upon leaving the \"context\" in this case. Would\n>> that be an improvement? Is this more an \"unintentional\" benefit that\n>> local() can be used like this?\n>> \n>> I've definitely seen usage like this [2] that I've recommended just be\n>> re-written with local instead:\n>> \n>> (\\(x) { old = setwd(...); on.exit(setwd(old)); readLines(...) })()\n>> \n>> I'll also note that while this approach to using on.exit() is not\n>> uncommon, and quite a useful idiom, it does not appear in the examples\n>> either in ?on.exit or in ?local [3].\n> \n> I'm not sure I would want to encourage this. Using tryCatch with a\n> finally expression seems clearer to me:\n> \n> local({ old <- setwd(...); tryCatch(readLines(...), finally = setwd(old)) })\n> \n> Best,\n> \n> luke\n> \n>> (I also don't see mention of these in any other R manual [4][5])\n>> \n>> Mike C\n>> \n>> [1] https://github.com/r-devel/r-svn/blob/9bd62756d3c1289c3c01faec0e2b4de9e8a88d59/src/library/base/man/on.exit.Rd#L10-L13\n>> [2] https://github.com/rstudio/sass/blob/9228fcf39deecfe32b7cb90ed40690338a18acba/scripts/build_docs.R#L5-L23\n>> [3] https://github.com/r-devel/r-svn/blob/9bd62756d3c1289c3c01faec0e2b4de9e8a88d59/src/library/base/man/eval.Rd#L136-L138\n>> [4] https://github.com/r-devel/r-svn/blob/main/doc/manual/R-intro.texi\n>> [5] https://github.com/r-devel/r-svn/blob/9bd62756d3c1289c3c01faec0e2b4de9e8a88d59/doc/manual/R-lang.texi#L3755-L3757\n>> \n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>> \n> \n> -- \n> Luke Tierney\n> Ralph E. Wareham Professor of Mathematical Sciences\n> University of Iowa                  Phone:             319-335-3386\n> Department of Statistics and        Fax:               319-335-3017\n>   Actuarial Science\n> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu\n> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business SchoolSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nOffice: A 4.23\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com",
+      "body_snippet": "It would probably be best if we can avoid going the \"syntactic sugar\" way. It also happens in with():\n\n> with(airquality,{on.exit(print(\"hi\")); print(\"ho\")})\n[1] \"ho\"\n[1] \"hi\"\n\nand I don't see a nice ",
+      "thread_id": "thread-ab9b61585a3b",
+      "thread_depth": 2,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-677174dd241c",
+      "message_id": "<CAEjRNrmHbDLWwk0_JKcPrZaKVUPHfFATbaV-aLPvaNMAyxQMTw@mail.gmail.com>",
+      "from_name": "Will Landau",
+      "from_email_hash": "78bfeedd3adac8dff330083daac349557c4de103ac1a5f2eaf3802730e8464c5",
+      "date": "2025-02-17T10:13:01-05:00",
+      "subject": "[Rd] Export tools:::analyze_license()?",
+      "subject_clean": "Export tools:::analyze_license()?",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "To R-devel,\n\n\nIn a future release of R, would it be possible to\nexport tools:::analyze_license()? This would make it easier to implement\ncopyright protections in alternative CRAN-like repositories. I would like\nto be able to programmatically scan an individual license string before\naccepting a new package.\n\nWill Landau\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "To R-devel,\n\n\nIn a future release of R, would it be possible to\nexport tools:::analyze_license()? This would make it easier to implement\ncopyright protections in alternative CRAN-like repositories. I ",
+      "thread_id": "thread-677174dd241c",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-60f054c4489d",
+      "message_id": "<5702d5c7-e56e-4ca7-a3ca-e7b204f06044@gmail.com>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2025-02-19T11:18:39-05:00",
+      "subject": "[Rd] patch to model matrix to improve error messages",
+      "subject_clean": "patch to model matrix to improve error messages",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I posted this to r-bugzilla already \n<https://bugs.r-project.org/show_bug.cgi?id=18860>, but I would be \ninterested to see if anyone here has comments (fewer people track \nr-bugzilla closely ...)\n\n   The issue: if a variable reference in a model.frame() formula is \nmissing from the data but matches a function found elsewhere in the \nenvironment (e.g. `count()` in `dplyr`), the  user gets the opaque error \nmessage \"object is not a matrix\".\n\n   If the variable reference is missing from the data, but matches (e.g. \na list or list-like object (e.g., a data frame), then we get the more \nuseful error \"invalid type (TYPE) for variable 'VARIABLE'\"\n\n   The issue is that model frame tries to compute the number of rows of \nthe data before it tests the type of each column. If we switch the order \nof operations so that the columns are tested first, we get a much more \nuseful error message.\n\n   This change seems harmless, but of course I wouldn't be surprised if \nsomeone can come up with a reasonable scenario where it causes problems ...\n\n    More details/examples in the bug report linked above.  The relevant \nbits of source code are here\n\nmodel.c row/column checking:\n\nhttps://github.com/r-devel/r-svn/blob/63369bfed9330b9461ec1d8b90d7251c0118508f/src/library/stats/src/model.c#L138-L152\n\nnrows() function:\n\nhttps://github.com/r-devel/r-svn/blob/63369bfed9330b9461ec1d8b90d7251c0118508f/src/main/util.c#L81-L94\n\n   cheers\n    Ben Bolker",
+      "body_snippet": "I posted this to r-bugzilla already \n<https://bugs.r-project.org/show_bug.cgi?id=18860>, but I would be \ninterested to see if anyone here has comments (fewer people track \nr-bugzilla closely ...)\n\n   ",
+      "thread_id": "thread-60f054c4489d",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-f3da7be612c1",
+      "message_id": "<725b0cf4-4874-4747-9bba-4ae24891ba38@sjd.es>",
+      "from_name": "Iago Giné-Vázquez",
+      "from_email_hash": "3488eeee6b2e2ce0f409ba059a3a5b41d728506c5ce982110d18ae1bb629b5d8",
+      "date": "2025-02-21T11:52:41+01:00",
+      "subject": "[Rd] Customizing width of input in Rterm",
+      "subject_clean": "Customizing width of input in Rterm",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hi all,\n\nWhen using Rterm.exe (on Windows, I didn?t check Linux) only a limited \nnumber of characters is displayed in the input lines, independent on the \n|width| option, and, when navigating through the command history this \nbecomes very uncomfortable, since a command is not fully displayed and, \nfor example, it is very difficult to know which parts of a command are \nbeing edited.\n\nI know, using Linux you can avoid using Rterm. And using Windows, the \nfirst option is RGui. However, Rterm is the default for some editor/IDE \nplugins/extensions, such as NVim-R for ViM or also for VS Code. In fact, \nsearching on the web for the reported issue, I found it reported several \ntimes to the R extension plugin for VS Code.\n\nhttps://github.com/REditorSupport/vscode-R/issues/57\n\nhttps://github.com/REditorSupport/vscode-R/issues/415\n\nhttps://github.com/REditorSupport/vscode-R/issues/1438\n\nWould it be possible to allow longer lines to be displayed, at least to \nthe terminal width, or to customize the number of columns displayed?\n\nThank you for your time and for maintaining R, it?s a great work!\n\nBest regards,\n\nIago\n\n&#8203;\n\n-------------- next part --------------\nA non-text attachment was scrubbed...\nName: OpenPGP_signature.asc\nType: application/pgp-signature\nSize: 665 bytes\nDesc: OpenPGP digital signature\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20250221/879fafc7/attachment.sig>",
+      "body_snippet": "Hi all,\n\nWhen using Rterm.exe (on Windows, I didn?t check Linux) only a limited \nnumber of characters is displayed in the input lines, independent on the \n|width| option, and, when navigating through ",
+      "thread_id": "thread-f3da7be612c1",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-0c46e8342501",
+      "message_id": "<CAP01uRnebLBBzthMsOk923oGsAaAuMCUpVNihDPxm4X66WdiTQ@mail.gmail.com>",
+      "from_name": "Gabor Grothendieck",
+      "from_email_hash": "2470cc61688c301322ff3a85f3fd51ddba9f1112f88f535ec93c41ab610332d1",
+      "date": "2025-02-23T08:16:29-05:00",
+      "subject": "[Rd] Inconsistency between matrix and data.frame replacement matrix arg",
+      "subject_clean": "Inconsistency between matrix and data.frame replacement matrix arg",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Using vector and array indexes with zeros works for extraction and\nfor replacement in the case of a vector, list and matrix but for\na data frame only extraction works.  All lines below give\nthe expected answer except the last line which gives the error message\nshown.\n\n  v <- 1:5\n  L <- as.list(v)\n  m <- cbind(a = 11:15, b = 21:25)\n  DF <- as.data.frame(m)\n  ix <- c(1, 0, 2)\n\n  v[ix]\n  L[ix]\n  m[cbind(1:3, ix)]\n  DF[cbind(1:3, ix)]\n\n  v[ix] <- 99:100\n  L[ix] <- 99:100\n  m[ix, ]\n  DF[ix, ]\n\n  m[cbind(1:3, ix)] <- 99:100\n  DF[cbind(1:3, ix)] <- 99:100\n  ## Error in `[<-.data.frame`(`*tmp*`, cbind(1:3, ix), value = 99:100) :\n  ##   'value' is the wrong length\n  ## In addition: Warning message:\n  ## In `[<-.data.frame`(`*tmp*`, cbind(1:3, ix), value = 99:100) :\n  ##   number of items to replace is not a multiple of replacement length\n\n-- \nStatistics & Software Consulting\nGKX Group, GKX Associates Inc.\ntel: 1-877-GKX-GROUP\nemail: ggrothendieck at gmail.com",
+      "body_snippet": "Using vector and array indexes with zeros works for extraction and\nfor replacement in the case of a vector, list and matrix but for\na data frame only extraction works.  All lines below give\nthe expect",
+      "thread_id": "thread-0c46e8342501",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-90909c8adec9",
+      "message_id": "<DM4PR14MB57415FCC001D7A26473EDF6C84C32@DM4PR14MB5741.namprd14.prod.outlook.com>",
+      "from_name": "Geoff Wolkis",
+      "from_email_hash": "aaf16e7c2d4521e402002e23f0f6b20bced085ef5545532fc86d648383745422",
+      "date": "2025-02-25T19:27:44Z",
+      "subject": "[Rd] Vuori - Due Diligence",
+      "subject_clean": "Vuori - Due Diligence",
+      "in_reply_to": "<DM4PR14MB5741041CF8BC17F861CEB06784C32@DM4PR14MB5741.namprd14.prod.outlook.com>",
+      "references": [
+        "<DM4PR14MB5741D9BDFD4126E978CAE97884102@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB5741988AEB4E43EF687E53A984122@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB5741BA35344E59B49010E86984122@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574123E5CBF3BD29AE948DA484132@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB57414EC96D48F8BA31FE6AA084E92@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574122A7CBCAEBC2F9EDC13184F72@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574189F55D6072C359F3895184F12@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB57419F29E421529D8FBAD3D384F22@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574112950E70FC30B76CE36A84C72@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB5741041CF8BC17F861CEB06784C32@DM4PR14MB5741.namprd14.prod.outlook.com>"
+      ],
+      "body_plain": "Hello -\n\n  My name is Geoff Wolkis and I'm with Vuori's Third Party Risk Management Team.  I've been assigned to conduct due diligence on the services and/or products your organization is providing to Vuori.  In this case R Studio is providing statistical data and create reporting to be used internally. You should have received an email from our GRC platform.  There is 1 questionnaire that needs to be completed: An INFOSEC Questionnaire.\n\nAppreciate your assistance in this effort and look forward to working with you. We're looking for a completed date of both assessments no later than 3/7.  Feel free to reach out to me if you have any questions.\n\nKind Regards,\n\n[-]\nGeoffrey Wolkis, CTPRP\nInformation Security Analyst - Third Party Risk\n\nE: geoff.wolkis at vuori.com<mailto:geoff.wolkis at vuori.com>\n_\nvuoriclothing.com<http://vuoriclothing.com/>\n#therisetheshine\n[-] <https://www.linkedin.com/company/vuori-inc-/> [-]  <https://www.instagram.com/vuoriclothing/> [-]  <https://twitter.com/vuoriclothing> [-]  <https://www.facebook.com/vuoriclothing/> [-] <https://www.pinterest.com/vuoriclothing/>\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello -\n\n  My name is Geoff Wolkis and I'm with Vuori's Third Party Risk Management Team.  I've been assigned to conduct due diligence on the services and/or products your organization is providing to",
+      "thread_id": "thread-90909c8adec9",
+      "thread_depth": 0,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-245de814f11a",
+      "message_id": "<6bdfffba-3de2-4bcb-8705-f1de379ace4b@gmail.com>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2025-02-25T18:29:41-05:00",
+      "subject": "[Rd] Vuori - Due Diligence",
+      "subject_clean": "Vuori - Due Diligence",
+      "in_reply_to": "<DM4PR14MB57415FCC001D7A26473EDF6C84C32@DM4PR14MB5741.namprd14.prod.outlook.com>",
+      "references": [
+        "<DM4PR14MB5741D9BDFD4126E978CAE97884102@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB5741988AEB4E43EF687E53A984122@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB5741BA35344E59B49010E86984122@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574123E5CBF3BD29AE948DA484132@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB57414EC96D48F8BA31FE6AA084E92@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574122A7CBCAEBC2F9EDC13184F72@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574189F55D6072C359F3895184F12@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB57419F29E421529D8FBAD3D384F22@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574112950E70FC30B76CE36A84C72@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB5741041CF8BC17F861CEB06784C32@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB57415FCC001D7A26473EDF6C84C32@DM4PR14MB5741.namprd14.prod.outlook.com>"
+      ],
+      "body_plain": "R is an open-source project. There is no-one involved with the \nproject who is funded to complete these kinds of assessments.  The \ne-mail you sent probably got eaten by a \nspam/inappropriate-for-the-mailing-list filter ...\n\n    Also, this list is for the R programming language. RStudio is a \nseparate piece of software developed by Posit, a public benefit \ncorporation. It's possible that someone there <https://posit.co/> will \nbe able to help you, especially if you purchase on of their enterprise \nproducts.\n\nThese links might be useful:\n\nhttps://forum.posit.co/t/using-r-rstudio-and-rtools-in-a-corporate-environment/4742/2\n\nhttps://posit.co/products/\n\n\n   sincerely\n    Ben Bolker\n\n(you may get a slew of responses along these lines)\n\nOn 2025-02-25 2:27 p.m., Geoff Wolkis via R-devel wrote:\n> Hello -\n> \n>    My name is Geoff Wolkis and I'm with Vuori's Third Party Risk Management Team.  I've been assigned to conduct due diligence on the services and/or products your organization is providing to Vuori.  In this case R Studio is providing statistical data and create reporting to be used internally. You should have received an email from our GRC platform.  There is 1 questionnaire that needs to be completed: An INFOSEC Questionnaire.\n> \n> Appreciate your assistance in this effort and look forward to working with you. We're looking for a completed date of both assessments no later than 3/7.  Feel free to reach out to me if you have any questions.\n> \n> Kind Regards,\n> \n> [-]\n> Geoffrey Wolkis, CTPRP\n> Information Security Analyst - Third Party Risk\n> \n> E: geoff.wolkis at vuori.com<mailto:geoff.wolkis at vuori.com>\n> _\n> vuoriclothing.com<http://vuoriclothing.com/>\n> #therisetheshine\n> [-] <https://www.linkedin.com/company/vuori-inc-/> [-]  <https://www.instagram.com/vuoriclothing/> [-]  <https://twitter.com/vuoriclothing> [-]  <https://www.facebook.com/vuoriclothing/> [-] <https://www.pinterest.com/vuoriclothing/>\n> \n> \n> \n> \t[[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nDr. Benjamin Bolker\nProfessor, Mathematics & Statistics and Biology, McMaster University\nDirector, School of Computational Science and Engineering\n > E-mail is sent at my convenience; I don't expect replies outside of \nworking hours.",
+      "body_snippet": "R is an open-source project. There is no-one involved with the \nproject who is funded to complete these kinds of assessments.  The \ne-mail you sent probably got eaten by a \nspam/inappropriate-for-the-",
+      "thread_id": "thread-90909c8adec9",
+      "thread_depth": 1,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-ecd4dc7b6646",
+      "message_id": "<94405ab6-e7b9-4fde-8d33-452a4864fcb5@sapo.pt>",
+      "from_name": "Rui Barradas",
+      "from_email_hash": "2f69d7457b582cf482d42f0af55a9da5756f7cf941c02bc0d05592b98d36f0f5",
+      "date": "2025-02-26T08:47:57Z",
+      "subject": "[Rd] Vuori - Due Diligence",
+      "subject_clean": "Vuori - Due Diligence",
+      "in_reply_to": "<DM4PR14MB57415FCC001D7A26473EDF6C84C32@DM4PR14MB5741.namprd14.prod.outlook.com>",
+      "references": [
+        "<DM4PR14MB5741D9BDFD4126E978CAE97884102@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB5741988AEB4E43EF687E53A984122@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB5741BA35344E59B49010E86984122@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574123E5CBF3BD29AE948DA484132@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB57414EC96D48F8BA31FE6AA084E92@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574122A7CBCAEBC2F9EDC13184F72@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574189F55D6072C359F3895184F12@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB57419F29E421529D8FBAD3D384F22@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574112950E70FC30B76CE36A84C72@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB5741041CF8BC17F861CEB06784C32@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB57415FCC001D7A26473EDF6C84C32@DM4PR14MB5741.namprd14.prod.outlook.com>"
+      ],
+      "body_plain": "Hello,\n\nR [1] and RStudio (now Posit) [2] are different things. Though I don't \nspeak for any of the two, you should address Posit directly.\n\n[1] https://cran.r-project.org/\n[2] https://posit.co/\n\nHope this helps,\n\nRui Barradas\n\n?s 19:27 de 25/02/2025, Geoff Wolkis via R-devel escreveu:\n> Hello -\n> \n>    My name is Geoff Wolkis and I'm with Vuori's Third Party Risk Management Team.  I've been assigned to conduct due diligence on the services and/or products your organization is providing to Vuori.  In this case R Studio is providing statistical data and create reporting to be used internally. You should have received an email from our GRC platform.  There is 1 questionnaire that needs to be completed: An INFOSEC Questionnaire.\n> \n> Appreciate your assistance in this effort and look forward to working with you. We're looking for a completed date of both assessments no later than 3/7.  Feel free to reach out to me if you have any questions.\n> \n> Kind Regards,\n> \n> [-]\n> Geoffrey Wolkis, CTPRP\n> Information Security Analyst - Third Party Risk\n> \n> E: geoff.wolkis at vuori.com<mailto:geoff.wolkis at vuori.com>\n> _\n> vuoriclothing.com<http://vuoriclothing.com/>\n> #therisetheshine\n> [-] <https://www.linkedin.com/company/vuori-inc-/> [-]  <https://www.instagram.com/vuoriclothing/> [-]  <https://twitter.com/vuoriclothing> [-]  <https://www.facebook.com/vuoriclothing/> [-] <https://www.pinterest.com/vuoriclothing/>\n> \n> \n> \n> \t[[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n-- \nEste e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.\nwww.avg.com",
+      "body_snippet": "Hello,\n\nR [1] and RStudio (now Posit) [2] are different things. Though I don't \nspeak for any of the two, you should address Posit directly.\n\n[1] https://cran.r-project.org/\n[2] https://posit.co/\n\nHop",
+      "thread_id": "thread-90909c8adec9",
+      "thread_depth": 1,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-95fdc093175b",
+      "message_id": "<20250226144203.203a8a31@arachnoid>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2025-02-26T14:42:03+03:00",
+      "subject": "[Rd] Customizing width of input in Rterm",
+      "subject_clean": "Customizing width of input in Rterm",
+      "in_reply_to": "<725b0cf4-4874-4747-9bba-4ae24891ba38@sjd.es>",
+      "references": [
+        "<725b0cf4-4874-4747-9bba-4ae24891ba38@sjd.es>"
+      ],
+      "body_plain": "? Fri, 21 Feb 2025 11:52:41 +0100\nIago Gin?-V?zquez <iago.gine at sjd.es> ?????:\n\n> When using Rterm.exe (on Windows, I didn?t check Linux) only a\n> limited number of characters is displayed in the input lines,\n> independent on the |width| option, and, when navigating through the\n> command history this becomes very uncomfortable, since a command is\n> not fully displayed and, for example, it is very difficult to know\n> which parts of a command are being edited.\n\nThe patch at the end of this message reads the console width on startup\nand handles the console resize events while getline() is running. The\nautomatic resizing doesn't look nice due to gl_redraw() starting a new\nline newline before redrawing the prompt, but it works.\n\nThis may have accessibility implications since it changes the behaviour\nof Rterm.exe, which is what A. Jonathan R. Godfrey recommends for blind\nWindows users [1]. I've experimented with NVDA and didn't notice\nanything breaking in Windows 10 terminal or mintty.exe, but it's hard\nto be sure without the real experience of using a screen reader.\n\nIs this approach worth adopting? Is it better to erase the current line\ninstead of starting a new one? options(setWidthOnResize) could be\nimplemented similarly but may require more care due to\nR_SetOptionWidth(...) evaluating R code.\n\nIndex: src/gnuwin32/getline/getline.c\n===================================================================\n--- src/gnuwin32/getline/getline.c\t(revision 87795)\n+++ src/gnuwin32/getline/getline.c\t(working copy)\n@@ -25,6 +25,7 @@\n int \t\t(*gl_in_hook)(char *) = 0;\n int \t\t(*gl_out_hook)(char *) = 0;\n int \t\t(*gl_tab_hook)(char *, int, int *) = gl_tab;\n+static int      do_setwidth(int w);\n \n #include <Rconfig.h>\n #include <R_ext/Riconv.h>\n@@ -214,6 +215,10 @@\n          The bug still exists in Windows 10, and thus we now call\n          GetConsoleInputW to get uchar.UnicodeChar. */\n       ReadConsoleInputW(Win32InputStream, &r, 1, &a);\n+      if (r.EventType == WINDOW_BUFFER_SIZE_EVENT) {\n+        if (do_setwidth(r.Event.WindowBufferSizeEvent.dwSize.X))\n+          gl_redraw();\n+      }\n       if (!(r.EventType == KEY_EVENT)) break;\n       st = r.Event.KeyEvent.dwControlKeyState;\n       vk = r.Event.KeyEvent.wVirtualKeyCode;\n@@ -487,6 +492,11 @@\n     gl_w2e_map = gl_realloc(NULL, 0, BUF_SIZE, sizeof(size_t)); \n \n     gl_char_init();\n+\n+    CONSOLE_SCREEN_BUFFER_INFO csb;\n+    GetConsoleScreenBufferInfo(Win32OutputStream, &csb);\n+    do_setwidth(csb.dwSize.X);\n+\n     gl_init_done = 1;\n }\n \n@@ -536,13 +546,21 @@\n     BUF_SIZE = newsize;\n }\n \n+static int\n+do_setwidth(int w)\n+{\n+    /* may be called from gl_getc if a resize event is received */\n+    if (w > 20) {\n+\tgl_w_termw = w;\n+\treturn 1;\n+    }\n+    return 0;\n+}\n+\n void\n gl_setwidth(int w)\n {\n-    /* not used in R; should arrange for redraw */\n-    if (w > 20) \n-\tgl_w_termw = w;\n-    else \n+    if (!do_setwidth(w))\n \tgl_error(\"\\n*** Error: minimum screen width is 21\\n\");\n }\n \n\n\n-- \nBest regards,\nIvan\n\n[1]\nhttps://r-resources.massey.ac.nz/lurnblind/LURNBlindch2.html#x4-80002.3",
+      "body_snippet": "? Fri, 21 Feb 2025 11:52:41 +0100\nIago Gin?-V?zquez <iago.gine at sjd.es> ?????:\n\n> When using Rterm.exe (on Windows, I didn?t check Linux) only a\n> limited number of characters is displayed in the in",
+      "thread_id": "thread-f3da7be612c1",
+      "thread_depth": 1,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-9c7e21b854f3",
+      "message_id": "<DM4PR14MB574158437695667BBDEB1D0B84C22@DM4PR14MB5741.namprd14.prod.outlook.com>",
+      "from_name": "Geoff Wolkis",
+      "from_email_hash": "aaf16e7c2d4521e402002e23f0f6b20bced085ef5545532fc86d648383745422",
+      "date": "2025-02-26T17:16:05Z",
+      "subject": "[Rd] Vuori - Due Diligence",
+      "subject_clean": "Vuori - Due Diligence",
+      "in_reply_to": "<6bdfffba-3de2-4bcb-8705-f1de379ace4b@gmail.com>",
+      "references": [
+        "<DM4PR14MB5741D9BDFD4126E978CAE97884102@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB5741988AEB4E43EF687E53A984122@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB5741BA35344E59B49010E86984122@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574123E5CBF3BD29AE948DA484132@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB57414EC96D48F8BA31FE6AA084E92@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574122A7CBCAEBC2F9EDC13184F72@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574189F55D6072C359F3895184F12@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB57419F29E421529D8FBAD3D384F22@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB574112950E70FC30B76CE36A84C72@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB5741041CF8BC17F861CEB06784C32@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<DM4PR14MB57415FCC001D7A26473EDF6C84C32@DM4PR14MB5741.namprd14.prod.outlook.com>",
+        "<6bdfffba-3de2-4bcb-8705-f1de379ace4b@gmail.com>"
+      ],
+      "body_plain": "Appreciate the response.  We're trying to find someone there now.\n\nGeoff\n\n-----Original Message-----\nFrom: Ben Bolker <bbolker at gmail.com> \nSent: Tuesday, February 25, 2025 4:30 PM\nTo: r-devel at r-project.org\nCc: Geoff Wolkis <geoff.wolkis at vuori.com>; Stevie Ratto <Stevie.Ratto at vuori.com>\nSubject: Re: [Rd] Vuori - Due Diligence\n\nExternal Sender - STOP, ASSESS AND VERIFY. Be very careful about links and attachments. If suspicious, use the PHISH ALERT button.\n\n\n    R is an open-source project. There is no-one involved with the project who is funded to complete these kinds of assessments.  The e-mail you sent probably got eaten by a spam/inappropriate-for-the-mailing-list filter ...\n\n    Also, this list is for the R programming language. RStudio is a separate piece of software developed by Posit, a public benefit corporation. It's possible that someone there <https://posit.co/> will be able to help you, especially if you purchase on of their enterprise products.\n\nThese links might be useful:\n\nhttps://forum.posit.co/t/using-r-rstudio-and-rtools-in-a-corporate-environment/4742/2\n\nhttps://posit.co/products/\n\n\n   sincerely\n    Ben Bolker\n\n(you may get a slew of responses along these lines)\n\nOn 2025-02-25 2:27 p.m., Geoff Wolkis via R-devel wrote:\n> Hello -\n>\n>    My name is Geoff Wolkis and I'm with Vuori's Third Party Risk Management Team.  I've been assigned to conduct due diligence on the services and/or products your organization is providing to Vuori.  In this case R Studio is providing statistical data and create reporting to be used internally. You should have received an email from our GRC platform.  There is 1 questionnaire that needs to be completed: An INFOSEC Questionnaire.\n>\n> Appreciate your assistance in this effort and look forward to working with you. We're looking for a completed date of both assessments no later than 3/7.  Feel free to reach out to me if you have any questions.\n>\n> Kind Regards,\n>\n> [-]\n> Geoffrey Wolkis, CTPRP\n> Information Security Analyst - Third Party Risk\n>\n> E: geoff.wolkis at vuori.com<mailto:geoff.wolkis at vuori.com>\n> _\n> vuoriclothing.com<http://vuoriclothing.com/>\n> #therisetheshine\n> [-] <https://www.linkedin.com/company/vuori-inc-/> [-]  \n> <https://www.instagram.com/vuoriclothing/> [-]  \n> <https://twitter.com/vuoriclothing> [-]  \n> <https://www.facebook.com/vuoriclothing/> [-] \n> <https://www.pinterest.com/vuoriclothing/>\n>\n>\n>\n>       [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n--\nDr. Benjamin Bolker\nProfessor, Mathematics & Statistics and Biology, McMaster University Director, School of Computational Science and Engineering  > E-mail is sent at my convenience; I don't expect replies outside of working hours.",
+      "body_snippet": "Appreciate the response.  We're trying to find someone there now.\n\nGeoff\n\n-----Original Message-----\nFrom: Ben Bolker <bbolker at gmail.com> \nSent: Tuesday, February 25, 2025 4:30 PM\nTo: r-devel at r-",
+      "thread_id": "thread-90909c8adec9",
+      "thread_depth": 2,
+      "month": "2025-02"
+    },
+    {
+      "id": "msg-2c9fb8b69eaa",
+      "message_id": "<AED2813C-1CA5-4F8A-B1A1-D33E106D2301@gmail.com>",
+      "from_name": "peter dalgaard",
+      "from_email_hash": "5d0f61ffffc9a67fd86f4b9a1ea3fac7d731c19e1d8679b6ae315232b22874e8",
+      "date": "2025-02-28T11:26:19+01:00",
+      "subject": "[Rd] R 4.4.3 is released",
+      "subject_clean": "R 4.4.3 is released",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "The build system rolled up R-4.4.3.tar.gz (codename \"Trophy Case\") this morning.\n\nThis is intended to be the round-up release of the 4.4.x series. \n\nIt also happens to be as close as we can get to celebrating 25 years since R-1.0.0.\n\nThe list below details the changes in this release. \n\nYou can get the source code from\n\nhttps://cran.r-project.org/src/base/R-4/R-4.4.3.tar.gz\nhttps://cran.r-project.org/src/base/R-4/R-4.4.3.tar.xz\n\nor wait for it to be mirrored at a CRAN site nearer to you.\n\nBinaries for various platforms will appear in due course. \n\n\nFor the R Core Team,\n\nPeter Dalgaard\n\n\nThese are the checksums (md5 and SHA-256) for the freshly created files, in case you wish\nto check that they are uncorrupted:\n\nMD5 (AUTHORS) = 0ba932825aefae5566dc44822916b266\nMD5 (COPYING) = eb723b61539feef013de476e68b5c50a\nMD5 (COPYING.LIB) = a6f89e2100d9b6cdffcea4f398e37343\nMD5 (FAQ) = 88c4aa9c580d8652c42540f8f21c40e0\nMD5 (INSTALL) = 7893f754308ca31f1ccf62055090ad7b\nMD5 (NEWS) = 3c8d71c1acdc91ffe924115e3c5b0837\nMD5 (NEWS.0) = bfcd7c147251b5474d96848c6f57e5a8\nMD5 (NEWS.1) = f8466e418dec6b958b4ce484a13f9a9d\nMD5 (NEWS.2) = b38d94569700664205a76a7de836ba83\nMD5 (NEWS.3) = 307e75ba323c08b8694f916e45886aa4\nMD5 (R-latest.tar.gz) = 18b2b5e3c4a5e24385f563883af0175c\nMD5 (R-latest.tar.xz) = 4d87af81f83f992456a7d68d07bbbbf4\nMD5 (README) = f468f281c919665e276a1b691decbbe6\nMD5 (RESOURCES) = a79b9b338cab09bd665f6b62ac6f455b\nMD5 (THANKS) = 45b6d2e88a6ecb5b24fa33a781351cd5\nMD5 (VERSION-INFO.dcf) = afb297488231e5a028d7a8466d7ffc80\nMD5 (build-dist.log) = 670f73a7e81f7d27e239d6f497fbb4ae\nMD5 (R-4/R-4.4.3.tar.gz) = 18b2b5e3c4a5e24385f563883af0175c\nMD5 (R-4/R-4.4.3.tar.xz) = 4d87af81f83f992456a7d68d07bbbbf4\n\n4cc9dcdfa46a2e2cff45c27df8f3a9f851ec97b44b8647ab8a9fbf844f37937f  AUTHORS\ne6d6a009505e345fe949e1310334fcb0747f28dae2856759de102ab66b722cb4  COPYING\n6095e9ffa777dd22839f7801aa845b31c9ed07f3d6bf8a26dc5d2dec8ccc0ef3  COPYING.LIB\ndd27213819970941d0cc3c82dbefbaac0b859e968972da52143ea0f57f7b2088  FAQ\nf87461be6cbaecc4dce44ac58e5bd52364b0491ccdadaf846cb9b452e9550f31  INSTALL\nefe03487bca42993de933124e860b64d40148c98efe745f0f4af51fd160374fd  NEWS\n4e21b62f515b749f80997063fceab626d7258c7d650e81a662ba8e0640f12f62  NEWS.0\n602f3a40ef759c7b2a6c485a33dc674af34249644ac5fb53b21283d4e12e808d  NEWS.1\ncde079b6beab7d700d3d4ecda494e2681ad3b7f8fab13b68be090f949393ec62  NEWS.2\n05f3f9fc664b845bb3dcc6492503860df72c63b3f179ab241c095e25bb7628f9  NEWS.3\n0d93d224442dea253c2b086f088db6d0d3cfd9b592cd5496e8cb2143e90fc9e8  R-latest.tar.gz\n9f8a96d3f932f929780bea6461c65b2e5425ab0dea417d5beffc715c90da8d6c  R-latest.tar.xz\n2fdd3e90f23f32692d4b3a0c0452f2c219a10882033d1774f8cadf25886c3ddc  README\n8b7d3856100220f4555d4d57140829f2e81c27eccec5b441f5dce616e9ec9061  RESOURCES\n8319c5415de58ee10d4bc058d79c370fd8e6b2ad09e25d7a1e04b74ca5f380a6  THANKS\n892b1897239f66f90fca4b1f57d8e08817bfdff5dabd151b4ed8ba0db72ef3eb  VERSION-INFO.dcf\na63438d3733b9886b524826c2eac74a3b26887884831893b4161c7dd2a56686a  build-dist.log\n0d93d224442dea253c2b086f088db6d0d3cfd9b592cd5496e8cb2143e90fc9e8  R-4/R-4.4.3.tar.gz\n9f8a96d3f932f929780bea6461c65b2e5425ab0dea417d5beffc715c90da8d6c  R-4/R-4.4.3.tar.xz\n\nThis is the relevant part of the NEWS file\n\nCHANGES IN R 4.4.3:\n\n  INSTALLATION:\n\n    * R can be installed using C23 (for example with -std=gnu23 or\n      -std=gnu2x) with recent compilers including gcc 12-14, Apple\n      clang 15-16, LLVM clang 17-20 and Intel icx 2024.2.\n\n      It can be installed with the upcoming (at the time of writing)\n      gcc 15, which defaults to C23.\n\n  C-LEVEL FACILITIES:\n\n    * The functions R_strtod and R_atof now allow hexadecimal constants\n      without an exponent, for compatibility with their C99 versions\n      (PR#18805).\n\n  UTILITIES:\n\n    * R CMD build and R CMD check now allow reference output for demo\n      scripts (demo/<demo>.Rout.save files) to be shipped with the\n      package, as proposed by Torsten Hothorn in PR#18816.\n\n  BUG FIXES:\n\n    * kappa(A, exact=TRUE) for singular A returns Inf more generally,\n      fixing PR#18817 reported by Mikael Jagan.\n\n    * Fixed URLs of the sun spots (sunspot.month etc) data sets and\n      mention future changes due to recalibration.\n\n    * The parser now accepts hexadecimal constants with a decimal point\n      without an exponent (taken as p0) as documented in\n      ?NumericConstants (PR#18819).\n\n    * rbind() now works correctly when inputs include a raw vector and\n      a logical, integer or double vector - previously the inclusion of\n      the latter was garbled.\n\n    * smooth.spline() checks validity of its arguments df.offset and\n      penalty: it could segfault if they were NULL.\n\n    * isGeneric(<primitive>, fdef=*, getName=TRUE) now also returns the\n      name instead of just TRUE, fixing PR#18829 reported by Mikael\n      Jagan.\n\n    * isGeneric(fdef = print) now works, fixing PR#18369 thanks to\n      Mikael Jagan.\n\n    * sort(x, method = \"qsort\") made illegal accesses when x has length\n      0.\n\n    * dir.create() is protected against being passed an empty string as\n      its path argument.\n\n    * Silent integer overflow could occur in the 'exact' computations\n      for fisher.test() for unrealistic inputs: this is now an error.\n\n    * Some invalid C-level memory accesses are avoided for loglin(,\n      margin = NULL).\n\n      loglin(, param = TRUE) no longer gives an error in corner cases\n      such as a one-dimensional input.\n\n    * dev.capabilities() $ events now reports \"Idle\" if the device\n      provides it, fixing PR#18836, thanks to Trevor Davis.\n\n    * arima(.., seasonal = <wrong-vector>) correctly errors now, ditto\n      for arima0(), thanks to Norbert Kuder's report on the R-devel\n      list.\n\n    * binomial(<link>)$linkinv(eta) and .. $mu.eta(eta) now also work\n      for \"logit\" link when is.integer(eta).\n\n    * as.roman(x) now should work platform independently, also for,\n      e.g., x = \"IIIII\" (= V) and x = \"IIIIII\" (= VI).\n\n    * R CMD Rd2pdf works again on an installed package directory\n      containing LaTeX help (from option --latex), thanks to a report\n      by Peter Ruckdeschel.\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nOffice: A 4.23\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com",
+      "body_snippet": "The build system rolled up R-4.4.3.tar.gz (codename \"Trophy Case\") this morning.\n\nThis is intended to be the round-up release of the 4.4.x series. \n\nIt also happens to be as close as we can get to cel",
+      "thread_id": "thread-2c9fb8b69eaa",
+      "thread_depth": 0,
+      "month": "2025-02"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-d263084f9237",
+      "subject": "[SPAM Warning!] Suggestion to emphasize Rboolean is unrelated to LGLSXP in R-exts",
+      "message_count": 4,
+      "participants": [
+        "Ivan Krylov",
+        "Prof Brian Ripley",
+        "Tomas Kalibera"
+      ],
+      "started": "2025-02-01T12:39:04+03:00",
+      "last_reply": "2025-02-04T13:45:49+01:00",
+      "root_message_id": "msg-d263084f9237"
+    },
+    {
+      "id": "thread-8309fbe0cef5",
+      "subject": "boolean and logical types -draft",
+      "message_count": 2,
+      "participants": [
+        "Prof Brian Ripley"
+      ],
+      "started": "2025-02-03T17:36:28+00:00",
+      "last_reply": "2025-02-03T17:39:07+00:00",
+      "root_message_id": "msg-8309fbe0cef5"
+    },
+    {
+      "id": "thread-babf1eafa610",
+      "subject": "Suggestion to emphasize Rboolean is unrelated to LGLSXP in R-exts",
+      "message_count": 1,
+      "participants": [
+        "Tomas Kalibera"
+      ],
+      "started": "2025-02-05T20:54:38+01:00",
+      "last_reply": "2025-02-05T20:54:38+01:00",
+      "root_message_id": "msg-babf1eafa610"
+    },
+    {
+      "id": "thread-cbd0e4afe0f4",
+      "subject": "Depends: R (>= 4.1) for packages that use |> and \\(...)",
+      "message_count": 1,
+      "participants": [
+        "Ivan Krylov"
+      ],
+      "started": "2025-02-06T18:18:12+03:00",
+      "last_reply": "2025-02-06T18:18:12+03:00",
+      "root_message_id": "msg-cbd0e4afe0f4"
+    },
+    {
+      "id": "thread-7615d97e0d1f",
+      "subject": "Another typo in R-exts.texi",
+      "message_count": 2,
+      "participants": [
+        "Dirk Eddelbuettel",
+        "Kurt Hornik"
+      ],
+      "started": "2025-02-07T18:06:03-06:00",
+      "last_reply": "2025-02-08T08:06:00+01:00",
+      "root_message_id": "msg-7615d97e0d1f"
+    },
+    {
+      "id": "thread-295023968e37",
+      "subject": "typo in R-exts.texi",
+      "message_count": 2,
+      "participants": [
+        "Martin Maechler",
+        "Tobias Verbeke"
+      ],
+      "started": "2025-02-07T18:20:50+00:00",
+      "last_reply": "2025-02-07T20:15:43+01:00",
+      "root_message_id": "msg-295023968e37"
+    },
+    {
+      "id": "thread-a128a158e5c3",
+      "subject": "binary R packages for GNU/Linux",
+      "message_count": 17,
+      "participants": [
+        "Carl Boettiger",
+        "Dirk Eddelbuettel",
+        "Hadley Wickham",
+        "Iñaki Ucar",
+        "Jeroen Ooms",
+        "Lluís Revilla",
+        "Simon Urbanek",
+        "Stephanie Evert",
+        "Tim Taylor",
+        "Tobias Verbeke"
+      ],
+      "started": "2025-02-10T09:08:18+00:00",
+      "last_reply": "2025-02-11T22:18:56+00:00",
+      "root_message_id": "msg-a128a158e5c3"
+    },
+    {
+      "id": "thread-d85407ef277c",
+      "subject": "A few problems with Sys.setLanguage()",
+      "message_count": 1,
+      "participants": [
+        "Ivan Krylov"
+      ],
+      "started": "2025-02-11T16:59:27+03:00",
+      "last_reply": "2025-02-11T16:59:27+03:00",
+      "root_message_id": "msg-d85407ef277c"
+    },
+    {
+      "id": "thread-7bbe15fc9fcf",
+      "subject": "R 4.4.3 scheduled for February 28",
+      "message_count": 1,
+      "participants": [
+        "peter dalgaard"
+      ],
+      "started": "2025-02-13T15:57:22+01:00",
+      "last_reply": "2025-02-13T15:57:22+01:00",
+      "root_message_id": "msg-7bbe15fc9fcf"
+    },
+    {
+      "id": "thread-ab9b61585a3b",
+      "subject": "More precise documentation of on.exit() [when leaving function vs. \"context\"]",
+      "message_count": 3,
+      "participants": [
+        "Michael Chirico",
+        "iuke-tier@ey m@iii@g oii uiow@@edu",
+        "peter dalgaard"
+      ],
+      "started": "2025-02-14T13:40:28-08:00",
+      "last_reply": "2025-02-15T13:17:11+01:00",
+      "root_message_id": "msg-ab9b61585a3b"
+    },
+    {
+      "id": "thread-677174dd241c",
+      "subject": "Export tools:::analyze_license()?",
+      "message_count": 1,
+      "participants": [
+        "Will Landau"
+      ],
+      "started": "2025-02-17T10:13:01-05:00",
+      "last_reply": "2025-02-17T10:13:01-05:00",
+      "root_message_id": "msg-677174dd241c"
+    },
+    {
+      "id": "thread-60f054c4489d",
+      "subject": "patch to model matrix to improve error messages",
+      "message_count": 1,
+      "participants": [
+        "Ben Bolker"
+      ],
+      "started": "2025-02-19T11:18:39-05:00",
+      "last_reply": "2025-02-19T11:18:39-05:00",
+      "root_message_id": "msg-60f054c4489d"
+    },
+    {
+      "id": "thread-f3da7be612c1",
+      "subject": "Customizing width of input in Rterm",
+      "message_count": 2,
+      "participants": [
+        "Iago Giné-Vázquez",
+        "Ivan Krylov"
+      ],
+      "started": "2025-02-21T11:52:41+01:00",
+      "last_reply": "2025-02-26T14:42:03+03:00",
+      "root_message_id": "msg-f3da7be612c1"
+    },
+    {
+      "id": "thread-0c46e8342501",
+      "subject": "Inconsistency between matrix and data.frame replacement matrix arg",
+      "message_count": 1,
+      "participants": [
+        "Gabor Grothendieck"
+      ],
+      "started": "2025-02-23T08:16:29-05:00",
+      "last_reply": "2025-02-23T08:16:29-05:00",
+      "root_message_id": "msg-0c46e8342501"
+    },
+    {
+      "id": "thread-90909c8adec9",
+      "subject": "Vuori - Due Diligence",
+      "message_count": 4,
+      "participants": [
+        "Ben Bolker",
+        "Geoff Wolkis",
+        "Rui Barradas"
+      ],
+      "started": "2025-02-25T19:27:44+00:00",
+      "last_reply": "2025-02-26T17:16:05+00:00",
+      "root_message_id": "msg-90909c8adec9"
+    },
+    {
+      "id": "thread-2c9fb8b69eaa",
+      "subject": "R 4.4.3 is released",
+      "message_count": 1,
+      "participants": [
+        "peter dalgaard"
+      ],
+      "started": "2025-02-28T11:26:19+01:00",
+      "last_reply": "2025-02-28T11:26:19+01:00",
+      "root_message_id": "msg-2c9fb8b69eaa"
+    }
+  ]
+}

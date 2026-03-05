@@ -1,0 +1,3353 @@
+From j3||d|ck @end|ng |rom gm@||@com  Wed Nov  5 08:54:36 2025
+From: j3||d|ck @end|ng |rom gm@||@com (Jeffrey Dick)
+Date: Wed, 5 Nov 2025 15:54:36 +0800
+Subject: [Rd] Mismatch between iris data and symbols in matplot example
+Message-ID: <0a710fc9-4d45-46a9-8803-9147ed6b10a4@gmail.com>
+
+Setosa sepals are bigger than petals in both length and width:
+
+summary(subset(iris, Species == "setosa"))
+
+ ? Sepal.Length? ? Sepal.Width? ? ?Petal.Length? ? Petal.Width ? Species
+ ?Min.? ?:4.300? ?Min.? ?:2.300? ?Min.? ?:1.000? ?Min.? ?:0.100 ?setosa? ? :50
+ ?1st Qu.:4.800? ?1st Qu.:3.200? ?1st Qu.:1.400? ?1st Qu.:0.200 ?versicolor: 0
+ ?Median :5.000? ?Median :3.400? ?Median :1.500? ?Median :0.200 ?virginica : 0
+ ?Mean? ?:5.006? ?Mean? ?:3.428? ?Mean? ?:1.462? ?Mean? ?:0.246
+ ?3rd Qu.:5.200? ?3rd Qu.:3.675? ?3rd Qu.:1.575? ?3rd Qu.:0.300
+ ?Max.? ?:5.800? ?Max.? ?:4.400? ?Max.? ?:1.900? ?Max.? ?:0.600
+
+However, in the first example with iris in ?matplot, setosa petals (small red "s") appear to be longer and wider than sepals (big blue "S"). The symbols for versicolor are also swapped. (I'm using R 4.5.2.)
+
+A possible fix is to change legend() to put "Sepals" before "Petals" for both species. This ordering corresponds with the column indexing used in the example:
+
+iS <- iris$Species == "setosa"
+names(iris[iS,c(1,3)]) == c("Sepal.Length", "Petal.Length")
+names(iris[iS,c(2,4)]) == c("Sepal.Width", "Petal.Width")
+
+The original legend used bigger (uppercase) symbols for bigger flower parts. Whether or not this was intentional, it is an intuitive choice. Such a congruence can be maintained by changing "sS" to "Ss" and "vV" to "Vv" in all three pch assignments.
+
+Here is a modified example with the proposed changes in legend and pch.
+
+table(iris$Species) # is data.frame with 'Species' factor
+iS <- iris$Species == "setosa"
+iV <- iris$Species == "versicolor"
+op <- par(bg = "bisque")
+matplot(c(1, 8), c(0, 4.5), type =? "n", xlab = "Length", ylab = "Width",
+ ? ? ? ? main = "Petal and Sepal Dimensions in Iris Blossoms")
+matpoints(iris[iS,c(1,3)], iris[iS,c(2,4)], pch = "Ss", col = c(2,4))
+matpoints(iris[iV,c(1,3)], iris[iV,c(2,4)], pch = "Vv", col = c(2,4))
+legend(1, 4, c("? ? Setosa Sepals", "? ? Setosa Petals",
+ ? ? ? ? ? ? ? ?"Versicolor Sepals", "Versicolor Petals"),
+ ? ? ? ?pch = "SsVv", col = rep(c(2,4), 2))
+
+Regards,
+Jeff Dick
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Nov  5 22:18:38 2025
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 5 Nov 2025 22:18:38 +0100
+Subject: [Rd] Mismatch between iris data and symbols in matplot example
+In-Reply-To: <fake-VM-id.713c81f245471d6f8474ae183cd3ea43@talos.iv>
+References: <0a710fc9-4d45-46a9-8803-9147ed6b10a4@gmail.com>
+Message-ID: <26891.48942.664700.706474@stat.math.ethz.ch>
+
+>>>>> Jeffrey Dick     on Wed, 5 Nov 2025 15:54:36 +0800 writes:
+
+    > Setosa sepals are bigger than petals in both length and width:
+    > summary(subset(iris, Species == "setosa"))
+
+    > ? Sepal.Length? ? Sepal.Width? ? ?Petal.Length? ? Petal.Width ? Species
+    >  Min.   :4.300   Min.   :2.300   Min.   :1.000   Min.   :0.100  setosa    :50
+    >  1st Qu.:4.800   1st Qu.:3.200   1st Qu.:1.400   1st Qu.:0.200  versicolor: 0
+    >  Median :5.000   Median :3.400   Median :1.500   Median :0.200  virginica : 0
+    >  Mean   :5.006   Mean   :3.428   Mean   :1.462   Mean   :0.246
+    >  3rd Qu.:5.200   3rd Qu.:3.675   3rd Qu.:1.575   3rd Qu.:0.300
+    >  Max.   :5.800   Max.   :4.400   Max.   :1.900   Max.   :0.600
+
+    > However, in the first example with iris in ?matplot, setosa petals (small red "s") appear to be longer and wider than sepals (big blue "S"). The symbols for versicolor are also swapped. (I'm using R 4.5.2.)
+
+    > A possible fix is to change legend() to put "Sepals" before "Petals" for both species. This ordering corresponds with the column indexing used in the example:
+
+    > iS <- iris$Species == "setosa"
+    > names(iris[iS,c(1,3)]) == c("Sepal.Length", "Petal.Length")
+    > names(iris[iS,c(2,4)]) == c("Sepal.Width", "Petal.Width")
+
+    > The original legend used bigger (uppercase) symbols for bigger flower parts. Whether or not this was intentional, it is an intuitive choice. Such a congruence can be maintained by changing "sS" to "Ss" and "vV" to "Vv" in all three pch assignments.
+
+    > Here is a modified example with the proposed changes in legend and pch.
+
+    > table(iris$Species) # is data.frame with 'Species' factor
+    > iS <- iris$Species == "setosa"
+    > iV <- iris$Species == "versicolor"
+    > op <- par(bg = "bisque")
+    > matplot(c(1, 8), c(0, 4.5), type =  "n", xlab = "Length", ylab = "Width",
+    >         main = "Petal and Sepal Dimensions in Iris Blossoms")
+    > matpoints(iris[iS,c(1,3)], iris[iS,c(2,4)], pch = "Ss", col = c(2,4))
+    > matpoints(iris[iV,c(1,3)], iris[iV,c(2,4)], pch = "Vv", col = c(2,4))
+    > legend(1, 4, c("    Setosa Sepals", "    Setosa Petals",
+    >                "Versicolor Sepals", "Versicolor Petals"),
+    >        pch = "SsVv", col = rep(c(2,4), 2))
+
+    > Regards,
+    > Jeff Dick
+
+Thanks a lot, Jeff.
+
+This is an absolute record find in "R history":
+This example has been *unchanged* in the matplot.Rd file already
+
+in R's svn rev 2 -- file date  18. Sep 1997
+ -- almost 2.5 years before R version 1.0.0
+
+i.e., more than 28 years ago.... and you did properly find an
+error, indeed, even though only in the plot labeling.
+
+I will fix it slightly differently than you, keeping the legend
+identical, and using slightly more "principled" code....
+
+basically this:
+
+PS <- c("Petal", "Sepal") ; clr <- c(2,4)
+psL <- paste(PS, "Length",sep="."); Sps <- paste0("    Setosa ", PS, "s")
+psW <- paste(PS, "Width", sep="."); Vps <- paste0("Versicolor ", PS, "s")
+matplot(c(1, 8), c(0, 4.5), type = "n", xlab = "Length", ylab = "Width",
+        main = "Petal and Sepal Dimensions in Iris Blossoms -- new version" )
+matpoints(iris[iS, psL], iris[iS, psW], pch = "sS", col = clr)
+matpoints(iris[iV, psL], iris[iV, psW], pch = "vV", col = clr)
+legend(1, 4, c(Sps, Vps), pch = "sSvV", col = rep(clr, 2))
+
+---
+Thanks again, Jeff!
+
+Martin
+
+--
+Martin Maechler
+ETH Zurich  and   R Core team
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Tue Nov 11 22:52:43 2025
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Tue, 11 Nov 2025 15:52:43 -0600 (CST)
+Subject: [Rd] Using STRING_PTR in a package now produces a WARNING in R-devel
+Message-ID: <34ee9f22-0f15-6ab9-2cdc-0418a8094632@uiowa.edu>
+
+R CMD check now produceS a WARNING if a package uses STRING_PTR. If
+your use of the pointer is read-only then you can call STRING_PTR_RO
+instead.  If your code is writing to the string data then you will
+need to change your code. The only supported way to modify string data
+is to use SET_STRING_ELT. This restriction is necessary to preserve
+the integrity of the memory management system.
+
+Best,
+
+luke
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Sat Nov 15 21:45:03 2025
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Sat, 15 Nov 2025 14:45:03 -0600 (CST)
+Subject: [Rd] Using DATAPTR in a package now produces a WARNING in R-devel
+Message-ID: <d573450b-8b33-5336-1074-062a7439ad19@uiowa.edu>
+
+R CMD check now produceS a WARNING if a package uses DATAPTR. If your
+use of the pointer is read-only then you can call DATAPTR_RO instead.
+If your code is writing to the data then you will need to change your
+code. The only supported way to modify string or vector data is to use
+SET_STRING_ELT or SET_VECTOR_ELT. This restriction is necessary to
+preserve the integrity of the memory management system.
+
+One exception is that implementations of ALTREP Dataptr methods may
+need to return a writable pointer to an internal object. Use
+DATAPTR_RW for this purpose. DATAPTR_RW should only be used in this
+context.
+
+Best,
+
+luke
+
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Nov 24 18:24:30 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 24 Nov 2025 10:24:30 -0700
+Subject: [Rd] typo in R-exts manual
+Message-ID: <307d5b4f-fff2-41e5-8d6f-c5b3211ddd35@gmail.com>
+
+Just noticed a typo (INIINITY instead of INFINITY) in WRE.  Here's a patch:
+
+Index: doc/manual/R-exts.texi
+===================================================================
+--- doc/manual/R-exts.texi      (revision 89053)
++++ doc/manual/R-exts.texi      (working copy)
+@@ -6596,7 +6596,7 @@
+  about an empty argument list in C23 mode.)
+
+  @item
+- at code{INIINITY} and @code{NAN} are available via
++ at code{INFINITY} and @code{NAN} are available via
+  header @file{float.h} and deprecated in @file{math.h}.
+
+  @item
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Mon Nov 24 18:46:24 2025
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Mon, 24 Nov 2025 11:46:24 -0600 (CST)
+Subject: [Rd] [External]  typo in R-exts manual
+In-Reply-To: <307d5b4f-fff2-41e5-8d6f-c5b3211ddd35@gmail.com>
+References: <307d5b4f-fff2-41e5-8d6f-c5b3211ddd35@gmail.com>
+Message-ID: <a8a642a5-cabc-353f-3137-2aaa8f333936@uiowa.edu>
+
+Thanks; fixed in R-devel and R-patched.
+
+luke
+
+On Mon, 24 Nov 2025, Duncan Murdoch wrote:
+
+> Just noticed a typo (INIINITY instead of INFINITY) in WRE.  Here's a patch:
+>
+> Index: doc/manual/R-exts.texi
+> ===================================================================
+> --- doc/manual/R-exts.texi      (revision 89053)
+> +++ doc/manual/R-exts.texi      (working copy)
+> @@ -6596,7 +6596,7 @@
+> about an empty argument list in C23 mode.)
+>
+> @item
+> - at code{INIINITY} and @code{NAN} are available via
+> + at code{INFINITY} and @code{NAN} are available via
+> header @file{float.h} and deprecated in @file{math.h}.
+>
+> @item
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Nov 26 00:33:14 2025
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 26 Nov 2025 12:33:14 +1300
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+Message-ID: <B93F8800-A4C2-4417-A9B4-06BBE15685AE@R-project.org>
+
+Ivo,
+
+FWIW there is an old branch of R with optional types which was part of the R5 experiment (to declare R5 method argument types more intuitively):
+
+https://svn.r-project.org/R/branches/R-exp-R5/
+
+The parser has changed a bit in the meantime so attached is diff against the current R-devel if you want to play with it. This allows the following syntax:
+
+> f <- function(a, character x, integer y=1:10) x
+> str(formals(f))
+Dotted pair list of 3
+ $ a: symbol  
+ $ x: symbol  
+ $ y: language 1:10
+ - attr(*, "type")=List of 3
+  ..$ : NULL
+  ..$ : symbol character
+  ..$ : symbol integer
+
+It doesn't actually do anything with the information, just allows to tag the formals so you can play with ideas at the R level.
+
+Cheers,
+Simon
+
+-- cut here --
+
+Index: src/include/Defn.h
+===================================================================
+--- src/include/Defn.h	(revision 89063)
++++ src/include/Defn.h	(working copy)
+@@ -756,6 +756,10 @@
+ SEXP R_tryWrap(SEXP);
+ SEXP R_tryUnwrap(SEXP);
+ 
++/* experimental argument type macros */
++#define SET_ARGTYPE(x, type) Rf_setAttrib(x, R_TypeSymbol, type)
++#define GET_ARGTYPE(x) Rf_getAttrib(x, R_TypeSymbol)
++
+ Rboolean Rf_pmatch(SEXP, SEXP, Rboolean);
+ Rboolean Rf_psmatch(const char *, const char *, Rboolean);
+ void Rf_printwhere(void);
+Index: src/include/Rinternals.h
+===================================================================
+--- src/include/Rinternals.h	(revision 89063)
++++ src/include/Rinternals.h	(working copy)
+@@ -457,6 +457,7 @@
+ LibExtern SEXP	R_SpecSymbol;	// "spec"
+ LibExtern SEXP	R_TripleColonSymbol;// ":::"
+ LibExtern SEXP	R_TspSymbol;	    /* "tsp" */
++LibExtern SEXP	R_TypeSymbol;	    /* "type" */
+ 
+ LibExtern SEXP  R_dot_defined;      /* ".defined" */
+ LibExtern SEXP  R_dot_Method;       /* ".Method" */
+Index: src/main/gram.c
+===================================================================
+--- src/main/gram.c	(revision 89063)
++++ src/main/gram.c	(working copy)
+@@ -241,6 +241,7 @@
+ 
+ static void	CheckFormalArgs(SEXP, SEXP, YYLTYPE *);
+ static SEXP	FirstArg(SEXP, SEXP); /* create list with one element */
++static SEXP	FirstArgWithType(SEXP, SEXP, SEXP);
+ static void 	GrowList(SEXP, SEXP); /* add element to list end */
+ 
+ static void	SetSingleSrcRef(SEXP);
+@@ -252,6 +253,7 @@
+ static int	KeywordLookup(const char *);
+ static SEXP	NewList(void);
+ static void	NextArg(SEXP, SEXP, SEXP); /* add named element to list end */
++static void	NextArgWithType(SEXP, SEXP, SEXP, SEXP);
+ static SEXP	TagArg(SEXP, SEXP, YYLTYPE *);
+ static int 	processLineDirective(int *);
+ static bool      checkForPlaceholder(SEXP placeholder, SEXP arg);
+@@ -427,8 +429,12 @@
+ static SEXP	xxnullformal(void);
+ static SEXP	xxfirstformal0(SEXP);
+ static SEXP	xxfirstformal1(SEXP, SEXP);
++static SEXP	xxfirstformal2(SEXP, SEXP);
++static SEXP	xxfirstformal3(SEXP, SEXP, SEXP);
+ static SEXP	xxaddformal0(SEXP, SEXP, YYLTYPE *);
+ static SEXP	xxaddformal1(SEXP, SEXP, SEXP, YYLTYPE *);
++static SEXP	xxaddformal2(SEXP, SEXP, SEXP, YYLTYPE *);
++static SEXP	xxaddformal3(SEXP, SEXP, SEXP, SEXP, YYLTYPE *);
+ static SEXP	xxexprlist0(void);
+ static SEXP	xxexprlist1(SEXP, YYLTYPE *);
+ static SEXP	xxexprlist2(SEXP, SEXP, YYLTYPE *);
+@@ -557,62 +563,6 @@
+   };
+   typedef enum yytokentype yytoken_kind_t;
+ #endif
+-/* Token kinds.  */
+-#define YYEMPTY -2
+-#define YYEOF 0
+-#define YYerror 256
+-#define YYUNDEF 257
+-#define END_OF_INPUT 258
+-#define ERROR 259
+-#define STR_CONST 260
+-#define NUM_CONST 261
+-#define NULL_CONST 262
+-#define SYMBOL 263
+-#define FUNCTION 264
+-#define INCOMPLETE_STRING 265
+-#define LEFT_ASSIGN 266
+-#define EQ_ASSIGN 267
+-#define RIGHT_ASSIGN 268
+-#define LBB 269
+-#define FOR 270
+-#define IN 271
+-#define IF 272
+-#define ELSE 273
+-#define WHILE 274
+-#define NEXT 275
+-#define BREAK 276
+-#define REPEAT 277
+-#define GT 278
+-#define GE 279
+-#define LT 280
+-#define LE 281
+-#define EQ 282
+-#define NE 283
+-#define AND 284
+-#define OR 285
+-#define AND2 286
+-#define OR2 287
+-#define NS_GET 288
+-#define NS_GET_INT 289
+-#define COMMENT 290
+-#define LINE_DIRECTIVE 291
+-#define SYMBOL_FORMALS 292
+-#define EQ_FORMALS 293
+-#define EQ_SUB 294
+-#define SYMBOL_SUB 295
+-#define SYMBOL_FUNCTION_CALL 296
+-#define SYMBOL_PACKAGE 297
+-#define SLOT 298
+-#define PIPE 299
+-#define PLACEHOLDER 300
+-#define PIPEBIND 301
+-#define LOW 302
+-#define TILDE 303
+-#define UNOT 304
+-#define NOT 305
+-#define SPECIAL 306
+-#define UMINUS 307
+-#define UPLUS 308
+ 
+ /* Value type.  */
+ #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
+@@ -1065,7 +1015,7 @@
+ /* YYFINAL -- State number of the termination state.  */
+ #define YYFINAL  48
+ /* YYLAST -- Last index in YYTABLE.  */
+-#define YYLAST   572
++#define YYLAST   601
+ 
+ /* YYNTOKENS -- Number of terminals.  */
+ #define YYNTOKENS  75
+@@ -1072,9 +1022,9 @@
+ /* YYNNTS -- Number of nonterminals.  */
+ #define YYNNTS  13
+ /* YYNRULES -- Number of rules.  */
+-#define YYNRULES  94
++#define YYNRULES  98
+ /* YYNSTATES -- Number of states.  */
+-#define YYNSTATES  174
++#define YYNSTATES  180
+ 
+ /* YYMAXUTOK -- Last valid token kind.  */
+ #define YYMAXUTOK   308
+@@ -1128,16 +1078,16 @@
+ /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
+ static const yytype_int16 yyrline[] =
+ {
+-       0,   446,   446,   447,   448,   449,   450,   453,   454,   455,
+-     458,   459,   462,   463,   464,   465,   466,   468,   469,   471,
+-     472,   473,   474,   475,   477,   478,   479,   480,   481,   482,
+-     483,   484,   485,   486,   487,   488,   489,   490,   491,   492,
+-     493,   494,   495,   496,   497,   498,   499,   501,   502,   503,
+-     504,   505,   506,   507,   508,   509,   510,   511,   512,   513,
+-     514,   515,   516,   517,   518,   519,   520,   521,   522,   523,
+-     527,   530,   533,   537,   538,   539,   540,   541,   542,   545,
+-     546,   549,   550,   551,   552,   553,   554,   555,   556,   559,
+-     560,   561,   562,   563,   567
++       0,   452,   452,   453,   454,   455,   456,   459,   460,   461,
++     464,   465,   468,   469,   470,   471,   472,   474,   475,   477,
++     478,   479,   480,   481,   483,   484,   485,   486,   487,   488,
++     489,   490,   491,   492,   493,   494,   495,   496,   497,   498,
++     499,   500,   501,   502,   503,   504,   505,   507,   508,   509,
++     510,   511,   512,   513,   514,   515,   516,   517,   518,   519,
++     520,   521,   522,   523,   524,   525,   526,   527,   528,   529,
++     533,   536,   539,   543,   544,   545,   546,   547,   548,   551,
++     552,   555,   556,   557,   558,   559,   560,   561,   562,   565,
++     566,   567,   568,   569,   571,   572,   574,   575,   578
+ };
+ #endif
+ 
+@@ -1176,7 +1126,7 @@
+ }
+ #endif
+ 
+-#define YYPACT_NINF (-130)
++#define YYPACT_NINF (-138)
+ 
+ #define yypact_value_is_default(Yyn) \
+   ((Yyn) == YYPACT_NINF)
+@@ -1190,24 +1140,24 @@
+    STATE-NUM.  */
+ static const yytype_int16 yypact[] =
+ {
+-     139,  -130,  -130,   -11,  -130,  -130,     2,   -49,    10,    27,
+-      29,  -130,  -130,   209,  -130,   209,   209,   209,   209,   209,
+-    -130,   209,   209,    30,    95,    14,   281,    16,    70,    71,
+-      77,    88,    89,   209,   209,   209,   209,   209,    86,    86,
+-     371,   225,   225,    13,    18,   -53,   440,    88,  -130,   209,
+-     209,  -130,  -130,   209,   209,   229,   209,   209,   209,   209,
+-     209,   209,   209,   209,   209,   209,   209,   209,   209,   209,
+-     209,   209,   209,   209,   209,   209,    82,    84,   229,   229,
+-    -130,  -130,  -130,  -130,  -130,  -130,  -130,  -130,    87,    -3,
+-      90,    86,   -43,   281,    -1,   -39,    86,  -130,   209,   209,
+-    -130,     3,    86,    86,   281,   326,    -5,    91,     0,    55,
+-      31,  -130,   485,   485,   485,   485,   485,   485,   440,   416,
+-     440,   416,   206,   107,   371,   118,   118,   507,   507,   206,
+-     225,   225,  -130,  -130,  -130,  -130,    35,    36,   209,  -130,
+-     100,   209,   209,  -130,   209,  -130,    18,    18,  -130,   209,
+-     209,   209,    39,    40,  -130,  -130,    55,   209,   101,   -38,
+-    -130,    86,   209,    55,    55,    55,  -130,   229,    86,   209,
+-    -130,    86,  -130,    55
++     192,  -138,  -138,    44,  -138,  -138,    70,   -55,   -48,   -35,
++     -28,  -138,  -138,   212,  -138,   212,   212,   212,   212,   212,
++    -138,   212,   212,    15,    22,    14,   332,    82,    84,    86,
++      88,    16,    77,   212,   212,   212,   212,   212,    85,    85,
++     422,    68,    68,    13,    21,     7,   491,    16,  -138,   212,
++     212,  -138,  -138,   212,   212,   280,   212,   212,   212,   212,
++     212,   212,   212,   212,   212,   212,   212,   212,   212,   212,
++     212,   212,   212,   212,   212,   212,    90,    94,   280,   280,
++    -138,  -138,  -138,  -138,  -138,  -138,  -138,  -138,     3,   -53,
++      91,    85,   -43,   332,    -4,   -42,    85,  -138,   212,   212,
++    -138,   -51,    85,    85,   332,   377,    -2,    96,     1,    62,
++      37,  -138,   536,   536,   536,   536,   536,   536,   491,   467,
++     491,   467,   114,    55,   422,   248,   248,   101,   101,   114,
++      68,    68,  -138,  -138,  -138,  -138,    41,    39,   102,   212,
++    -138,   113,   212,   212,  -138,   212,  -138,    21,    21,  -138,
++     212,   212,   212,    49,    50,  -138,  -138,   212,    62,   212,
++      63,   -40,  -138,    85,   212,    62,    62,    62,  -138,   280,
++      62,    85,   125,   212,  -138,    85,  -138,   212,    62,    62
+ };
+ 
+ /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
+@@ -1226,20 +1176,20 @@
+       59,    58,    63,    62,    57,    56,    61,    60,    90,     0,
+        0,    51,     0,    10,    49,     0,    52,    18,    78,    76,
+       17,     0,     8,     9,    44,    45,    13,    14,    16,    82,
+-      94,    79,    37,    36,    32,    33,    34,    35,    38,    39,
++      98,    79,    37,    36,    32,    33,    34,    35,    38,    39,
+       40,    41,    42,    43,    31,    25,    26,    27,    28,    30,
+-      24,    29,    65,    64,    67,    66,    94,    94,     0,    94,
+-       0,     0,     0,    71,     0,    70,    77,    75,    94,    85,
+-      87,    83,     0,     0,    48,    55,    91,     0,    92,     0,
+-      11,    50,     0,    86,    88,    84,    54,    81,    46,     0,
+-      72,    47,    80,    93
++      24,    29,    65,    64,    67,    66,    98,    98,    92,     0,
++      98,     0,     0,     0,    71,     0,    70,    77,    75,    98,
++      85,    87,    83,     0,     0,    48,    55,     0,    91,     0,
++      94,     0,    11,    50,     0,    86,    88,    84,    54,    81,
++      93,    46,    96,     0,    72,    47,    80,     0,    95,    97
+ };
+ 
+ /* YYPGOTO[NTERM-NUM].  */
+ static const yytype_int16 yypgoto[] =
+ {
+-    -130,  -130,    51,   -31,   -16,  -130,  -130,  -130,  -130,   -10,
+-     -52,    69,  -129
++    -138,  -138,    51,    31,   -16,  -138,  -138,  -138,  -138,    27,
++     -44,    92,  -137
+ };
+ 
+ /* YYDEFGOTO[NTERM-NUM].  */
+@@ -1246,7 +1196,7 @@
+ static const yytype_uint8 yydefgoto[] =
+ {
+        0,    24,    25,   109,    26,    37,    35,    33,    45,   110,
+-     111,    89,   153
++     111,    89,   154
+ };
+ 
+ /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
+@@ -1254,126 +1204,132 @@
+    number is the opposite.  If YYTABLE_NINF, syntax error.  */
+ static const yytype_int16 yytable[] =
+ {
+-      40,    41,    42,    92,   142,    95,    46,   149,   142,   142,
+-     157,    49,   151,    98,    99,    31,   100,   144,    93,   162,
+-      93,    80,    27,    28,    81,    49,    49,   143,    27,    28,
+-      49,   145,   170,    29,    30,    29,    30,   104,   105,    93,
++      40,    41,    42,   159,   143,   143,    46,   143,    49,    31,
++     150,   138,   164,   152,   145,   139,    32,   140,    93,   149,
++      93,   141,    48,   141,    88,    49,    49,   144,   146,    34,
++     174,    27,    28,    49,    29,    30,    36,   104,   105,    93,
+      112,   113,   114,   115,   116,   117,   118,   119,   120,   121,
+      122,   123,   124,   125,   126,   127,   128,   129,   130,   131,
+-      50,    50,    93,    93,    38,    50,    39,   139,   136,   137,
+-      43,   140,    44,   148,    32,    82,    84,   140,    83,    85,
+-      51,    52,    86,    97,    91,    87,    94,   132,    96,   134,
+-     133,    34,   135,    36,    47,    48,    88,    90,    49,   138,
+-     102,   103,   142,   150,   152,   154,   141,   156,   158,   155,
+-     159,   160,   166,   169,   167,   172,   101,     0,   163,   164,
+-     165,    55,    93,     0,     0,    93,    93,     0,     0,     0,
+-       0,     0,    55,    93,    93,    93,     0,     0,   173,     0,
+-       1,     0,     2,     0,     3,     4,     5,     6,     7,   146,
+-     147,    93,     0,    93,     8,     0,     9,     0,    10,    11,
+-      12,    13,    66,     0,    67,    74,     0,     0,    75,    76,
+-      77,    78,    79,    71,    72,    73,    74,     0,     0,    75,
+-      76,    77,    78,    79,    14,     0,    15,     0,    16,     0,
+-       0,     0,    17,    18,     0,   161,     0,     0,     0,     0,
+-       0,     0,     0,    19,     0,    20,     0,    21,   168,     0,
+-      22,    23,     0,   171,     3,     4,     5,     6,     7,     0,
+-      55,     0,     0,     0,     8,     0,     9,     0,    10,    11,
+-      12,    13,     0,     0,   106,     4,   107,   108,     7,    55,
+-       0,     0,     0,     0,     8,     0,     9,     0,    10,    11,
+-      12,    13,    67,     0,    14,     0,    15,     0,    16,     0,
+-       0,     0,    17,    18,    74,     0,     0,    75,    76,    77,
+-      78,    79,     0,    19,    14,     0,    15,    21,    16,     0,
+-      22,    23,    17,    18,     0,     0,    75,    76,    77,    78,
+-      79,     0,    53,    19,    54,    55,     0,    21,     0,     0,
+-      22,    23,     0,     0,    56,    57,    58,    59,    60,    61,
+-      62,    63,    64,    65,     0,     0,     0,     0,     0,     0,
+-       0,     0,     0,     0,     0,    66,     0,    67,     0,     0,
+-      68,     0,     0,     0,    69,    70,    71,    72,    73,    74,
+-      55,     0,    75,    76,    77,    78,    79,     0,     0,    56,
+-      57,    58,    59,    60,    61,    62,    63,    64,    65,     0,
++      50,    50,    93,    93,    38,    92,    39,    95,    50,    55,
++      43,   172,    44,    98,    99,   173,   100,    27,    28,    47,
++      51,    52,    55,    97,    91,    90,    94,    80,    96,    82,
++      81,    84,    83,    86,    85,   132,    87,    49,   133,   134,
++     102,   103,   135,    29,    30,   136,   137,   142,   151,   143,
++     153,   155,   156,    74,   157,    55,    75,    76,    77,    78,
++      79,   160,   168,    93,   169,   176,    93,    93,    55,    75,
++      76,    77,    78,    79,    93,    93,    93,   177,     0,   101,
++       0,    93,     0,     0,     0,    66,     0,    67,     0,   147,
++     148,     0,     0,    93,     0,     0,     0,    93,    73,    74,
++      67,    93,    75,    76,    77,    78,    79,     0,     0,     0,
++     158,     0,    74,   161,   162,    75,    76,    77,    78,    79,
++       0,   165,   166,   167,     0,     0,     0,     0,   170,     0,
++       0,     0,     0,     1,     0,     2,   163,     3,     4,     5,
++       6,     7,     0,     0,   178,     0,     0,     8,   179,     9,
++     171,    10,    11,    12,    13,   175,     0,     3,     4,     5,
++       6,     7,     0,     0,     0,     0,     0,     8,     0,     9,
++       0,    10,    11,    12,    13,     0,     0,    14,     0,    15,
++       0,    16,     0,     0,     0,    17,    18,     0,     0,     0,
++       0,     0,     0,     0,     0,     0,    19,    14,    20,    15,
++      21,    16,    55,    22,    23,    17,    18,     0,     0,     0,
++       0,     0,     0,     0,     0,     0,    19,     0,     0,     0,
++      21,     0,     0,    22,    23,   106,     4,   107,   108,     7,
++       0,     0,    66,     0,    67,     8,     0,     9,     0,    10,
++      11,    12,    13,    71,    72,    73,    74,     0,     0,    75,
++      76,    77,    78,    79,     0,     0,     0,     0,     0,     0,
++       0,     0,     0,     0,     0,    14,     0,    15,     0,    16,
++       0,     0,     0,    17,    18,     0,     0,     0,     0,     0,
++       0,     0,     0,    53,    19,    54,    55,     0,    21,     0,
++       0,    22,    23,     0,     0,    56,    57,    58,    59,    60,
++      61,    62,    63,    64,    65,     0,     0,     0,     0,     0,
++       0,     0,     0,     0,     0,     0,    66,     0,    67,     0,
++       0,    68,     0,     0,     0,    69,    70,    71,    72,    73,
++      74,    55,     0,    75,    76,    77,    78,    79,     0,     0,
++      56,    57,    58,    59,    60,    61,    62,    63,    64,    65,
+        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+-      66,     0,    67,     0,     0,    68,     0,     0,     0,    69,
+-      70,    71,    72,    73,    74,    55,     0,    75,    76,    77,
+-      78,    79,     0,     0,    56,    57,    58,    59,    60,    61,
+-      62,    63,    64,    65,     0,     0,     0,     0,     0,     0,
+-       0,     0,     0,     0,     0,    66,     0,    67,     0,     0,
++       0,    66,     0,    67,     0,     0,    68,     0,     0,     0,
++      69,    70,    71,    72,    73,    74,    55,     0,    75,    76,
++      77,    78,    79,     0,     0,    56,    57,    58,    59,    60,
++      61,    62,    63,    64,    65,     0,     0,     0,     0,     0,
++       0,     0,     0,     0,     0,     0,    66,     0,    67,     0,
++       0,     0,     0,     0,     0,    69,    70,    71,    72,    73,
++      74,    55,     0,    75,    76,    77,    78,    79,     0,     0,
++      56,    57,    58,    59,    60,    61,    62,     0,    64,     0,
++       0,     0,     0,     0,     0,    55,     0,     0,     0,     0,
++       0,    66,     0,    67,    56,    57,    58,    59,    60,    61,
++      69,    70,    71,    72,    73,    74,     0,     0,    75,    76,
++      77,    78,    79,     0,     0,    66,     0,    67,     0,     0,
+        0,     0,     0,     0,    69,    70,    71,    72,    73,    74,
+-      55,     0,    75,    76,    77,    78,    79,     0,     0,    56,
+-      57,    58,    59,    60,    61,    62,     0,    64,     0,     0,
+-       0,     0,     0,     0,    55,     0,     0,     0,     0,     0,
+-      66,     0,    67,    56,    57,    58,    59,    60,    61,    69,
++      55,     0,    75,    76,    77,    78,    79,     0,     0,    -1,
++      -1,    -1,    -1,    -1,    -1,     0,     0,     0,     0,     0,
++       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
++      66,     0,    67,     0,     0,     0,     0,     0,     0,    69,
+       70,    71,    72,    73,    74,     0,     0,    75,    76,    77,
+-      78,    79,     0,     0,    66,     0,    67,     0,     0,     0,
+-       0,     0,     0,    69,    70,    71,    72,    73,    74,    55,
+-       0,    75,    76,    77,    78,    79,     0,     0,    -1,    -1,
+-      -1,    -1,    -1,    -1,     0,     0,     0,     0,     0,     0,
+-       0,    55,     0,     0,     0,     0,     0,     0,     0,    66,
+-       0,    67,     0,     0,     0,     0,     0,     0,    69,    70,
+-      71,    72,    73,    74,     0,     0,    75,    76,    77,    78,
+-      79,    66,     0,    67,     0,     0,     0,     0,     0,     0,
+-       0,     0,     0,     0,    73,    74,     0,     0,    75,    76,
+-      77,    78,    79
++      78,    79
+ };
+ 
+ static const yytype_int16 yycheck[] =
+ {
+-      16,    17,    18,    34,    47,    36,    22,    12,    47,    47,
+-     139,    12,    12,    66,    67,    64,    69,    18,    34,   148,
+-      36,     5,    33,    34,     8,    12,    12,    70,    33,    34,
+-      12,    70,    70,    33,    34,    33,    34,    53,    54,    55,
++      16,    17,    18,   140,    47,    47,    22,    47,    12,    64,
++      12,     8,   149,    12,    18,    12,    64,    70,    34,    70,
++      36,    74,     0,    74,     8,    12,    12,    70,    70,    64,
++      70,    33,    34,    12,    33,    34,    64,    53,    54,    55,
+       56,    57,    58,    59,    60,    61,    62,    63,    64,    65,
+       66,    67,    68,    69,    70,    71,    72,    73,    74,    75,
+-      47,    47,    78,    79,    13,    47,    15,    70,    78,    79,
+-      19,    74,    21,    70,    64,     5,     5,    74,     8,     8,
+-      66,    67,     5,    70,    33,     8,    35,     5,    37,     5,
+-       8,    64,     8,    64,    64,     0,     8,     8,    12,    12,
+-      49,    50,    47,    12,    73,    70,    16,   138,     8,    73,
+-     141,   142,    73,    12,    74,   167,    47,    -1,   149,   150,
+-     151,    14,   138,    -1,    -1,   141,   142,    -1,    -1,    -1,
+-      -1,    -1,    14,   149,   150,   151,    -1,    -1,   169,    -1,
+-       1,    -1,     3,    -1,     5,     6,     7,     8,     9,    98,
+-      99,   167,    -1,   169,    15,    -1,    17,    -1,    19,    20,
+-      21,    22,    44,    -1,    46,    58,    -1,    -1,    61,    62,
+-      63,    64,    65,    55,    56,    57,    58,    -1,    -1,    61,
+-      62,    63,    64,    65,    45,    -1,    47,    -1,    49,    -1,
+-      -1,    -1,    53,    54,    -1,   144,    -1,    -1,    -1,    -1,
+-      -1,    -1,    -1,    64,    -1,    66,    -1,    68,   157,    -1,
+-      71,    72,    -1,   162,     5,     6,     7,     8,     9,    -1,
+-      14,    -1,    -1,    -1,    15,    -1,    17,    -1,    19,    20,
+-      21,    22,    -1,    -1,     5,     6,     7,     8,     9,    14,
+-      -1,    -1,    -1,    -1,    15,    -1,    17,    -1,    19,    20,
+-      21,    22,    46,    -1,    45,    -1,    47,    -1,    49,    -1,
+-      -1,    -1,    53,    54,    58,    -1,    -1,    61,    62,    63,
+-      64,    65,    -1,    64,    45,    -1,    47,    68,    49,    -1,
+-      71,    72,    53,    54,    -1,    -1,    61,    62,    63,    64,
+-      65,    -1,    11,    64,    13,    14,    -1,    68,    -1,    -1,
+-      71,    72,    -1,    -1,    23,    24,    25,    26,    27,    28,
+-      29,    30,    31,    32,    -1,    -1,    -1,    -1,    -1,    -1,
+-      -1,    -1,    -1,    -1,    -1,    44,    -1,    46,    -1,    -1,
+-      49,    -1,    -1,    -1,    53,    54,    55,    56,    57,    58,
+-      14,    -1,    61,    62,    63,    64,    65,    -1,    -1,    23,
+-      24,    25,    26,    27,    28,    29,    30,    31,    32,    -1,
++      47,    47,    78,    79,    13,    34,    15,    36,    47,    14,
++      19,     8,    21,    66,    67,    12,    69,    33,    34,    64,
++      66,    67,    14,    70,    33,     8,    35,     5,    37,     5,
++       8,     5,     8,     5,     8,     5,     8,    12,     8,     5,
++      49,    50,     8,    33,    34,    78,    79,    16,    12,    47,
++      73,    70,    73,    58,    12,    14,    61,    62,    63,    64,
++      65,     8,    73,   139,    74,   169,   142,   143,    14,    61,
++      62,    63,    64,    65,   150,   151,   152,    12,    -1,    47,
++      -1,   157,    -1,    -1,    -1,    44,    -1,    46,    -1,    98,
++      99,    -1,    -1,   169,    -1,    -1,    -1,   173,    57,    58,
++      46,   177,    61,    62,    63,    64,    65,    -1,    -1,    -1,
++     139,    -1,    58,   142,   143,    61,    62,    63,    64,    65,
++      -1,   150,   151,   152,    -1,    -1,    -1,    -1,   157,    -1,
++      -1,    -1,    -1,     1,    -1,     3,   145,     5,     6,     7,
++       8,     9,    -1,    -1,   173,    -1,    -1,    15,   177,    17,
++     159,    19,    20,    21,    22,   164,    -1,     5,     6,     7,
++       8,     9,    -1,    -1,    -1,    -1,    -1,    15,    -1,    17,
++      -1,    19,    20,    21,    22,    -1,    -1,    45,    -1,    47,
++      -1,    49,    -1,    -1,    -1,    53,    54,    -1,    -1,    -1,
++      -1,    -1,    -1,    -1,    -1,    -1,    64,    45,    66,    47,
++      68,    49,    14,    71,    72,    53,    54,    -1,    -1,    -1,
++      -1,    -1,    -1,    -1,    -1,    -1,    64,    -1,    -1,    -1,
++      68,    -1,    -1,    71,    72,     5,     6,     7,     8,     9,
++      -1,    -1,    44,    -1,    46,    15,    -1,    17,    -1,    19,
++      20,    21,    22,    55,    56,    57,    58,    -1,    -1,    61,
++      62,    63,    64,    65,    -1,    -1,    -1,    -1,    -1,    -1,
++      -1,    -1,    -1,    -1,    -1,    45,    -1,    47,    -1,    49,
++      -1,    -1,    -1,    53,    54,    -1,    -1,    -1,    -1,    -1,
++      -1,    -1,    -1,    11,    64,    13,    14,    -1,    68,    -1,
++      -1,    71,    72,    -1,    -1,    23,    24,    25,    26,    27,
++      28,    29,    30,    31,    32,    -1,    -1,    -1,    -1,    -1,
++      -1,    -1,    -1,    -1,    -1,    -1,    44,    -1,    46,    -1,
++      -1,    49,    -1,    -1,    -1,    53,    54,    55,    56,    57,
++      58,    14,    -1,    61,    62,    63,    64,    65,    -1,    -1,
++      23,    24,    25,    26,    27,    28,    29,    30,    31,    32,
+       -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+-      44,    -1,    46,    -1,    -1,    49,    -1,    -1,    -1,    53,
+-      54,    55,    56,    57,    58,    14,    -1,    61,    62,    63,
+-      64,    65,    -1,    -1,    23,    24,    25,    26,    27,    28,
+-      29,    30,    31,    32,    -1,    -1,    -1,    -1,    -1,    -1,
+-      -1,    -1,    -1,    -1,    -1,    44,    -1,    46,    -1,    -1,
++      -1,    44,    -1,    46,    -1,    -1,    49,    -1,    -1,    -1,
++      53,    54,    55,    56,    57,    58,    14,    -1,    61,    62,
++      63,    64,    65,    -1,    -1,    23,    24,    25,    26,    27,
++      28,    29,    30,    31,    32,    -1,    -1,    -1,    -1,    -1,
++      -1,    -1,    -1,    -1,    -1,    -1,    44,    -1,    46,    -1,
++      -1,    -1,    -1,    -1,    -1,    53,    54,    55,    56,    57,
++      58,    14,    -1,    61,    62,    63,    64,    65,    -1,    -1,
++      23,    24,    25,    26,    27,    28,    29,    -1,    31,    -1,
++      -1,    -1,    -1,    -1,    -1,    14,    -1,    -1,    -1,    -1,
++      -1,    44,    -1,    46,    23,    24,    25,    26,    27,    28,
++      53,    54,    55,    56,    57,    58,    -1,    -1,    61,    62,
++      63,    64,    65,    -1,    -1,    44,    -1,    46,    -1,    -1,
+       -1,    -1,    -1,    -1,    53,    54,    55,    56,    57,    58,
+       14,    -1,    61,    62,    63,    64,    65,    -1,    -1,    23,
+-      24,    25,    26,    27,    28,    29,    -1,    31,    -1,    -1,
+-      -1,    -1,    -1,    -1,    14,    -1,    -1,    -1,    -1,    -1,
+-      44,    -1,    46,    23,    24,    25,    26,    27,    28,    53,
++      24,    25,    26,    27,    28,    -1,    -1,    -1,    -1,    -1,
++      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
++      44,    -1,    46,    -1,    -1,    -1,    -1,    -1,    -1,    53,
+       54,    55,    56,    57,    58,    -1,    -1,    61,    62,    63,
+-      64,    65,    -1,    -1,    44,    -1,    46,    -1,    -1,    -1,
+-      -1,    -1,    -1,    53,    54,    55,    56,    57,    58,    14,
+-      -1,    61,    62,    63,    64,    65,    -1,    -1,    23,    24,
+-      25,    26,    27,    28,    -1,    -1,    -1,    -1,    -1,    -1,
+-      -1,    14,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    44,
+-      -1,    46,    -1,    -1,    -1,    -1,    -1,    -1,    53,    54,
+-      55,    56,    57,    58,    -1,    -1,    61,    62,    63,    64,
+-      65,    44,    -1,    46,    -1,    -1,    -1,    -1,    -1,    -1,
+-      -1,    -1,    -1,    -1,    57,    58,    -1,    -1,    61,    62,
+-      63,    64,    65
++      64,    65
+ };
+ 
+ /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
+@@ -1393,11 +1349,11 @@
+       69,    86,    77,    77,    79,    79,     5,     7,     8,    78,
+       84,    85,    79,    79,    79,    79,    79,    79,    79,    79,
+       79,    79,    79,    79,    79,    79,    79,    79,    79,    79,
+-      79,    79,     5,     8,     5,     8,    84,    84,    12,    70,
+-      74,    16,    47,    70,    18,    70,    77,    77,    70,    12,
+-      12,    12,    73,    87,    70,    73,    78,    87,     8,    78,
+-      78,    77,    87,    78,    78,    78,    73,    74,    77,    12,
+-      70,    77,    85,    78
++      79,    79,     5,     8,     5,     8,    84,    84,     8,    12,
++      70,    74,    16,    47,    70,    18,    70,    77,    77,    70,
++      12,    12,    12,    73,    87,    70,    73,    12,    78,    87,
++       8,    78,    78,    77,    87,    78,    78,    78,    73,    74,
++      78,    77,     8,    12,    70,    77,    85,    12,    78,    78
+ };
+ 
+ /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
+@@ -1412,7 +1368,7 @@
+       79,    79,    79,    79,    79,    79,    79,    79,    79,    79,
+       80,    81,    82,    83,    83,    83,    83,    83,    83,    84,
+       84,    85,    85,    85,    85,    85,    85,    85,    85,    86,
+-      86,    86,    86,    86,    87
++      86,    86,    86,    86,    86,    86,    86,    86,    87
+ };
+ 
+ /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
+@@ -1427,7 +1383,7 @@
+        3,     3,     3,     3,     3,     3,     3,     3,     1,     1,
+        3,     3,     5,     0,     1,     3,     2,     3,     2,     1,
+        4,     0,     1,     2,     3,     2,     3,     2,     3,     0,
+-       1,     3,     3,     5,     0
++       1,     3,     2,     4,     3,     5,     4,     6,     0
+ };
+ 
+ 
+@@ -2634,15 +2590,31 @@
+                                                 { yyval = xxfirstformal1(yyvsp[-2],yyvsp[0]); 	modif_token( &(yylsp[-2]), SYMBOL_FORMALS ) ; modif_token( &(yylsp[-1]), EQ_FORMALS ) ; }
+     break;
+ 
+-  case 92: /* formlist: formlist ',' SYMBOL  */
++  case 92: /* formlist: SYMBOL SYMBOL  */
++                                                { yyval = xxfirstformal2(yyvsp[0],yyvsp[-1]);   modif_token( &(yylsp[0]), SYMBOL_FORMALS ) ; }
++    break;
++
++  case 93: /* formlist: SYMBOL SYMBOL EQ_ASSIGN expr_or_help  */
++                                                { yyval = xxfirstformal3(yyvsp[-2],yyvsp[0],yyvsp[-3]);   modif_token( &(yylsp[-2]), SYMBOL_FORMALS ) ; modif_token( &(yylsp[-1]), EQ_FORMALS ) ; }
++    break;
++
++  case 94: /* formlist: formlist ',' SYMBOL  */
+                                                 { yyval = xxaddformal0(yyvsp[-2],yyvsp[0], &(yylsp[0]));   modif_token( &(yylsp[0]), SYMBOL_FORMALS ) ; }
+     break;
+ 
+-  case 93: /* formlist: formlist ',' SYMBOL EQ_ASSIGN expr_or_help  */
+-                                                { yyval = xxaddformal1(yyvsp[-4],yyvsp[-2],yyvsp[0],&(yylsp[-2])); modif_token( &(yylsp[-2]), SYMBOL_FORMALS ) ; modif_token( &(yylsp[-1]), EQ_FORMALS ) ;}
++  case 95: /* formlist: formlist ',' SYMBOL EQ_ASSIGN expr_or_help  */
++                                                { yyval = xxaddformal1(yyvsp[-4],yyvsp[-2],yyvsp[0],&(yylsp[-2])); modif_token( &(yylsp[-2]), SYMBOL_FORMALS ) ; modif_token( &(yylsp[-1]), EQ_FORMALS ) ; }
+     break;
+ 
+-  case 94: /* cr: %empty  */
++  case 96: /* formlist: formlist ',' SYMBOL SYMBOL  */
++                                                { yyval = xxaddformal2(yyvsp[-3],yyvsp[0],yyvsp[-1],&(yylsp[-1])); modif_token( &(yylsp[0]), SYMBOL_FORMALS ) ; }
++    break;
++
++  case 97: /* formlist: formlist ',' SYMBOL SYMBOL EQ_ASSIGN expr_or_help  */
++                                                                        { yyval = xxaddformal3(yyvsp[-5],yyvsp[-2],yyvsp[0],yyvsp[-3],&(yylsp[-3])); modif_token( &(yylsp[-2]), SYMBOL_FORMALS ) ; modif_token( &(yylsp[-1]), EQ_FORMALS ) ; }
++    break;
++
++  case 98: /* cr: %empty  */
+                                                 { EatLines = 1; }
+     break;
+ 
+@@ -3157,6 +3129,31 @@
+     return ans;
+ }
+ 
++static SEXP xxfirstformal2(SEXP sym, SEXP type)
++{
++    SEXP ans;
++    if (GenerateCode)
++	PRESERVE_SV(ans = FirstArgWithType(R_MissingArg, sym, type));
++    else
++	PRESERVE_SV(ans = R_NilValue);
++    RELEASE_SV(type);
++    RELEASE_SV(sym);
++    return ans;
++}
++
++static SEXP xxfirstformal3(SEXP sym, SEXP expr, SEXP type)
++{
++    SEXP ans;
++    if (GenerateCode)
++	PRESERVE_SV(ans = FirstArgWithType(expr, sym, type));
++    else
++	PRESERVE_SV(ans = R_NilValue);
++    RELEASE_SV(type);
++    RELEASE_SV(expr);
++    RELEASE_SV(sym);
++    return ans;
++}
++
+ static SEXP xxaddformal0(SEXP formlist, SEXP sym, YYLTYPE *lloc)
+ {
+     SEXP ans;
+@@ -3188,6 +3185,39 @@
+     return ans;
+ }
+ 
++static SEXP xxaddformal2(SEXP formlist, SEXP sym, SEXP type, YYLTYPE *lloc)
++{
++    SEXP ans;
++    if (GenerateCode) {
++	CheckFormalArgs(formlist, sym, lloc);
++	NextArgWithType(formlist, R_MissingArg, sym, type);
++	ans = formlist;
++    } else {
++	RELEASE_SV(formlist);
++	PRESERVE_SV(ans = R_NilValue);
++    }
++    RELEASE_SV(sym);
++    RELEASE_SV(type);
++    return ans;
++}
++
++static SEXP xxaddformal3(SEXP formlist, SEXP sym, SEXP expr, SEXP type, YYLTYPE *lloc)
++{
++    SEXP ans;
++    if (GenerateCode) {
++	CheckFormalArgs(formlist, sym, lloc);
++	NextArgWithType(formlist, expr, sym, type);
++	ans = formlist;
++    } else {
++	RELEASE_SV(formlist);
++	PRESERVE_SV(ans = R_NilValue);
++    }
++    RELEASE_SV(expr);
++    RELEASE_SV(sym);
++    RELEASE_SV(type);
++    return ans;
++}
++
+ static SEXP xxexprlist0(void)
+ {
+     SEXP ans;
+@@ -3473,6 +3503,40 @@
+     return t;
+ }
+ 
++/* originally, the idea was to use attribute on each entry, but
++   attrs are only allowed on the outside of LISTSXP so we collect them
++   into one attribute so they can be used in plain R */
++static SEXP fixupFormalsTypes(SEXP formals) {
++    SEXP c = CDR(formals);
++    int i = 0, xty = 0; /* find last type declaration */
++    while (c != R_NilValue) {
++	i++;
++	/* for speed we don't check the name */
++	if (ATTRIB(c) != R_NilValue)
++	    xty = i;
++	c = CDR(c);
++    }
++    if (xty > 0) {
++	SEXP types = PROTECT(Rf_allocVector(VECSXP, i));
++	c = CDR(formals);
++	i = 0;
++	while (c != R_NilValue) {
++	    SEXP a = GET_ARGTYPE(c);
++	    if (a != R_NilValue) {
++		
++		SET_VECTOR_ELT(types, i, a);
++		/* do we want to keep them? */
++		SET_ATTRIB(c, R_NilValue);
++	    }
++	    c = CDR(c);
++	    i++;
++	}
++	SET_ARGTYPE(CDR(formals), types);
++	UNPROTECT(1);
++    }
++    return formals;
++}
++
+ static SEXP xxdefun(SEXP fname, SEXP formals, SEXP body, YYLTYPE *lloc)
+ {
+     SEXP ans, srcref;
+@@ -3483,7 +3547,7 @@
+     	    ParseState.didAttach = true;
+     	} else
+     	    srcref = R_NilValue;
+-	PRESERVE_SV(ans = lang4(fname, CDR(formals), body, srcref));
++	PRESERVE_SV(ans = lang4(fname, CDR(fixupFormalsTypes(formals)), body, srcref));
+     } else
+ 	PRESERVE_SV(ans = R_NilValue);
+     RELEASE_SV(body);
+@@ -3760,6 +3824,17 @@
+     return tmp;
+ }
+ 
++static SEXP FirstArgWithType(SEXP s, SEXP tag, SEXP type)
++{
++    SEXP tmp;
++    PROTECT(tmp = NewList());
++    GrowList(tmp, s);
++    SET_TAG(CAR(tmp), tag);
++    SET_ARGTYPE(CAR(tmp), type);
++    UNPROTECT(1);
++    return tmp;
++}
++
+ /* Add named element to the end of a stretchy list */
+ static void NextArg(SEXP l, SEXP s, SEXP tag)
+ {
+@@ -3767,6 +3842,13 @@
+     SET_TAG(CAR(l), tag);
+ }
+ 
++static void NextArgWithType(SEXP l, SEXP s, SEXP tag, SEXP type)
++{
++    GrowList(l, s);
++    SET_TAG(CAR(l), tag);
++    SET_ARGTYPE(CAR(l), type);
++}
++
+ /* SrcRefs (PS_SRCREFS) are represented as R_NilValue (empty) or by 
+    a stretchy list (which includes another representation for empty)
+    for fast append operation. */
+Index: src/main/gram.y
+===================================================================
+--- src/main/gram.y	(revision 89063)
++++ src/main/gram.y	(working copy)
+@@ -173,6 +173,7 @@
+ 
+ static void	CheckFormalArgs(SEXP, SEXP, YYLTYPE *);
+ static SEXP	FirstArg(SEXP, SEXP); /* create list with one element */
++static SEXP	FirstArgWithType(SEXP, SEXP, SEXP);
+ static void 	GrowList(SEXP, SEXP); /* add element to list end */
+ 
+ static void	SetSingleSrcRef(SEXP);
+@@ -184,6 +185,7 @@
+ static int	KeywordLookup(const char *);
+ static SEXP	NewList(void);
+ static void	NextArg(SEXP, SEXP, SEXP); /* add named element to list end */
++static void	NextArgWithType(SEXP, SEXP, SEXP, SEXP);
+ static SEXP	TagArg(SEXP, SEXP, YYLTYPE *);
+ static int 	processLineDirective(int *);
+ static bool      checkForPlaceholder(SEXP placeholder, SEXP arg);
+@@ -359,8 +361,12 @@
+ static SEXP	xxnullformal(void);
+ static SEXP	xxfirstformal0(SEXP);
+ static SEXP	xxfirstformal1(SEXP, SEXP);
++static SEXP	xxfirstformal2(SEXP, SEXP);
++static SEXP	xxfirstformal3(SEXP, SEXP, SEXP);
+ static SEXP	xxaddformal0(SEXP, SEXP, YYLTYPE *);
+ static SEXP	xxaddformal1(SEXP, SEXP, SEXP, YYLTYPE *);
++static SEXP	xxaddformal2(SEXP, SEXP, SEXP, YYLTYPE *);
++static SEXP	xxaddformal3(SEXP, SEXP, SEXP, SEXP, YYLTYPE *);
+ static SEXP	xxexprlist0(void);
+ static SEXP	xxexprlist1(SEXP, YYLTYPE *);
+ static SEXP	xxexprlist2(SEXP, SEXP, YYLTYPE *);
+@@ -559,9 +565,14 @@
+ formlist:					{ $$ = xxnullformal(); }
+ 	|	SYMBOL				{ $$ = xxfirstformal0($1); 	modif_token( &@1, SYMBOL_FORMALS ) ; }
+ 	|	SYMBOL EQ_ASSIGN expr_or_help	{ $$ = xxfirstformal1($1,$3); 	modif_token( &@1, SYMBOL_FORMALS ) ; modif_token( &@2, EQ_FORMALS ) ; }
++	|	SYMBOL SYMBOL 			{ $$ = xxfirstformal2($2,$1);   modif_token( &@2, SYMBOL_FORMALS ) ; } 
++	|	SYMBOL SYMBOL EQ_ASSIGN expr_or_help
++						{ $$ = xxfirstformal3($2,$4,$1);   modif_token( &@2, SYMBOL_FORMALS ) ; modif_token( &@3, EQ_FORMALS ) ; }
+ 	|	formlist ',' SYMBOL		{ $$ = xxaddformal0($1,$3, &@3);   modif_token( &@3, SYMBOL_FORMALS ) ; }
+ 	|	formlist ',' SYMBOL EQ_ASSIGN expr_or_help
+-						{ $$ = xxaddformal1($1,$3,$5,&@3); modif_token( &@3, SYMBOL_FORMALS ) ; modif_token( &@4, EQ_FORMALS ) ;}
++						{ $$ = xxaddformal1($1,$3,$5,&@3); modif_token( &@3, SYMBOL_FORMALS ) ; modif_token( &@4, EQ_FORMALS ) ; }
++	|	formlist ',' SYMBOL SYMBOL	{ $$ = xxaddformal2($1,$4,$3,&@3); modif_token( &@4, SYMBOL_FORMALS ) ; }
++	|	formlist ',' SYMBOL SYMBOL EQ_ASSIGN expr_or_help	{ $$ = xxaddformal3($1,$4,$6,$3,&@3); modif_token( &@4, SYMBOL_FORMALS ) ; modif_token( &@5, EQ_FORMALS ) ; }
+ 	;
+ 
+ cr	:					{ EatLines = 1; }
+@@ -848,6 +859,31 @@
+     return ans;
+ }
+ 
++static SEXP xxfirstformal2(SEXP sym, SEXP type)
++{
++    SEXP ans;
++    if (GenerateCode)
++	PRESERVE_SV(ans = FirstArgWithType(R_MissingArg, sym, type));
++    else
++	PRESERVE_SV(ans = R_NilValue);
++    RELEASE_SV(type);
++    RELEASE_SV(sym);
++    return ans;
++}
++
++static SEXP xxfirstformal3(SEXP sym, SEXP expr, SEXP type)
++{
++    SEXP ans;
++    if (GenerateCode)
++	PRESERVE_SV(ans = FirstArgWithType(expr, sym, type));
++    else
++	PRESERVE_SV(ans = R_NilValue);
++    RELEASE_SV(type);
++    RELEASE_SV(expr);
++    RELEASE_SV(sym);
++    return ans;
++}
++
+ static SEXP xxaddformal0(SEXP formlist, SEXP sym, YYLTYPE *lloc)
+ {
+     SEXP ans;
+@@ -879,6 +915,39 @@
+     return ans;
+ }
+ 
++static SEXP xxaddformal2(SEXP formlist, SEXP sym, SEXP type, YYLTYPE *lloc)
++{
++    SEXP ans;
++    if (GenerateCode) {
++	CheckFormalArgs(formlist, sym, lloc);
++	NextArgWithType(formlist, R_MissingArg, sym, type);
++	ans = formlist;
++    } else {
++	RELEASE_SV(formlist);
++	PRESERVE_SV(ans = R_NilValue);
++    }
++    RELEASE_SV(sym);
++    RELEASE_SV(type);
++    return ans;
++}
++
++static SEXP xxaddformal3(SEXP formlist, SEXP sym, SEXP expr, SEXP type, YYLTYPE *lloc)
++{
++    SEXP ans;
++    if (GenerateCode) {
++	CheckFormalArgs(formlist, sym, lloc);
++	NextArgWithType(formlist, expr, sym, type);
++	ans = formlist;
++    } else {
++	RELEASE_SV(formlist);
++	PRESERVE_SV(ans = R_NilValue);
++    }
++    RELEASE_SV(expr);
++    RELEASE_SV(sym);
++    RELEASE_SV(type);
++    return ans;
++}
++
+ static SEXP xxexprlist0(void)
+ {
+     SEXP ans;
+@@ -1164,6 +1233,39 @@
+     return t;
+ }
+ 
++/* originally, the idea was to use attribute on each entry, but
++   attrs are only allowed on the outside of LISTSXP so we collect them
++   into one VECSXP attribute so they can be used in plain R. */
++static SEXP fixupFormalsTypes(SEXP formals) {
++    SEXP c = CDR(formals);
++    int i = 0, xty = 0; /* find last type declaration (if any) */
++    while (c != R_NilValue) {
++	i++;
++	/* for speed we don't check the name */
++	if (ATTRIB(c) != R_NilValue)
++	    xty = i;
++	c = CDR(c);
++    }
++    if (xty > 0) {
++	SEXP types = PROTECT(Rf_allocVector(VECSXP, i));
++	c = CDR(formals);
++	i = 0;
++	while (c != R_NilValue) {
++	    SEXP a = GET_ARGTYPE(c);
++	    if (a != R_NilValue) {
++		SET_VECTOR_ELT(types, i, a);
++		/* do we want to keep them for internal use? */
++		SET_ATTRIB(c, R_NilValue);
++	    }
++	    c = CDR(c);
++	    i++;
++	}
++	SET_ARGTYPE(CDR(formals), types);
++	UNPROTECT(1);
++    }
++    return formals;
++}
++
+ static SEXP xxdefun(SEXP fname, SEXP formals, SEXP body, YYLTYPE *lloc)
+ {
+     SEXP ans, srcref;
+@@ -1174,7 +1276,7 @@
+     	    ParseState.didAttach = true;
+     	} else
+     	    srcref = R_NilValue;
+-	PRESERVE_SV(ans = lang4(fname, CDR(formals), body, srcref));
++	PRESERVE_SV(ans = lang4(fname, CDR(fixupFormalsTypes(formals)), body, srcref));
+     } else
+ 	PRESERVE_SV(ans = R_NilValue);
+     RELEASE_SV(body);
+@@ -1451,6 +1553,17 @@
+     return tmp;
+ }
+ 
++static SEXP FirstArgWithType(SEXP s, SEXP tag, SEXP type)
++{
++    SEXP tmp;
++    PROTECT(tmp = NewList());
++    GrowList(tmp, s);
++    SET_TAG(CAR(tmp), tag);
++    SET_ARGTYPE(CAR(tmp), type);
++    UNPROTECT(1);
++    return tmp;
++}
++
+ /* Add named element to the end of a stretchy list */
+ static void NextArg(SEXP l, SEXP s, SEXP tag)
+ {
+@@ -1458,6 +1571,13 @@
+     SET_TAG(CAR(l), tag);
+ }
+ 
++static void NextArgWithType(SEXP l, SEXP s, SEXP tag, SEXP type)
++{
++    GrowList(l, s);
++    SET_TAG(CAR(l), tag);
++    SET_ARGTYPE(CAR(l), type);
++}
++
+ /* SrcRefs (PS_SRCREFS) are represented as R_NilValue (empty) or by 
+    a stretchy list (which includes another representation for empty)
+    for fast append operation. */
+Index: src/main/names.c
+===================================================================
+--- src/main/names.c	(revision 89063)
++++ src/main/names.c	(working copy)
+@@ -1132,6 +1132,7 @@
+     R_SortListSymbol = install("sort.list");
+     R_SourceSymbol = install("source");   /* Not used by R or core packages */
+     R_TspSymbol = install("tsp");
++    R_TypeSymbol = install("type");
+     /* ../include/Defn.h , i.e. non-public : */
+     R_CommentSymbol = install("comment");
+     R_DotEnvSymbol = install(".Environment");
+
+
+
+> On 18/09/2025, at 5:23 AM, IVO I WELCH <iwelch at g.ucla.edu> wrote:
+> 
+> 
+> Suggestion for Syntax Sugar:
+> 
+> Would it make sense to permit a simple way to allow a coder to document the function argument type?
+> 
+> f <- function( a:chr, b:data.frame, c:logi ) { ? }
+> 
+> presumably, what comes behind the ?:? should match what ?str? returns.
+> 
+> however, this need not be checked (except perhaps when a particular option is set).  catching errors as soon as possible makes code easier to debug and error messages clearer.
+> 
+> regards,
+> 
+> /iaw
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Wed Nov 26 17:50:34 2025
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Wed, 26 Nov 2025 18:50:34 +0200
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+Message-ID: <CABdHhvGeUX0n+NZxh+839CbbeEaVxXSNTq9AN-g-8gTtDJvGyg@mail.gmail.com>
+
+You might be interested in Jim Hester?s old experiment that used ? -
+https://github.com/jimhester/types
+
+Hadley
+
+On Wednesday, September 17, 2025, IVO I WELCH <iwelch at g.ucla.edu> wrote:
+
+>
+> Suggestion for Syntax Sugar:
+>
+> Would it make sense to permit a simple way to allow a coder to document
+> the function argument type?
+>
+> f <- function( a:chr, b:data.frame, c:logi ) { ? }
+>
+> presumably, what comes behind the ?:? should match what ?str? returns.
+>
+> however, this need not be checked (except perhaps when a particular option
+> is set).  catching errors as soon as possible makes code easier to debug
+> and error messages clearer.
+>
+> regards,
+>
+> /iaw
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+
+-- 
+http://hadley.nz
+
+	[[alternative HTML version deleted]]
+
+
+From |vo@we|ch @end|ng |rom uc|@@edu  Wed Nov 26 17:59:04 2025
+From: |vo@we|ch @end|ng |rom uc|@@edu (ivo welch)
+Date: Wed, 26 Nov 2025 08:59:04 -0800
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <CABdHhvGeUX0n+NZxh+839CbbeEaVxXSNTq9AN-g-8gTtDJvGyg@mail.gmail.com>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+ <CABdHhvGeUX0n+NZxh+839CbbeEaVxXSNTq9AN-g-8gTtDJvGyg@mail.gmail.com>
+Message-ID: <CAJrNScQ=8t-O5mAvgogux=dX_nAAx08Qw6Oqfo06ZKzt7e4yLg@mail.gmail.com>
+
+I am more interested why something like this has not made its way into R
+core as a first step to type checking *for everyone*.  (I could imagine
+that an option would turn on and off some automatic stopifnot like checking
+given a standardized annotation form [type, dim].)
+
+is it because there is not much wider interest and desirability (so even a
+basic working implementation would not be pulled into R by the powers that
+are in charge), or is it because the work is too difficult and no one had
+time to work on it?
+
+
+On Wed, Nov 26, 2025 at 8:50?AM Hadley Wickham <h.wickham at gmail.com> wrote:
+
+> You might be interested in Jim Hester?s old experiment that used ? -
+> https://github.com/jimhester/types
+>
+> Hadley
+>
+> On Wednesday, September 17, 2025, IVO I WELCH <iwelch at g.ucla.edu> wrote:
+>
+>>
+>> Suggestion for Syntax Sugar:
+>>
+>> Would it make sense to permit a simple way to allow a coder to document
+>> the function argument type?
+>>
+>> f <- function( a:chr, b:data.frame, c:logi ) { ? }
+>>
+>> presumably, what comes behind the ?:? should match what ?str? returns.
+>>
+>> however, this need not be checked (except perhaps when a particular
+>> option is set).  catching errors as soon as possible makes code easier to
+>> debug and error messages clearer.
+>>
+>> regards,
+>>
+>> /iaw
+>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+>
+>
+> --
+> http://hadley.nz
+>
+
+	[[alternative HTML version deleted]]
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Wed Nov 26 19:30:48 2025
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Wed, 26 Nov 2025 20:30:48 +0200
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <CAJrNScQ=8t-O5mAvgogux=dX_nAAx08Qw6Oqfo06ZKzt7e4yLg@mail.gmail.com>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+ <CABdHhvGeUX0n+NZxh+839CbbeEaVxXSNTq9AN-g-8gTtDJvGyg@mail.gmail.com>
+ <CAJrNScQ=8t-O5mAvgogux=dX_nAAx08Qw6Oqfo06ZKzt7e4yLg@mail.gmail.com>
+Message-ID: <CABdHhvEXM81KAiMoBX4YMm1FiuToamG12v-iTkRuVv8r=qT-6w@mail.gmail.com>
+
+IMO it?s technically challenging to implement (I?d spitball two really good
+R developers for a year to get it started) and the most compelling benefits
+are reasonably far in the future. Additionally, I don?t think there?s broad
+consensus about what a type system for R should even look like.
+
+Hadley
+
+On Wednesday, November 26, 2025, ivo welch <ivo.welch at ucla.edu> wrote:
+
+>
+> I am more interested why something like this has not made its way into R
+> core as a first step to type checking *for everyone*.  (I could imagine
+> that an option would turn on and off some automatic stopifnot like checking
+> given a standardized annotation form [type, dim].)
+>
+> is it because there is not much wider interest and desirability (so even a
+> basic working implementation would not be pulled into R by the powers that
+> are in charge), or is it because the work is too difficult and no one had
+> time to work on it?
+>
+>
+> On Wed, Nov 26, 2025 at 8:50?AM Hadley Wickham <h.wickham at gmail.com>
+> wrote:
+>
+>> You might be interested in Jim Hester?s old experiment that used ? -
+>> https://github.com/jimhester/types
+>>
+>> Hadley
+>>
+>> On Wednesday, September 17, 2025, IVO I WELCH <iwelch at g.ucla.edu> wrote:
+>>
+>>>
+>>> Suggestion for Syntax Sugar:
+>>>
+>>> Would it make sense to permit a simple way to allow a coder to document
+>>> the function argument type?
+>>>
+>>> f <- function( a:chr, b:data.frame, c:logi ) { ? }
+>>>
+>>> presumably, what comes behind the ?:? should match what ?str? returns.
+>>>
+>>> however, this need not be checked (except perhaps when a particular
+>>> option is set).  catching errors as soon as possible makes code easier to
+>>> debug and error messages clearer.
+>>>
+>>> regards,
+>>>
+>>> /iaw
+>>>
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>
+>>
+>>
+>> --
+>> http://hadley.nz
+>>
+>
+
+-- 
+http://hadley.nz
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Nov 27 01:04:07 2025
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 27 Nov 2025 13:04:07 +1300
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <CAJrNScQ=8t-O5mAvgogux=dX_nAAx08Qw6Oqfo06ZKzt7e4yLg@mail.gmail.com>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+ <CABdHhvGeUX0n+NZxh+839CbbeEaVxXSNTq9AN-g-8gTtDJvGyg@mail.gmail.com>
+ <CAJrNScQ=8t-O5mAvgogux=dX_nAAx08Qw6Oqfo06ZKzt7e4yLg@mail.gmail.com>
+Message-ID: <A9BCB121-7C06-4AE3-B2C8-AA7A54784B50@R-project.org>
+
+The R5 syntax introduced over 15 years ago it was meant to be minimalistic (optional argument types) to have a start at experimenting, however there was little interest at the time. Then I remember at one of the useR!?s I think someone from Jan Vitek?s group was presenting on a very complex annotation system that allowed not only type checking, but also definition of constraints etc. (unfortunately I can?t remember the names and so didn't find the paper). At that time I was thinking that it?s cool, but this will never happen, because once you start exploring all the possible use-cases the scope grows exponentially and it will become impossible to agree on any common ground: the classic perfect being the enemy of the good. So I suspect that is the main problem: it is not a clear feature that has a clear path forward - it is just an ill-defined idea (what is the purpose? about arguments? about other expressions? constraints? evaluated constraints? return values? what will be done with it?). Add to that the obvious: it would be possibly a big change to the language, so it really needs to be considered carefully as there will be no going back, since R prides itself on very good backward compatibility which makes it so useful in practice. Also anything complex will have security and performance implications.
+
+I have not seen any serious proposals so far. There have been various experimentation in a package space, but those are often opinionated with varying levels of thought put into it. Personally, I think the syntax is important so I would like to make sure possible syntax changes are considered so we?re not just creating an awkward syntax because it is easier in package space, but not intuitive to use.
+
+So just like with any improvement (c.f. the ifelse discussion), if there is actual interest, then people should start discussing the aspects, starting with the key ones such as purpose and requirements. I don't think this topic really has been even defined so I wouldn?t run creating packages just yet, especially since I think this is more about design than implementation. No one has done that work just yet.
+
+Cheers,
+Simon
+
+
+> On 27 Nov 2025, at 05:59, ivo welch <ivo.welch at ucla.edu> wrote:
+> 
+> I am more interested why something like this has not made its way into R core as a first step to type checking *for everyone*.  (I could imagine that an option would turn on and off some automatic stopifnot like checking given a standardized annotation form [type, dim].)
+> 
+> is it because there is not much wider interest and desirability (so even a basic working implementation would not be pulled into R by the powers that are in charge), or is it because the work is too difficult and no one had 
+> time to work on it?
+> 
+> 
+> On Wed, Nov 26, 2025 at 8:50?AM Hadley Wickham <h.wickham at gmail.com> wrote:
+> 
+>> You might be interested in Jim Hester?s old experiment that used ? -
+>> https://github.com/jimhester/types
+>> 
+>> Hadley
+>> 
+>> On Wednesday, September 17, 2025, IVO I WELCH <iwelch at g.ucla.edu> wrote:
+>> 
+>>> 
+>>> Suggestion for Syntax Sugar:
+>>> 
+>>> Would it make sense to permit a simple way to allow a coder to document
+>>> the function argument type?
+>>> 
+>>> f <- function( a:chr, b:data.frame, c:logi ) { ? }
+>>> 
+>>> presumably, what comes behind the ?:? should match what ?str? returns.
+>>> 
+>>> however, this need not be checked (except perhaps when a particular
+>>> option is set).  catching errors as soon as possible makes code easier to
+>>> debug and error messages clearer.
+>>> 
+>>> regards,
+>>> 
+>>> /iaw
+>>> 
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>> 
+>> 
+>> 
+>> --
+>> http://hadley.nz
+>> 
+> 
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+
+
+From v|tekj @end|ng |rom |c|oud@com  Thu Nov 27 10:19:05 2025
+From: v|tekj @end|ng |rom |c|oud@com (Jan Vitek)
+Date: Thu, 27 Nov 2025 10:19:05 +0100
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <A9BCB121-7C06-4AE3-B2C8-AA7A54784B50@R-project.org>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+ <CABdHhvGeUX0n+NZxh+839CbbeEaVxXSNTq9AN-g-8gTtDJvGyg@mail.gmail.com>
+ <CAJrNScQ=8t-O5mAvgogux=dX_nAAx08Qw6Oqfo06ZKzt7e4yLg@mail.gmail.com>
+ <A9BCB121-7C06-4AE3-B2C8-AA7A54784B50@R-project.org>
+Message-ID: <BF9F8EE8-A970-4878-98C6-D83906899F1E@icloud.com>
+
+
+
+Five years ago, already.  Not so complex. If you want complex, I suggest TypeScript. But successful :-)
+
+My position remains that type annotations that are unpleasant to write and only capture a tiny portion of the beauty of R are not going to be adopted.
+
+Consider what TypeScript did for JavaScript.
+
+https://janvitek.org/pubs/oopsla20-r.pdf?
+oopsla20-r
+PDF Document ? 759 KB
+
+
+-jan
+
+
+Jan Vitek, Professor 
+Northeastern University
+Video chat: https://northeastern.zoom.us/my/jvroom
+
+
+
+
+> On Nov 27, 2025, at 01:04, Simon Urbanek <Simon.Urbanek at r-project.org> wrote:
+> 
+> The R5 syntax introduced over 15 years ago it was meant to be minimalistic (optional argument types) to have a start at experimenting, however there was little interest at the time. Then I remember at one of the useR!?s I think someone from Jan Vitek?s group was presenting on a very complex annotation system that allowed not only type checking, but also definition of constraints etc. (unfortunately I can?t remember the names and so didn't find the paper). At that time I was thinking that it?s cool, but this will never happen, because once you start exploring all the possible use-cases the scope grows exponentially and it will become impossible to agree on any common ground: the classic perfect being the enemy of the good. So I suspect that is the main problem: it is not a clear feature that has a clear path forward - it is just an ill-defined idea (what is the purpose? about arguments? about other expressions? constraints? evaluated constraints? return values? what will be done with it?). Add to that the obvious: it would be possibly a big change to the language, so it really needs to be considered carefully as there will be no going back, since R prides itself on very good backward compatibility which makes it so useful in practice. Also anything complex will have security and performance implications.
+> 
+> I have not seen any serious proposals so far. There have been various experimentation in a package space, but those are often opinionated with varying levels of thought put into it. Personally, I think the syntax is important so I would like to make sure possible syntax changes are considered so we?re not just creating an awkward syntax because it is easier in package space, but not intuitive to use.
+> 
+> So just like with any improvement (c.f. the ifelse discussion), if there is actual interest, then people should start discussing the aspects, starting with the key ones such as purpose and requirements. I don't think this topic really has been even defined so I wouldn?t run creating packages just yet, especially since I think this is more about design than implementation. No one has done that work just yet.
+> 
+> Cheers,
+> Simon
+> 
+> 
+>> On 27 Nov 2025, at 05:59, ivo welch <ivo.welch at ucla.edu> wrote:
+>> 
+>> I am more interested why something like this has not made its way into R core as a first step to type checking *for everyone*.  (I could imagine that an option would turn on and off some automatic stopifnot like checking given a standardized annotation form [type, dim].)
+>> 
+>> is it because there is not much wider interest and desirability (so even a basic working implementation would not be pulled into R by the powers that are in charge), or is it because the work is too difficult and no one had 
+>> time to work on it?
+>> 
+>> 
+>> On Wed, Nov 26, 2025 at 8:50?AM Hadley Wickham <h.wickham at gmail.com> wrote:
+>> 
+>>> You might be interested in Jim Hester?s old experiment that used ? -
+>>> https://github.com/jimhester/types
+>>> 
+>>> Hadley
+>>> 
+>>> On Wednesday, September 17, 2025, IVO I WELCH <iwelch at g.ucla.edu> wrote:
+>>> 
+>>>> 
+>>>> Suggestion for Syntax Sugar:
+>>>> 
+>>>> Would it make sense to permit a simple way to allow a coder to document
+>>>> the function argument type?
+>>>> 
+>>>> f <- function( a:chr, b:data.frame, c:logi ) { ? }
+>>>> 
+>>>> presumably, what comes behind the ?:? should match what ?str? returns.
+>>>> 
+>>>> however, this need not be checked (except perhaps when a particular
+>>>> option is set).  catching errors as soon as possible makes code easier to
+>>>> debug and error messages clearer.
+>>>> 
+>>>> regards,
+>>>> 
+>>>> /iaw
+>>>> 
+>>>> ______________________________________________
+>>>> R-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>> 
+>>> 
+>>> 
+>>> --
+>>> http://hadley.nz
+>>> 
+>> 
+>> [[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>> 
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Thu Nov 27 17:06:49 2025
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Thu, 27 Nov 2025 11:06:49 -0500
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <A9BCB121-7C06-4AE3-B2C8-AA7A54784B50@R-project.org>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+ <CABdHhvGeUX0n+NZxh+839CbbeEaVxXSNTq9AN-g-8gTtDJvGyg@mail.gmail.com>
+ <CAJrNScQ=8t-O5mAvgogux=dX_nAAx08Qw6Oqfo06ZKzt7e4yLg@mail.gmail.com>
+ <A9BCB121-7C06-4AE3-B2C8-AA7A54784B50@R-project.org>
+Message-ID: <004e01dc5fb7$d6800400$83800c00$@gmail.com>
+
+Other languages have had experience with adding features along these lines and some have then become harder to use for some part of the user community.
+
+Languages like R and Python started off deliberately in various directions that include being interpreted on the fly rather than compiled once and run many times. They were designed to be in a sense polymorphic so that a function can be called with almost any kinds of arguments and be able to return almost any result. It was supposed to be easy to quickly write a function, have it work rapidly on some kind of arguments, then go and amend it to make sure it works for any other reasonable arguments. Optionally, it could then be enhanced internally to do all kinds of checking to make sure the arguments make sense and to do something proper when they don't.
+
+And, since R is dynamic then at run-time, you never know if somewhere along the line, an argument type passed along from other functions might be different than expected. A static checker can fail.
+
+In languages that allow strict typing, it often can take serious effort to specify that a complex combination of types is allowed. 
+
+R also has a feature that can get in the way here as it allows, and often even encourages, delayed evaluation. Consider a fairly simplistic technique that might be used elsewhere. Allow the creation of functions that can be used like this:
+
+Result <- f( check(arg1, constraints, ...), check(arg2, constraints, ...))
+
+Functions like "check" might use the arguments I labeled "constraints" to decide whether to simply return whatever "arg" was or treat it as an error, or even make a conversion of arg to return an expected value. In some languages, it might be as simple as converting an integer to the expected floating point value, or doing some unboxing. 
+
+But would any design along these lines work? I mean do you want an argument evaluated before knowing if it will be used? Side-effects can happen and so on. And, if the function expects an unevaluated argument so it can decide when and how to activate it, you lose abilities like being able to have ggplot2 label an axis with the original text.
+
+As many languages converge in the sense of all being able to do some similar things, some users may simply look at some complex scheme they do not like, and shift to a more comfortable language. How much of what people are using R for, can somewhat migrate to a language like Python which does not have an object system cobbled together with S3 and S4 and others grafted on, and has modules like numpy and pandas that allow  way to do things. I am not suggesting this makes sense, just that, after a whlle, each language can be designed to fit some things better and not try to do everything else.
+
+Obviously, many suggestions to this kind of enhancement would allow all existing programs to continue working and just enhance things for those who want to add optional phrasing to a command. But, sometimes, what you end up with is what happened to Python, where the new version is incompatible and eventually people who keep using the old version will lose support.
+
+And a very big question is the one about funding such an effort and what else could be done that gives programmers other things this might get in the way of.
+
+Are there suggestions on the table for something like a group of functions that can be optionally placed at the beginning of a function that do all the verifications needed and that can also provide some other things. What if the first line of your function looked like 
+
+"verify(..., more)"
+
+If you wanted efficiency, you could redefine verify() to do nothing, or just do a few tests. Any utilities that want to document what a functions parameters could look like, would look at such a line in the body of the function to document it. Obviously, you do need a proper way to make this function do things like force a return value or propagate error signals or write things to a log but such an approach could be less invasive than making major changes to the language and how it is parsed.
+
+These are just thoughts. Not a request. I do not currently have any major needs regarding R.
+
+
+
+-----Original Message-----
+From: R-devel <r-devel-bounces at r-project.org> On Behalf Of Simon Urbanek
+Sent: Wednesday, November 26, 2025 7:04 PM
+To: ivo welch <ivo.welch at ucla.edu>
+Cc: r-devel at r-project.org; Welch, Ivo <ivo.welch at anderson.ucla.edu>
+Subject: Re: [Rd] Declaring Types at Function Declaration
+
+The R5 syntax introduced over 15 years ago it was meant to be minimalistic (optional argument types) to have a start at experimenting, however there was little interest at the time. Then I remember at one of the useR!?s I think someone from Jan Vitek?s group was presenting on a very complex annotation system that allowed not only type checking, but also definition of constraints etc. (unfortunately I can?t remember the names and so didn't find the paper). At that time I was thinking that it?s cool, but this will never happen, because once you start exploring all the possible use-cases the scope grows exponentially and it will become impossible to agree on any common ground: the classic perfect being the enemy of the good. So I suspect that is the main problem: it is not a clear feature that has a clear path forward - it is just an ill-defined idea (what is the purpose? about arguments? about other expressions? constraints? evaluated constraints? return values? what will be done with it?). Add to that the obvious: it would be possibly a big change to the language, so it really needs to be considered carefully as there will be no going back, since R prides itself on very good backward compatibility which makes it so useful in practice. Also anything complex will have security and performance implications.
+
+I have not seen any serious proposals so far. There have been various experimentation in a package space, but those are often opinionated with varying levels of thought put into it. Personally, I think the syntax is important so I would like to make sure possible syntax changes are considered so we?re not just creating an awkward syntax because it is easier in package space, but not intuitive to use.
+
+So just like with any improvement (c.f. the ifelse discussion), if there is actual interest, then people should start discussing the aspects, starting with the key ones such as purpose and requirements. I don't think this topic really has been even defined so I wouldn?t run creating packages just yet, especially since I think this is more about design than implementation. No one has done that work just yet.
+
+Cheers,
+Simon
+
+
+> On 27 Nov 2025, at 05:59, ivo welch <ivo.welch at ucla.edu> wrote:
+> 
+> I am more interested why something like this has not made its way into R core as a first step to type checking *for everyone*.  (I could imagine that an option would turn on and off some automatic stopifnot like checking given a standardized annotation form [type, dim].)
+> 
+> is it because there is not much wider interest and desirability (so even a basic working implementation would not be pulled into R by the powers that are in charge), or is it because the work is too difficult and no one had 
+> time to work on it?
+> 
+> 
+> On Wed, Nov 26, 2025 at 8:50?AM Hadley Wickham <h.wickham at gmail.com> wrote:
+> 
+>> You might be interested in Jim Hester?s old experiment that used ? -
+>> https://github.com/jimhester/types
+>> 
+>> Hadley
+>> 
+>> On Wednesday, September 17, 2025, IVO I WELCH <iwelch at g.ucla.edu> wrote:
+>> 
+>>> 
+>>> Suggestion for Syntax Sugar:
+>>> 
+>>> Would it make sense to permit a simple way to allow a coder to document
+>>> the function argument type?
+>>> 
+>>> f <- function( a:chr, b:data.frame, c:logi ) { ? }
+>>> 
+>>> presumably, what comes behind the ?:? should match what ?str? returns.
+>>> 
+>>> however, this need not be checked (except perhaps when a particular
+>>> option is set).  catching errors as soon as possible makes code easier to
+>>> debug and error messages clearer.
+>>> 
+>>> regards,
+>>> 
+>>> /iaw
+>>> 
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>> 
+>> 
+>> 
+>> --
+>> http://hadley.nz
+>> 
+> 
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From mv| @end|ng |rom u@p@br  Thu Nov 27 17:19:33 2025
+From: mv| @end|ng |rom u@p@br (Marcelo Ventura Freire)
+Date: Thu, 27 Nov 2025 13:19:33 -0300
+Subject: [Rd] Feature suggestion
+Message-ID: <CAGcsfB3dn88L3U8TmDEkwNfJkphnFtJ8CRK-TJhZ5yOFU7=uMQ@mail.gmail.com>
+
+Hello, dear R core developers
+
+
+I have a feature suggestion and, following the orientations in
+https://contributor.r-project.org/rdevguide/chapters/submitting_feature_requests.html,
+I have searched in Bugzilla to the best of my capabilities for suggestions
+like the one I have in mind but found no results (however, I can be wrong).
+
+My idea is including this line
+
+`%!in%`  <- function(x, table) match(x, table, nomatch = 0L) == 0L
+
+between lines 39 and 40 of the file "src/library/base/R/match.R".
+
+My objective is to create a "not in" operator that would allow us to write
+code like
+>    value %!in% valuelist
+instead of
+>    ! value %in% valuelist
+which is in line with writing
+>    value1 != value2
+instead of
+>    ! value1 == value2
+
+I was not able to devise any reasonable way that such inclusion would break
+any already existing heritage code unless that operator would be defined
+otherwisely and it would improve (however marginally) the readability of
+future code by its intuitive interpretation and by stitching together two
+operators that currently stand apart each other.
+
+So, if this suggestion was not already proposed and if it is seen as
+useful, I would like to include it in the wishlist in Bugzilla.
+
+I would appreciate any feedback, be it critic or support, and I hope I have
+not crossed any communicational rule from the group.
+
+Many thanks!  ?
+
+
+
+Marcelo Ventura Freire
+Escola de Artes, Ci?ncias e Humanidades
+Universidade de S?o Paulo
+Av. Arlindo Bettio, 1000,
+Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+Ermelino Matarazzo, S?o Paulo, SP, Brasil
+CEP 03828-000
+Tel.: (11) 3091-8894
+
+	[[alternative HTML version deleted]]
+
+
+From ggrothend|eck @end|ng |rom gm@||@com  Thu Nov 27 18:06:49 2025
+From: ggrothend|eck @end|ng |rom gm@||@com (Gabor Grothendieck)
+Date: Thu, 27 Nov 2025 12:06:49 -0500
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+Message-ID: <CAP01uRn6SAxzFt14-K+ymce2Bk9G0CoMFD0hc6=-HjndDaGGMA@mail.gmail.com>
+
+Of course R does have comments:
+
+  f   <- function( a, # character
+                         b, # data.frame
+                         c  # logical
+  ) {
+  ...
+  }
+
+On Wed, Sep 17, 2025 at 1:26?PM IVO I WELCH <iwelch at g.ucla.edu> wrote:
+>
+>
+> Suggestion for Syntax Sugar:
+>
+> Would it make sense to permit a simple way to allow a coder to document the function argument type?
+>
+> f <- function( a:chr, b:data.frame, c:logi ) { ? }
+>
+> presumably, what comes behind the ?:? should match what ?str? returns.
+>
+> however, this need not be checked (except perhaps when a particular option is set).  catching errors as soon as possible makes code easier to debug and error messages clearer.
+>
+> regards,
+>
+> /iaw
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Nov 27 18:15:07 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 27 Nov 2025 10:15:07 -0700
+Subject: [Rd] Feature suggestion
+In-Reply-To: <CAGcsfB3dn88L3U8TmDEkwNfJkphnFtJ8CRK-TJhZ5yOFU7=uMQ@mail.gmail.com>
+References: <CAGcsfB3dn88L3U8TmDEkwNfJkphnFtJ8CRK-TJhZ5yOFU7=uMQ@mail.gmail.com>
+Message-ID: <58bec605-9000-4f9e-9eb4-86950c4eb9e5@gmail.com>
+
+The R sources already contain an operator like that, though it is not 
+exported.  tools:::`%notin%` is defined as
+
+  function (x, y)
+  is.na(match(x, y))
+
+Several CRAN packages export a similar function, e.g. omnibus, mefa4, 
+data.table, hutils, etc. So I think if it was exported by R that's a 
+better name, but since it is easy to write yourself or import from some 
+other package, why bother?
+
+Duncan Murdoch
+
+
+
+On 2025-11-27 9:19 a.m., Marcelo Ventura Freire via R-devel wrote:
+> Hello, dear R core developers
+> 
+> 
+> I have a feature suggestion and, following the orientations in
+> https://contributor.r-project.org/rdevguide/chapters/submitting_feature_requests.html,
+> I have searched in Bugzilla to the best of my capabilities for suggestions
+> like the one I have in mind but found no results (however, I can be wrong).
+> 
+> My idea is including this line
+> 
+> `%!in%`  <- function(x, table) match(x, table, nomatch = 0L) == 0L
+> 
+> between lines 39 and 40 of the file "src/library/base/R/match.R".
+> 
+> My objective is to create a "not in" operator that would allow us to write
+> code like
+>>     value %!in% valuelist
+> instead of
+>>     ! value %in% valuelist
+> which is in line with writing
+>>     value1 != value2
+> instead of
+>>     ! value1 == value2
+> 
+> I was not able to devise any reasonable way that such inclusion would break
+> any already existing heritage code unless that operator would be defined
+> otherwisely and it would improve (however marginally) the readability of
+> future code by its intuitive interpretation and by stitching together two
+> operators that currently stand apart each other.
+> 
+> So, if this suggestion was not already proposed and if it is seen as
+> useful, I would like to include it in the wishlist in Bugzilla.
+> 
+> I would appreciate any feedback, be it critic or support, and I hope I have
+> not crossed any communicational rule from the group.
+> 
+> Many thanks!  ?
+> 
+> 
+> 
+> Marcelo Ventura Freire
+> Escola de Artes, Ci?ncias e Humanidades
+> Universidade de S?o Paulo
+> Av. Arlindo Bettio, 1000,
+> Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+> Ermelino Matarazzo, S?o Paulo, SP, Brasil
+> CEP 03828-000
+> Tel.: (11) 3091-8894
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Thu Nov 27 18:41:33 2025
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Thu, 27 Nov 2025 09:41:33 -0800
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <CAP01uRn6SAxzFt14-K+ymce2Bk9G0CoMFD0hc6=-HjndDaGGMA@mail.gmail.com>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+ <CAP01uRn6SAxzFt14-K+ymce2Bk9G0CoMFD0hc6=-HjndDaGGMA@mail.gmail.com>
+Message-ID: <CAL3ufUJqsHRQkPnOETDSnaVq8V0kRz79j0ZyN39UyjniFC_-xw@mail.gmail.com>
+
+>
+> "Are there suggestions on the table for something like a group of
+> functions that can be optionally
+
+placed at the beginning of a function that do all the verifications needed
+> and that can also provide
+
+some other things. What if the first line of your function looked like"
+
+
+^ Yes, this is what the {rlang} standalone checks do. See the source:
+https://github.com/r-lib/rlang/blob/main/R/standalone-types-check.R
+
+I wrote about how I use them in the package {arcgisgeocode}
+https://josiahparry.com/posts/2024-06-30-type-safety/
+
+This is a staple in every package I develop. It stops a lot of errors from
+occurring but it's definitely not as easy as `arg: integer()`.
+
+Example usage:
+https://github.com/R-ArcGIS/arcgisgeocode/blob/3a7877641ca2f3a761ef0ec3a7486820ab94c9cc/R/core-find-candidates.R#L104-L141
+
+"Of course R does have comments"
+
+
+^ Comments aren't visible to users of packages. Having type checking on
+inputs is a huge QOL improvement that can reduce the number of
+accidental bugs. {S7} helps get there but I find myself using the same
+rlang checks even in S7.
+
+
+On Thu, Nov 27, 2025 at 9:09?AM Gabor Grothendieck <ggrothendieck at gmail.com>
+wrote:
+
+> Of course R does have comments:
+>
+>   f   <- function( a, # character
+>                          b, # data.frame
+>                          c  # logical
+>   ) {
+>   ...
+>   }
+>
+> On Wed, Sep 17, 2025 at 1:26?PM IVO I WELCH <iwelch at g.ucla.edu> wrote:
+> >
+> >
+> > Suggestion for Syntax Sugar:
+> >
+> > Would it make sense to permit a simple way to allow a coder to document
+> the function argument type?
+> >
+> > f <- function( a:chr, b:data.frame, c:logi ) { ? }
+> >
+> > presumably, what comes behind the ?:? should match what ?str? returns.
+> >
+> > however, this need not be checked (except perhaps when a particular
+> option is set).  catching errors as soon as possible makes code easier to
+> debug and error messages clearer.
+> >
+> > regards,
+> >
+> > /iaw
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+>
+>
+> --
+> Statistics & Software Consulting
+> GKX Group, GKX Associates Inc.
+> tel: 1-877-GKX-GROUP
+> email: ggrothendieck at gmail.com
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From mv| @end|ng |rom u@p@br  Thu Nov 27 19:58:03 2025
+From: mv| @end|ng |rom u@p@br (Marcelo Ventura Freire)
+Date: Thu, 27 Nov 2025 15:58:03 -0300
+Subject: [Rd] Feature suggestion
+In-Reply-To: <58bec605-9000-4f9e-9eb4-86950c4eb9e5@gmail.com>
+References: <CAGcsfB3dn88L3U8TmDEkwNfJkphnFtJ8CRK-TJhZ5yOFU7=uMQ@mail.gmail.com>
+ <58bec605-9000-4f9e-9eb4-86950c4eb9e5@gmail.com>
+Message-ID: <CAGcsfB0s0U+zYYHW6eWx5kKzH_XdmVKm=8LsJDWxfn8Pe-Ga0Q@mail.gmail.com>
+
+If it is not a rhetorical question about a closed issue (if it is, tell me
+and I will shut up), this inclusion [1] would be useful (since it was
+exported and rewritten so many times by so many people and will keep being),
+[2] would create an uniformization (since it was and will be written under
+so many names before), [3] would not break stuff (since it is not altering
+the interface of any already existing function nor it is overwriting any
+symbol with a diverse use), [4] would not be neither a complex nor a
+tiringsome inclusion (even I myself could do it in a single 1-line pull
+request, hypothetically speaking) and [5] would benefit users all around.
+
+I am not naive to the point of believing that an alteration to the R core
+would have few repercussions and surely there must be reasons why it was
+not done before.
+
+But, in the end, this inclusion would be just a seemingly unharmful syntax
+sugar that could be shared, like it was with "\" for the reserved word
+"function", but with waaaay less work to implement.
+
+If it is not a dumb proposal, I can just include it in the wishlist of
+features in Bugzilla as prescribed in the contributor's page or I can do
+that PR myself (if you propose more work to others, the sensible thing to
+do is at least to offer yourself to do it, right?). In either case, I
+create more work to the dev team, perhaps to different people.
+
+Thanks for taking your time to answer me.
+
+
+Marcelo Ventura Freire
+Escola de Artes, Ci?ncias e Humanidades
+Universidade de S?o Paulo
+Av. Arlindo Bettio, 1000,
+Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+Ermelino Matarazzo, S?o Paulo, SP, Brasil
+CEP 03828-000
+Tel.: (11) 3091-8894
+
+
+Em qui., 27 de nov. de 2025 ?s 14:15, Duncan Murdoch <
+murdoch.duncan at gmail.com> escreveu:
+
+> The R sources already contain an operator like that, though it is not
+> exported.  tools:::`%notin%` is defined as
+>
+>   function (x, y)
+>   is.na(match(x, y))
+>
+> Several CRAN packages export a similar function, e.g. omnibus, mefa4,
+> data.table, hutils, etc. So I think if it was exported by R that's a
+> better name, but since it is easy to write yourself or import from some
+> other package, why bother?
+>
+> Duncan Murdoch
+>
+>
+>
+> On 2025-11-27 9:19 a.m., Marcelo Ventura Freire via R-devel wrote:
+> > Hello, dear R core developers
+> >
+> >
+> > I have a feature suggestion and, following the orientations in
+> >
+> https://contributor.r-project.org/rdevguide/chapters/submitting_feature_requests.html
+> ,
+> > I have searched in Bugzilla to the best of my capabilities for
+> suggestions
+> > like the one I have in mind but found no results (however, I can be
+> wrong).
+> >
+> > My idea is including this line
+> >
+> > `%!in%`  <- function(x, table) match(x, table, nomatch = 0L) == 0L
+> >
+> > between lines 39 and 40 of the file "src/library/base/R/match.R".
+> >
+> > My objective is to create a "not in" operator that would allow us to
+> write
+> > code like
+> >>     value %!in% valuelist
+> > instead of
+> >>     ! value %in% valuelist
+> > which is in line with writing
+> >>     value1 != value2
+> > instead of
+> >>     ! value1 == value2
+> >
+> > I was not able to devise any reasonable way that such inclusion would
+> break
+> > any already existing heritage code unless that operator would be defined
+> > otherwisely and it would improve (however marginally) the readability of
+> > future code by its intuitive interpretation and by stitching together two
+> > operators that currently stand apart each other.
+> >
+> > So, if this suggestion was not already proposed and if it is seen as
+> > useful, I would like to include it in the wishlist in Bugzilla.
+> >
+> > I would appreciate any feedback, be it critic or support, and I hope I
+> have
+> > not crossed any communicational rule from the group.
+> >
+> > Many thanks!  ?
+> >
+> >
+> >
+> > Marcelo Ventura Freire
+> > Escola de Artes, Ci?ncias e Humanidades
+> > Universidade de S?o Paulo
+> > Av. Arlindo Bettio, 1000,
+> > Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+> > Ermelino Matarazzo, S?o Paulo, SP, Brasil
+> > CEP 03828-000
+> > Tel.: (11) 3091-8894
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |vo@we|ch @end|ng |rom uc|@@edu  Thu Nov 27 19:32:02 2025
+From: |vo@we|ch @end|ng |rom uc|@@edu (ivo welch)
+Date: Thu, 27 Nov 2025 10:32:02 -0800
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <CAL3ufUJqsHRQkPnOETDSnaVq8V0kRz79j0ZyN39UyjniFC_-xw@mail.gmail.com>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+ <CAP01uRn6SAxzFt14-K+ymce2Bk9G0CoMFD0hc6=-HjndDaGGMA@mail.gmail.com>
+ <CAL3ufUJqsHRQkPnOETDSnaVq8V0kRz79j0ZyN39UyjniFC_-xw@mail.gmail.com>
+Message-ID: <CAJrNScRUvNaw_xUO4BseEVyMm7b9eZ9TAbj2Rp-RsOupxoOuFw@mail.gmail.com>
+
+thank you, everyone.  it seems to me from the outside that the key aspect
+that is missing is the core R team having an interest and taking the lead
+on something...anything.
+
+I am not an R developer, just a medium-sophisticated occasional R end user
+in the trenches, and not a very good one at that.
+
+so, in my trench, I would love anything that makes code easier to read and
+bugs earlier and easier to find.  Jan's proposal seems great.  if
+integrated into the language, perhaps with an option to either ignore the
+checks or issue warnings when functions are not annotated, they would make
+my code better and my life easier.  it would be even better if R in general
+migrated to it, so everyone understood that this is the better way to write
+code.  sort of like conventions for indentations.
+
+Josiah has amazing discipline to put all the checks into his functions that
+I wish I had.  alas, this greatly reduces readability of the function in my
+mind.
+
+again, it seems to me that it is the R core team that needs to decide...and
+I think they decided it isn't worth it.  this is why they are paid the
+not-so-big bucks.  I view how they decided as a pity, but it isn't me but
+the people who do the work that should decide.
+
+--
+Ivo Welch (ivo.welch at ucla.edu)
+
+
+
+On Thu, Nov 27, 2025 at 9:42?AM Josiah Parry <josiah.parry at gmail.com> wrote:
+
+> "Are there suggestions on the table for something like a group of
+>> functions that can be optionally
+>
+> placed at the beginning of a function that do all the verifications needed
+>> and that can also provide
+>
+> some other things. What if the first line of your function looked like"
+>
+>
+> ^ Yes, this is what the {rlang} standalone checks do. See the source:
+> https://github.com/r-lib/rlang/blob/main/R/standalone-types-check.R
+>
+> I wrote about how I use them in the package {arcgisgeocode}
+> https://josiahparry.com/posts/2024-06-30-type-safety/
+>
+> This is a staple in every package I develop. It stops a lot of errors from
+> occurring but it's definitely not as easy as `arg: integer()`.
+>
+> Example usage:
+> https://github.com/R-ArcGIS/arcgisgeocode/blob/3a7877641ca2f3a761ef0ec3a7486820ab94c9cc/R/core-find-candidates.R#L104-L141
+>
+> "Of course R does have comments"
+>
+>
+> ^ Comments aren't visible to users of packages. Having type checking on
+> inputs is a huge QOL improvement that can reduce the number of
+> accidental bugs. {S7} helps get there but I find myself using the same
+> rlang checks even in S7.
+>
+>
+> On Thu, Nov 27, 2025 at 9:09?AM Gabor Grothendieck <
+> ggrothendieck at gmail.com> wrote:
+>
+>> Of course R does have comments:
+>>
+>>   f   <- function( a, # character
+>>                          b, # data.frame
+>>                          c  # logical
+>>   ) {
+>>   ...
+>>   }
+>>
+>> On Wed, Sep 17, 2025 at 1:26?PM IVO I WELCH <iwelch at g.ucla.edu> wrote:
+>> >
+>> >
+>> > Suggestion for Syntax Sugar:
+>> >
+>> > Would it make sense to permit a simple way to allow a coder to document
+>> the function argument type?
+>> >
+>> > f <- function( a:chr, b:data.frame, c:logi ) { ? }
+>> >
+>> > presumably, what comes behind the ?:? should match what ?str? returns.
+>> >
+>> > however, this need not be checked (except perhaps when a particular
+>> option is set).  catching errors as soon as possible makes code easier to
+>> debug and error messages clearer.
+>> >
+>> > regards,
+>> >
+>> > /iaw
+>> >
+>> > ______________________________________________
+>> > R-devel at r-project.org mailing list
+>> > https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+>>
+>>
+>> --
+>> Statistics & Software Consulting
+>> GKX Group, GKX Associates Inc.
+>> tel: 1-877-GKX-GROUP
+>> email: ggrothendieck at gmail.com
+>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Nov 27 20:24:04 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 27 Nov 2025 12:24:04 -0700
+Subject: [Rd] Feature suggestion
+In-Reply-To: <CAGcsfB0s0U+zYYHW6eWx5kKzH_XdmVKm=8LsJDWxfn8Pe-Ga0Q@mail.gmail.com>
+References: <CAGcsfB3dn88L3U8TmDEkwNfJkphnFtJ8CRK-TJhZ5yOFU7=uMQ@mail.gmail.com>
+ <58bec605-9000-4f9e-9eb4-86950c4eb9e5@gmail.com>
+ <CAGcsfB0s0U+zYYHW6eWx5kKzH_XdmVKm=8LsJDWxfn8Pe-Ga0Q@mail.gmail.com>
+Message-ID: <15fa876c-c0f3-4177-9045-ee6408fbcd16@gmail.com>
+
+On 2025-11-27 11:58 a.m., Marcelo Ventura Freire wrote:
+> If it is not a rhetorical question about a closed issue (if it is, tell 
+> me and I will shut up), this inclusion [1] would be useful (since it was 
+> exported and rewritten so many times by so many people and will keep 
+> being), [2] would create an uniformization (since it was and will be 
+> written under so many names before), [3] would not break stuff (since it 
+> is not altering the interface of any already existing function nor it is 
+> overwriting any symbol with a diverse?use), [4] would not be neither a 
+> complex nor a tiringsome inclusion (even I myself could do it in a 
+> single 1-line pull request, hypothetically speaking) and [5] would 
+> benefit users all around.
+> 
+> I am not naive to the point of believing that an alteration to the R 
+> core would have few repercussions?and surely there must be reasons why 
+> it?was not done before.
+> 
+
+I don't know why it was added to tools but not exported, but here is my 
+guess:
+
+  - A member of R Core agrees with you that this operator is useful. 
+This appears to have happened in 2016 based on the svn log.
+  - It already existed in some contributed package, but base packages 
+can't import anything from non-base packages, so it needed to be added.
+  - It wasn't exported, because that would break some packages:
+     - the ones that export something with that name would now receive a 
+check message about the conflict.
+     - if those packages stopped exporting it, then any package that 
+imported from one of them would have to stop doing that, and import it 
+from the base package instead.
+  - It is very easy to write your own, or to import one of the existing 
+ones, so a lot of work would have been generated for not very much benefit.
+
+R Core members try to be careful not to generate work for others unless 
+there's enough of a net benefit to the community.  They are very busy, 
+and many authors of contributed packages who might be affected by this 
+change are busy too.
+
+
+> But, in the end, this inclusion would be just a seemingly unharmful 
+> syntax sugar that could be shared, like it was with "\" for the reserved 
+> word "function", but with waaaay less work to implement.
+
+The difference there is that it added new syntax, so as far as I know, 
+it didn't affect any existing package.  Personally I don't see that it 
+really offered much of a benefit (keystrokes are cheap), but lots of 
+people are using it, so I guess some others would disagree.>
+> If it is not a dumb proposal,?I can just?include it in the wishlist of 
+> features in Bugzilla as prescribed in the contributor's page or I can do 
+> that PR myself (if you propose more work to others, the sensible thing 
+> to do is at least to offer yourself to do it, right?). In either case, I 
+> create more work to the dev team, perhaps to different people.
+
+It's hard for you to do the coordination work with all the existing 
+packages that use a similar operator, so I don't think that's really 
+feasible.
+
+> 
+> Thanks for taking your time to answer me.
+
+No problem.  I'm sitting in an airport waiting for a plane, so any 
+distraction is a net benefit for me!
+
+Duncan Murdoch>
+> 
+> Marcelo Ventura Freire
+> Escola de Artes, Ci?ncias e Humanidades
+> Universidade de S?o Paulo
+> Av. Arlindo Bettio, 1000,
+> Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+> Ermelino Matarazzo, S?o Paulo, SP, Brasil
+> CEP 03828-000
+> Tel.: (11) 3091-8894
+> 
+> 
+> Em qui., 27 de nov. de 2025 ?s 14:15, Duncan Murdoch 
+> <murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com>> escreveu:
+> 
+>     The R sources already contain an operator like that, though it is not
+>     exported.? tools:::`%notin%` is defined as
+> 
+>      ? function (x, y)
+>     is.na <http://is.na>(match(x, y))
+> 
+>     Several CRAN packages export a similar function, e.g. omnibus, mefa4,
+>     data.table, hutils, etc. So I think if it was exported by R that's a
+>     better name, but since it is easy to write yourself or import from some
+>     other package, why bother?
+> 
+>     Duncan Murdoch
+> 
+> 
+> 
+>     On 2025-11-27 9:19 a.m., Marcelo Ventura Freire via R-devel wrote:
+>      > Hello, dear R core developers
+>      >
+>      >
+>      > I have a feature suggestion and, following the orientations in
+>      > https://contributor.r-project.org/rdevguide/chapters/
+>     submitting_feature_requests.html <https://contributor.r-project.org/
+>     rdevguide/chapters/submitting_feature_requests.html>,
+>      > I have searched in Bugzilla to the best of my capabilities for
+>     suggestions
+>      > like the one I have in mind but found no results (however, I can
+>     be wrong).
+>      >
+>      > My idea is including this line
+>      >
+>      > `%!in%`? <- function(x, table) match(x, table, nomatch = 0L) == 0L
+>      >
+>      > between lines 39 and 40 of the file "src/library/base/R/match.R".
+>      >
+>      > My objective is to create a "not in" operator that would allow us
+>     to write
+>      > code like
+>      >>? ? ?value %!in% valuelist
+>      > instead of
+>      >>? ? ?! value %in% valuelist
+>      > which is in line with writing
+>      >>? ? ?value1 != value2
+>      > instead of
+>      >>? ? ?! value1 == value2
+>      >
+>      > I was not able to devise any reasonable way that such inclusion
+>     would break
+>      > any already existing heritage code unless that operator would be
+>     defined
+>      > otherwisely and it would improve (however marginally) the
+>     readability of
+>      > future code by its intuitive interpretation and by stitching
+>     together two
+>      > operators that currently stand apart each other.
+>      >
+>      > So, if this suggestion was not already proposed and if it is seen as
+>      > useful, I would like to include it in the wishlist in Bugzilla.
+>      >
+>      > I would appreciate any feedback, be it critic or support, and I
+>     hope I have
+>      > not crossed any communicational rule from the group.
+>      >
+>      > Many thanks!? ?
+>      >
+>      >
+>      >
+>      > Marcelo Ventura Freire
+>      > Escola de Artes, Ci?ncias e Humanidades
+>      > Universidade de S?o Paulo
+>      > Av. Arlindo Bettio, 1000,
+>      > Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+>      > Ermelino Matarazzo, S?o Paulo, SP, Brasil
+>      > CEP 03828-000
+>      > Tel.: (11) 3091-8894
+>      >
+>      >? ? ? ?[[alternative HTML version deleted]]
+>      >
+>      > ______________________________________________
+>      > R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list
+>      > https://stat.ethz.ch/mailman/listinfo/r-devel <https://
+>     stat.ethz.ch/mailman/listinfo/r-devel>
+>
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Nov 27 23:44:52 2025
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 28 Nov 2025 11:44:52 +1300
+Subject: [Rd] Declaring Types at Function Declaration
+In-Reply-To: <CAJrNScRUvNaw_xUO4BseEVyMm7b9eZ9TAbj2Rp-RsOupxoOuFw@mail.gmail.com>
+References: <30B92E88-1FA0-43C2-ACB3-487A9D2EC655@g.ucla.edu>
+ <CAP01uRn6SAxzFt14-K+ymce2Bk9G0CoMFD0hc6=-HjndDaGGMA@mail.gmail.com>
+ <CAL3ufUJqsHRQkPnOETDSnaVq8V0kRz79j0ZyN39UyjniFC_-xw@mail.gmail.com>
+ <CAJrNScRUvNaw_xUO4BseEVyMm7b9eZ9TAbj2Rp-RsOupxoOuFw@mail.gmail.com>
+Message-ID: <C1434537-1666-4E43-9924-C96B4BDB3337@R-project.org>
+
+
+
+> On 28 Nov 2025, at 07:32, ivo welch <ivo.welch at ucla.edu> wrote:
+> 
+> thank you, everyone.  it seems to me from the outside that the key aspect that is missing is the core R team having an interest and taking the lead on something...anything.
+> 
+
+Wow, I guess you're using R 1.0.0 then? I don't think anyone managed to insult all the hard-working volunteers that evolved R continuously for over 25 years just as badly. Maybe you should look into the "new features" sections of the NEWS files?
+
+
+> I am not an R developer, just a medium-sophisticated occasional R end user in the trenches, and not a very good one at that.
+> 
+> so, in my trench, I would love anything that makes code easier to read and bugs earlier and easier to find.  Jan's proposal seems great.  if integrated into the language, perhaps with an option to either ignore the checks or issue warnings when functions are not annotated, they would make my code better and my life easier.  it would be even better if R in general migrated to it, so everyone understood that this is the better way to write code.  sort of like conventions for indentations.
+> 
+> Josiah has amazing discipline to put all the checks into his functions that I wish I had.  alas, this greatly reduces readability of the function in my mind.
+> 
+> again, it seems to me that it is the R core team that needs to decide?and I think they decided it isn't worth it.  this is why they are paid the not-so-big bucks.  I view how they decided as a pity, but it isn't me but the people who do the work that should decide.
+> 
+
+
+What should we decide on? There are many much more pressing issues being implemented or ideas considered for R. Optional typing has no immediate benefit, it is a cool, but ill-defined idea precisely because of the open questions about what it should do. Would you want me to simply have merged the R5 branch to satisfy your "take the lead"? I don?t think it would be a good idea to have no discussion. Similarly, it is not uncontroversial as is clear from the very good responses here that raised the important points, so thanks to these that responded constructively. That doesn't mean that R core has decided anything in that regard. R is open source so anyone can make suggestions and try them out. R core has no monopoly on ideas, there are certainly features in core R that have been contributed by others in the past. The only condition is that they are well thought through, since changes in core R cannot be undone easily, so that's why it typically requires a robust discussion first. I thought that?s exactly what we are having here which is the first step if you want to introduce something.
+
+Cheers,
+Simon
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Nov 28 00:09:46 2025
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 28 Nov 2025 12:09:46 +1300
+Subject: [Rd] Feature suggestion: %!in%
+In-Reply-To: <15fa876c-c0f3-4177-9045-ee6408fbcd16@gmail.com>
+References: <CAGcsfB3dn88L3U8TmDEkwNfJkphnFtJ8CRK-TJhZ5yOFU7=uMQ@mail.gmail.com>
+ <58bec605-9000-4f9e-9eb4-86950c4eb9e5@gmail.com>
+ <CAGcsfB0s0U+zYYHW6eWx5kKzH_XdmVKm=8LsJDWxfn8Pe-Ga0Q@mail.gmail.com>
+ <15fa876c-c0f3-4177-9045-ee6408fbcd16@gmail.com>
+Message-ID: <9226DB4F-E4DE-477C-835F-0580A8C0024A@R-project.org>
+
+Given that the args of tools:::%notin% don?t match %in% I'd say it was just a local use more than any deep thought about general use. 
+
+Personally, I really like the idea of %notin% because it is very often that you start typing foo[foo %in% and then realise you want to invert it and the preceding negation is then cognitively sort of in the wrong place (reads like "not foo"). I also like %notin% better than %!in% because I think a salad of special characters makes things harder to read, but that may be just subjective.
+
+And to your 'why bother' question - I do think it?s better to standardise common operators in core rather than have packages re-define it each time. And certainly just importing something that trivial from another package is a bad idea given the dependency implications. (On the flip side: if you start using it you need to depend on recent R which may not be feasible in some environments, but then if that was always the argument we?d never add anything new :P).
+
+Cheers,
+Simon
+
+
+> On 28 Nov 2025, at 08:24, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+> On 2025-11-27 11:58 a.m., Marcelo Ventura Freire wrote:
+>> If it is not a rhetorical question about a closed issue (if it is, tell me and I will shut up), this inclusion [1] would be useful (since it was exported and rewritten so many times by so many people and will keep being), [2] would create an uniformization (since it was and will be written under so many names before), [3] would not break stuff (since it is not altering the interface of any already existing function nor it is overwriting any symbol with a diverse use), [4] would not be neither a complex nor a tiringsome inclusion (even I myself could do it in a single 1-line pull request, hypothetically speaking) and [5] would benefit users all around.
+>> I am not naive to the point of believing that an alteration to the R core would have few repercussions and surely there must be reasons why it was not done before.
+> 
+> I don't know why it was added to tools but not exported, but here is my guess:
+> 
+> - A member of R Core agrees with you that this operator is useful. This appears to have happened in 2016 based on the svn log.
+> - It already existed in some contributed package, but base packages can't import anything from non-base packages, so it needed to be added.
+> - It wasn't exported, because that would break some packages:
+>    - the ones that export something with that name would now receive a check message about the conflict.
+>    - if those packages stopped exporting it, then any package that imported from one of them would have to stop doing that, and import it from the base package instead.
+> - It is very easy to write your own, or to import one of the existing ones, so a lot of work would have been generated for not very much benefit.
+> 
+> R Core members try to be careful not to generate work for others unless there's enough of a net benefit to the community.  They are very busy, and many authors of contributed packages who might be affected by this change are busy too.
+> 
+> 
+>> But, in the end, this inclusion would be just a seemingly unharmful syntax sugar that could be shared, like it was with "\" for the reserved word "function", but with waaaay less work to implement.
+> 
+> The difference there is that it added new syntax, so as far as I know, it didn't affect any existing package.  Personally I don't see that it really offered much of a benefit (keystrokes are cheap), but lots of people are using it, so I guess some others would disagree.>
+>> If it is not a dumb proposal, I can just include it in the wishlist of features in Bugzilla as prescribed in the contributor's page or I can do that PR myself (if you propose more work to others, the sensible thing to do is at least to offer yourself to do it, right?). In either case, I create more work to the dev team, perhaps to different people.
+> 
+> It's hard for you to do the coordination work with all the existing packages that use a similar operator, so I don't think that's really feasible.
+> 
+>> Thanks for taking your time to answer me.
+> 
+> No problem.  I'm sitting in an airport waiting for a plane, so any distraction is a net benefit for me!
+> 
+> Duncan Murdoch>
+>> Marcelo Ventura Freire
+>> Escola de Artes, Ci?ncias e Humanidades
+>> Universidade de S?o Paulo
+>> Av. Arlindo Bettio, 1000,
+>> Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+>> Ermelino Matarazzo, S?o Paulo, SP, Brasil
+>> CEP 03828-000
+>> Tel.: (11) 3091-8894
+>> Em qui., 27 de nov. de 2025 ?s 14:15, Duncan Murdoch <murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com>> escreveu:
+>>    The R sources already contain an operator like that, though it is not
+>>    exported.  tools:::`%notin%` is defined as
+>>       function (x, y)
+>>    is.na <http://is.na>(match(x, y))
+>>    Several CRAN packages export a similar function, e.g. omnibus, mefa4,
+>>    data.table, hutils, etc. So I think if it was exported by R that's a
+>>    better name, but since it is easy to write yourself or import from some
+>>    other package, why bother?
+>>    Duncan Murdoch
+>>    On 2025-11-27 9:19 a.m., Marcelo Ventura Freire via R-devel wrote:
+>>     > Hello, dear R core developers
+>>     >
+>>     >
+>>     > I have a feature suggestion and, following the orientations in
+>>     > https://contributor.r-project.org/rdevguide/chapters/
+>>    submitting_feature_requests.html <https://contributor.r-project.org/
+>>    rdevguide/chapters/submitting_feature_requests.html>,
+>>     > I have searched in Bugzilla to the best of my capabilities for
+>>    suggestions
+>>     > like the one I have in mind but found no results (however, I can
+>>    be wrong).
+>>     >
+>>     > My idea is including this line
+>>     >
+>>     > `%!in%`  <- function(x, table) match(x, table, nomatch = 0L) == 0L
+>>     >
+>>     > between lines 39 and 40 of the file "src/library/base/R/match.R".
+>>     >
+>>     > My objective is to create a "not in" operator that would allow us
+>>    to write
+>>     > code like
+>>     >>     value %!in% valuelist
+>>     > instead of
+>>     >>     ! value %in% valuelist
+>>     > which is in line with writing
+>>     >>     value1 != value2
+>>     > instead of
+>>     >>     ! value1 == value2
+>>     >
+>>     > I was not able to devise any reasonable way that such inclusion
+>>    would break
+>>     > any already existing heritage code unless that operator would be
+>>    defined
+>>     > otherwisely and it would improve (however marginally) the
+>>    readability of
+>>     > future code by its intuitive interpretation and by stitching
+>>    together two
+>>     > operators that currently stand apart each other.
+>>     >
+>>     > So, if this suggestion was not already proposed and if it is seen as
+>>     > useful, I would like to include it in the wishlist in Bugzilla.
+>>     >
+>>     > I would appreciate any feedback, be it critic or support, and I
+>>    hope I have
+>>     > not crossed any communicational rule from the group.
+>>     >
+>>     > Many thanks!  ?
+>>     >
+>>     >
+>>     >
+>>     > Marcelo Ventura Freire
+>>     > Escola de Artes, Ci?ncias e Humanidades
+>>     > Universidade de S?o Paulo
+>>     > Av. Arlindo Bettio, 1000,
+>>     > Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+>>     > Ermelino Matarazzo, S?o Paulo, SP, Brasil
+>>     > CEP 03828-000
+>>     > Tel.: (11) 3091-8894
+>>     >
+>>     >       [[alternative HTML version deleted]]
+>>     >
+>>     > ______________________________________________
+>>     > R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list
+>>     > https://stat.ethz.ch/mailman/listinfo/r-devel <https://
+>>    stat.ethz.ch/mailman/listinfo/r-devel>
+>> 
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Nov 28 10:10:57 2025
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 28 Nov 2025 10:10:57 +0100
+Subject: [Rd] Feature suggestion: %!in%
+In-Reply-To: <fake-VM-id.860f304c9212730e2dc792236bfa500f@talos.iv>
+References: <CAGcsfB3dn88L3U8TmDEkwNfJkphnFtJ8CRK-TJhZ5yOFU7=uMQ@mail.gmail.com>
+ <58bec605-9000-4f9e-9eb4-86950c4eb9e5@gmail.com>
+ <CAGcsfB0s0U+zYYHW6eWx5kKzH_XdmVKm=8LsJDWxfn8Pe-Ga0Q@mail.gmail.com>
+ <15fa876c-c0f3-4177-9045-ee6408fbcd16@gmail.com>
+ <9226DB4F-E4DE-477C-835F-0580A8C0024A@R-project.org>
+Message-ID: <26921.26401.392684.821238@stat.math.ethz.ch>
+
+>>>>> Simon Urbanek 
+>>>>>     on Fri, 28 Nov 2025 12:09:46 +1300 writes:
+
+    > Given that the args of tools:::%notin% don?t match %in%
+    > I'd say it was just a local use more than any deep thought
+    > about general use.  Personally, I really like the idea of
+    > %notin% because it is very often that you start typing
+    > foo[foo %in% and then realise you want to invert it and
+    > the preceding negation is then cognitively sort of in the
+    > wrong place (reads like "not foo"). I also like %notin%
+    > better than %!in% because I think a salad of special
+    > characters makes things harder to read, but that may be
+    > just subjective.
+
+    > And to your 'why bother' question - I do think it?s better
+    > to standardise common operators in core rather than have
+    > packages re-define it each time. And certainly just
+    > importing something that trivial from another package is a
+    > bad idea given the dependency implications. (On the flip
+    > side: if you start using it you need to depend on recent R
+    > which may not be feasible in some environments, but then
+    > if that was always the argument we?d never add anything
+    > new :P).
+
+    > Cheers, Simon
+
+I tend to agree with Marcelo (and Simon IIUC) that we R-core
+should add "it"
+(for my taste definitely  %nin% or  %notin%  rather than %!in%)
+
+I think it was not directly mentioned that quite a few CRAN packages
+define  %nin%  but (many / some) do not export it;  I had added
+it to Matrix a while ago, in 2009, (not exported "of course"),
+for the obvious syntactic sugar,
+
+   `%nin%` <- function (x, table) is.na(match(x, table))
+
+but it seems a package co-author did not like it particularly and
+removed it as "unused" in Summer 2023.
+
+As `%in%` is in {base}, this should consequentally also be part of
+{base}, whereas some people make a valid point that {base}
+should rather be kept minimal, and things like this should
+rather be put in {utils}.
+IIRC, this was actually the (lame!) reason I never brought it up inside
+R-core.
+
+Martin
+
+    >> On 28 Nov 2025, at 08:24, Duncan Murdoch
+    >> <murdoch.duncan at gmail.com> wrote:
+    >> 
+    >> On 2025-11-27 11:58 a.m., Marcelo Ventura Freire wrote:
+    >>> If it is not a rhetorical question about a closed issue
+    >>> (if it is, tell me and I will shut up), this inclusion
+    >>> [1] would be useful (since it was exported and rewritten
+    >>> so many times by so many people and will keep being),
+    >>> [2] would create an uniformization (since it was and
+    >>> will be written under so many names before), [3] would
+    >>> not break stuff (since it is not altering the interface
+    >>> of any already existing function nor it is overwriting
+    >>> any symbol with a diverse use), [4] would not be neither
+    >>> a complex nor a tiringsome inclusion (even I myself
+    >>> could do it in a single 1-line pull request,
+    >>> hypothetically speaking) and [5] would benefit users all
+    >>> around.  I am not naive to the point of believing that
+    >>> an alteration to the R core would have few repercussions
+    >>> and surely there must be reasons why it was not done
+    >>> before.
+    >> 
+    >> I don't know why it was added to tools but not exported,
+    >> but here is my guess:
+    >> 
+    >> - A member of R Core agrees with you that this operator
+    >> is useful. This appears to have happened in 2016 based on
+    >> the svn log.  - It already existed in some contributed
+    >> package, but base packages can't import anything from
+    >> non-base packages, so it needed to be added.  - It wasn't
+    >> exported, because that would break some packages: - the
+    >> ones that export something with that name would now
+    >> receive a check message about the conflict.  - if those
+    >> packages stopped exporting it, then any package that
+    >> imported from one of them would have to stop doing that,
+    >> and import it from the base package instead.  - It is
+    >> very easy to write your own, or to import one of the
+    >> existing ones, so a lot of work would have been generated
+    >> for not very much benefit.
+    >> 
+    >> R Core members try to be careful not to generate work for
+    >> others unless there's enough of a net benefit to the
+    >> community.  They are very busy, and many authors of
+    >> contributed packages who might be affected by this change
+    >> are busy too.
+    >> 
+    >> 
+    >>> But, in the end, this inclusion would be just a
+    >>> seemingly unharmful syntax sugar that could be shared,
+    >>> like it was with "\" for the reserved word "function",
+    >>> but with waaaay less work to implement.
+    >> 
+    >> The difference there is that it added new syntax, so as
+    >> far as I know, it didn't affect any existing package.
+    >> Personally I don't see that it really offered much of a
+    >> benefit (keystrokes are cheap), but lots of people are
+    >> using it, so I guess some others would disagree.>
+    >>> If it is not a dumb proposal, I can just include it in
+    >>> the wishlist of features in Bugzilla as prescribed in
+    >>> the contributor's page or I can do that PR myself (if
+    >>> you propose more work to others, the sensible thing to
+    >>> do is at least to offer yourself to do it, right?). In
+    >>> either case, I create more work to the dev team, perhaps
+    >>> to different people.
+    >> 
+    >> It's hard for you to do the coordination work with all
+    >> the existing packages that use a similar operator, so I
+    >> don't think that's really feasible.
+    >> 
+    >>> Thanks for taking your time to answer me.
+    >> 
+    >> No problem.  I'm sitting in an airport waiting for a
+    >> plane, so any distraction is a net benefit for me!
+    >> 
+    >> Duncan Murdoch>
+    >>> Marcelo Ventura Freire Escola de Artes, Ci?ncias e
+    >>> Humanidades Universidade de S?o Paulo Av. Arlindo
+    >>> Bettio, 1000, Sala Paulo Freire (Sala Coletiva 252),
+    >>> Pr?dio I1 Ermelino Matarazzo, S?o Paulo, SP, Brasil CEP
+    >>> 03828-000 Tel.: (11) 3091-8894 Em qui., 27 de nov. de
+    >>> 2025 ?s 14:15, Duncan Murdoch <murdoch.duncan at gmail.com
+    >>> <mailto:murdoch.duncan at gmail.com>> escreveu: The R
+    >>> sources already contain an operator like that, though it
+    >>> is not exported.  tools:::`%notin%` is defined as
+    >>> function (x, y) is.na <http://is.na>(match(x, y))
+    >>> Several CRAN packages export a similar function,
+    >>> e.g. omnibus, mefa4, data.table, hutils, etc. So I think
+    >>> if it was exported by R that's a better name, but since
+    >>> it is easy to write yourself or import from some other
+    >>> package, why bother?  Duncan Murdoch On 2025-11-27 9:19
+    >>> a.m., Marcelo Ventura Freire via R-devel wrote: > Hello,
+    >>> dear R core developers
+    >>> >
+    >>> >
+    >>> > I have a feature suggestion and, following the
+    >>> orientations in >
+    >>> https://contributor.r-project.org/rdevguide/chapters/
+    >>> submitting_feature_requests.html
+    >>> <https://contributor.r-project.org/
+    >>> rdevguide/chapters/submitting_feature_requests.html>, >
+    >>> I have searched in Bugzilla to the best of my
+    >>> capabilities for suggestions > like the one I have in
+    >>> mind but found no results (however, I can be wrong).
+    >>> >
+    >>> > My idea is including this line
+    >>> >
+    >>> > `%!in%` <- function(x, table) match(x, table, nomatch
+    >>> = 0L) == 0L
+    >>> >
+    >>> > between lines 39 and 40 of the file
+    >>> "src/library/base/R/match.R".
+    >>> >
+    >>> > My objective is to create a "not in" operator that
+    >>> would allow us to write > code like >> value %!in%
+    >>> valuelist > instead of >> ! value %in% valuelist > which
+    >>> is in line with writing >> value1 != value2 > instead of
+    >>> >> ! value1 == value2
+    >>> >
+    >>> > I was not able to devise any reasonable way that such
+    >>> inclusion would break > any already existing heritage
+    >>> code unless that operator would be defined > otherwisely
+    >>> and it would improve (however marginally) the
+    >>> readability of > future code by its intuitive
+    >>> interpretation and by stitching together two > operators
+    >>> that currently stand apart each other.
+    >>> >
+    >>> > So, if this suggestion was not already proposed and if
+    >>> it is seen as > useful, I would like to include it in
+    >>> the wishlist in Bugzilla.
+    >>> >
+    >>> > I would appreciate any feedback, be it critic or
+    >>> support, and I hope I have > not crossed any
+    >>> communicational rule from the group.
+    >>> >
+    >>> > Many thanks!  ?
+    >>> >
+    >>> >
+    >>> >
+    >>> > Marcelo Ventura Freire > Escola de Artes, Ci?ncias e
+    >>> Humanidades > Universidade de S?o Paulo > Av. Arlindo
+    >>> Bettio, 1000, > Sala Paulo Freire (Sala Coletiva 252),
+    >>> Pr?dio I1 > Ermelino Matarazzo, S?o Paulo, SP, Brasil >
+    >>> CEP 03828-000 > Tel.: (11) 3091-8894
+    >>> >
+    >>> > [[alternative HTML version deleted]]
+    >>> >
+    >>> > ______________________________________________ >
+    >>> R-devel at r-project.org <mailto:R-devel at r-project.org>
+    >>> mailing list >
+    >>> https://stat.ethz.ch/mailman/listinfo/r-devel <https://
+    >>> stat.ethz.ch/mailman/listinfo/r-devel>
+    >>> 
+    >> 
+    >> ______________________________________________
+    >> R-devel at r-project.org mailing list
+    >> https://stat.ethz.ch/mailman/listinfo/r-devel
+    >> 
+
+    > ______________________________________________
+    > R-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Fri Nov 28 10:19:19 2025
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Fri, 28 Nov 2025 10:19:19 +0100
+Subject: [Rd] Feature suggestion: %!in%
+In-Reply-To: <9226DB4F-E4DE-477C-835F-0580A8C0024A@R-project.org>
+References: <CAGcsfB3dn88L3U8TmDEkwNfJkphnFtJ8CRK-TJhZ5yOFU7=uMQ@mail.gmail.com>
+ <58bec605-9000-4f9e-9eb4-86950c4eb9e5@gmail.com>
+ <CAGcsfB0s0U+zYYHW6eWx5kKzH_XdmVKm=8LsJDWxfn8Pe-Ga0Q@mail.gmail.com>
+ <15fa876c-c0f3-4177-9045-ee6408fbcd16@gmail.com>
+ <9226DB4F-E4DE-477C-835F-0580A8C0024A@R-project.org>
+Message-ID: <26921.26903.112690.422849@hornik.net>
+
+>>>>> Simon Urbanek writes:
+
+> Given that the args of tools:::%notin% don?t match %in% I'd say it was
+> just a local use more than any deep thought about general use. 
+
+Actually, I simply never liked 'table' in %in% or match itself, so I
+took 'y' instead :-)
+
+> Personally, I really like the idea of %notin% because it is very often
+> that you start typing foo[foo %in% and then realise you want to invert
+> it and the preceding negation is then cognitively sort of in the wrong
+> place (reads like "not foo"). I also like %notin% better than %!in%
+> because I think a salad of special characters makes things harder to
+> read, but that may be just subjective.
+
+Same from here.  So add
+
+  `%notin%` <- function (x, table) is.na(match(x, table))
+
+to base?
+
+Best
+-k
+
+> And to your 'why bother' question - I do think it?s better to
+> standardise common operators in core rather than have packages
+> re-define it each time. And certainly just importing something that
+> trivial from another package is a bad idea given the dependency
+> implications. (On the flip side: if you start using it you need to
+> depend on recent R which may not be feasible in some environments, but
+> then if that was always the argument we?d never add anything new :P).
+
+> Cheers,
+> Simon
+
+
+>> On 28 Nov 2025, at 08:24, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>> 
+>> On 2025-11-27 11:58 a.m., Marcelo Ventura Freire wrote:
+>>> If it is not a rhetorical question about a closed issue (if it is, tell me and I will shut up), this inclusion [1] would be useful (since it was exported and rewritten so many times by so many people and will keep being), [2] would create an uniformization (since it was and will be written under so many names before), [3] would not break stuff (since it is not altering the interface of any already existing function nor it is overwriting any symbol with a diverse use), [4] would not be neither a complex nor a tiringsome inclusion (even I myself could do it in a single 1-line pull request, hypothetically speaking) and [5] would benefit users all around.
+>>> I am not naive to the point of believing that an alteration to the R core would have few repercussions and surely there must be reasons why it was not done before.
+>> 
+>> I don't know why it was added to tools but not exported, but here is my guess:
+>> 
+>> - A member of R Core agrees with you that this operator is useful. This appears to have happened in 2016 based on the svn log.
+>> - It already existed in some contributed package, but base packages can't import anything from non-base packages, so it needed to be added.
+>> - It wasn't exported, because that would break some packages:
+>> - the ones that export something with that name would now receive a check message about the conflict.
+>> - if those packages stopped exporting it, then any package that imported from one of them would have to stop doing that, and import it from the base package instead.
+>> - It is very easy to write your own, or to import one of the existing ones, so a lot of work would have been generated for not very much benefit.
+>> 
+>> R Core members try to be careful not to generate work for others unless there's enough of a net benefit to the community.  They are very busy, and many authors of contributed packages who might be affected by this change are busy too.
+>> 
+>> 
+>>> But, in the end, this inclusion would be just a seemingly unharmful syntax sugar that could be shared, like it was with "\" for the reserved word "function", but with waaaay less work to implement.
+>> 
+>> The difference there is that it added new syntax, so as far as I know, it didn't affect any existing package.  Personally I don't see that it really offered much of a benefit (keystrokes are cheap), but lots of people are using it, so I guess some others would disagree.>
+>>> If it is not a dumb proposal, I can just include it in the wishlist of features in Bugzilla as prescribed in the contributor's page or I can do that PR myself (if you propose more work to others, the sensible thing to do is at least to offer yourself to do it, right?). In either case, I create more work to the dev team, perhaps to different people.
+>> 
+>> It's hard for you to do the coordination work with all the existing packages that use a similar operator, so I don't think that's really feasible.
+>> 
+>>> Thanks for taking your time to answer me.
+>> 
+>> No problem.  I'm sitting in an airport waiting for a plane, so any distraction is a net benefit for me!
+>> 
+>> Duncan Murdoch>
+>>> Marcelo Ventura Freire
+>>> Escola de Artes, Ci?ncias e Humanidades
+>>> Universidade de S?o Paulo
+>>> Av. Arlindo Bettio, 1000,
+>>> Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+>>> Ermelino Matarazzo, S?o Paulo, SP, Brasil
+>>> CEP 03828-000
+>>> Tel.: (11) 3091-8894
+>>> Em qui., 27 de nov. de 2025 ?s 14:15, Duncan Murdoch <murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com>> escreveu:
+>>> The R sources already contain an operator like that, though it is not
+>>> exported.  tools:::`%notin%` is defined as
+>>> function (x, y)
+>>> is.na <http://is.na>(match(x, y))
+>>> Several CRAN packages export a similar function, e.g. omnibus, mefa4,
+>>> data.table, hutils, etc. So I think if it was exported by R that's a
+>>> better name, but since it is easy to write yourself or import from some
+>>> other package, why bother?
+>>> Duncan Murdoch
+>>> On 2025-11-27 9:19 a.m., Marcelo Ventura Freire via R-devel wrote:
+>>> > Hello, dear R core developers
+>>> >
+>>> >
+>>> > I have a feature suggestion and, following the orientations in
+>>> > https://contributor.r-project.org/rdevguide/chapters/
+>>> submitting_feature_requests.html <https://contributor.r-project.org/
+>>> rdevguide/chapters/submitting_feature_requests.html>,
+>>> > I have searched in Bugzilla to the best of my capabilities for
+>>> suggestions
+>>> > like the one I have in mind but found no results (however, I can
+>>> be wrong).
+>>> >
+>>> > My idea is including this line
+>>> >
+>>> > `%!in%`  <- function(x, table) match(x, table, nomatch = 0L) == 0L
+>>> >
+>>> > between lines 39 and 40 of the file "src/library/base/R/match.R".
+>>> >
+>>> > My objective is to create a "not in" operator that would allow us
+>>> to write
+>>> > code like
+>>> >>     value %!in% valuelist
+>>> > instead of
+>>> >>     ! value %in% valuelist
+>>> > which is in line with writing
+>>> >>     value1 != value2
+>>> > instead of
+>>> >>     ! value1 == value2
+>>> >
+>>> > I was not able to devise any reasonable way that such inclusion
+>>> would break
+>>> > any already existing heritage code unless that operator would be
+>>> defined
+>>> > otherwisely and it would improve (however marginally) the
+>>> readability of
+>>> > future code by its intuitive interpretation and by stitching
+>>> together two
+>>> > operators that currently stand apart each other.
+>>> >
+>>> > So, if this suggestion was not already proposed and if it is seen as
+>>> > useful, I would like to include it in the wishlist in Bugzilla.
+>>> >
+>>> > I would appreciate any feedback, be it critic or support, and I
+>>> hope I have
+>>> > not crossed any communicational rule from the group.
+>>> >
+>>> > Many thanks!  ?
+>>> >
+>>> >
+>>> >
+>>> > Marcelo Ventura Freire
+>>> > Escola de Artes, Ci?ncias e Humanidades
+>>> > Universidade de S?o Paulo
+>>> > Av. Arlindo Bettio, 1000,
+>>> > Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+>>> > Ermelino Matarazzo, S?o Paulo, SP, Brasil
+>>> > CEP 03828-000
+>>> > Tel.: (11) 3091-8894
+>>> >
+>>> >       [[alternative HTML version deleted]]
+>>> >
+>>> > ______________________________________________
+>>> > R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list
+>>> > https://stat.ethz.ch/mailman/listinfo/r-devel <https://
+>>> stat.ethz.ch/mailman/listinfo/r-devel>
+>>> 
+>> 
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>> 
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Nov 28 12:12:14 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 28 Nov 2025 06:12:14 -0500
+Subject: [Rd] Feature suggestion: %!in%
+In-Reply-To: <9226DB4F-E4DE-477C-835F-0580A8C0024A@R-project.org>
+References: <CAGcsfB3dn88L3U8TmDEkwNfJkphnFtJ8CRK-TJhZ5yOFU7=uMQ@mail.gmail.com>
+ <58bec605-9000-4f9e-9eb4-86950c4eb9e5@gmail.com>
+ <CAGcsfB0s0U+zYYHW6eWx5kKzH_XdmVKm=8LsJDWxfn8Pe-Ga0Q@mail.gmail.com>
+ <15fa876c-c0f3-4177-9045-ee6408fbcd16@gmail.com>
+ <9226DB4F-E4DE-477C-835F-0580A8C0024A@R-project.org>
+Message-ID: <4e8e0040-430e-4503-9a8a-26a9698a6bac@gmail.com>
+
+On 2025-11-27 6:09 p.m., Simon Urbanek wrote:
+> Given that the args of tools:::%notin% don?t match %in% I'd say it was just a local use more than any deep thought about general use.
+> 
+> Personally, I really like the idea of %notin% because it is very often that you start typing foo[foo %in% and then realise you want to invert it and the preceding negation is then cognitively sort of in the wrong place (reads like "not foo"). I also like %notin% better than %!in% because I think a salad of special characters makes things harder to read, but that may be just subjective.
+
+I agree with both points.  I generally use inefficient and unnecessary 
+parens, i.e. `foo[!(foo %in% baz)]`.
+
+> And to your 'why bother' question - I do think it?s better to standardise common operators in core rather than have packages re-define it each time. And certainly just importing something that trivial from another package is a bad idea given the dependency implications. 
+
+If someone is willing to put up with the fallout from the "masked" 
+messages, then I'd also be in favour.  (And I'd choose %notin% rather 
+than %!in% or %nin%, but whoever is willing to do the work should make 
+that choice.)
+
+ > (On the flip side: if you start using it you need to depend on recent 
+R which may not be feasible in some environments, but then if that was 
+always the argument we?d never add anything new :P).
+
+Or depend on the backports package.
+
+Duncan Murdoch
+> 
+> Cheers,
+> Simon
+> 
+> 
+>> On 28 Nov 2025, at 08:24, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> On 2025-11-27 11:58 a.m., Marcelo Ventura Freire wrote:
+>>> If it is not a rhetorical question about a closed issue (if it is, tell me and I will shut up), this inclusion [1] would be useful (since it was exported and rewritten so many times by so many people and will keep being), [2] would create an uniformization (since it was and will be written under so many names before), [3] would not break stuff (since it is not altering the interface of any already existing function nor it is overwriting any symbol with a diverse use), [4] would not be neither a complex nor a tiringsome inclusion (even I myself could do it in a single 1-line pull request, hypothetically speaking) and [5] would benefit users all around.
+>>> I am not naive to the point of believing that an alteration to the R core would have few repercussions and surely there must be reasons why it was not done before.
+>>
+>> I don't know why it was added to tools but not exported, but here is my guess:
+>>
+>> - A member of R Core agrees with you that this operator is useful. This appears to have happened in 2016 based on the svn log.
+>> - It already existed in some contributed package, but base packages can't import anything from non-base packages, so it needed to be added.
+>> - It wasn't exported, because that would break some packages:
+>>     - the ones that export something with that name would now receive a check message about the conflict.
+>>     - if those packages stopped exporting it, then any package that imported from one of them would have to stop doing that, and import it from the base package instead.
+>> - It is very easy to write your own, or to import one of the existing ones, so a lot of work would have been generated for not very much benefit.
+>>
+>> R Core members try to be careful not to generate work for others unless there's enough of a net benefit to the community.  They are very busy, and many authors of contributed packages who might be affected by this change are busy too.
+>>
+>>
+>>> But, in the end, this inclusion would be just a seemingly unharmful syntax sugar that could be shared, like it was with "\" for the reserved word "function", but with waaaay less work to implement.
+>>
+>> The difference there is that it added new syntax, so as far as I know, it didn't affect any existing package.  Personally I don't see that it really offered much of a benefit (keystrokes are cheap), but lots of people are using it, so I guess some others would disagree.>
+>>> If it is not a dumb proposal, I can just include it in the wishlist of features in Bugzilla as prescribed in the contributor's page or I can do that PR myself (if you propose more work to others, the sensible thing to do is at least to offer yourself to do it, right?). In either case, I create more work to the dev team, perhaps to different people.
+>>
+>> It's hard for you to do the coordination work with all the existing packages that use a similar operator, so I don't think that's really feasible.
+>>
+>>> Thanks for taking your time to answer me.
+>>
+>> No problem.  I'm sitting in an airport waiting for a plane, so any distraction is a net benefit for me!
+>>
+>> Duncan Murdoch>
+>>> Marcelo Ventura Freire
+>>> Escola de Artes, Ci?ncias e Humanidades
+>>> Universidade de S?o Paulo
+>>> Av. Arlindo Bettio, 1000,
+>>> Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+>>> Ermelino Matarazzo, S?o Paulo, SP, Brasil
+>>> CEP 03828-000
+>>> Tel.: (11) 3091-8894
+>>> Em qui., 27 de nov. de 2025 ?s 14:15, Duncan Murdoch <murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com>> escreveu:
+>>>     The R sources already contain an operator like that, though it is not
+>>>     exported.  tools:::`%notin%` is defined as
+>>>        function (x, y)
+>>>     is.na <http://is.na>(match(x, y))
+>>>     Several CRAN packages export a similar function, e.g. omnibus, mefa4,
+>>>     data.table, hutils, etc. So I think if it was exported by R that's a
+>>>     better name, but since it is easy to write yourself or import from some
+>>>     other package, why bother?
+>>>     Duncan Murdoch
+>>>     On 2025-11-27 9:19 a.m., Marcelo Ventura Freire via R-devel wrote:
+>>>      > Hello, dear R core developers
+>>>      >
+>>>      >
+>>>      > I have a feature suggestion and, following the orientations in
+>>>      > https://contributor.r-project.org/rdevguide/chapters/
+>>>     submitting_feature_requests.html <https://contributor.r-project.org/
+>>>     rdevguide/chapters/submitting_feature_requests.html>,
+>>>      > I have searched in Bugzilla to the best of my capabilities for
+>>>     suggestions
+>>>      > like the one I have in mind but found no results (however, I can
+>>>     be wrong).
+>>>      >
+>>>      > My idea is including this line
+>>>      >
+>>>      > `%!in%`  <- function(x, table) match(x, table, nomatch = 0L) == 0L
+>>>      >
+>>>      > between lines 39 and 40 of the file "src/library/base/R/match.R".
+>>>      >
+>>>      > My objective is to create a "not in" operator that would allow us
+>>>     to write
+>>>      > code like
+>>>      >>     value %!in% valuelist
+>>>      > instead of
+>>>      >>     ! value %in% valuelist
+>>>      > which is in line with writing
+>>>      >>     value1 != value2
+>>>      > instead of
+>>>      >>     ! value1 == value2
+>>>      >
+>>>      > I was not able to devise any reasonable way that such inclusion
+>>>     would break
+>>>      > any already existing heritage code unless that operator would be
+>>>     defined
+>>>      > otherwisely and it would improve (however marginally) the
+>>>     readability of
+>>>      > future code by its intuitive interpretation and by stitching
+>>>     together two
+>>>      > operators that currently stand apart each other.
+>>>      >
+>>>      > So, if this suggestion was not already proposed and if it is seen as
+>>>      > useful, I would like to include it in the wishlist in Bugzilla.
+>>>      >
+>>>      > I would appreciate any feedback, be it critic or support, and I
+>>>     hope I have
+>>>      > not crossed any communicational rule from the group.
+>>>      >
+>>>      > Many thanks!  ?
+>>>      >
+>>>      >
+>>>      >
+>>>      > Marcelo Ventura Freire
+>>>      > Escola de Artes, Ci?ncias e Humanidades
+>>>      > Universidade de S?o Paulo
+>>>      > Av. Arlindo Bettio, 1000,
+>>>      > Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+>>>      > Ermelino Matarazzo, S?o Paulo, SP, Brasil
+>>>      > CEP 03828-000
+>>>      > Tel.: (11) 3091-8894
+>>>      >
+>>>      >       [[alternative HTML version deleted]]
+>>>      >
+>>>      > ______________________________________________
+>>>      > R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list
+>>>      > https://stat.ethz.ch/mailman/listinfo/r-devel <https://
+>>>     stat.ethz.ch/mailman/listinfo/r-devel>
+>>>
+>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+>
+
+
+From j@g@nmn2 @end|ng |rom gm@||@com  Fri Nov 28 13:56:22 2025
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Fri, 28 Nov 2025 07:56:22 -0500
+Subject: [Rd] Feature suggestion: %!in%
+In-Reply-To: <mailman.55108.1.1764327601.28521.r-devel@r-project.org>
+References: <mailman.55108.1.1764327601.28521.r-devel@r-project.org>
+Message-ID: <91475f03-433a-407f-ab13-c288804290cf@gmail.com>
+
+> Date: Fri, 28 Nov 2025 10:19:19 +0100
+> From: Kurt Hornik<Kurt.Hornik at wu.ac.at>
+> 
+>>>>>> Simon Urbanek writes:
+>> Given that the args of tools:::%notin% don?t match %in% I'd say it was
+>> just a local use more than any deep thought about general use.
+> Actually, I simply never liked 'table' in %in% or match itself, so I
+> took 'y' instead :-)
+> 
+>> Personally, I really like the idea of %notin% because it is very often
+>> that you start typing foo[foo %in% and then realise you want to invert
+>> it and the preceding negation is then cognitively sort of in the wrong
+>> place (reads like "not foo"). I also like %notin% better than %!in%
+>> because I think a salad of special characters makes things harder to
+>> read, but that may be just subjective.
+> Same from here.  So add
+> 
+>    `%notin%` <- function (x, table) is.na(match(x, table))
+> 
+> to base?
+> 
+
+I would tend to prefer
+
+     `%notin%` <- function (x, table) match(x, table, nomatch = 0L) == 0L
+
+so that it is clear also from the body that it is essentially a negation
+of '%in%':
+
+        `%in%` <- function (x, table) match(x, table, nomatch = 0L) >  0L
+
+For a new user, maybe that is helpful.  And the 'nomatch = 0L' usage will
+be familiar already to users who have seen { union, intersect, setdiff },
+the set ops.
+
+As for the demise of Matrix:::`%nin%`, mentioned elsewhere by Martin, it
+would seem that that package author now finds themself on the wrong side
+of history.  :-)
+
+Mikael
+
+> Best
+> -k
+> 
+>> And to your 'why bother' question - I do think it?s better to
+>> standardise common operators in core rather than have packages
+>> re-define it each time. And certainly just importing something that
+>> trivial from another package is a bad idea given the dependency
+>> implications. (On the flip side: if you start using it you need to
+>> depend on recent R which may not be feasible in some environments, but
+>> then if that was always the argument we?d never add anything new :P).
+>> Cheers,
+>> Simon
+> 
+>>> On 28 Nov 2025, at 08:24, Duncan Murdoch<murdoch.duncan at gmail.com> wrote:
+>>>
+>>> On 2025-11-27 11:58 a.m., Marcelo Ventura Freire wrote:
+>>>> If it is not a rhetorical question about a closed issue (if it is, tell me and I will shut up), this inclusion [1] would be useful (since it was exported and rewritten so many times by so many people and will keep being), [2] would create an uniformization (since it was and will be written under so many names before), [3] would not break stuff (since it is not altering the interface of any already existing function nor it is overwriting any symbol with a diverse use), [4] would not be neither a complex nor a tiringsome inclusion (even I myself could do it in a single 1-line pull request, hypothetically speaking) and [5] would benefit users all around.
+>>>> I am not naive to the point of believing that an alteration to the R core would have few repercussions and surely there must be reasons why it was not done before.
+>>> I don't know why it was added to tools but not exported, but here is my guess:
+>>>
+>>> - A member of R Core agrees with you that this operator is useful. This appears to have happened in 2016 based on the svn log.
+>>> - It already existed in some contributed package, but base packages can't import anything from non-base packages, so it needed to be added.
+>>> - It wasn't exported, because that would break some packages:
+>>> - the ones that export something with that name would now receive a check message about the conflict.
+>>> - if those packages stopped exporting it, then any package that imported from one of them would have to stop doing that, and import it from the base package instead.
+>>> - It is very easy to write your own, or to import one of the existing ones, so a lot of work would have been generated for not very much benefit.
+>>>
+>>> R Core members try to be careful not to generate work for others unless there's enough of a net benefit to the community.  They are very busy, and many authors of contributed packages who might be affected by this change are busy too.
+>>>
+>>>
+>>>> But, in the end, this inclusion would be just a seemingly unharmful syntax sugar that could be shared, like it was with "\" for the reserved word "function", but with waaaay less work to implement.
+>>> The difference there is that it added new syntax, so as far as I know, it didn't affect any existing package.  Personally I don't see that it really offered much of a benefit (keystrokes are cheap), but lots of people are using it, so I guess some others would disagree.>
+>>>> If it is not a dumb proposal, I can just include it in the wishlist of features in Bugzilla as prescribed in the contributor's page or I can do that PR myself (if you propose more work to others, the sensible thing to do is at least to offer yourself to do it, right?). In either case, I create more work to the dev team, perhaps to different people.
+>>> It's hard for you to do the coordination work with all the existing packages that use a similar operator, so I don't think that's really feasible.
+>>>
+>>>> Thanks for taking your time to answer me.
+>>> No problem.  I'm sitting in an airport waiting for a plane, so any distraction is a net benefit for me!
+>>>
+>>> Duncan Murdoch>
+>>>> Marcelo Ventura Freire
+>>>> Escola de Artes, Ci?ncias e Humanidades
+>>>> Universidade de S?o Paulo
+>>>> Av. Arlindo Bettio, 1000,
+>>>> Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+>>>> Ermelino Matarazzo, S?o Paulo, SP, Brasil
+>>>> CEP 03828-000
+>>>> Tel.: (11) 3091-8894
+>>>> Em qui., 27 de nov. de 2025 ?s 14:15, Duncan Murdoch <murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com>> escreveu:
+>>>> The R sources already contain an operator like that, though it is not
+>>>> exported.  tools:::`%notin%` is defined as
+>>>> function (x, y)
+>>>> is.na<http://is.na>(match(x, y))
+>>>> Several CRAN packages export a similar function, e.g. omnibus, mefa4,
+>>>> data.table, hutils, etc. So I think if it was exported by R that's a
+>>>> better name, but since it is easy to write yourself or import from some
+>>>> other package, why bother?
+>>>> Duncan Murdoch
+>>>> On 2025-11-27 9:19 a.m., Marcelo Ventura Freire via R-devel wrote:
+>>>>> Hello, dear R core developers
+>>>>>
+>>>>>
+>>>>> I have a feature suggestion and, following the orientations in
+>>>>> https://contributor.r-project.org/rdevguide/chapters/
+>>>> submitting_feature_requests.html <https://contributor.r-project.org/
+>>>> rdevguide/chapters/submitting_feature_requests.html>,
+>>>>> I have searched in Bugzilla to the best of my capabilities for
+>>>> suggestions
+>>>>> like the one I have in mind but found no results (however, I can
+>>>> be wrong).
+>>>>> My idea is including this line
+>>>>>
+>>>>> `%!in%`  <- function(x, table) match(x, table, nomatch = 0L) == 0L
+>>>>>
+>>>>> between lines 39 and 40 of the file "src/library/base/R/match.R".
+>>>>>
+>>>>> My objective is to create a "not in" operator that would allow us
+>>>> to write
+>>>>> code like
+>>>>>>      value %!in% valuelist
+>>>>> instead of
+>>>>>>      ! value %in% valuelist
+>>>>> which is in line with writing
+>>>>>>      value1 != value2
+>>>>> instead of
+>>>>>>      ! value1 == value2
+>>>>> I was not able to devise any reasonable way that such inclusion
+>>>> would break
+>>>>> any already existing heritage code unless that operator would be
+>>>> defined
+>>>>> otherwisely and it would improve (however marginally) the
+>>>> readability of
+>>>>> future code by its intuitive interpretation and by stitching
+>>>> together two
+>>>>> operators that currently stand apart each other.
+>>>>>
+>>>>> So, if this suggestion was not already proposed and if it is seen as
+>>>>> useful, I would like to include it in the wishlist in Bugzilla.
+>>>>>
+>>>>> I would appreciate any feedback, be it critic or support, and I
+>>>> hope I have
+>>>>> not crossed any communicational rule from the group.
+>>>>>
+>>>>> Many thanks!  ?
+>>>>>
+>>>>>
+>>>>>
+>>>>> Marcelo Ventura Freire
+>>>>> Escola de Artes, Ci?ncias e Humanidades
+>>>>> Universidade de S?o Paulo
+>>>>> Av. Arlindo Bettio, 1000,
+>>>>> Sala Paulo Freire (Sala Coletiva 252), Pr?dio I1
+>>>>> Ermelino Matarazzo, S?o Paulo, SP, Brasil
+>>>>> CEP 03828-000
+>>>>> Tel.: (11) 3091-8894
+>>>>>
+>>>>>        [[alternative HTML version deleted]]
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel <https://
+>>>> stat.ethz.ch/mailman/listinfo/r-devel>
+>>>>
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+

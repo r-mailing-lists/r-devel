@@ -1,0 +1,897 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2025-08",
+  "messages": [
+    {
+      "id": "msg-77610b80e536",
+      "message_id": "<4bd4729016d54e5189f4014b7c4edca0@chu-rouen.fr>",
+      "from_name": "GILLIBERT, Andre",
+      "from_email_hash": "8b52edce6ca79df45726c8ff83d3597f2d1dfb8ecc9770fdae6f79c699bc58e2",
+      "date": "2025-08-01T17:13:12Z",
+      "subject": "[Rd] Time to revisit ifelse ?",
+      "subject_clean": "Time to revisit ifelse ?",
+      "in_reply_to": "<c76b979b-443c-4d21-a1ef-21170cd8da2b@gmail.com>",
+      "references": [
+        "<mailman.54975.3.1752141602.64845.r-devel@r-project.org>",
+        "<c76b979b-443c-4d21-a1ef-21170cd8da2b@gmail.com>"
+      ],
+      "body_plain": "Martin Maechler <maechler at stat.math.ethz.ch> wrote:\n> I don't mind putting together a minimal package with some prototypes, tests,\n> comparisons, etc.  But perhaps we should aim for consensus on a few issues\n> beforehand.  (Sorry if these have been discussed to death already elsewhere.\n> In that case, links to relevant threads would be helpful ...)\n>\n>      1. Should the type and class attribute of the return value be exactly the\n>         type and class attribute of c(yes[0L], no[0L]), independent of 'test'?\n>         Or something else?\n>\n>      2. What should be the attributes of the return value (other than 'class')?\n>\n>         base::ifelse keeps attributes(test) if 'test' is atomic, which seems\n>         like desirable behaviour, though dplyr and data.table seem to think\n>         otherwise:\n\nIn my experience, base::ifelse keeping attributes of 'test' is useful for names.\nIt may also be useful for dimensions, but for other attributes, it may be a dangerous feature.\nOtherwise, attributes of c(yes, no) should be mostly preserved in my opinion.\n\n> 3. Should the new function be stricter and/or more verbose?  E.g., should\n>         it signal a condition if length(yes) or length(no) is not equal to 1\n>         nor length(test)?\n\nTo be consistent with base R, it should warn if length(yes), length(no) and length(test) are not divisors of the longest, otherwise silently repeat the three vectors to get the same sizes.\nThis would work consistently with mathematical operators such as test+yes+no.\n\nIn my personal experience, the truncation of 'yes' and 'no' to length(test) if the most dangerous feature of ifelse().\n\n>      4. Should the most common case, in which neither 'yes' nor 'no' has a\n>         'class' attribute, be handled in C?  The remaining cases might rely on\n>        method dispatch and thus require a separate \"generic\" implementation in\n>      R.  How much faster/more efficient would the C implementation have to\n>        be to justify the cost (more maintenance for R-core, more obfuscation\n>       for the average user)?\n\nIf the function is not much slower than today ifelse(), it is not worth rewriting in C in my opinion.\n\nThank you for an implementation!\nA few examples of misbehaviors (in my opinion):\n\n> ifelse2(c(a=TRUE), factor(\"a\"), factor(\"b\")) \nError in as.character.factor(x) : malformed factor\n\n> ifelse2(TRUE, factor(c(\"a\",\"b\")), factor(c(\"b\",\"a\")))\n[1] a\nLevels: a b\n\nI would expect this one to output\n[1] a b\nLevels: a b\n\nI tried to develop a function that behaves like mathematical operators (e.g. test+yes+no) for length & dimensions coercion rules.\nPlease, find the function and a few tests below:\n\nifelse2 <- function (test, yes, no) {\n\t# forces evaluation of arguments in order\n\ttest\n\tyes\n\tno\n\n\tif (is.atomic(test)) {\n\t\tif (!is.logical(test))\n\t\t\tstorage.mode(test) <- \"logical\"\n\t}\n\telse test <- if (isS4(test)) methods::as(test, \"logical\") else as.logical(test)\n\n\tntest <- length(test)\n\tnyes <- length(yes)\n\tnno <- length(no)\n\n\tnn <- c(ntest, nyes, nno)\n      nans <- max(nn)\n\n\tans <- rep(c(yes[0L], no[0L]), length.out=nans)\n\n\t# check dimension consistency for arrays\n\thas.dim <- FALSE\n\tif (length(dim(test)) | length(dim(yes)) | length(dim(no))) {\n\t\tlparams <- list(test, yes, no)\n\t\tldims <- lapply(lparams, dim)\n\t\tldims <- ldims[!sapply(ldims, is.null)]\n\t\tldimnames <- lapply(lparams, dimnames)\n\t\tldimnames <- ldimnames[!sapply(ldimnames, is.null)]\n\n\t\trdim <- ldims[[1]]\n\t\trdimnames <- ldimnames[[1]]\n\t\tfor(d in ldims) {\n\t\t\tif (!identical(d, rdim)) {\n\t\t\t\tstop(gettext(\"non-conformable arrays\"))\n\t\t\t}\n\t\t}\n\t\thas.dim <- TRUE\n\t}\n\n\tif (any(nans %% nn)) {\n\t\twarning(gettext(\"longer object length is not a multiple of shorter object length\"))\n\t}\n\n\tif (ntest != nans) {test <- rep(test, length.out=nans)}\n\tif (nyes != nans) {yes <- rep(yes, length.out=nans)}\n\tif (nno != nans) {no <- rep(no, length.out=nans)}\n\n\tidx <- which( test)\n\tans[idx] <- yes[idx]\n\n\tidx <- which(!test)\n\tans[idx] <- no[idx]\n\n\tif (has.dim) {\n\t\tdim(ans) <- rdim\n\t\tdimnames(ans) <- rdimnames\n\t}\n\n\tif (!is.null(names(test))) {\n\t\tnames(ans) <- names(test)\n\t}\n\n\tans\n}\n\n\nifelse2(c(alpha=TRUE,beta=TRUE,gamma=FALSE),factor(c(\"A\",\"B\",\"C\",\"X\")),factor(c(\"A\",\"B\",\"C\",\"D\")))\nifelse2(c(TRUE,FALSE), as.Date(\"2025-04-01\"), c(\"2020-07-05\", \"2022-07-05\"))\nifelse2(c(a=TRUE, b=FALSE,c=TRUE,d=TRUE), list(42), list(40,45))\nifelse2(rbind(alpha=c(a=TRUE, b=FALSE),beta=c(c=TRUE,d=FALSE)), list(1:10), list(2:20,3:30))\na=rbind(alpha=c(a=TRUE, b=FALSE),beta=c(TRUE,TRUE))\nb=rbind(ALPHA=c(A=TRUE, B=FALSE),BETA=c(C=TRUE,D=TRUE))\nc=rbind(ALPHA2=c(A2=TRUE, B2=FALSE),BETA2=c(C2=TRUE,D2=TRUE))\nifelse2(a,b,c)\ndimnames(a) <- NULL\nifelse2(a,b,c)\ndimnames(b) <- NULL\nifelse2(a,b,c)\n\n-- \nSincerely\nAndr? GILLIBERT",
+      "body_snippet": "Martin Maechler <maechler at stat.math.ethz.ch> wrote:\n> I don't mind putting together a minimal package with some prototypes, tests,\n> comparisons, etc.  But perhaps we should aim for consensus on a ",
+      "thread_id": "thread-77610b80e536",
+      "thread_depth": 0,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-d7b2c6d65eea",
+      "message_id": "<bf14c6e5-76f4-4bb4-97c4-3b40fcd159d5@gmail.com>",
+      "from_name": "Mikael Jagan",
+      "from_email_hash": "4bef0ec6e88ca2d9a2d39dae930cd5ac951a48aafc09e210705e7cdcf3fd5964",
+      "date": "2025-08-01T13:29:55-04:00",
+      "subject": "[Rd] Time to revisit ifelse ?",
+      "subject_clean": "Time to revisit ifelse ?",
+      "in_reply_to": "<4bd4729016d54e5189f4014b7c4edca0@chu-rouen.fr>",
+      "references": [
+        "<mailman.54975.3.1752141602.64845.r-devel@r-project.org>",
+        "<c76b979b-443c-4d21-a1ef-21170cd8da2b@gmail.com>",
+        "<4bd4729016d54e5189f4014b7c4edca0@chu-rouen.fr>"
+      ],
+      "body_plain": "Andre,\n\nThere is a new thread (of length one, sadly), which you should read:\n\n     https://stat.ethz.ch/pipermail/r-devel/2025-July/084113.html\n\nThe function of mine that you have been testing was just a fast prototype,\nand much work has been done in the mean time.  Can you give the current\nproposal (ifelse::ifelse1) a try and let us know if anything stands out?\n\nMikael\n\nOn 2025-08-01 1:13 pm, GILLIBERT, Andre wrote:\n> Martin Maechler <maechler at stat.math.ethz.ch> wrote:\n>> I don't mind putting together a minimal package with some prototypes, tests,\n>> comparisons, etc.  But perhaps we should aim for consensus on a few issues\n>> beforehand.  (Sorry if these have been discussed to death already elsewhere.\n>> In that case, links to relevant threads would be helpful ...)\n>>\n>>       1. Should the type and class attribute of the return value be exactly the\n>>          type and class attribute of c(yes[0L], no[0L]), independent of 'test'?\n>>          Or something else?\n>>\n>>       2. What should be the attributes of the return value (other than 'class')?\n>>\n>>          base::ifelse keeps attributes(test) if 'test' is atomic, which seems\n>>          like desirable behaviour, though dplyr and data.table seem to think\n>>          otherwise:\n> \n> In my experience, base::ifelse keeping attributes of 'test' is useful for names.\n> It may also be useful for dimensions, but for other attributes, it may be a dangerous feature.\n> Otherwise, attributes of c(yes, no) should be mostly preserved in my opinion.\n> \n>> 3. Should the new function be stricter and/or more verbose?  E.g., should\n>>          it signal a condition if length(yes) or length(no) is not equal to 1\n>>          nor length(test)?\n> \n> To be consistent with base R, it should warn if length(yes), length(no) and length(test) are not divisors of the longest, otherwise silently repeat the three vectors to get the same sizes.\n> This would work consistently with mathematical operators such as test+yes+no.\n> \n> In my personal experience, the truncation of 'yes' and 'no' to length(test) if the most dangerous feature of ifelse().\n> \n>>       4. Should the most common case, in which neither 'yes' nor 'no' has a\n>>          'class' attribute, be handled in C?  The remaining cases might rely on\n>>         method dispatch and thus require a separate \"generic\" implementation in\n>>       R.  How much faster/more efficient would the C implementation have to\n>>         be to justify the cost (more maintenance for R-core, more obfuscation\n>>        for the average user)?\n> \n> If the function is not much slower than today ifelse(), it is not worth rewriting in C in my opinion.\n> \n> Thank you for an implementation!\n> A few examples of misbehaviors (in my opinion):\n> \n>> ifelse2(c(a=TRUE), factor(\"a\"), factor(\"b\"))\n> Error in as.character.factor(x) : malformed factor\n> \n>> ifelse2(TRUE, factor(c(\"a\",\"b\")), factor(c(\"b\",\"a\")))\n> [1] a\n> Levels: a b\n> \n> I would expect this one to output\n> [1] a b\n> Levels: a b\n> \n> I tried to develop a function that behaves like mathematical operators (e.g. test+yes+no) for length & dimensions coercion rules.\n> Please, find the function and a few tests below:\n> \n> ifelse2 <- function (test, yes, no) {\n> \t# forces evaluation of arguments in order\n> \ttest\n> \tyes\n> \tno\n> \n> \tif (is.atomic(test)) {\n> \t\tif (!is.logical(test))\n> \t\t\tstorage.mode(test) <- \"logical\"\n> \t}\n> \telse test <- if (isS4(test)) methods::as(test, \"logical\") else as.logical(test)\n> \n> \tntest <- length(test)\n> \tnyes <- length(yes)\n> \tnno <- length(no)\n> \n> \tnn <- c(ntest, nyes, nno)\n>        nans <- max(nn)\n> \n> \tans <- rep(c(yes[0L], no[0L]), length.out=nans)\n> \n> \t# check dimension consistency for arrays\n> \thas.dim <- FALSE\n> \tif (length(dim(test)) | length(dim(yes)) | length(dim(no))) {\n> \t\tlparams <- list(test, yes, no)\n> \t\tldims <- lapply(lparams, dim)\n> \t\tldims <- ldims[!sapply(ldims, is.null)]\n> \t\tldimnames <- lapply(lparams, dimnames)\n> \t\tldimnames <- ldimnames[!sapply(ldimnames, is.null)]\n> \n> \t\trdim <- ldims[[1]]\n> \t\trdimnames <- ldimnames[[1]]\n> \t\tfor(d in ldims) {\n> \t\t\tif (!identical(d, rdim)) {\n> \t\t\t\tstop(gettext(\"non-conformable arrays\"))\n> \t\t\t}\n> \t\t}\n> \t\thas.dim <- TRUE\n> \t}\n> \n> \tif (any(nans %% nn)) {\n> \t\twarning(gettext(\"longer object length is not a multiple of shorter object length\"))\n> \t}\n> \n> \tif (ntest != nans) {test <- rep(test, length.out=nans)}\n> \tif (nyes != nans) {yes <- rep(yes, length.out=nans)}\n> \tif (nno != nans) {no <- rep(no, length.out=nans)}\n> \n> \tidx <- which( test)\n> \tans[idx] <- yes[idx]\n> \n> \tidx <- which(!test)\n> \tans[idx] <- no[idx]\n> \n> \tif (has.dim) {\n> \t\tdim(ans) <- rdim\n> \t\tdimnames(ans) <- rdimnames\n> \t}\n> \n> \tif (!is.null(names(test))) {\n> \t\tnames(ans) <- names(test)\n> \t}\n> \n> \tans\n> }\n> \n> \n> ifelse2(c(alpha=TRUE,beta=TRUE,gamma=FALSE),factor(c(\"A\",\"B\",\"C\",\"X\")),factor(c(\"A\",\"B\",\"C\",\"D\")))\n> ifelse2(c(TRUE,FALSE), as.Date(\"2025-04-01\"), c(\"2020-07-05\", \"2022-07-05\"))\n> ifelse2(c(a=TRUE, b=FALSE,c=TRUE,d=TRUE), list(42), list(40,45))\n> ifelse2(rbind(alpha=c(a=TRUE, b=FALSE),beta=c(c=TRUE,d=FALSE)), list(1:10), list(2:20,3:30))\n> a=rbind(alpha=c(a=TRUE, b=FALSE),beta=c(TRUE,TRUE))\n> b=rbind(ALPHA=c(A=TRUE, B=FALSE),BETA=c(C=TRUE,D=TRUE))\n> c=rbind(ALPHA2=c(A2=TRUE, B2=FALSE),BETA2=c(C2=TRUE,D2=TRUE))\n> ifelse2(a,b,c)\n> dimnames(a) <- NULL\n> ifelse2(a,b,c)\n> dimnames(b) <- NULL\n> ifelse2(a,b,c)\n>",
+      "body_snippet": "Andre,\n\nThere is a new thread (of length one, sadly), which you should read:\n\n     https://stat.ethz.ch/pipermail/r-devel/2025-July/084113.html\n\nThe function of mine that you have been testing was jus",
+      "thread_id": "thread-77610b80e536",
+      "thread_depth": 1,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-58ab03a7e08c",
+      "message_id": "<CAJdGVmiZWjdj-4Knb3TNvxNAQmtZvsdWyNpTegcZKOpRXq5q3g@mail.gmail.com>",
+      "from_name": "mo. sadik khan",
+      "from_email_hash": "d18653cdc37a9fde140778666e2566e62dfff8d7be74b4e45a4b19325a858b98",
+      "date": "2025-08-04T23:00:43+05:30",
+      "subject": "[Rd] Bug Report: R for Windows installer fails to enable Intel MKL on modern hardware",
+      "subject_clean": "Bug Report: R for Windows installer fails to enable Intel MKL on modern hardware",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Dear R Core Development Team,\n\nI am writing to report a potential issue with the standard R installer for\nWindows. On modern, high-performance hardware, the installer does not\nappear to be automatically enabling the Intel Math Kernel Library (MKL) as\nexpected, defaulting instead to the standard, single-threaded BLAS/LAPACK\nlibraries.\n\nHere are the details of my system and the steps to reproduce the issue:\n\n*1. System Information*\n\n   -\n\n   *Hardware:* Lenovo Legion Pro 5 Laptop\n   -\n\n   *Operating System:* Windows 11 x64 (build 26100)\n   -\n\n   *R Version:* R version 4.5.1 (2025-06-13 ucrt)\n   -\n\n   *sessionInfo() Output:*\n\n   R version 4.5.1 (2025-06-13 ucrt)\n   Platform: x86_64-w64-mingw32/x64\n   Running under: Windows 11 x64 (build 26100)\n\n   Matrix products: default\n     LAPACK version 3.12.1\n\n   locale:\n   [1] LC_COLLATE=English_United States.utf8\n   [2] LC_CTYPE=English_United States.utf8\n   [3] LC_MONETARY=English_United States.utf8\n   [4] LC_NUMERIC=C\n   [5] LC_TIME=English_United States.utf8\n\n\n*2. Steps to Reproduce*\n\n   1.\n\n   Performed a clean uninstall of any previous R versions.\n   2.\n\n   Downloaded the latest R installer from the official CRAN mirror:\n   https://cran.r-project.org/bin/windows/base/.\n   3.\n\n   Ran the installer using the standard, default settings.\n   4.\n\n   Opened R and ran the sessionInfo() command to check the linked math\n   libraries.\n\n*3. Expected Result* I expected the sessionInfo() output to show a\nreference to mkl_rt.dll in the LAPACK line, confirming that the\nhigh-performance, multi-threaded MKL was active.\n\n*4. Actual Result* The sessionInfo() output shows Matrix products: default\nand LAPACK version 3.12.1, with no mention of MKL. This indicates that the\nstandard, slower libraries were installed. This significantly impacts\nperformance for computationally intensive tasks like PCA on large matrices.\n\nThank you for your incredible work on R. I hope this report is helpful in\nimproving the installation experience on Windows. Please let me know if any\nfurther information or testing would be useful.\n\nSincerely,\n\nMohd. sadik\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear R Core Development Team,\n\nI am writing to report a potential issue with the standard R installer for\nWindows. On modern, high-performance hardware, the installer does not\nappear to be automatical",
+      "thread_id": "thread-58ab03a7e08c",
+      "thread_depth": 0,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-b635ab802c73",
+      "message_id": "<86ea3f8b-b518-4d58-b76d-ce8abea84cf2@gmail.com>",
+      "from_name": "Tomas Kalibera",
+      "from_email_hash": "7af110c9340339e5307bd348f1ec524e2fd1c8f104d583e9993022c5550711f4",
+      "date": "2025-08-05T07:53:39+02:00",
+      "subject": "[Rd]  Bug Report: R for Windows installer fails to enable Intel MKL on modern hardware",
+      "subject_clean": "Bug Report: R for Windows installer fails to enable Intel MKL on modern hardware",
+      "in_reply_to": "<CAJdGVmiZWjdj-4Knb3TNvxNAQmtZvsdWyNpTegcZKOpRXq5q3g@mail.gmail.com>",
+      "references": [
+        "<CAJdGVmiZWjdj-4Knb3TNvxNAQmtZvsdWyNpTegcZKOpRXq5q3g@mail.gmail.com>"
+      ],
+      "body_plain": "If you want to use MKL or other optimized BLAS/LAPACK implementation \nwith released versions of R, you have to use Linux (or macOS). It is \neasily possible on Debian (/Ubuntu) or Fedora distributions without \nbuilding R from source.\n\n---\n\nOn Windows, this is not readily supported. BLAS/LAPACK there is linked \nvia libraries Rlapack.dll and Rblas.dll included in the R installation. \nIn the official installer from CRAN, these are always (statically) \nlinked to the reference implementation. It is possible to build R from \nsource and make these use an alternative implementation - the make files \nincluded within R sources include support for OpenBLAS (which is part of \nRtools) and ATLAS (but that hasn't been tested recently).? There are \nreports from users who have been using OpenBLAS repeatedly.\n\nIt should not be too hard to use another external implementation, but \nthis hasn't been tested afaik. The BLAS/LAPACK detection you can see in \nsessionInfo() on Unix systems doesn't work on Windows (except for LAPACK \nversion which can be obtained via LAPACK API) - the detection based on \nfiguring out which dynamic library is linked to provide BLAS/LAPACK on \nWindows wouldn't give anything useful (always it is Rlapack, Rblas).\n\nIf you try building R from source, it is tempting to use more aggressive \ncompiler optimizations than by default even for R itself and R packages? \n(the default in R make files for Windows). If you do that, be prepared \nto run into problems, because this is not routinely tested and may lead \nto different/incorrect numerical results due to code not robust enough \nto optimizations or due to compiler bugs.\n\nBest\nTomas\n\n\nOn 8/4/25 19:30, mo. sadik khan wrote:\n> Dear R Core Development Team,\n>\n> I am writing to report a potential issue with the standard R installer for\n> Windows. On modern, high-performance hardware, the installer does not\n> appear to be automatically enabling the Intel Math Kernel Library (MKL) as\n> expected, defaulting instead to the standard, single-threaded BLAS/LAPACK\n> libraries.\n>\n> Here are the details of my system and the steps to reproduce the issue:\n>\n> *1. System Information*\n>\n>     -\n>\n>     *Hardware:* Lenovo Legion Pro 5 Laptop\n>     -\n>\n>     *Operating System:* Windows 11 x64 (build 26100)\n>     -\n>\n>     *R Version:* R version 4.5.1 (2025-06-13 ucrt)\n>     -\n>\n>     *sessionInfo() Output:*\n>\n>     R version 4.5.1 (2025-06-13 ucrt)\n>     Platform: x86_64-w64-mingw32/x64\n>     Running under: Windows 11 x64 (build 26100)\n>\n>     Matrix products: default\n>       LAPACK version 3.12.1\n>\n>     locale:\n>     [1] LC_COLLATE=English_United States.utf8\n>     [2] LC_CTYPE=English_United States.utf8\n>     [3] LC_MONETARY=English_United States.utf8\n>     [4] LC_NUMERIC=C\n>     [5] LC_TIME=English_United States.utf8\n>\n>\n> *2. Steps to Reproduce*\n>\n>     1.\n>\n>     Performed a clean uninstall of any previous R versions.\n>     2.\n>\n>     Downloaded the latest R installer from the official CRAN mirror:\n>     https://cran.r-project.org/bin/windows/base/.\n>     3.\n>\n>     Ran the installer using the standard, default settings.\n>     4.\n>\n>     Opened R and ran the sessionInfo() command to check the linked math\n>     libraries.\n>\n> *3. Expected Result* I expected the sessionInfo() output to show a\n> reference to mkl_rt.dll in the LAPACK line, confirming that the\n> high-performance, multi-threaded MKL was active.\n>\n> *4. Actual Result* The sessionInfo() output shows Matrix products: default\n> and LAPACK version 3.12.1, with no mention of MKL. This indicates that the\n> standard, slower libraries were installed. This significantly impacts\n> performance for computationally intensive tasks like PCA on large matrices.\n>\n> Thank you for your incredible work on R. I hope this report is helpful in\n> improving the installation experience on Windows. Please let me know if any\n> further information or testing would be useful.\n>\n> Sincerely,\n>\n> Mohd. sadik\n>\n> \t[[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "If you want to use MKL or other optimized BLAS/LAPACK implementation \nwith released versions of R, you have to use Linux (or macOS). It is \neasily possible on Debian (/Ubuntu) or Fedora distributions ",
+      "thread_id": "thread-58ab03a7e08c",
+      "thread_depth": 1,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-2daf95ee912e",
+      "message_id": "<9cb46c5d44534a5fb497d6f5aeb89be8@chu-rouen.fr>",
+      "from_name": "GILLIBERT, Andre",
+      "from_email_hash": "8b52edce6ca79df45726c8ff83d3597f2d1dfb8ecc9770fdae6f79c699bc58e2",
+      "date": "2025-08-06T22:23:13Z",
+      "subject": "[Rd] Bug in getS3method?",
+      "subject_clean": "Bug in getS3method?",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hello,\n\n\n>From getS3method documentation, it is expected to be consistent with a call to the generic function in the environment it is called from.\n\n\n> It is possible that which S3 method will be used may depend on where the generic f is\n\n> called from: getS3method returns the method found if f were called from the same environment.\"\n\n\n# the following code shows an inconsistency on R\n\n# tested on 4.5.1 (2025-06-13 ucrt) (x86_64-w64-mingw32/x64)\n\nlocal({\n    coef.lm=function(x, ...) {cat(\"new coef.lm function\\n\")}\n    attach(environment(), name=\"test.env\")\n})\n\nmod = lm(I(1:3)~1)\ngetS3method(\"coef\", \"lm\")(mod) # uses the new coef.lm function\ncoef(mod) # uses coef.default of package stats\ndetach(\"test.env\")\n\n\nI also tested the old versions of R I kept on my computer.\n\nR 4.0.3 : same behaviour as R 4.5.1\n\nR 3.6.3 : both lines of code call the new coef.lm function\n\n\nWhen looking at old R release NEWS for R 4.0.0, I got a possible explanation:\n\n> S3 method lookup now by default skips the elements of the search path between the global and base environments\n\n\nTherefore, it looks like R_LookupMethod() was updated in src/main/objects.c but not getS3method() in src/library/utils/R/objects.R\n\nI found the commit that seems to have caused the change in behaviour:\n\nhttps://github.com/wch/r-source/commit/753ceaea9854d0b4d7a363041f0176ecc1b036fb<https://astragale.chu-rouen.fr/https/chu-rouen/gw-chu-rouen-03/github.com/wch/r-source/commit/753ceaea9854d0b4d7a363041f0176ecc1b036fb>\n\n\n<https://astragale.chu-rouen.fr/https/chu-rouen/gw-chu-rouen-03/github.com/wch/r-source/commit/753ceaea9854d0b4d7a363041f0176ecc1b036fb>\n\nActually, when launching R 4.0.3 with the _R_S3_METHOD_LOOKUP_BASEENV_AFTER_GLOBALENV_=FALSE system environment variable set, I can reproduce the old R 3.6.3 behaviour, but not in R 4.5.1, because this environment variable was completely removed:\n\nhttps://github.com/wch/r-source/commit/58a2da9d8e506c33f33c16a3a87584be0ab013d6<https://astragale.chu-rouen.fr/https/chu-rouen/gw-chu-rouen-03/github.com/wch/r-source/commit/58a2da9d8e506c33f33c16a3a87584be0ab013d6>\n\n\nUnless I miss something, getS3method() should be updated to be consistent with the actual method lookup mechanism.\n\n\n--\n\nSincerely\n\nAndr? GILLIBERT\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\n\n>From getS3method documentation, it is expected to be consistent with a call to the generic function in the environment it is called from.\n\n\n> It is possible that which S3 method will be used",
+      "thread_id": "thread-2daf95ee912e",
+      "thread_depth": 0,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-a67da37576b1",
+      "message_id": "<4CC81DC0-0114-48F8-B7A3-254C257E519F@mrc-lmb.cam.ac.uk>",
+      "from_name": "Dr Gregory Jefferis",
+      "from_email_hash": "f89f1e83205bd6fa9da165487b3f9a5f81cfc0b87c6b4b60b816e3908c68666d",
+      "date": "2025-08-07T19:23:34+01:00",
+      "subject": "[Rd] overriding built in Rbuildignore values",
+      "subject_clean": "overriding built in Rbuildignore values",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Dear All,\n\nIs there a way to override the default entries in\n\ntools::get_exclude_patterns()\n\nWhen checking an R package.\n\nR 4.5.1 now has an entry\n\n\"\\\\.sw.$\"\n\nInstead of\n\n\"\\\\.swp$\"\n\nIn earlier versions. This was associated with https://github.com/wch/r-source/commit/7bc89c8ab13003238d4b2e6f732a8a537255031d / SVN commit 87718 which hoped to exclude private emacs/vim files.\n\nUnfortunately the change also catches  *.swc files ? the standard format for representing the shape of neurons in neuroscience which are used for tests in my package https://cran.r-project.org/package=nat.\n\nMany thanks for any pointers,\n\nGreg.\n\nPS @Dirk Eddelbuettel if you'll forgive me, I am ccing directly as looks like the patch was yours.\n\n--\nGregory Jefferis\nDivision of Neurobiology\nMRC Laboratory of Molecular Biology\nFrancis Crick Avenue\nCambridge Biomedical Campus\nCambridge, CB2 OQH, UK\n\nhttp://www2.mrc-lmb.cam.ac.uk/group-leaders/h-to-m/g-jefferis\nhttp://jefferislab.org\nhttps://www.zoo.cam.ac.uk/research/groups/connectomics",
+      "body_snippet": "Dear All,\n\nIs there a way to override the default entries in\n\ntools::get_exclude_patterns()\n\nWhen checking an R package.\n\nR 4.5.1 now has an entry\n\n\"\\\\.sw.$\"\n\nInstead of\n\n\"\\\\.swp$\"\n\nIn earlier version",
+      "thread_id": "thread-a67da37576b1",
+      "thread_depth": 0,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-d7fc98e785ab",
+      "message_id": "<26772.62544.35769.90391@rob.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2025-08-07T13:45:36-05:00",
+      "subject": "[Rd] overriding built in Rbuildignore values",
+      "subject_clean": "overriding built in Rbuildignore values",
+      "in_reply_to": "<4CC81DC0-0114-48F8-B7A3-254C257E519F@mrc-lmb.cam.ac.uk>",
+      "references": [
+        "<4CC81DC0-0114-48F8-B7A3-254C257E519F@mrc-lmb.cam.ac.uk>"
+      ],
+      "body_plain": "Hi Greg,\n\nOn 7 August 2025 at 19:23, Dr Gregory Jefferis wrote:\n| Is there a way to override the default entries in\n| \n| tools::get_exclude_patterns()\n| \n| When checking an R package.\n| \n| R 4.5.1 now has an entry\n| \n| \"\\\\.sw.$\"\n| \n| Instead of\n| \n| \"\\\\.swp$\"\n| \n| In earlier versions. This was associated with https://github.com/wch/r-source/commit/7bc89c8ab13003238d4b2e6f732a8a537255031d / SVN commit 87718 which hoped to exclude private emacs/vim files.\n| \n| Unfortunately the change also catches  *.swc files ? the standard format for representing the shape of neurons in neuroscience which are used for tests in my package https://cran.r-project.org/package=nat.\n| \n| Many thanks for any pointers,\n| \n| Greg.\n| \n| PS @Dirk Eddelbuettel if you'll forgive me, I am ccing directly as looks like the patch was yours.\n\n>From memory, this was for vi-famility editor swapfiles where we had seen\nadditional letters beside the 'p' following 'sw'. I do not recall what those\nletters were but we may be able to find out and restrict to, say, '[pqrst]',\nsay.\n\nAn override facility sounds like a lot of work. Can you possibly work around\nit by, say, renaming (in the package) to '.swc.bin' (say) and then renamed\nthose to '.swc' before your tests run?  Or bundle the '.swc' in a zip or tar\nor alike archive and uncompress on demand?\n\nDirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "Hi Greg,\n\nOn 7 August 2025 at 19:23, Dr Gregory Jefferis wrote:\n| Is there a way to override the default entries in\n| \n| tools::get_exclude_patterns()\n| \n| When checking an R package.\n| \n| R 4.5.1 now",
+      "thread_id": "thread-a67da37576b1",
+      "thread_depth": 1,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-3a1faf5901d3",
+      "message_id": "<26772.64076.368358.390924@rob.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2025-08-07T14:11:08-05:00",
+      "subject": "[Rd] overriding built in Rbuildignore values",
+      "subject_clean": "overriding built in Rbuildignore values",
+      "in_reply_to": "<26772.62544.35769.90391@rob.eddelbuettel.com>",
+      "references": [
+        "<4CC81DC0-0114-48F8-B7A3-254C257E519F@mrc-lmb.cam.ac.uk>",
+        "<26772.62544.35769.90391@rob.eddelbuettel.com>"
+      ],
+      "body_plain": "PS: There is a bit of discussion of this (for vim) at [1] with the general\nrule(s) and a code snippet from vim. One suggestion is to use '*.sw[g-p]' to\nspare .swf files for Flash [2]. So we could honour your .swc via '*.sw[d-p]'.\n\nBut it seems to me that you may still be better off avoiding this by renaming\nor archiving these files.  Thoughts?\n\nDirk\n\n\n[1] https://unix.stackexchange.com/questions/326707/vim-what-are-all-the-possible-swapfile-extensions\n[2] It's an old discussion\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "PS: There is a bit of discussion of this (for vim) at [1] with the general\nrule(s) and a code snippet from vim. One suggestion is to use '*.sw[g-p]' to\nspare .swf files for Flash [2]. So we could hono",
+      "thread_id": "thread-a67da37576b1",
+      "thread_depth": 2,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-3b3966aa3128",
+      "message_id": "<20250807230717.1e42ffff@Tarkus>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2025-08-07T23:07:17+03:00",
+      "subject": "[Rd] overriding built in Rbuildignore values",
+      "subject_clean": "overriding built in Rbuildignore values",
+      "in_reply_to": "<26772.64076.368358.390924@rob.eddelbuettel.com>",
+      "references": [
+        "<4CC81DC0-0114-48F8-B7A3-254C257E519F@mrc-lmb.cam.ac.uk>",
+        "<26772.62544.35769.90391@rob.eddelbuettel.com>",
+        "<26772.64076.368358.390924@rob.eddelbuettel.com>"
+      ],
+      "body_plain": "On Thu, 7 Aug 2025 14:11:08 -0500\nDirk Eddelbuettel <edd at debian.org> wrote:\n\n> One suggestion is to use '*.sw[g-p]' to spare .swf files for Flash\n\nOn Unix-like systems (and, empirically, on Windows, despite ':help\nswap-file' says the dots are replaced), Vim prepends a dot to the name\nof the swap file. So how about only matching files that start with a\ndot and end with .sw[certain letters]?\n\ngrepl(\n '(^|/)[.][^/]+[.]sw[a-p]$',\n c('.swap.file.swp', 'subdir/.swapfile.swn', 'not-a-swapfile.swc'),\n perl = TRUE\n)\n# [1]  TRUE TRUE FALSE\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "On Thu, 7 Aug 2025 14:11:08 -0500\nDirk Eddelbuettel <edd at debian.org> wrote:\n\n> One suggestion is to use '*.sw[g-p]' to spare .swf files for Flash\n\nOn Unix-like systems (and, empirically, on Windows",
+      "thread_id": "thread-a67da37576b1",
+      "thread_depth": 3,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-abfa685e2eb5",
+      "message_id": "<26773.8512.815394.33152@rob.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2025-08-07T16:57:20-05:00",
+      "subject": "[Rd] overriding built in Rbuildignore values",
+      "subject_clean": "overriding built in Rbuildignore values",
+      "in_reply_to": "<20250807230717.1e42ffff@Tarkus>",
+      "references": [
+        "<4CC81DC0-0114-48F8-B7A3-254C257E519F@mrc-lmb.cam.ac.uk>",
+        "<26772.62544.35769.90391@rob.eddelbuettel.com>",
+        "<26772.64076.368358.390924@rob.eddelbuettel.com>",
+        "<20250807230717.1e42ffff@Tarkus>"
+      ],
+      "body_plain": "On 7 August 2025 at 23:07, Ivan Krylov wrote:\n| On Thu, 7 Aug 2025 14:11:08 -0500\n| Dirk Eddelbuettel <edd at debian.org> wrote:\n| \n| > One suggestion is to use '*.sw[g-p]' to spare .swf files for Flash\n| \n| On Unix-like systems (and, empirically, on Windows, despite ':help\n| swap-file' says the dots are replaced), Vim prepends a dot to the name\n| of the swap file. So how about only matching files that start with a\n| dot and end with .sw[certain letters]?\n| \n| grepl(\n|  '(^|/)[.][^/]+[.]sw[a-p]$',\n|  c('.swap.file.swp', 'subdir/.swapfile.swn', 'not-a-swapfile.swc'),\n|  perl = TRUE\n| )\n| # [1]  TRUE TRUE FALSE\n\nNice. This regexp '(^|/)[.][^/]+[.]sw[a-p]$' is a clear improvement over the\n(much) simpler one \"\\\\.sw.$\" from my PR (which was mostly about adding\n\"^(GPATH|GRTAGS|GTAGS)$\" for the GNU Global source tagger) as it covers both\ntop-level and subdirectories and hence avoids hitting *.swf or *.swc files.\n\nI trust you checked that 'perl = TRUE' applies also to these entries from\ntools:::get_exclude_patterns() ?\n\nDirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "On 7 August 2025 at 23:07, Ivan Krylov wrote:\n| On Thu, 7 Aug 2025 14:11:08 -0500\n| Dirk Eddelbuettel <edd at debian.org> wrote:\n| \n| > One suggestion is to use '*.sw[g-p]' to spare .swf files for Fla",
+      "thread_id": "thread-a67da37576b1",
+      "thread_depth": 4,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-c9186dc21a09",
+      "message_id": "<AF4BAC02-F5C5-470E-8829-BE0DD6A48DD5@mrc-lmb.cam.ac.uk>",
+      "from_name": "Dr Gregory Jefferis",
+      "from_email_hash": "f89f1e83205bd6fa9da165487b3f9a5f81cfc0b87c6b4b60b816e3908c68666d",
+      "date": "2025-08-08T09:18:57+01:00",
+      "subject": "[Rd] overriding built in Rbuildignore values",
+      "subject_clean": "overriding built in Rbuildignore values",
+      "in_reply_to": "<26772.64076.368358.390924@rob.eddelbuettel.com>",
+      "references": [
+        "<4CC81DC0-0114-48F8-B7A3-254C257E519F@mrc-lmb.cam.ac.uk>",
+        "<26772.62544.35769.90391@rob.eddelbuettel.com>",
+        "<26772.64076.368358.390924@rob.eddelbuettel.com>"
+      ],
+      "body_plain": "Thanks for the suggestions, Dirk and also Ivan. Given that this change is in the released version of R I'll have to go with a workaround for now even if the regex can be updated. It would be great if the regex could be updated because I think the new one really does catch more than it should.\n\nThe workaround is quite a dance because it means that I have to do a setup/teardown before my tests. I can do this once for the whole test suite, but then it means that I can't conveniently run individual tests during development. I have tens of separate tests using these files so running a setup/teardown for each individual test would require a significant amount of additional code tweaking.\n\nBest wishes,\n\nGreg.\n\nOn 7 Aug 2025, at 20:11, Dirk Eddelbuettel wrote:\n\n> PS: There is a bit of discussion of this (for vim) at [1] with the general\n> rule(s) and a code snippet from vim. One suggestion is to use '*.sw[g-p]' to\n> spare .swf files for Flash [2]. So we could honour your .swc via '*.sw[d-p]'.\n>\n> But it seems to me that you may still be better off avoiding this by renaming\n> or archiving these files.  Thoughts?\n>\n> Dirk\n>\n>\n> [1] https://unix.stackexchange.com/questions/326707/vim-what-are-all-the-possible-swapfile-extensions\n> [2] It's an old discussion\n>\n> -- \n> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org\n\n\n--\nGregory Jefferis, PhD                   Tel: +44 1223 267048\nDivision of Neurobiology\nMRC Laboratory of Molecular Biology\nFrancis Crick Avenue\nCambridge Biomedical Campus\nCambridge, CB2 0QH, UK\n\nhttp://www2.mrc-lmb.cam.ac.uk/group-leaders/h-to-m/g-jefferis\nhttp://jefferislab.org\nhttp://www.zoo.cam.ac.uk/research/groups/connectomics",
+      "body_snippet": "Thanks for the suggestions, Dirk and also Ivan. Given that this change is in the released version of R I'll have to go with a workaround for now even if the regex can be updated. It would be great if ",
+      "thread_id": "thread-a67da37576b1",
+      "thread_depth": 3,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-1e3eb0f348ec",
+      "message_id": "<6180031c-3bda-4d5e-9644-5b041c81275c@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2025-08-08T05:00:35-04:00",
+      "subject": "[Rd] overriding built in Rbuildignore values",
+      "subject_clean": "overriding built in Rbuildignore values",
+      "in_reply_to": "<AF4BAC02-F5C5-470E-8829-BE0DD6A48DD5@mrc-lmb.cam.ac.uk>",
+      "references": [
+        "<4CC81DC0-0114-48F8-B7A3-254C257E519F@mrc-lmb.cam.ac.uk>",
+        "<26772.62544.35769.90391@rob.eddelbuettel.com>",
+        "<26772.64076.368358.390924@rob.eddelbuettel.com>",
+        "<AF4BAC02-F5C5-470E-8829-BE0DD6A48DD5@mrc-lmb.cam.ac.uk>"
+      ],
+      "body_plain": "This is one reason why it's good to test devel, alpha and beta versions \nbefore release.\n\nIt's also a good idea to read the news items as they are added.  You can \ndo that at pages linked from \nhttps://developer.r-project.org/RSSfeeds.html, or using an RSS reader.\n\nIn this case I don't think the news item would have signalled a problem, \nsince it didn't list the new patterns:\n\n\"?R CMD build <pkg>? excludes more file patterns when it tars the <pkg> \ndirectory, fixing both PR#18432 and PR#18434, for ?vim? and ?GNU Global? \n?emacs? users, thanks to Dirk Eddelbuettel's patch. \"\n\nbut often there's enough info there to at least encourage some tests.\n\nDuncan Murdoch\n\nOn 2025-08-08 4:18 a.m., Dr Gregory Jefferis wrote:\n> Thanks for the suggestions, Dirk and also Ivan. Given that this change is in the released version of R I'll have to go with a workaround for now even if the regex can be updated. It would be great if the regex could be updated because I think the new one really does catch more than it should.\n> \n> The workaround is quite a dance because it means that I have to do a setup/teardown before my tests. I can do this once for the whole test suite, but then it means that I can't conveniently run individual tests during development. I have tens of separate tests using these files so running a setup/teardown for each individual test would require a significant amount of additional code tweaking.\n> \n> Best wishes,\n> \n> Greg.\n> \n> On 7 Aug 2025, at 20:11, Dirk Eddelbuettel wrote:\n> \n>> PS: There is a bit of discussion of this (for vim) at [1] with the general\n>> rule(s) and a code snippet from vim. One suggestion is to use '*.sw[g-p]' to\n>> spare .swf files for Flash [2]. So we could honour your .swc via '*.sw[d-p]'.\n>>\n>> But it seems to me that you may still be better off avoiding this by renaming\n>> or archiving these files.  Thoughts?\n>>\n>> Dirk\n>>\n>>\n>> [1] https://unix.stackexchange.com/questions/326707/vim-what-are-all-the-possible-swapfile-extensions\n>> [2] It's an old discussion\n>>\n>> -- \n>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org\n> \n> \n> --\n> Gregory Jefferis, PhD                   Tel: +44 1223 267048\n> Division of Neurobiology\n> MRC Laboratory of Molecular Biology\n> Francis Crick Avenue\n> Cambridge Biomedical Campus\n> Cambridge, CB2 0QH, UK\n> \n> http://www2.mrc-lmb.cam.ac.uk/group-leaders/h-to-m/g-jefferis\n> http://jefferislab.org\n> http://www.zoo.cam.ac.uk/research/groups/connectomics\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "This is one reason why it's good to test devel, alpha and beta versions \nbefore release.\n\nIt's also a good idea to read the news items as they are added.  You can \ndo that at pages linked from \nhttps:",
+      "thread_id": "thread-a67da37576b1",
+      "thread_depth": 4,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-1c4709e43046",
+      "message_id": "<26774.5851.597736.498735@rob.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2025-08-08T10:25:15-05:00",
+      "subject": "[Rd] overriding built in Rbuildignore values",
+      "subject_clean": "overriding built in Rbuildignore values",
+      "in_reply_to": "<AF4BAC02-F5C5-470E-8829-BE0DD6A48DD5@mrc-lmb.cam.ac.uk>",
+      "references": [
+        "<4CC81DC0-0114-48F8-B7A3-254C257E519F@mrc-lmb.cam.ac.uk>",
+        "<26772.62544.35769.90391@rob.eddelbuettel.com>",
+        "<26772.64076.368358.390924@rob.eddelbuettel.com>",
+        "<AF4BAC02-F5C5-470E-8829-BE0DD6A48DD5@mrc-lmb.cam.ac.uk>"
+      ],
+      "body_plain": "On 8 August 2025 at 09:18, Dr Gregory Jefferis wrote:\n| The workaround is quite a dance because it means that I have to do a setup/teardown before my tests. I can do this once for the whole test suite, but then it means that I can't conveniently run individual tests during development. I have tens of separate tests using these files so running a setup/teardown for each individual test would require a significant amount of additional code tweaking.\n\nAdvertisement here: I use (and quite like) tinytest for its philosophy of 'it\nis just a script' which allows me precisely to test individual test file, or\nthe whole directory, or the installed package, or ...  Works for me, even\nafter dozens of packages used and years of practice with it. Worth a try.\n\nSo (riffing here, untested) I would add a simple 'if (!dir.exists(untarred))\nuntar_swc_files(untarred)' at the top of each test file.  And by placing\n'untarred' in an R temporary directory you get the cleanup for free.  Now in\nreal life there will be dragons but this may give you and idea for a start.\n\nCheers, Dirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "On 8 August 2025 at 09:18, Dr Gregory Jefferis wrote:\n| The workaround is quite a dance because it means that I have to do a setup/teardown before my tests. I can do this once for the whole test suite",
+      "thread_id": "thread-a67da37576b1",
+      "thread_depth": 4,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-f0de67cca72e",
+      "message_id": "<20250810164620.42537054@trisector>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2025-08-10T16:46:20+03:00",
+      "subject": "[Rd] overriding built in Rbuildignore values",
+      "subject_clean": "overriding built in Rbuildignore values",
+      "in_reply_to": "<26773.8512.815394.33152@rob.eddelbuettel.com>",
+      "references": [
+        "<4CC81DC0-0114-48F8-B7A3-254C257E519F@mrc-lmb.cam.ac.uk>",
+        "<26772.62544.35769.90391@rob.eddelbuettel.com>",
+        "<26772.64076.368358.390924@rob.eddelbuettel.com>",
+        "<20250807230717.1e42ffff@Tarkus>",
+        "<26773.8512.815394.33152@rob.eddelbuettel.com>"
+      ],
+      "body_plain": "On Thu, 7 Aug 2025 16:57:20 -0500\nDirk Eddelbuettel <edd at debian.org> wrote:\n\n> I trust you checked that 'perl = TRUE' applies also to these entries\n> from tools:::get_exclude_patterns() ?\n\nIt does: tools:::inRbuildignore() uses perl = TRUE and I've tested the\npattern in an .Rbuildignore file with an older version of R.\n\nFor completeness, this should cover all swap files that Vim could\ncreate with the 'shortname' option unset:\n\nIndex: src/library/tools/R/build.R\n===================================================================\n--- src/library/tools/R/build.R\t(revision 88556)\n+++ src/library/tools/R/build.R\t(working copy)\n@@ -54,8 +54,11 @@\n     c(\"^\\\\.Rbuildignore$\",\n       \"(^|/)\\\\.DS_Store$\",\n       \"^\\\\.(RData|Rhistory)$\",\n-      \"~$\", \"\\\\.bak$\", \"\\\\.sw.$\",\n+      \"~$\", \"\\\\.bak$\",\n       \"(^|/)\\\\.#[^/]*$\", \"(^|/)#[^/]*#$\",\n+      ## Vim\n+      \"(^|/)([.][^/]+|_)?[.]sw[a-p]$\",\n+      \"(^|/)([.][^/]+|_)?[.]s[a-v][a-z]$\",\n       ## Outdated ...\n       \"^TITLE$\", \"^data/00Index$\",\n       \"^inst/doc/00Index\\\\.dcf$\",\n\nOn Windows, swapfiles for unnamed buffers are named _.swp (and so on)\ninstead of .swp (and so on), even with the 'shortname' option unset.\n\nThis gives us test cases:\n\n.swp\n.foo.txt.swo\nsrc/.bar.c.swn\ninst/not-a-swapfile.swc\ninst/.not-a-swapfile.swc.swc\n.saa\n_.saa\n\nWith the 'shortname' option set, collisions are possible: a swapfile\ncould be named foo_txt.swc. Hopefully nobody develops R packages using\nVim on an 8.3 filesystem.\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "On Thu, 7 Aug 2025 16:57:20 -0500\nDirk Eddelbuettel <edd at debian.org> wrote:\n\n> I trust you checked that 'perl = TRUE' applies also to these entries\n> from tools:::get_exclude_patterns() ?\n\nIt does:",
+      "thread_id": "thread-a67da37576b1",
+      "thread_depth": 5,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-ad072534800b",
+      "message_id": "<CAJqKk21Mk_h7NQyhD8i-BOGtYZVv5JonX2wRpe5ynUmR+FLhKg@mail.gmail.com>",
+      "from_name": "Hernando Cortina",
+      "from_email_hash": "83f4a978ea7cb78dca8d1cab8f8e34da82bd7fdce55115b7d686baa03dc990d9",
+      "date": "2025-08-10T12:29:33-04:00",
+      "subject": "[Rd] Including mode='wb' in download.file() for .xlsx files on Windows ?",
+      "subject_clean": "Including mode='wb' in download.file() for .xlsx files on Windows ?",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hello all, regarding download.file():\n\nOn Windows, if mode is not supplied (missing()) and url ends in one of\n??.gz??, ??.bz2??, ??.xz??, ??.tgz??, ??.zip??, ??.jar??, ??.rda??,\n??.rds??, ??.RData?? or ??.pdf??, mode = \"wb\" is set so that a binary\ntransfer is done to help unwary users.\n\nMay I suggest possibly including .xlsx files to the list of extensions\nthat get this treatment?\n\nDownloading such files may be a quite common activity in the R\ncommunity and having to manually add mode=?wb? may indeed catch\nWindows users unaware, particularly if they are coming from Linux or\nMac where this is not necessary.\n\nI understand that it?s hard to know when to stop when adding\nadditional extensions.  That said, .xlsx is quite ubiquitous in the\nwild and standardized under ECMA-376.\n\nI hope this might be helpful to others, and thank you for your consideration.\nHernando\n---------------\n\n The change in src/library/utils/R/Windows/download.file.R would be:\n\n?\n\nif(missing(mode) && length(grep(\"\\\\.(gz|bz2|xz|tgz|zip|jar|rd[as]|RData|xlsx)$\",\n\n                    URLdecode(url))))\n\n        mode <- \"wb\"\n\n?",
+      "body_snippet": "Hello all, regarding download.file():\n\nOn Windows, if mode is not supplied (missing()) and url ends in one of\n??.gz??, ??.bz2??, ??.xz??, ??.tgz??, ??.zip??, ??.jar??, ??.rda??,\n??.rds??, ??.RData?? o",
+      "thread_id": "thread-ad072534800b",
+      "thread_depth": 0,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-130fe69296c8",
+      "message_id": "<CAN6Gc-20B82J4E-3_Esqy2A6cxC8HF-2gd6jfdQUjk99aAYf2g@mail.gmail.com>",
+      "from_name": "Paul McQuesten",
+      "from_email_hash": "53ea2233abf46281b94183af398b3adc442234d914ed239a21bbdf278614976f",
+      "date": "2025-08-10T13:37:36-05:00",
+      "subject": "[Rd] Including mode='wb' in download.file() for .xlsx files on Windows ?",
+      "subject_clean": "Including mode='wb' in download.file() for .xlsx files on Windows ?",
+      "in_reply_to": "<IA1PR12MB62094D1DED0ACC2B989EA12F8829A@IA1PR12MB6209.namprd12.prod.outlook.com>",
+      "references": [
+        "<CAJqKk21Mk_h7NQyhD8i-BOGtYZVv5JonX2wRpe5ynUmR+FLhKg@mail.gmail.com>",
+        "<CAN6Gc-29ZxKtXSCJQnYJpx9An2u=oaTq6EAeqZs3DhDx1t7=Fw@mail.gmail.com>",
+        "<IA1PR12MB62094D1DED0ACC2B989EA12F8829A@IA1PR12MB6209.namprd12.prod.outlook.com>"
+      ],
+      "body_plain": "Perhaps it would be simpler, and more future-proof, for R to always\ndownload as binary.\nAre there any modern consumers of text files that are bothered by '\\r\\n'?\nOr even Macintosh '\\r' line terminators?\n\nOn Sun, Aug 10, 2025 at 1:22?PM Hernando Cortina <hch at alum.mit.edu> wrote:\n\n> Yes, .docx and .pptx are part of the same specification.\n>\n>\n>\n> Kind regards\n>\n> Hernando\n>\n>\n>\n> *From: *Paul McQuesten <mcquesten at gmail.com>\n> *Date: *Sunday, August 10, 2025 at 1:34?PM\n> *To: *Hernando Cortina <hch at alum.mit.edu>\n> *Subject: *Re: [Rd] Including mode='wb' in download.file() for .xlsx\n> files on Windows ?\n>\n> IIUC, '.docx' files are also binary?\n>\n>\n>\n> On Sun, Aug 10, 2025 at 11:29?AM Hernando Cortina <hcortina71 at gmail.com>\n> wrote:\n>\n> Hello all, regarding download.file():\n>\n> On Windows, if mode is not supplied (missing()) and url ends in one of\n> ??.gz??, ??.bz2??, ??.xz??, ??.tgz??, ??.zip??, ??.jar??, ??.rda??,\n> ??.rds??, ??.RData?? or ??.pdf??, mode = \"wb\" is set so that a binary\n> transfer is done to help unwary users.\n>\n> May I suggest possibly including .xlsx files to the list of extensions\n> that get this treatment?\n>\n> Downloading such files may be a quite common activity in the R\n> community and having to manually add mode=?wb? may indeed catch\n> Windows users unaware, particularly if they are coming from Linux or\n> Mac where this is not necessary.\n>\n> I understand that it?s hard to know when to stop when adding\n> additional extensions.  That said, .xlsx is quite ubiquitous in the\n> wild and standardized under ECMA-376.\n>\n> I hope this might be helpful to others, and thank you for your\n> consideration.\n> Hernando\n> ---------------\n>\n>  The change in src/library/utils/R/Windows/download.file.R would be:\n>\n> ?\n>\n> if(missing(mode) &&\n> length(grep(\"\\\\.(gz|bz2|xz|tgz|zip|jar|rd[as]|RData|xlsx)$\",\n>\n>                     URLdecode(url))))\n>\n>         mode <- \"wb\"\n>\n> ?\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Perhaps it would be simpler, and more future-proof, for R to always\ndownload as binary.\nAre there any modern consumers of text files that are bothered by '\\r\\n'?\nOr even Macintosh '\\r' line terminator",
+      "thread_id": "thread-130fe69296c8",
+      "thread_depth": 0,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-410c8c00f728",
+      "message_id": "<BFD25B18-A47D-4F68-A489-3934F22B7FE1@gmail.com>",
+      "from_name": "Avraham Adler",
+      "from_email_hash": "63266ae79d1743f1496b756da3e3df9582595f717d74d4d823b698d61ef74096",
+      "date": "2025-08-10T14:52:49-04:00",
+      "subject": "[Rd] Including mode='wb' in download.file() for .xlsx files on Windows ?",
+      "subject_clean": "Including mode='wb' in download.file() for .xlsx files on Windows ?",
+      "in_reply_to": "<CAN6Gc-20B82J4E-3_Esqy2A6cxC8HF-2gd6jfdQUjk99aAYf2g@mail.gmail.com>",
+      "references": [
+        "<CAN6Gc-20B82J4E-3_Esqy2A6cxC8HF-2gd6jfdQUjk99aAYf2g@mail.gmail.com>"
+      ],
+      "body_plain": "If I recall correctly, xlsx files are XML. It is the xls/xlsb files which are binary. \n\nhttps://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/2c5dee00-eff2-4b22-92b6-0738acd4475e\n\nSent from my iPhone\n\n> On Aug 10, 2025, at 2:38?PM, Paul McQuesten <mcquesten at gmail.com> wrote:\n> \n> ?Perhaps it would be simpler, and more future-proof, for R to always\n> download as binary.\n> Are there any modern consumers of text files that are bothered by '\\r\\n'?\n> Or even Macintosh '\\r' line terminators?\n> \n>> On Sun, Aug 10, 2025 at 1:22?PM Hernando Cortina <hch at alum.mit.edu> wrote:\n>> \n>> Yes, .docx and .pptx are part of the same specification.\n>> \n>> \n>> \n>> Kind regards\n>> \n>> Hernando\n>> \n>> \n>> \n>> *From: *Paul McQuesten <mcquesten at gmail.com>\n>> *Date: *Sunday, August 10, 2025 at 1:34?PM\n>> *To: *Hernando Cortina <hch at alum.mit.edu>\n>> *Subject: *Re: [Rd] Including mode='wb' in download.file() for .xlsx\n>> files on Windows ?\n>> \n>> IIUC, '.docx' files are also binary?\n>> \n>> \n>> \n>> On Sun, Aug 10, 2025 at 11:29?AM Hernando Cortina <hcortina71 at gmail.com>\n>> wrote:\n>> \n>> Hello all, regarding download.file():\n>> \n>> On Windows, if mode is not supplied (missing()) and url ends in one of\n>> ??.gz??, ??.bz2??, ??.xz??, ??.tgz??, ??.zip??, ??.jar??, ??.rda??,\n>> ??.rds??, ??.RData?? or ??.pdf??, mode = \"wb\" is set so that a binary\n>> transfer is done to help unwary users.\n>> \n>> May I suggest possibly including .xlsx files to the list of extensions\n>> that get this treatment?\n>> \n>> Downloading such files may be a quite common activity in the R\n>> community and having to manually add mode=?wb? may indeed catch\n>> Windows users unaware, particularly if they are coming from Linux or\n>> Mac where this is not necessary.\n>> \n>> I understand that it?s hard to know when to stop when adding\n>> additional extensions.  That said, .xlsx is quite ubiquitous in the\n>> wild and standardized under ECMA-376.\n>> \n>> I hope this might be helpful to others, and thank you for your\n>> consideration.\n>> Hernando\n>> ---------------\n>> \n>> The change in src/library/utils/R/Windows/download.file.R would be:\n>> \n>> ?\n>> \n>> if(missing(mode) &&\n>> length(grep(\"\\\\.(gz|bz2|xz|tgz|zip|jar|rd[as]|RData|xlsx)$\",\n>> \n>>                    URLdecode(url))))\n>> \n>>        mode <- \"wb\"\n>> \n>> ?\n>> \n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>> \n>> \n> \n>    [[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "If I recall correctly, xlsx files are XML. It is the xls/xlsb files which are binary. \n\nhttps://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/2c5dee00-eff2-4b22-92b6-0738acd4475e\n\nSent ",
+      "thread_id": "thread-130fe69296c8",
+      "thread_depth": 1,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-f312b8544619",
+      "message_id": "<5f798570-2910-4c56-85a0-9526f084e925@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2025-08-10T15:22:03-04:00",
+      "subject": "[Rd] Issues with tempdir() using short path names",
+      "subject_clean": "Issues with tempdir() using short path names",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I recently found out about Paul Murrell's excellent xdvir package that \nrenders LaTeX in a graphics device.  I thought this would be useful and \nput a wrapper around the latexGrob() function into rgl.\n\nTesting it on Github workflows worked fine on Ubuntu and MacOS runners, \nbut failed on Windows.  Here's a typical error message:\n\n> This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex)\n>    restricted \\write18 enabled.\n>   entering extended mode\n>   Error: LaTeX failed to compile C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\Rtmp6TD7wY/working_dir\\RtmpmitpVG\\file130053037941.tex. See https://yihui.org/tinytex/r/#debugging for debugging tips.\n>   Execution halted\n\n(taken from \nhttps://github.com/dmurdoch/rgl/actions/runs/16861206133/job/47761646553).\n\nAfter a long series of experiments, I think I found the cause:  xdvir \ncreates a file in tempdir(), and passes it to lualatex or xelatex (along \nwith various command line options).  If that file contains the \n\"RUNNER~1\" directory, which is the 8.3 form of \"runneradmin\", the \ncompile fails.\n\nI have a workaround for this: I setwd(tempdir()) and use the basename of \nthe temp file.\n\nAnother workaround that I tried doesn't work:  normalizePath(tempfile()) \ngenerally does nothing, because normalizePath() won't modify a path that \ndoesn't exist.  If I write to the tempfile() and then normalize the \nname, that does work.\n\nI think there are one or more bugs here that should be fixed.  I'm just \nnot sure what they are.\n\nIs it a bug in TeXLive 2025, that those programs won't accept short \nnames?  Or has Windows deprecated them, and R shouldn't be producing \nthem?  Is it a bug that tempfile() doesn't produce a normalized path?\n\nDuncan Murdoch",
+      "body_snippet": "I recently found out about Paul Murrell's excellent xdvir package that \nrenders LaTeX in a graphics device.  I thought this would be useful and \nput a wrapper around the latexGrob() function into rgl.",
+      "thread_id": "thread-f312b8544619",
+      "thread_depth": 0,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-22c3a70769c2",
+      "message_id": "<BL3PR16MB4427687D555D1F3C2102E064A829A@BL3PR16MB4427.namprd16.prod.outlook.com>",
+      "from_name": "Hernando Cortina",
+      "from_email_hash": "83f4a978ea7cb78dca8d1cab8f8e34da82bd7fdce55115b7d686baa03dc990d9",
+      "date": "2025-08-10T19:36:11Z",
+      "subject": "[Rd] Including mode='wb' in download.file() for .xlsx files on Windows ?",
+      "subject_clean": "Including mode='wb' in download.file() for .xlsx files on Windows ?",
+      "in_reply_to": "<BFD25B18-A47D-4F68-A489-3934F22B7FE1@gmail.com>",
+      "references": [
+        "<CAN6Gc-20B82J4E-3_Esqy2A6cxC8HF-2gd6jfdQUjk99aAYf2g@mail.gmail.com>",
+        "<BFD25B18-A47D-4F68-A489-3934F22B7FE1@gmail.com>"
+      ],
+      "body_plain": "Thank you Avraham, .xlsx are zipped xml files so wb is required for it to be readable.\n\nKind regards\nHernando\n\n________________________________\nFrom: R-devel <r-devel-bounces at r-project.org> on behalf of Avraham Adler <avraham.adler at gmail.com>\nSent: Sunday, August 10, 2025 2:52:49 PM\nTo: Paul McQuesten <mcquesten at gmail.com>\nCc: R-devel <r-devel at r-project.org>; Hernando Cortina <hch at alum.mit.edu>\nSubject: Re: [Rd] Including mode='wb' in download.file() for .xlsx files on Windows ?\n\nIf I recall correctly, xlsx files are XML. It is the xls/xlsb files which are binary.\n\nhttps://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/2c5dee00-eff2-4b22-92b6-0738acd4475e\n\nSent from my iPhone\n\n> On Aug 10, 2025, at 2:38?PM, Paul McQuesten <mcquesten at gmail.com> wrote:\n>\n> ?Perhaps it would be simpler, and more future-proof, for R to always\n> download as binary.\n> Are there any modern consumers of text files that are bothered by '\\r\\n'?\n> Or even Macintosh '\\r' line terminators?\n>\n>> On Sun, Aug 10, 2025 at 1:22?PM Hernando Cortina <hch at alum.mit.edu> wrote:\n>>\n>> Yes, .docx and .pptx are part of the same specification.\n>>\n>>\n>>\n>> Kind regards\n>>\n>> Hernando\n>>\n>>\n>>\n>> *From: *Paul McQuesten <mcquesten at gmail.com>\n>> *Date: *Sunday, August 10, 2025 at 1:34?PM\n>> *To: *Hernando Cortina <hch at alum.mit.edu>\n>> *Subject: *Re: [Rd] Including mode='wb' in download.file() for .xlsx\n>> files on Windows ?\n>>\n>> IIUC, '.docx' files are also binary?\n>>\n>>\n>>\n>> On Sun, Aug 10, 2025 at 11:29?AM Hernando Cortina <hcortina71 at gmail.com>\n>> wrote:\n>>\n>> Hello all, regarding download.file():\n>>\n>> On Windows, if mode is not supplied (missing()) and url ends in one of\n>> ??.gz??, ??.bz2??, ??.xz??, ??.tgz??, ??.zip??, ??.jar??, ??.rda??,\n>> ??.rds??, ??.RData?? or ??.pdf??, mode = \"wb\" is set so that a binary\n>> transfer is done to help unwary users.\n>>\n>> May I suggest possibly including .xlsx files to the list of extensions\n>> that get this treatment?\n>>\n>> Downloading such files may be a quite common activity in the R\n>> community and having to manually add mode=?wb? may indeed catch\n>> Windows users unaware, particularly if they are coming from Linux or\n>> Mac where this is not necessary.\n>>\n>> I understand that it?s hard to know when to stop when adding\n>> additional extensions.  That said, .xlsx is quite ubiquitous in the\n>> wild and standardized under ECMA-376.\n>>\n>> I hope this might be helpful to others, and thank you for your\n>> consideration.\n>> Hernando\n>> ---------------\n>>\n>> The change in src/library/utils/R/Windows/download.file.R would be:\n>>\n>> ?\n>>\n>> if(missing(mode) &&\n>> length(grep(\"\\\\.(gz|bz2|xz|tgz|zip|jar|rd[as]|RData|xlsx)$\",\n>>\n>>                    URLdecode(url))))\n>>\n>>        mode <- \"wb\"\n>>\n>> ?\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>>\n>\n>    [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n        [[alternative HTML version deleted]]\n\n______________________________________________\nR-devel at r-project.org mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thank you Avraham, .xlsx are zipped xml files so wb is required for it to be readable.\n\nKind regards\nHernando\n\n________________________________\nFrom: R-devel <r-devel-bounces at r-project.org> on beha",
+      "thread_id": "thread-130fe69296c8",
+      "thread_depth": 2,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-929d48780441",
+      "message_id": "<CALWM=9aAQhioA=n1SiruBFGfgVVDGO2kWAA_sAXU_Fw=PHUChQ@mail.gmail.com>",
+      "from_name": "Tomasz Kalinowski",
+      "from_email_hash": "46e35b0b89f0e0b22bb77067aaf9d3cf19d76691b54aa53f4f7e859e8c6af91f",
+      "date": "2025-08-11T15:23:49-04:00",
+      "subject": "[Rd] An iteration protocol",
+      "subject_clean": "An iteration protocol",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hi all,\n\nA while back, Hadley and I explored what an iteration protocol for R\nmight look like. We worked through motivations, design choices, and edge\ncases, which we documented here:\nhttps://github.com/t-kalinowski/r-iterator-ideas\n\nAt the end of this process, I put together a patch to R (with tests) and\nwould like to invite feedback from R Core and the broader community:\nhttps://github.com/r-devel/r-svn/pull/130/files?diff=unified&w=1\n\nIn summary, the overall design is a minimal patch. It introduces no\nbreaking changes and essentially no new overhead. There are two parts.\n\n1.  Add a new `as.iterable()` S3 generic, with a default identity\n    method. This provides a user-extensible mechanism for selectively\n    changing the iteration behavior for some object types passed to\n    `for`. `as.iterable()` methods are expected to return anything that\n    `for` can handle directly, namely, vectors or pairlists, or (new) a\n    closure.\n\n2.  `for` gains the ability to accept a closure for the iterable\n    argument. A closure is called repeatedly for each loop iteration\n    until the closure returns an `exhausted` sentinel value, which it\n    received as an input argument.\n\nHere is a small example of using the iteration protocol to implement a\nsequence of random samples:\n\n``` r\nSampleSequence <- function(n) {\n  i <- 0\n  function(done = NULL) {\n    if (i >= n) {\n      return(done)\n    }\n    i <<- i + 1\n    runif(1)\n  }\n}\n\nfor(sample in SampleSequence(2)) {\n  print(sample)\n}\n\n# [1] 0.7677586\n# [1] 0.355592\n```\n\nBest,\nTomasz",
+      "body_snippet": "Hi all,\n\nA while back, Hadley and I explored what an iteration protocol for R\nmight look like. We worked through motivations, design choices, and edge\ncases, which we documented here:\nhttps://github.c",
+      "thread_id": "thread-929d48780441",
+      "thread_depth": 0,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-baeaf6a671a7",
+      "message_id": "<c9a028a2-f3a6-4b87-a6f3-ecc0dc54c922@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2025-08-11T16:15:39-04:00",
+      "subject": "[Rd] An iteration protocol",
+      "subject_clean": "An iteration protocol",
+      "in_reply_to": "<CALWM=9aAQhioA=n1SiruBFGfgVVDGO2kWAA_sAXU_Fw=PHUChQ@mail.gmail.com>",
+      "references": [
+        "<CALWM=9aAQhioA=n1SiruBFGfgVVDGO2kWAA_sAXU_Fw=PHUChQ@mail.gmail.com>"
+      ],
+      "body_plain": "1. I'm not sure I see the need for the syntax change.  Couldn't this all \nbe done in a while or repeat loop?  E.g. your example could keep the \nsame definition of SampleSequence, then\n\n  iterator <- SampleSequence(2)\n  repeat {\n    sample <- iterator()\n    if (is.null(sample)) break\n    print(sample)\n  }\n\nNot as simple as yours, but I think a little clearer because it's more \nconcrete, less abstract.\n\n2. It's not clear to me how the for() loop chooses a value to pass to \nthe iterator function. (Sorry, I couldn't figure it out from your \npatch.) Is \"exhausted\" a unique value produced each time for() is \ncalled?  Is it guaranteed to be unique?  What does a user see if they \nlook at it?\n\nDuncan Murdoch\n\n\nOn 2025-08-11 3:23 p.m., Tomasz Kalinowski wrote:\n> Hi all,\n> \n> A while back, Hadley and I explored what an iteration protocol for R\n> might look like. We worked through motivations, design choices, and edge\n> cases, which we documented here:\n> https://github.com/t-kalinowski/r-iterator-ideas\n> \n> At the end of this process, I put together a patch to R (with tests) and\n> would like to invite feedback from R Core and the broader community:\n> https://github.com/r-devel/r-svn/pull/130/files?diff=unified&w=1\n> \n> In summary, the overall design is a minimal patch. It introduces no\n> breaking changes and essentially no new overhead. There are two parts.\n> \n> 1.  Add a new `as.iterable()` S3 generic, with a default identity\n>      method. This provides a user-extensible mechanism for selectively\n>      changing the iteration behavior for some object types passed to\n>      `for`. `as.iterable()` methods are expected to return anything that\n>      `for` can handle directly, namely, vectors or pairlists, or (new) a\n>      closure.\n> \n> 2.  `for` gains the ability to accept a closure for the iterable\n>      argument. A closure is called repeatedly for each loop iteration\n>      until the closure returns an `exhausted` sentinel value, which it\n>      received as an input argument.\n> \n> Here is a small example of using the iteration protocol to implement a\n> sequence of random samples:\n> \n> ``` r\n> SampleSequence <- function(n) {\n>    i <- 0\n>    function(done = NULL) {\n>      if (i >= n) {\n>        return(done)\n>      }\n>      i <<- i + 1\n>      runif(1)\n>    }\n> }\n> \n> for(sample in SampleSequence(2)) {\n>    print(sample)\n> }\n> \n> # [1] 0.7677586\n> # [1] 0.355592\n> ```\n> \n> Best,\n> Tomasz\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "1. I'm not sure I see the need for the syntax change.  Couldn't this all \nbe done in a while or repeat loop?  E.g. your example could keep the \nsame definition of SampleSequence, then\n\n  iterator <- S",
+      "thread_id": "thread-929d48780441",
+      "thread_depth": 1,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-c5dceeed6fb5",
+      "message_id": "<CAJf4E3rxnm0NycyoZQ0i7iXJC+JNqVDp2vtSPGL9cAFSdM3HKA@mail.gmail.com>",
+      "from_name": "Lionel Henry",
+      "from_email_hash": "31aa2854f2ce84b6521d6216e48edd6142cda22cee17b4ba13b1b5b224556d6c",
+      "date": "2025-08-11T20:56:22-04:00",
+      "subject": "[Rd] An iteration protocol",
+      "subject_clean": "An iteration protocol",
+      "in_reply_to": "<CALWM=9aAQhioA=n1SiruBFGfgVVDGO2kWAA_sAXU_Fw=PHUChQ@mail.gmail.com>",
+      "references": [
+        "<CALWM=9aAQhioA=n1SiruBFGfgVVDGO2kWAA_sAXU_Fw=PHUChQ@mail.gmail.com>"
+      ],
+      "body_plain": "Hello,\n\nA couple of comments:\n\n- Regarding the closure + sentinel approach, also implemented in coro\n  (https://github.com/r-lib/coro/blob/main/R/iterator.R), it's more\nrobust for the\n  sentinel to always be a temporary value. If you store the sentinel\nin a list or\n  a namespace, it might inadvertently close iterators when iterating over that\n  collection. That's why the coro sentinel is created with `coro::exhausted()`\n  rather than exported from the namespace as a constant object. The sentinel can\n  be equivalently created with `as.symbol(\".__exhausted__.\")`, the main thing to\n  ensure robustness is to avoid storing it and always create it from scratch.\n\n  The approach of passing the sentinel by argument (which I see in the example\n  in your mail but not in the linked documentation of approach 3) also\nworks if the\n  iterator loop passes a unique sentinel. Having a default of `NULL` makes it\n  likely to get unexpected exhaustion of iterators when a sentinel is not passed\n  in though.\n\n- It's very useful to _close_ iterators for resource cleanup. It's the\nresponsibility of an iterator loop (e.g. `for` but could be other custom tools\ninvoking the iterator) to close them. See https://github.com/r-lib/coro/pull/58\nfor an interesting application of iterator closing, allowing robust support of\n`on.exit()` expressions in coro generators.\n\n  To implement iterator closing with the closure approach, an iterator may\n  optionally take a `close` argument. A `true` value is passed on exit,\n  instructing the iterator to clean up resources.\n\nBest,\nLionel\n\nOn Mon, Aug 11, 2025 at 3:24?PM Tomasz Kalinowski <kalinowskit at gmail.com> wrote:\n>\n> Hi all,\n>\n> A while back, Hadley and I explored what an iteration protocol for R\n> might look like. We worked through motivations, design choices, and edge\n> cases, which we documented here:\n> https://github.com/t-kalinowski/r-iterator-ideas\n>\n> At the end of this process, I put together a patch to R (with tests) and\n> would like to invite feedback from R Core and the broader community:\n> https://github.com/r-devel/r-svn/pull/130/files?diff=unified&w=1\n>\n> In summary, the overall design is a minimal patch. It introduces no\n> breaking changes and essentially no new overhead. There are two parts.\n>\n> 1.  Add a new `as.iterable()` S3 generic, with a default identity\n>     method. This provides a user-extensible mechanism for selectively\n>     changing the iteration behavior for some object types passed to\n>     `for`. `as.iterable()` methods are expected to return anything that\n>     `for` can handle directly, namely, vectors or pairlists, or (new) a\n>     closure.\n>\n> 2.  `for` gains the ability to accept a closure for the iterable\n>     argument. A closure is called repeatedly for each loop iteration\n>     until the closure returns an `exhausted` sentinel value, which it\n>     received as an input argument.\n>\n> Here is a small example of using the iteration protocol to implement a\n> sequence of random samples:\n>\n> ``` r\n> SampleSequence <- function(n) {\n>   i <- 0\n>   function(done = NULL) {\n>     if (i >= n) {\n>       return(done)\n>     }\n>     i <<- i + 1\n>     runif(1)\n>   }\n> }\n>\n> for(sample in SampleSequence(2)) {\n>   print(sample)\n> }\n>\n> # [1] 0.7677586\n> # [1] 0.355592\n> ```\n>\n> Best,\n> Tomasz\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Hello,\n\nA couple of comments:\n\n- Regarding the closure + sentinel approach, also implemented in coro\n  (https://github.com/r-lib/coro/blob/main/R/iterator.R), it's more\nrobust for the\n  sentinel to al",
+      "thread_id": "thread-929d48780441",
+      "thread_depth": 1,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-69f7e00a8a4c",
+      "message_id": "<CAJoaRha8pQq_pOUFA1JYe+MBU3opbGMSLpEC3VoLFXfMUx4LFw@mail.gmail.com>",
+      "from_name": "Peter Meilstrup",
+      "from_email_hash": "78f47c0efda86325cad49af200d5659ce4c8754398fc0ebcd4500c64246100e9",
+      "date": "2025-08-11T22:45:11-07:00",
+      "subject": "[Rd] An iteration protocol",
+      "subject_clean": "An iteration protocol",
+      "in_reply_to": "<CAJf4E3rxnm0NycyoZQ0i7iXJC+JNqVDp2vtSPGL9cAFSdM3HKA@mail.gmail.com>",
+      "references": [
+        "<CALWM=9aAQhioA=n1SiruBFGfgVVDGO2kWAA_sAXU_Fw=PHUChQ@mail.gmail.com>",
+        "<CAJf4E3rxnm0NycyoZQ0i7iXJC+JNqVDp2vtSPGL9cAFSdM3HKA@mail.gmail.com>"
+      ],
+      "body_plain": "Passing the sentinel value as an argument to the iteration method is\nthe approach taken in my package `iterors` on CRAN. If the sentinel\nvalue argument is evaluated lazily, this lets you pass calls to things\nlike 'stop', 'break' or 'return,' which will be called to signal end\nof iteration. This makes for some nice compact and performant\niteration idioms:\n\niter <- as.iteror(obj)\ntotal <- 0\nrepeat {total <- total + nextOr(iter, break)}\n\nNote that iteror is just a closure with one optional argument and a\nclass attribute, so you can skip using s3 nextOr method and call it\ndirectly:\n\nnextElem <- as.iteror(obj)\nrepeat {total <- total + nextElem(break)}\n\nFor backward compatibility with the iterators package, the default\nsentinel value for iterors is `stop(\"StopIteration\")`.\n\nNote that it is trivial to create a unique sentinel value -- any newly\ncreated closure (i.e. function() NULL) will do, as it will only\ncompare identical() with itself.\n\nsigil <- \\() NULL\nnext <- as.iteror(obj)\nwhile (!identical(item <-next(sigil), sigil)) {\n  doStuff(item)\n}\n\nPeter Meilstrup\n\nOn Mon, Aug 11, 2025 at 5:56?PM Lionel Henry via R-devel\n<r-devel at r-project.org> wrote:\n>\n> Hello,\n>\n> A couple of comments:\n>\n> - Regarding the closure + sentinel approach, also implemented in coro\n>   (https://github.com/r-lib/coro/blob/main/R/iterator.R), it's more\n> robust for the\n>   sentinel to always be a temporary value. If you store the sentinel\n> in a list or\n>   a namespace, it might inadvertently close iterators when iterating over that\n>   collection. That's why the coro sentinel is created with `coro::exhausted()`\n>   rather than exported from the namespace as a constant object. The sentinel can\n>   be equivalently created with `as.symbol(\".__exhausted__.\")`, the main thing to\n>   ensure robustness is to avoid storing it and always create it from scratch.\n>\n>   The approach of passing the sentinel by argument (which I see in the example\n>   in your mail but not in the linked documentation of approach 3) also\n> works if the\n>   iterator loop passes a unique sentinel. Having a default of `NULL` makes it\n>   likely to get unexpected exhaustion of iterators when a sentinel is not passed\n>   in though.\n>\n> - It's very useful to _close_ iterators for resource cleanup. It's the\n> responsibility of an iterator loop (e.g. `for` but could be other custom tools\n> invoking the iterator) to close them. See https://github.com/r-lib/coro/pull/58\n> for an interesting application of iterator closing, allowing robust support of\n> `on.exit()` expressions in coro generators.\n>\n>   To implement iterator closing with the closure approach, an iterator may\n>   optionally take a `close` argument. A `true` value is passed on exit,\n>   instructing the iterator to clean up resources.\n>\n> Best,\n> Lionel\n>\n> On Mon, Aug 11, 2025 at 3:24?PM Tomasz Kalinowski <kalinowskit at gmail.com> wrote:\n> >\n> > Hi all,\n> >\n> > A while back, Hadley and I explored what an iteration protocol for R\n> > might look like. We worked through motivations, design choices, and edge\n> > cases, which we documented here:\n> > https://github.com/t-kalinowski/r-iterator-ideas\n> >\n> > At the end of this process, I put together a patch to R (with tests) and\n> > would like to invite feedback from R Core and the broader community:\n> > https://github.com/r-devel/r-svn/pull/130/files?diff=unified&w=1\n> >\n> > In summary, the overall design is a minimal patch. It introduces no\n> > breaking changes and essentially no new overhead. There are two parts.\n> >\n> > 1.  Add a new `as.iterable()` S3 generic, with a default identity\n> >     method. This provides a user-extensible mechanism for selectively\n> >     changing the iteration behavior for some object types passed to\n> >     `for`. `as.iterable()` methods are expected to return anything that\n> >     `for` can handle directly, namely, vectors or pairlists, or (new) a\n> >     closure.\n> >\n> > 2.  `for` gains the ability to accept a closure for the iterable\n> >     argument. A closure is called repeatedly for each loop iteration\n> >     until the closure returns an `exhausted` sentinel value, which it\n> >     received as an input argument.\n> >\n> > Here is a small example of using the iteration protocol to implement a\n> > sequence of random samples:\n> >\n> > ``` r\n> > SampleSequence <- function(n) {\n> >   i <- 0\n> >   function(done = NULL) {\n> >     if (i >= n) {\n> >       return(done)\n> >     }\n> >     i <<- i + 1\n> >     runif(1)\n> >   }\n> > }\n> >\n> > for(sample in SampleSequence(2)) {\n> >   print(sample)\n> > }\n> >\n> > # [1] 0.7677586\n> > # [1] 0.355592\n> > ```\n> >\n> > Best,\n> > Tomasz\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Passing the sentinel value as an argument to the iteration method is\nthe approach taken in my package `iterors` on CRAN. If the sentinel\nvalue argument is evaluated lazily, this lets you pass calls to",
+      "thread_id": "thread-929d48780441",
+      "thread_depth": 2,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-d8467c775327",
+      "message_id": "<CAJf4E3pHk4oAS+1tEWh1Mwi0S2S9qWSz8zUXfywjygxcrSZORg@mail.gmail.com>",
+      "from_name": "Lionel Henry",
+      "from_email_hash": "31aa2854f2ce84b6521d6216e48edd6142cda22cee17b4ba13b1b5b224556d6c",
+      "date": "2025-08-12T05:20:39-04:00",
+      "subject": "[Rd] An iteration protocol",
+      "subject_clean": "An iteration protocol",
+      "in_reply_to": "<CAJoaRha8pQq_pOUFA1JYe+MBU3opbGMSLpEC3VoLFXfMUx4LFw@mail.gmail.com>",
+      "references": [
+        "<CALWM=9aAQhioA=n1SiruBFGfgVVDGO2kWAA_sAXU_Fw=PHUChQ@mail.gmail.com>",
+        "<CAJf4E3rxnm0NycyoZQ0i7iXJC+JNqVDp2vtSPGL9cAFSdM3HKA@mail.gmail.com>",
+        "<CAJoaRha8pQq_pOUFA1JYe+MBU3opbGMSLpEC3VoLFXfMUx4LFw@mail.gmail.com>"
+      ],
+      "body_plain": "Clever! If going for non-local returns, probably best for ergonomics to pass in\na closure (see e.g. `callCC()`). If only to avoid accidental jumps while\ndebugging.\n\nBut... do we need more lazy evaluation tricks in the language or fewer? It's\nprobably more idiomatic to express non-local returns with condition signals\nlike `stopIteration()`.\n\nThere's something to be said for explicit and simple control flow though, via\nhandling of returned values.\n\n\n> Note that it is trivial to create a unique sentinel value -- any newly\n> created closure (i.e. function() NULL) will do, as it will only\n> compare identical() with itself.\n\nUntil you try that in the global env right? Then the risk of collision slightly\nincreases. Unless you make your closure more unique via `body()`, but then might\nas well use a conventional sentinel.\n\nBest,\nLionel\n\nOn Tue, Aug 12, 2025 at 1:45?AM Peter Meilstrup\n<peter.meilstrup at gmail.com> wrote:\n>\n> Passing the sentinel value as an argument to the iteration method is\n> the approach taken in my package `iterors` on CRAN. If the sentinel\n> value argument is evaluated lazily, this lets you pass calls to things\n> like 'stop', 'break' or 'return,' which will be called to signal end\n> of iteration. This makes for some nice compact and performant\n> iteration idioms:\n>\n> iter <- as.iteror(obj)\n> total <- 0\n> repeat {total <- total + nextOr(iter, break)}\n>\n> Note that iteror is just a closure with one optional argument and a\n> class attribute, so you can skip using s3 nextOr method and call it\n> directly:\n>\n> nextElem <- as.iteror(obj)\n> repeat {total <- total + nextElem(break)}\n>\n> For backward compatibility with the iterators package, the default\n> sentinel value for iterors is `stop(\"StopIteration\")`.\n>\n> Note that it is trivial to create a unique sentinel value -- any newly\n> created closure (i.e. function() NULL) will do, as it will only\n> compare identical() with itself.\n>\n> sigil <- \\() NULL\n> next <- as.iteror(obj)\n> while (!identical(item <-next(sigil), sigil)) {\n>   doStuff(item)\n> }\n>\n> Peter Meilstrup\n>\n> On Mon, Aug 11, 2025 at 5:56?PM Lionel Henry via R-devel\n> <r-devel at r-project.org> wrote:\n> >\n> > Hello,\n> >\n> > A couple of comments:\n> >\n> > - Regarding the closure + sentinel approach, also implemented in coro\n> >   (https://github.com/r-lib/coro/blob/main/R/iterator.R), it's more\n> > robust for the\n> >   sentinel to always be a temporary value. If you store the sentinel\n> > in a list or\n> >   a namespace, it might inadvertently close iterators when iterating over that\n> >   collection. That's why the coro sentinel is created with `coro::exhausted()`\n> >   rather than exported from the namespace as a constant object. The sentinel can\n> >   be equivalently created with `as.symbol(\".__exhausted__.\")`, the main thing to\n> >   ensure robustness is to avoid storing it and always create it from scratch.\n> >\n> >   The approach of passing the sentinel by argument (which I see in the example\n> >   in your mail but not in the linked documentation of approach 3) also\n> > works if the\n> >   iterator loop passes a unique sentinel. Having a default of `NULL` makes it\n> >   likely to get unexpected exhaustion of iterators when a sentinel is not passed\n> >   in though.\n> >\n> > - It's very useful to _close_ iterators for resource cleanup. It's the\n> > responsibility of an iterator loop (e.g. `for` but could be other custom tools\n> > invoking the iterator) to close them. See https://github.com/r-lib/coro/pull/58\n> > for an interesting application of iterator closing, allowing robust support of\n> > `on.exit()` expressions in coro generators.\n> >\n> >   To implement iterator closing with the closure approach, an iterator may\n> >   optionally take a `close` argument. A `true` value is passed on exit,\n> >   instructing the iterator to clean up resources.\n> >\n> > Best,\n> > Lionel\n> >\n> > On Mon, Aug 11, 2025 at 3:24?PM Tomasz Kalinowski <kalinowskit at gmail.com> wrote:\n> > >\n> > > Hi all,\n> > >\n> > > A while back, Hadley and I explored what an iteration protocol for R\n> > > might look like. We worked through motivations, design choices, and edge\n> > > cases, which we documented here:\n> > > https://github.com/t-kalinowski/r-iterator-ideas\n> > >\n> > > At the end of this process, I put together a patch to R (with tests) and\n> > > would like to invite feedback from R Core and the broader community:\n> > > https://github.com/r-devel/r-svn/pull/130/files?diff=unified&w=1\n> > >\n> > > In summary, the overall design is a minimal patch. It introduces no\n> > > breaking changes and essentially no new overhead. There are two parts.\n> > >\n> > > 1.  Add a new `as.iterable()` S3 generic, with a default identity\n> > >     method. This provides a user-extensible mechanism for selectively\n> > >     changing the iteration behavior for some object types passed to\n> > >     `for`. `as.iterable()` methods are expected to return anything that\n> > >     `for` can handle directly, namely, vectors or pairlists, or (new) a\n> > >     closure.\n> > >\n> > > 2.  `for` gains the ability to accept a closure for the iterable\n> > >     argument. A closure is called repeatedly for each loop iteration\n> > >     until the closure returns an `exhausted` sentinel value, which it\n> > >     received as an input argument.\n> > >\n> > > Here is a small example of using the iteration protocol to implement a\n> > > sequence of random samples:\n> > >\n> > > ``` r\n> > > SampleSequence <- function(n) {\n> > >   i <- 0\n> > >   function(done = NULL) {\n> > >     if (i >= n) {\n> > >       return(done)\n> > >     }\n> > >     i <<- i + 1\n> > >     runif(1)\n> > >   }\n> > > }\n> > >\n> > > for(sample in SampleSequence(2)) {\n> > >   print(sample)\n> > > }\n> > >\n> > > # [1] 0.7677586\n> > > # [1] 0.355592\n> > > ```\n> > >\n> > > Best,\n> > > Tomasz\n> > >\n> > > ______________________________________________\n> > > R-devel at r-project.org mailing list\n> > > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Clever! If going for non-local returns, probably best for ergonomics to pass in\na closure (see e.g. `callCC()`). If only to avoid accidental jumps while\ndebugging.\n\nBut... do we need more lazy evaluat",
+      "thread_id": "thread-929d48780441",
+      "thread_depth": 3,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-f6edf7630f0c",
+      "message_id": "<c7288d7d-19a7-41e4-9b95-299e5aa2ec56@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2025-08-12T07:07:30-04:00",
+      "subject": "[Rd] Issues with tempdir() using short path names",
+      "subject_clean": "Issues with tempdir() using short path names",
+      "in_reply_to": "<5f798570-2910-4c56-85a0-9526f084e925@gmail.com>",
+      "references": [
+        "<5f798570-2910-4c56-85a0-9526f084e925@gmail.com>"
+      ],
+      "body_plain": "A followup after some research and discussion with TeXLive people.\n\nThis is longstanding behaviour of TeX.  When you put a filename on the \ncommand line, it does 3 things:\n\n   - If there are quotes on the filename they are stripped off.\n   - If you are on windows and the filename is a path starting with \nsomething like C:\\..., the backslashes are converted to forward slashes.\n   - The TeX macro \\input is prepended, and the line\n\n   \\input filename\n\nis executed.  So if filename contains special characters like tildes, \nyou'll try to input the name just up to the first tilde, and things \nwon't work.\n\nThis seems really unlikely to change, so R code that generates filenames \nto send to TeX should try hard to avoid tildes.  Calling normalizePath() \nafter the file has been created would be sufficient if the normalized \npath itself doesn't contain special chars.  My first workaround of \nchanging to the directory of the file should also work.\n\nDuncan Murdoch\n\nOn 2025-08-10 3:22 p.m., Duncan Murdoch wrote:\n> I recently found out about Paul Murrell's excellent xdvir package that\n> renders LaTeX in a graphics device.  I thought this would be useful and\n> put a wrapper around the latexGrob() function into rgl.\n> \n> Testing it on Github workflows worked fine on Ubuntu and MacOS runners,\n> but failed on Windows.  Here's a typical error message:\n> \n>> This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex)\n>>     restricted \\write18 enabled.\n>>    entering extended mode\n>>    Error: LaTeX failed to compile C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\Rtmp6TD7wY/working_dir\\RtmpmitpVG\\file130053037941.tex. See https://yihui.org/tinytex/r/#debugging for debugging tips.\n>>    Execution halted\n> \n> (taken from\n> https://github.com/dmurdoch/rgl/actions/runs/16861206133/job/47761646553).\n> \n> After a long series of experiments, I think I found the cause:  xdvir\n> creates a file in tempdir(), and passes it to lualatex or xelatex (along\n> with various command line options).  If that file contains the\n> \"RUNNER~1\" directory, which is the 8.3 form of \"runneradmin\", the\n> compile fails.\n> \n> I have a workaround for this: I setwd(tempdir()) and use the basename of\n> the temp file.\n> \n> Another workaround that I tried doesn't work:  normalizePath(tempfile())\n> generally does nothing, because normalizePath() won't modify a path that\n> doesn't exist.  If I write to the tempfile() and then normalize the\n> name, that does work.\n> \n> I think there are one or more bugs here that should be fixed.  I'm just\n> not sure what they are.\n> \n> Is it a bug in TeXLive 2025, that those programs won't accept short\n> names?  Or has Windows deprecated them, and R shouldn't be producing\n> them?  Is it a bug that tempfile() doesn't produce a normalized path?\n> \n> Duncan Murdoch",
+      "body_snippet": "A followup after some research and discussion with TeXLive people.\n\nThis is longstanding behaviour of TeX.  When you put a filename on the \ncommand line, it does 3 things:\n\n   - If there are quotes on",
+      "thread_id": "thread-f312b8544619",
+      "thread_depth": 1,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-38e957ed09e6",
+      "message_id": "<CALWM=9aPEEGW1xwxxzycmDE9+jtahqcvMYG5D-gzUp+pojBUtA@mail.gmail.com>",
+      "from_name": "Tomasz Kalinowski",
+      "from_email_hash": "46e35b0b89f0e0b22bb77067aaf9d3cf19d76691b54aa53f4f7e859e8c6af91f",
+      "date": "2025-08-12T09:58:46-04:00",
+      "subject": "[Rd] An iteration protocol",
+      "subject_clean": "An iteration protocol",
+      "in_reply_to": "<CAJf4E3pHk4oAS+1tEWh1Mwi0S2S9qWSz8zUXfywjygxcrSZORg@mail.gmail.com>",
+      "references": [
+        "<CALWM=9aAQhioA=n1SiruBFGfgVVDGO2kWAA_sAXU_Fw=PHUChQ@mail.gmail.com>",
+        "<CAJf4E3rxnm0NycyoZQ0i7iXJC+JNqVDp2vtSPGL9cAFSdM3HKA@mail.gmail.com>",
+        "<CAJoaRha8pQq_pOUFA1JYe+MBU3opbGMSLpEC3VoLFXfMUx4LFw@mail.gmail.com>",
+        "<CAJf4E3pHk4oAS+1tEWh1Mwi0S2S9qWSz8zUXfywjygxcrSZORg@mail.gmail.com>"
+      ],
+      "body_plain": "Thank you Lionel, Peter, and Duncan!\nSome responses inline below:\n\n> Couldn't this all be done in a while or repeat loop? ...\n> Not as simple as yours, but I think a little clearer because it's more concrete, less abstract.\n\nIndeed, that?s the trade-off! Explicit and verbose vs. simple,\nconcise, and abstracted away. There are certainly times when I prefer\nthe former, but the latter is not even an option today. Particularly\nin a teaching context, I think the concept of iteration is more\nintuitive and faster to teach than the precise mechanics of iteration.\nThe opportunity to make `for` usable with a broader set of object\ntypes is icing on the cake. (Some of these arguments are fleshed out\nfurther in the README linked in the first email.)\n\n> It's not clear to me how the for() loop chooses a value to pass to the iterator function.\n\nIn the draft patch, `for` creates a unique sentinel object, a bare\n`OBJSXP`. The iterator closure is called with this sentinel as the\nargument, and the closure must return exactly it to indicate\nexhaustion.\n\nThis approach neatly achieves a few design goals. It introduces no\npersistent symbols, keeping the API surface small, and avoids\nintroducing the ugly edge case of a potential false-positive\nexhaustion detection. It has less overhead than a signal. Compared to\na signal, it should also encourage a more local coding style, making\ncode easier to reason about. Treating errors as values is one idea\nthat Rust has proven the value of to me, and this value-sentinel\napproach is a close cousin of that.\n\nThe example `SampleSequence` iterator in the initial email had a\ndefault sentinel value of `NULL`. This was to allow convenient manual\niteration with something like:\n\n```r\nit <- SampleSequence(9)\nit(); it(); it(); ...\n```\n\nOr, if you prefer a more explicit approach:\n\n```r\nit <- SampleSequence(9)\nrepeat { val <- it() %||% break; ... }\n```\n\nOr:\n\n```r\nrepeat { val <- it(break); ... }\n```\n\nOr:\n\n```r\nwhile (!is.null(val <- it())) { ... }\n```\n\nOr, for maximum robustness:\n\n```r\ndone_sentinel <- new.env(parent = emptyenv())\nwhile (!identical(done_sentinel, val <- it(done_sentinel))) { ... }\n```\n\nThis enables a variety of usage patterns with different trade-offs\nbetween convenience and robustness, with `for` able to take the most\nrobust approach, while allowing the iterator?s default sentinel to\nprioritize convenience.\n\n> It's very useful to *close* iterators for resource cleanup.\n\nThis is interesting and, to be honest, not a use case we had considered.\n\nWould using `reg.finalizer()` be sufficient for your use case? It\ngives less control over timing than `on.exit()`, but can close\nresources with something like:\n\n```r\nStream <- function() {\n  r <- open_resource()\n  reg.finalizer(environment(), \\(e) r$close())\n  \\(done) r$get_next() %||% done\n}\n```\n\nOn Tue, Aug 12, 2025 at 5:20?AM Lionel Henry <lionel at posit.co> wrote:\n>\n> Clever! If going for non-local returns, probably best for ergonomics to pass in\n> a closure (see e.g. `callCC()`). If only to avoid accidental jumps while\n> debugging.\n>\n> But... do we need more lazy evaluation tricks in the language or fewer? It's\n> probably more idiomatic to express non-local returns with condition signals\n> like `stopIteration()`.\n>\n> There's something to be said for explicit and simple control flow though, via\n> handling of returned values.\n>\n>\n> > Note that it is trivial to create a unique sentinel value -- any newly\n> > created closure (i.e. function() NULL) will do, as it will only\n> > compare identical() with itself.\n>\n> Until you try that in the global env right? Then the risk of collision slightly\n> increases. Unless you make your closure more unique via `body()`, but then might\n> as well use a conventional sentinel.\n>\n> Best,\n> Lionel\n>\n> On Tue, Aug 12, 2025 at 1:45?AM Peter Meilstrup\n> <peter.meilstrup at gmail.com> wrote:\n> >\n> > Passing the sentinel value as an argument to the iteration method is\n> > the approach taken in my package `iterors` on CRAN. If the sentinel\n> > value argument is evaluated lazily, this lets you pass calls to things\n> > like 'stop', 'break' or 'return,' which will be called to signal end\n> > of iteration. This makes for some nice compact and performant\n> > iteration idioms:\n> >\n> > iter <- as.iteror(obj)\n> > total <- 0\n> > repeat {total <- total + nextOr(iter, break)}\n> >\n> > Note that iteror is just a closure with one optional argument and a\n> > class attribute, so you can skip using s3 nextOr method and call it\n> > directly:\n> >\n> > nextElem <- as.iteror(obj)\n> > repeat {total <- total + nextElem(break)}\n> >\n> > For backward compatibility with the iterators package, the default\n> > sentinel value for iterors is `stop(\"StopIteration\")`.\n> >\n> > Note that it is trivial to create a unique sentinel value -- any newly\n> > created closure (i.e. function() NULL) will do, as it will only\n> > compare identical() with itself.\n> >\n> > sigil <- \\() NULL\n> > next <- as.iteror(obj)\n> > while (!identical(item <-next(sigil), sigil)) {\n> >   doStuff(item)\n> > }\n> >\n> > Peter Meilstrup\n> >\n> > On Mon, Aug 11, 2025 at 5:56?PM Lionel Henry via R-devel\n> > <r-devel at r-project.org> wrote:\n> > >\n> > > Hello,\n> > >\n> > > A couple of comments:\n> > >\n> > > - Regarding the closure + sentinel approach, also implemented in coro\n> > >   (https://github.com/r-lib/coro/blob/main/R/iterator.R), it's more\n> > > robust for the\n> > >   sentinel to always be a temporary value. If you store the sentinel\n> > > in a list or\n> > >   a namespace, it might inadvertently close iterators when iterating over that\n> > >   collection. That's why the coro sentinel is created with `coro::exhausted()`\n> > >   rather than exported from the namespace as a constant object. The sentinel can\n> > >   be equivalently created with `as.symbol(\".__exhausted__.\")`, the main thing to\n> > >   ensure robustness is to avoid storing it and always create it from scratch.\n> > >\n> > >   The approach of passing the sentinel by argument (which I see in the example\n> > >   in your mail but not in the linked documentation of approach 3) also\n> > > works if the\n> > >   iterator loop passes a unique sentinel. Having a default of `NULL` makes it\n> > >   likely to get unexpected exhaustion of iterators when a sentinel is not passed\n> > >   in though.\n> > >\n> > > - It's very useful to _close_ iterators for resource cleanup. It's the\n> > > responsibility of an iterator loop (e.g. `for` but could be other custom tools\n> > > invoking the iterator) to close them. See https://github.com/r-lib/coro/pull/58\n> > > for an interesting application of iterator closing, allowing robust support of\n> > > `on.exit()` expressions in coro generators.\n> > >\n> > >   To implement iterator closing with the closure approach, an iterator may\n> > >   optionally take a `close` argument. A `true` value is passed on exit,\n> > >   instructing the iterator to clean up resources.\n> > >\n> > > Best,\n> > > Lionel\n> > >\n> > > On Mon, Aug 11, 2025 at 3:24?PM Tomasz Kalinowski <kalinowskit at gmail.com> wrote:\n> > > >\n> > > > Hi all,\n> > > >\n> > > > A while back, Hadley and I explored what an iteration protocol for R\n> > > > might look like. We worked through motivations, design choices, and edge\n> > > > cases, which we documented here:\n> > > > https://github.com/t-kalinowski/r-iterator-ideas\n> > > >\n> > > > At the end of this process, I put together a patch to R (with tests) and\n> > > > would like to invite feedback from R Core and the broader community:\n> > > > https://github.com/r-devel/r-svn/pull/130/files?diff=unified&w=1\n> > > >\n> > > > In summary, the overall design is a minimal patch. It introduces no\n> > > > breaking changes and essentially no new overhead. There are two parts.\n> > > >\n> > > > 1.  Add a new `as.iterable()` S3 generic, with a default identity\n> > > >     method. This provides a user-extensible mechanism for selectively\n> > > >     changing the iteration behavior for some object types passed to\n> > > >     `for`. `as.iterable()` methods are expected to return anything that\n> > > >     `for` can handle directly, namely, vectors or pairlists, or (new) a\n> > > >     closure.\n> > > >\n> > > > 2.  `for` gains the ability to accept a closure for the iterable\n> > > >     argument. A closure is called repeatedly for each loop iteration\n> > > >     until the closure returns an `exhausted` sentinel value, which it\n> > > >     received as an input argument.\n> > > >\n> > > > Here is a small example of using the iteration protocol to implement a\n> > > > sequence of random samples:\n> > > >\n> > > > ``` r\n> > > > SampleSequence <- function(n) {\n> > > >   i <- 0\n> > > >   function(done = NULL) {\n> > > >     if (i >= n) {\n> > > >       return(done)\n> > > >     }\n> > > >     i <<- i + 1\n> > > >     runif(1)\n> > > >   }\n> > > > }\n> > > >\n> > > > for(sample in SampleSequence(2)) {\n> > > >   print(sample)\n> > > > }\n> > > >\n> > > > # [1] 0.7677586\n> > > > # [1] 0.355592\n> > > > ```\n> > > >\n> > > > Best,\n> > > > Tomasz\n> > > >\n> > > > ______________________________________________\n> > > > R-devel at r-project.org mailing list\n> > > > https://stat.ethz.ch/mailman/listinfo/r-devel\n> > >\n> > > ______________________________________________\n> > > R-devel at r-project.org mailing list\n> > > https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Thank you Lionel, Peter, and Duncan!\nSome responses inline below:\n\n> Couldn't this all be done in a while or repeat loop? ...\n> Not as simple as yours, but I think a little clearer because it's more c",
+      "thread_id": "thread-929d48780441",
+      "thread_depth": 4,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-16eb1e8a8af7",
+      "message_id": "<3A5C824D-8B56-4B85-984A-053A7011AB96@uzh.ch>",
+      "from_name": "Taras Zakharko",
+      "from_email_hash": "147655a5d595b887b48eb7e0a69497d2781b7556a24a90cbca8eb8748ccfea48",
+      "date": "2025-08-12T14:48:24Z",
+      "subject": "[Rd] An iteration protocol",
+      "subject_clean": "An iteration protocol",
+      "in_reply_to": "<CALWM=9aAQhioA=n1SiruBFGfgVVDGO2kWAA_sAXU_Fw=PHUChQ@mail.gmail.com>",
+      "references": [
+        "<CALWM=9aAQhioA=n1SiruBFGfgVVDGO2kWAA_sAXU_Fw=PHUChQ@mail.gmail.com>"
+      ],
+      "body_plain": "Great stuff, and I like the use of a sentinel as a terminator symbol.\n\nOne aspect of this I would like to explore is that of a lazy sequence as a more fundamental language primitive. Generators in for loops are great, but generators returned by lapply() and friends would enable lazy functional transformations and efficient combination of processing steps. At the lowest level I can see this being facilitated by an ALTREP protocol with a similar API to what you propose. \n\nOne big pain point of course is parallel processing. A two level design splitting the iterator index and data generation (like C++ does)  could be a better fit if parallelization is desired. Curious to hear your thoughts. \n\nBest, \n\nTaras\n\n> On Aug 11, 2025, at 9:23?PM, Tomasz Kalinowski <kalinowskit at gmail.com> wrote:\n> \n> Hi all,\n> \n> A while back, Hadley and I explored what an iteration protocol for R\n> might look like. We worked through motivations, design choices, and edge\n> cases, which we documented here:\n> https://github.com/t-kalinowski/r-iterator-ideas\n> \n> At the end of this process, I put together a patch to R (with tests) and\n> would like to invite feedback from R Core and the broader community:\n> https://github.com/r-devel/r-svn/pull/130/files?diff=unified&w=1\n> \n> In summary, the overall design is a minimal patch. It introduces no\n> breaking changes and essentially no new overhead. There are two parts.\n> \n> 1.  Add a new `as.iterable()` S3 generic, with a default identity\n>    method. This provides a user-extensible mechanism for selectively\n>    changing the iteration behavior for some object types passed to\n>    `for`. `as.iterable()` methods are expected to return anything that\n>    `for` can handle directly, namely, vectors or pairlists, or (new) a\n>    closure.\n> \n> 2.  `for` gains the ability to accept a closure for the iterable\n>    argument. A closure is called repeatedly for each loop iteration\n>    until the closure returns an `exhausted` sentinel value, which it\n>    received as an input argument.\n> \n> Here is a small example of using the iteration protocol to implement a\n> sequence of random samples:\n> \n> ``` r\n> SampleSequence <- function(n) {\n>  i <- 0\n>  function(done = NULL) {\n>    if (i >= n) {\n>      return(done)\n>    }\n>    i <<- i + 1\n>    runif(1)\n>  }\n> }\n> \n> for(sample in SampleSequence(2)) {\n>  print(sample)\n> }\n> \n> # [1] 0.7677586\n> # [1] 0.355592\n> ```\n> \n> Best,\n> Tomasz\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Great stuff, and I like the use of a sentinel as a terminator symbol.\n\nOne aspect of this I would like to explore is that of a lazy sequence as a more fundamental language primitive. Generators in for",
+      "thread_id": "thread-929d48780441",
+      "thread_depth": 1,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-b4605470a5f9",
+      "message_id": "<20250816225955.1fed75da@trisector>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2025-08-16T22:59:55+03:00",
+      "subject": "[Rd] Non-ASCII citation keys prevent compiling with LC_ALL=C",
+      "subject_clean": "Non-ASCII citation keys prevent compiling with LC_ALL=C",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hello R-devel,\n\nI've been watching the development of automatic Rd bibliography\ngeneration with great interest and I'm looking forward to using\n\\bibcitet{...} and \\bibshow{*} in my packages. Currently, non-ASCII\ncharacters used in the citation keys prevent R from successfully\ncompiling when the current locale encoding is unable to represent them:\n\n% touch src/library/stats/man/factanal.Rd && LC_ALL=C make\n...\ninstalling parsed Rd\nmake[3]: Entering directory '.../src/library'\n  base\nError: factanal.Rd:99: (converted from warning) Could not find\nbibentries for the following keys: %s\n  'R:J<U+00F6>reskog:1963'\nExecution halted\nmake[3]: *** [Makefile:76: stats.Rdts] Error 1\n\nBut as long as the locale encoding can represent the key, it's fine:\n\n% touch src/library/stats/man/factanal.Rd && \\\n LC_ALL=en_GB.iso885915 luit make\n(works well without a UTF-8 locale)\n\nI think this can be made to work by telling tools:::process_Rd() ->\ntools:::processRdChunk() to parse character strings in R code as UTF-8:\n\nIndex: src/library/tools/R/RdConv2.R\n===================================================================\n--- src/library/tools/R/RdConv2.R\t(revision 88617)\n+++ src/library/tools/R/RdConv2.R\t(working copy)\n@@ -229,8 +229,8 @@\n \tcode <- structure(code[tags != \"COMMENT\"],\n \t                  srcref = codesrcref) # retain for error locations\n \tchunkexps <- tryCatch(\n-\t    parse(text = sub(\"\\n$\", \"\", as.character(code)),\n-\t          keep.source = options$keep.source),\n+\t    parse(text = sub(\"\\n$\", \"\", enc2utf8(as.character(code))),\n+\t          keep.source = options$keep.source, encoding = \"UTF-8\"),\n \t    error = function (e) stopRd(code, Rdfile, conditionMessage(e))\n \t)\n \nThat enc2utf8() may be extraneous, since tools::parse_Rd() is\ndocumented to convert text to UTF-8 while parsing. The downsides are,\nof course, parse(encoding=...) not working with MBCS locales and the\never-present danger of breaking some user code that depends on the\ncurrent behaviour (this was tested using 'make check-devel', not on\nCRAN packages).\n\nShould R compile under LC_ALL=C? Maybe it's time for people whose\nbuilds are failing to switch the continuous integration containers from\nC to C.UTF-8?\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "Hello R-devel,\n\nI've been watching the development of automatic Rd bibliography\ngeneration with great interest and I'm looking forward to using\n\\bibcitet{...} and \\bibshow{*} in my packages. Currently",
+      "thread_id": "thread-b4605470a5f9",
+      "thread_depth": 0,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-59e4087e0b56",
+      "message_id": "<26785.28704.408587.933296@hornik.net>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "38d7001af840d889a64ba1cdcb8ec8beb738b8daf9643622801f3acb78b6052a",
+      "date": "2025-08-17T08:01:04+02:00",
+      "subject": "[Rd] Non-ASCII citation keys prevent compiling with LC_ALL=C",
+      "subject_clean": "Non-ASCII citation keys prevent compiling with LC_ALL=C",
+      "in_reply_to": "<20250816225955.1fed75da@trisector>",
+      "references": [
+        "<20250816225955.1fed75da@trisector>"
+      ],
+      "body_plain": ">>>>> Ivan Krylov via R-devel writes:\n\n> Hello R-devel,\n> I've been watching the development of automatic Rd bibliography\n> generation with great interest and I'm looking forward to using\n> \\bibcitet{...} and \\bibshow{*} in my packages. \n\nThanks! :-)\n\n> Currently, non-ASCII characters used in the citation keys prevent R\n> from successfully compiling when the current locale encoding is unable\n> to represent them:\n\n> % touch src/library/stats/man/factanal.Rd && LC_ALL=C make\n> ...\n> installing parsed Rd\n> make[3]: Entering directory '.../src/library'\n>   base\n> Error: factanal.Rd:99: (converted from warning) Could not find\n> bibentries for the following keys: %s\n>   'R:J<U+00F6>reskog:1963'\n> Execution halted\n> make[3]: *** [Makefile:76: stats.Rdts] Error 1\n\n> But as long as the locale encoding can represent the key, it's fine:\n\n> % touch src/library/stats/man/factanal.Rd && \\\n>  LC_ALL=en_GB.iso885915 luit make\n> (works well without a UTF-8 locale)\n\nOh dear.  I thought we have coverage for this from building daily\nsnapshots with LC_ALL=C, but apparently not.  There were 10 non-ASCII\nkeys so far: I have for now changed them to all ASCII.\n\nBut clearly, when a package declares its Rd files to be in UTF-8 one\nwould expect that Sexpr macros can also take UTF-8, but that's not so\nsimple given that it involves calling the R parser.  Your suggested\nchange looks good to me: non-UTF-8 MBCS locales have a problem with\nparse(encoding = \"UTF-8\"), but I don't think we have real coverage for\nthese.\n\n(Afaic, in principle, it might be nice to make these \"work\" via writing\nto a tempfile, parsing from their with re-encoding, and at the end run\nenc2utf8() on all strings obtained, but that's not so simple ...)\n\nAnyway, need to discuss this a bit more within R Core.  For now, things\n\"work\" again with LC_ALL=C.  \n\n(My regular checks use C.UTF-8, but I am not sure how universally\navailable this is?)\n\nBest\n\n\n> I think this can be made to work by telling tools:::process_Rd() ->\n> tools:::processRdChunk() to parse character strings in R code as UTF-8:\n\n> Index: src/library/tools/R/RdConv2.R\n> ===================================================================\n> --- src/library/tools/R/RdConv2.R\t(revision 88617)\n> +++ src/library/tools/R/RdConv2.R\t(working copy)\n> @@ -229,8 +229,8 @@\n>  \tcode <- structure(code[tags != \"COMMENT\"],\n>  \t                  srcref = codesrcref) # retain for error locations\n>  \tchunkexps <- tryCatch(\n> -\t    parse(text = sub(\"\\n$\", \"\", as.character(code)),\n> -\t          keep.source = options$keep.source),\n> +\t    parse(text = sub(\"\\n$\", \"\", enc2utf8(as.character(code))),\n> +\t          keep.source = options$keep.source, encoding = \"UTF-8\"),\n>  \t    error = function (e) stopRd(code, Rdfile, conditionMessage(e))\n>  \t)\n \n> That enc2utf8() may be extraneous, since tools::parse_Rd() is\n> documented to convert text to UTF-8 while parsing. The downsides are,\n> of course, parse(encoding=...) not working with MBCS locales and the\n> ever-present danger of breaking some user code that depends on the\n> current behaviour (this was tested using 'make check-devel', not on\n> CRAN packages).\n\n> Should R compile under LC_ALL=C? Maybe it's time for people whose\n> builds are failing to switch the continuous integration containers from\n> C to C.UTF-8?\n\n> -- \n> Best regards,\n> Ivan\n\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">>>>> Ivan Krylov via R-devel writes:\n\n> Hello R-devel,\n> I've been watching the development of automatic Rd bibliography\n> generation with great interest and I'm looking forward to using\n> \\bibcitet{",
+      "thread_id": "thread-b4605470a5f9",
+      "thread_depth": 1,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-39dd5b3a93bd",
+      "message_id": "<20250819014836.7338ce48@Tarkus>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2025-08-19T01:48:36+03:00",
+      "subject": "[Rd] Non-ASCII citation keys prevent compiling with LC_ALL=C",
+      "subject_clean": "Non-ASCII citation keys prevent compiling with LC_ALL=C",
+      "in_reply_to": "<26785.28704.408587.933296@hornik.net>",
+      "references": [
+        "<20250816225955.1fed75da@trisector>",
+        "<26785.28704.408587.933296@hornik.net>"
+      ],
+      "body_plain": "On Sun, 17 Aug 2025 08:01:04 +0200\nKurt Hornik <Kurt.Hornik at wu.ac.at> wrote:\n\n> There were 10 non-ASCII keys so far: I have for now changed them to\n> all ASCII.\n\nThank you very much, this fixes my problem!\n\n> (My regular checks use C.UTF-8, but I am not sure how universally\n> available this is?)\n\n'locale -a' says that C.UTF-8 is available with glibc and musl on\nLinux, also FreeBSD and OpenBSD, but not macOS (and setlocale(LC_ALL,\n\"C.UTF-8\") indeed fails on the latter).\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "On Sun, 17 Aug 2025 08:01:04 +0200\nKurt Hornik <Kurt.Hornik at wu.ac.at> wrote:\n\n> There were 10 non-ASCII keys so far: I have for now changed them to\n> all ASCII.\n\nThank you very much, this fixes my ",
+      "thread_id": "thread-b4605470a5f9",
+      "thread_depth": 2,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-57f2d81f0a6a",
+      "message_id": "<26795.5318.208295.833102@paul.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2025-08-24T08:33:58-05:00",
+      "subject": "[Rd] Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "subject_clean": "Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "In SVN commit r88444, Martin made a change following Mikael's PR #18918. The\none-line synopsis is 'subassignment <complex>[i] <- NA should only touch the\nreal part' and you can see it all at [1].  Imaginary parts now get a zero.\nI am wondering if that cause rowMeans and colMeans to be off?\n\nA quick example under R-devel (as of today):\n\n> x <- matrix(1:9 + 2i, 3)\n> x[c(2,4,6,8)] <- NA\n> \n> x\n     [,1] [,2] [,3]\n[1,] 1+2i   NA 7+2i\n[2,]   NA 5+2i   NA\n[3,] 3+2i   NA 9+2i\n> \n> rowMeans(x, TRUE)         # this now differs from R-release\n[1] 4+1.333333i 5+0.666667i 6+1.333333i\n>\n\nBut in R 4.5.1 we get the (here constant) imaginary part as constant just as\nwe do when we do this 'by hand' as rowSum() appears fine:\n\n> rowSums(x, TRUE)\n[1]  8+4i  5+2i 12+4i\n> apply(x, 1, \\(x) sum(is.finite(x)))   # row count of finite elems \n[1] 2 1 2\n> \n> rowSums(x, TRUE) / apply(x, 1, \\(x) sum(is.finite(x))) \n[1] 4+2i 5+2i 6+2i\n> \n\nI could be off my rocker here as I don't use complex variables much and am a\nlittle rustic but a rudimentary check suggests my reasoning applies: means of\nreal and imaginary parts (taken across rows or columns) should be the sum\ndivided by the number of non-NA elements.  Right now they aren't.\n\nCheers, Dirk\n\n[1] https://github.com/r-devel/r-svn/commit/d65e9a52318921d1a105421b95e0fa6bebceeb55\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "In SVN commit r88444, Martin made a change following Mikael's PR #18918. The\none-line synopsis is 'subassignment <complex>[i] <- NA should only touch the\nreal part' and you can see it all at [1].  Ima",
+      "thread_id": "thread-57f2d81f0a6a",
+      "thread_depth": 0,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-97de32436d5f",
+      "message_id": "<26796.13035.258128.89116@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2025-08-25T11:54:51+02:00",
+      "subject": "[Rd] Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "subject_clean": "Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "in_reply_to": "<26795.5318.208295.833102@paul.eddelbuettel.com>",
+      "references": [
+        "<26795.5318.208295.833102@paul.eddelbuettel.com>"
+      ],
+      "body_plain": ">>>>> Dirk Eddelbuettel \n>>>>>     on Sun, 24 Aug 2025 08:33:58 -0500 writes:\n\n    > In SVN commit r88444, Martin made a change following Mikael's PR #18918. The\n    > one-line synopsis is 'subassignment <complex>[i] <- NA should only touch the\n    > real part' and you can see it all at [1].\n\n    > Imaginary parts now get a zero.\n\nIndeed, and this in itself is a bit dubious:\n\n>From the commit message you cite above one could/would expect that the\nimaginary parts should *stay* unchanged, i.e., remain '2' in\nyour example below (and remain '0' when they are, as in the PR#18919...)\n    \n    > I am wondering if that cause rowMeans and colMeans to be off?\n\nWell, I can argue they are not off ...  {but I will eventually\nagree with you that we *have* a problem!}\n\nOne clue is that the complex 'x' matrices now *differ* between\nR-release (*and* R-patched) and R-devel\n*but* they print identically.... and that is part of the confusion in this case.\n(or *was* adding to the confusion at least).\nformat() and print() should and do go hand-in-hand, here as well,\nand for (probably mostly historical reasons), R&R and then\nR-core had decided to format/print all complex NAs the same ...\nthe reasoning being that\n\n   'NA means \"Not Available\"' and for complex data (one complex\n   seen as \"one complex number\" rather than \"two real numbers\")\n   why should on be bothered about the Re/Im representation of a\n   complex. ...\n\n[We have been on that topic before, notably in bugzilla, as well].\n\nSo in your example below, \n\n    >> x <- matrix(1:9 + 2i, 3)\n    >> x[c(2,4,6,8)] <- NA\n    >> \n    >> x\n    >       [,1] [,2] [,3]\n    > [1,] 1+2i   NA 7+2i\n    > [2,]   NA 5+2i   NA\n    > [3,] 3+2i   NA 9+2i\n    >> \n\nin R 4.5.1,\n\n    > Im(x)\n\t [,1] [,2] [,3]\n    [1,]    2   NA    2\n    [2,]   NA    2   NA\n    [3,]    2   NA    2\n    > \n    \nwhereas in R-devel\n\n    > Im(x)\n\t [,1] [,2] [,3]\n    [1,]    2    0    2\n    [2,]    0    2    0\n    [3,]    2    0    2\n    > \n\n.... and indeed, you *did* implicitly acknowledge this difference, above.\n\nConsequently, of course,  rowMeans(x) or colMeans(x)   and many\nother matrix functions/functionals of 'x' will differ, between\nR-release (& -patched)  and R-devel ...\nas the 'x' differ .. in their imaginary parts.\n\n... but hang on ...\n\nrowMeans() and colMeans() work \"separately\" for the real and\nimaginary parts, and (as seen above) the imaginary part has no\nNA's and the number of obs per row/column in the imaginary part\nis always 3, such that the Im() parts of the colSums() result\nare divided by 3, here:\n\n    >> rowMeans(x, TRUE)         # this now differs from R-release\n    > [1] 4+1.333333i 5+0.666667i 6+1.333333i\n    >> \n\n    > But in R 4.5.1 we get the (here constant) imaginary part as constant just as\n    > we do when we do this 'by hand' as rowSum() appears fine:\n\n    >> rowSums(x, TRUE)\n    > [1]  8+4i  5+2i 12+4i\n    >> apply(x, 1, \\(x) sum(is.finite(x)))   # row count of finite elems \n    > [1] 2 1 2\n    >> \n    >> rowSums(x, TRUE) / apply(x, 1, \\(x) sum(is.finite(x))) \n    > [1] 4+2i 5+2i 6+2i\n    >> \n\n    > I could be off my rocker here as I don't use complex variables much and am a\n    > little rustic but a rudimentary check suggests my reasoning applies: means of\n    > real and imaginary parts (taken across rows or columns) should be the sum\n    > divided by the number of non-NA elements.  Right now they aren't.\n\nwell, see above,they *are*  __if__  you look at  \"number of\nnon-NA elements\" \"coordinate-wisely\" or separately for Re() and Im().\n \nI still agree we should address this:  We do have a discrepancy\nwith mean() i.e.,  mean.default()  which does \"exactly\" what you\ndo \"by hand\" above,  and hence using is.na() for the full\ncomplex vector, and not *separately* for Re() and Im() parts;\n... and I do tend to agree that  colMeans(*, na.rm=TRUE) etc\nprobably should be adapted to *not* work coordinate-wise but\ndrop all \"complex NAs\" both for Re and Im.\n\nIn addition, back to the original\n  PR #18918 (--> https://bugs.r-project.org/show_bug.cgi?id=18918 ),\nI will *also* take up my \"is a bit dubious\" from above.\n\nMartin",
+      "body_snippet": ">>>>> Dirk Eddelbuettel \n>>>>>     on Sun, 24 Aug 2025 08:33:58 -0500 writes:\n\n    > In SVN commit r88444, Martin made a change following Mikael's PR #18918. The\n    > one-line synopsis is 'subassignm",
+      "thread_id": "thread-57f2d81f0a6a",
+      "thread_depth": 1,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-92fde286a464",
+      "message_id": "<26796.16160.734621.167695@paul.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2025-08-25T05:46:56-05:00",
+      "subject": "[Rd] Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "subject_clean": "Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "in_reply_to": "<26796.13035.258128.89116@stat.math.ethz.ch>",
+      "references": [
+        "<26795.5318.208295.833102@paul.eddelbuettel.com>",
+        "<26796.13035.258128.89116@stat.math.ethz.ch>"
+      ],
+      "body_plain": "On 25 August 2025 at 11:54, Martin Maechler wrote:\n| I still agree we should address this:  We do have a discrepancy\n| with mean() i.e.,  mean.default()  which does \"exactly\" what you\n| do \"by hand\" above,  and hence using is.na() for the full\n| complex vector, and not *separately* for Re() and Im() parts;\n| ... and I do tend to agree that  colMeans(*, na.rm=TRUE) etc\n| probably should be adapted to *not* work coordinate-wise but\n| drop all \"complex NAs\" both for Re and Im.\n\nI agree with that.\n\nThe culprit is the per-component call (here from colMeans, same for rowMeans)\n\n    z <- if(is.complex(x))\n        .Internal(colMeans(Re(x), n, prod(dn), na.rm)) +\n            1i * .Internal(colMeans(Im(x), n, prod(dn), na.rm))\n    else .Internal(colMeans(x, n, prod(dn), na.rm))\n\nwhere we may need to add a na.omit() if na.rm is TRUE.\n\nBut I didn't like that idea well enough yet yesterday to propose a patch\nalong those lines as I did not think about the comparison with mean.default\nwhich is quite convincing. Having results differ even within r-devel is quite\nbad indeed, and mean.default, swept by hand across rows or columns, also\nreturn what r-release returns here for a matrix containing NAs.\n\nSo maybe na.omit() is the best we can do here?\n\nDirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "On 25 August 2025 at 11:54, Martin Maechler wrote:\n| I still agree we should address this:  We do have a discrepancy\n| with mean() i.e.,  mean.default()  which does \"exactly\" what you\n| do \"by hand\" a",
+      "thread_id": "thread-57f2d81f0a6a",
+      "thread_depth": 2,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-6603098ce9e5",
+      "message_id": "<26796.34762.119924.236639@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2025-08-25T17:56:58+02:00",
+      "subject": "[Rd] Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "subject_clean": "Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "in_reply_to": "<26796.16160.734621.167695@paul.eddelbuettel.com>",
+      "references": [
+        "<26795.5318.208295.833102@paul.eddelbuettel.com>",
+        "<26796.13035.258128.89116@stat.math.ethz.ch>",
+        "<26796.16160.734621.167695@paul.eddelbuettel.com>"
+      ],
+      "body_plain": ">>>>> Dirk Eddelbuettel \n>>>>>     on Mon, 25 Aug 2025 05:46:56 -0500 writes:\n\n    > On 25 August 2025 at 11:54, Martin Maechler wrote:\n    > | I still agree we should address this:  We do have a discrepancy\n    > | with mean() i.e.,  mean.default()  which does \"exactly\" what you\n    > | do \"by hand\" above,  and hence using is.na() for the full\n    > | complex vector, and not *separately* for Re() and Im() parts;\n    > | ... and I do tend to agree that  colMeans(*, na.rm=TRUE) etc\n    > | probably should be adapted to *not* work coordinate-wise but\n    > | drop all \"complex NAs\" both for Re and Im.\n\n    > I agree with that.\n\n    > The culprit is the per-component call (here from colMeans, same for rowMeans)\n\n    > z <- if(is.complex(x))\n    >       .Internal(colMeans(Re(x), n, prod(dn), na.rm)) +\n    >  1i * .Internal(colMeans(Im(x), n, prod(dn), na.rm))\n    > else  .Internal(colMeans(x, n, prod(dn), na.rm))\n\n    > where we may need to add a na.omit() if na.rm is TRUE.\n\nunfortunately, no:  na.omit() cannot be the solution easily for\n_both_ colMeans() and rowMeans()  { colSums() & rowSums() !\nwhich already make use of na.rm,\nas indeed  na.omit() treats matrices as data matrices, i.e.,\nrows treated very differently than columns,\n\nbut in any case, it would drop full rows (or columns if you try to transpose first) and\nthat may be very wrong as different rows/columns may have NAs in verydifferent locations.\n\nI really think a solution must happen in C code.\n\nFurther, note that the\n\n   if(is.complex(x))\n\t    .Internal(colMeans(Re(x), n, prod(dn), na.rm)) +\n       1i * .Internal(colMeans(Im(x), n, prod(dn), na.rm))\n\nwith na.rm = TRUE  has been *wrong* always, for all cases where\nis.na(Re(x))  and\nis.na(Im(x))  have differed ...\n\nSo this problem is really a new one, only tangentially related to the\noriginal PR #18918  and also only loosely related Mikael's / my\npatch to fix PR #18918.\n\nAs you have unearthed it, I'm fine if you open an R bugzilla\nissue for it;  otherwise, I'd do it myself.\n\nMartin",
+      "body_snippet": ">>>>> Dirk Eddelbuettel \n>>>>>     on Mon, 25 Aug 2025 05:46:56 -0500 writes:\n\n    > On 25 August 2025 at 11:54, Martin Maechler wrote:\n    > | I still agree we should address this:  We do have a disc",
+      "thread_id": "thread-57f2d81f0a6a",
+      "thread_depth": 3,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-91ed3f36bba1",
+      "message_id": "<26796.57102.892064.976351@paul.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2025-08-25T17:09:18-05:00",
+      "subject": "[Rd] Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "subject_clean": "Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "in_reply_to": "<26796.34762.119924.236639@stat.math.ethz.ch>",
+      "references": [
+        "<26795.5318.208295.833102@paul.eddelbuettel.com>",
+        "<26796.13035.258128.89116@stat.math.ethz.ch>",
+        "<26796.16160.734621.167695@paul.eddelbuettel.com>",
+        "<26796.34762.119924.236639@stat.math.ethz.ch>"
+      ],
+      "body_plain": "On 25 August 2025 at 17:56, Martin Maechler wrote:\n| >>>>> Dirk Eddelbuettel \n| >>>>>     on Mon, 25 Aug 2025 05:46:56 -0500 writes:\n| I really think a solution must happen in C code.\n\nI tend to agree here. If I had seen an easy and obvious path to a fix for\nthis, I would have proposed a patch from the outset. But as I did not, this\nemail thread started instead to begin with a discussion.\n\nAn 'obvious' solution is the only one I can think of now: we could pass both\nthe real and the imaginary parts down to compute the mean of the imaginary\npart. A new one-off function just for complex data seems like overkill but\nmaybe it is the way to go (doing one pass and computing real and imaginary\nparts in that pass).\n\n| Further, note that the\n| \n|    if(is.complex(x))\n| \t    .Internal(colMeans(Re(x), n, prod(dn), na.rm)) +\n|        1i * .Internal(colMeans(Im(x), n, prod(dn), na.rm))\n| \n| with na.rm = TRUE  has been *wrong* always, for all cases where\n| is.na(Re(x))  and\n| is.na(Im(x))  have differed ...\n\nPrior to r88444, the NA assignment for complex data assigned to both the real\nand imaginary part, making it unlikely both differed. As best as I can tell a\nuser would have had to explicitly set that. \n\n| So this problem is really a new one, only tangentially related to the\n| original PR #18918  and also only loosely related Mikael's / my\n| patch to fix PR #18918.\n\nI see this differently.\n\nPrior to r88444 / #18918 we could reliably call rowMeans() and colMeans() on\ncomplex-valued matrices containing NA values. A unit test for Rcpp relied on\nit (to validate its own row/col means method). Following r88444 this test in\nRcpp now breaks. And it breaks because the R side is now incorrect as we pass\nthe imaginary alone, with a finite value of zero where the real part has a NA\nrendering the divisor for the mean values invalid. It really looks like a bug\nthat is a consequence of r88444 to me. Note that R also did not have a test\ncase for row or column means of complex valued data with NA or else this\nwould have bubbled up sooner. So apart from fixing the issue we should\nprobably add a test too.\n \n| As you have unearthed it, I'm fine if you open an R bugzilla\n| issue for it;  otherwise, I'd do it myself.\n\nIt doesn't matter to me. Maybe it is easier if you do it.\n\nr88444 was a good change. Everybody seems to agree that assigning NA only to\nthe real part is cleaner. But we are having a small side effect here so let's\nsee about fixing that too.\n\nDirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "On 25 August 2025 at 17:56, Martin Maechler wrote:\n| >>>>> Dirk Eddelbuettel \n| >>>>>     on Mon, 25 Aug 2025 05:46:56 -0500 writes:\n| I really think a solution must happen in C code.\n\nI tend to agree",
+      "thread_id": "thread-57f2d81f0a6a",
+      "thread_depth": 4,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-1f68c50f5f6a",
+      "message_id": "<26798.62890.338514.98289@paul.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2025-08-27T07:10:18-05:00",
+      "subject": "[Rd] Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "subject_clean": "Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "in_reply_to": "<26796.57102.892064.976351@paul.eddelbuettel.com>",
+      "references": [
+        "<26795.5318.208295.833102@paul.eddelbuettel.com>",
+        "<26796.13035.258128.89116@stat.math.ethz.ch>",
+        "<26796.16160.734621.167695@paul.eddelbuettel.com>",
+        "<26796.34762.119924.236639@stat.math.ethz.ch>",
+        "<26796.57102.892064.976351@paul.eddelbuettel.com>"
+      ],
+      "body_plain": "Now filed as #18942 in bugzilla, see https://bugs.r-project.org/show_bug.cgi?id=18942\n\nDirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "Now filed as #18942 in bugzilla, see https://bugs.r-project.org/show_bug.cgi?id=18942\n\nDirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "thread_id": "thread-57f2d81f0a6a",
+      "thread_depth": 5,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-cb8da2a46401",
+      "message_id": "<aK8RdDqVo7QQ6_Xq@DF-thinkpad.local>",
+      "from_name": "David Firth",
+      "from_email_hash": "90373e916f7fb8c17d498d0694f209e97f401e9726a64712111b9092c6053beb",
+      "date": "2025-08-27T15:08:52+01:00",
+      "subject": "[Rd] preserve names in grid::unit() ?",
+      "subject_clean": "preserve names in grid::unit() ?",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I am asking here first, rather than filing a feature request directly.  It concerns a function in the grid package, maintained by R-core.\n\nIs there a reason why grid::unit(x, units) does not preserve the names (if such exist) from vector x?\n\nI have a use-case where that would be helpful.  But maybe there is some obstacle that I have not thought of?\n\nCurrent behaviour seems to be:\n\n> x <- 7:9\n> names(x) <- letters[1:3]\n> x\na b c \n7 8 9 \n> z <- grid::unit(x, \"native\")\n> z\n[1] 7native 8native 9native\n> str(z)\n 'simpleUnit' num [1:3] 7native 8native 9native\n - attr(*, \"unit\")= int 4\n> class(z)\n[1] \"simpleUnit\" \"unit\"       \"unit_v2\"\n\n## Now assign names\n> names(z) <- names(x)\n> z\n[1] 7native 8native 9native\n> names(z)\n[1] \"a\" \"b\" \"c\"\n> str(z)\n 'simpleUnit' Named num [1:3] 7native 8native 9native\n - attr(*, \"unit\")= int 4\n - attr(*, \"names\")= chr [1:3] \"a\" \"b\" \"c\"\n\nI would welcome any comments or suggestions.\n\nThanks -- David",
+      "body_snippet": "I am asking here first, rather than filing a feature request directly.  It concerns a function in the grid package, maintained by R-core.\n\nIs there a reason why grid::unit(x, units) does not preserve ",
+      "thread_id": "thread-cb8da2a46401",
+      "thread_depth": 0,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-0775bbb038f2",
+      "message_id": "<af2b6e1a-c2ae-4675-b927-b338b08e075c@gmail.com>",
+      "from_name": "Mikael Jagan",
+      "from_email_hash": "4bef0ec6e88ca2d9a2d39dae930cd5ac951a48aafc09e210705e7cdcf3fd5964",
+      "date": "2025-08-27T15:32:46-04:00",
+      "subject": "[Rd] The recent bug blitz",
+      "subject_clean": "The recent bug blitz",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Maybe others will share in my astonishment seeing that Tomas Kalibera has\nsince Aug 1 closed ~80 bugs on R's Bugzilla, in all cases providing quite\nthoughtful and instructive explanation.  I've learned quite a bit keeping\nup with his comments this month, notably from closures whose resolution\nwas *not* FIXED, as those provided guidance about what issues, while valid,\nmay not be a good use of developer time or worth additional complexity,\nmaintenance, etc.\n\n  \nhttps://bugs.r-project.org/buglist.cgi?chfield=bug_status&chfieldfrom=2025-08-01&chfieldto=2025-08-31&chfieldvalue=CLOSED&email3=tomas.kalibera%40gmail.com&emaillongdesc3=1&emailtype3=substring&list_id=44555\n\nA huge effort, clearly, so thanks very much, Tomas - and apologies if you\nwould have preferred to continue your work in obscurity ...\n\nFor anyone feeling inspired, there is a nice blog post about how users can\nhelp to review open bug reports\n\n  \nhttps://blog.r-project.org/2019/10/09/r-can-use-your-help-reviewing-bug-reports/index.html\n\nwhich links to this helpful article about writing good bug reports\n\n     https://www.r-project.org/bugs.html\n\n\nMikael",
+      "body_snippet": "Maybe others will share in my astonishment seeing that Tomas Kalibera has\nsince Aug 1 closed ~80 bugs on R's Bugzilla, in all cases providing quite\nthoughtful and instructive explanation.  I've learne",
+      "thread_id": "thread-0775bbb038f2",
+      "thread_depth": 0,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-dd3dd65ea15d",
+      "message_id": "<694c689a-7469-4acf-9896-e21c21fe8217@stat.auckland.ac.nz>",
+      "from_name": "Paul Murrell",
+      "from_email_hash": "b3f594a422420b6b0ebe3c322adc862f12e47d04c791ab2c9b39347f77271c1b",
+      "date": "2025-08-29T15:55:56+12:00",
+      "subject": "[Rd] preserve names in grid::unit() ?",
+      "subject_clean": "preserve names in grid::unit() ?",
+      "in_reply_to": "<aK8RdDqVo7QQ6_Xq@DF-thinkpad.local>",
+      "references": [
+        "<aK8RdDqVo7QQ6_Xq@DF-thinkpad.local>"
+      ],
+      "body_plain": "Hi\n\nThe implementation answer is that grid::unit() calls as.numeric() on \n'x', which drops names.\n\nThe design answer is that having names on units was (naively) not \nconsidered in the original design.\n\nThe obstacle is that all functions that manipulate units would need to \nbe made \"names-aware\".  That might be tricky for more complex units like ...\n\nmax(unit(1:3, \"in\"))\n\n... though I guess the behaviour of numeric vectors could provide a \nrole-model.\n\nPaul\n\nOn 28/08/2025 2:08 am, David Firth via R-devel wrote:\n> I am asking here first, rather than filing a feature request directly.  It concerns a function in the grid package, maintained by R-core.\n> \n> Is there a reason why grid::unit(x, units) does not preserve the names (if such exist) from vector x?\n> \n> I have a use-case where that would be helpful.  But maybe there is some obstacle that I have not thought of?\n> \n> Current behaviour seems to be:\n> \n>> x <- 7:9\n>> names(x) <- letters[1:3]\n>> x\n> a b c\n> 7 8 9\n>> z <- grid::unit(x, \"native\")\n>> z\n> [1] 7native 8native 9native\n>> str(z)\n>   'simpleUnit' num [1:3] 7native 8native 9native\n>   - attr(*, \"unit\")= int 4\n>> class(z)\n> [1] \"simpleUnit\" \"unit\"       \"unit_v2\"\n> \n> ## Now assign names\n>> names(z) <- names(x)\n>> z\n> [1] 7native 8native 9native\n>> names(z)\n> [1] \"a\" \"b\" \"c\"\n>> str(z)\n>   'simpleUnit' Named num [1:3] 7native 8native 9native\n>   - attr(*, \"unit\")= int 4\n>   - attr(*, \"names\")= chr [1:3] \"a\" \"b\" \"c\"\n> \n> I would welcome any comments or suggestions.\n> \n> Thanks -- David\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nDr Paul Murrell (he/him)\nTe Kura Tatauranga | Department of Statistics\nWaipapa Taumata Rau | The University of Auckland\nPrivate Bag 92019, Auckland 1142, New Zealand\n64 9 3737599 x85392\npaul at stat.auckland.ac.nz\nwww.stat.auckland.ac.nz/~paul/",
+      "body_snippet": "Hi\n\nThe implementation answer is that grid::unit() calls as.numeric() on \n'x', which drops names.\n\nThe design answer is that having names on units was (naively) not \nconsidered in the original design.",
+      "thread_id": "thread-cb8da2a46401",
+      "thread_depth": 1,
+      "month": "2025-08"
+    },
+    {
+      "id": "msg-3a50f51b3c2a",
+      "message_id": "<CAN+W6_uBDSX1wAeNTJr+irNgTwyH8g2Jj+Eir0tzYbi9ybx0pg@mail.gmail.com>",
+      "from_name": "Lluís Revilla",
+      "from_email_hash": "76a9726a6e0e47bbb7afccdf71a32cc468fa12b74f368ad4203569f7d7fbc065",
+      "date": "2025-08-29T19:16:31+02:00",
+      "subject": "[Rd] The recent bug blitz",
+      "subject_clean": "The recent bug blitz",
+      "in_reply_to": "<af2b6e1a-c2ae-4675-b927-b338b08e075c@gmail.com>",
+      "references": [
+        "<af2b6e1a-c2ae-4675-b927-b338b08e075c@gmail.com>"
+      ],
+      "body_plain": "I too share the positive feelings about this effort.\nThe detailed explanations clearly helps me learn, regardless of the\nfact that sometimes the answer is not the desired one.\nIt keeps up my spirit to collaborate, especially on those that I\nsubmitted some time ago.\n\nThank you very much Tomas!\n\nOn Wed, 27 Aug 2025 at 21:32, Mikael Jagan <jaganmn2 at gmail.com> wrote:\n>\n> Maybe others will share in my astonishment seeing that Tomas Kalibera has\n> since Aug 1 closed ~80 bugs on R's Bugzilla, in all cases providing quite\n> thoughtful and instructive explanation.  I've learned quite a bit keeping\n> up with his comments this month, notably from closures whose resolution\n> was *not* FIXED, as those provided guidance about what issues, while valid,\n> may not be a good use of developer time or worth additional complexity,\n> maintenance, etc.\n>\n>\n> https://bugs.r-project.org/buglist.cgi?chfield=bug_status&chfieldfrom=2025-08-01&chfieldto=2025-08-31&chfieldvalue=CLOSED&email3=tomas.kalibera%40gmail.com&emaillongdesc3=1&emailtype3=substring&list_id=44555\n>\n> A huge effort, clearly, so thanks very much, Tomas - and apologies if you\n> would have preferred to continue your work in obscurity ...\n>\n> For anyone feeling inspired, there is a nice blog post about how users can\n> help to review open bug reports\n>\n>\n> https://blog.r-project.org/2019/10/09/r-can-use-your-help-reviewing-bug-reports/index.html\n>\n> which links to this helpful article about writing good bug reports\n>\n>      https://www.r-project.org/bugs.html\n>\n>\n> Mikael\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "I too share the positive feelings about this effort.\nThe detailed explanations clearly helps me learn, regardless of the\nfact that sometimes the answer is not the desired one.\nIt keeps up my spirit to",
+      "thread_id": "thread-0775bbb038f2",
+      "thread_depth": 1,
+      "month": "2025-08"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-77610b80e536",
+      "subject": "Time to revisit ifelse ?",
+      "message_count": 2,
+      "participants": [
+        "GILLIBERT, Andre",
+        "Mikael Jagan"
+      ],
+      "started": "2025-08-01T17:13:12+00:00",
+      "last_reply": "2025-08-01T13:29:55-04:00",
+      "root_message_id": "msg-77610b80e536"
+    },
+    {
+      "id": "thread-58ab03a7e08c",
+      "subject": "Bug Report: R for Windows installer fails to enable Intel MKL on modern hardware",
+      "message_count": 2,
+      "participants": [
+        "Tomas Kalibera",
+        "mo. sadik khan"
+      ],
+      "started": "2025-08-04T23:00:43+05:30",
+      "last_reply": "2025-08-05T07:53:39+02:00",
+      "root_message_id": "msg-58ab03a7e08c"
+    },
+    {
+      "id": "thread-2daf95ee912e",
+      "subject": "Bug in getS3method?",
+      "message_count": 1,
+      "participants": [
+        "GILLIBERT, Andre"
+      ],
+      "started": "2025-08-06T22:23:13+00:00",
+      "last_reply": "2025-08-06T22:23:13+00:00",
+      "root_message_id": "msg-2daf95ee912e"
+    },
+    {
+      "id": "thread-a67da37576b1",
+      "subject": "overriding built in Rbuildignore values",
+      "message_count": 9,
+      "participants": [
+        "Dirk Eddelbuettel",
+        "Dr Gregory Jefferis",
+        "Duncan Murdoch",
+        "Ivan Krylov"
+      ],
+      "started": "2025-08-07T19:23:34+01:00",
+      "last_reply": "2025-08-10T16:46:20+03:00",
+      "root_message_id": "msg-a67da37576b1"
+    },
+    {
+      "id": "thread-ad072534800b",
+      "subject": "Including mode='wb' in download.file() for .xlsx files on Windows ?",
+      "message_count": 1,
+      "participants": [
+        "Hernando Cortina"
+      ],
+      "started": "2025-08-10T12:29:33-04:00",
+      "last_reply": "2025-08-10T12:29:33-04:00",
+      "root_message_id": "msg-ad072534800b"
+    },
+    {
+      "id": "thread-130fe69296c8",
+      "subject": "Including mode='wb' in download.file() for .xlsx files on Windows ?",
+      "message_count": 3,
+      "participants": [
+        "Avraham Adler",
+        "Hernando Cortina",
+        "Paul McQuesten"
+      ],
+      "started": "2025-08-10T13:37:36-05:00",
+      "last_reply": "2025-08-10T19:36:11+00:00",
+      "root_message_id": "msg-130fe69296c8"
+    },
+    {
+      "id": "thread-f312b8544619",
+      "subject": "Issues with tempdir() using short path names",
+      "message_count": 2,
+      "participants": [
+        "Duncan Murdoch"
+      ],
+      "started": "2025-08-10T15:22:03-04:00",
+      "last_reply": "2025-08-12T07:07:30-04:00",
+      "root_message_id": "msg-f312b8544619"
+    },
+    {
+      "id": "thread-929d48780441",
+      "subject": "An iteration protocol",
+      "message_count": 7,
+      "participants": [
+        "Duncan Murdoch",
+        "Lionel Henry",
+        "Peter Meilstrup",
+        "Taras Zakharko",
+        "Tomasz Kalinowski"
+      ],
+      "started": "2025-08-11T15:23:49-04:00",
+      "last_reply": "2025-08-12T14:48:24+00:00",
+      "root_message_id": "msg-929d48780441"
+    },
+    {
+      "id": "thread-b4605470a5f9",
+      "subject": "Non-ASCII citation keys prevent compiling with LC_ALL=C",
+      "message_count": 3,
+      "participants": [
+        "Ivan Krylov",
+        "Kurt Hornik"
+      ],
+      "started": "2025-08-16T22:59:55+03:00",
+      "last_reply": "2025-08-19T01:48:36+03:00",
+      "root_message_id": "msg-b4605470a5f9"
+    },
+    {
+      "id": "thread-57f2d81f0a6a",
+      "subject": "Do rowMeans and colMeans of complex vars need adjusting following r88444?",
+      "message_count": 6,
+      "participants": [
+        "Dirk Eddelbuettel",
+        "Martin Maechler"
+      ],
+      "started": "2025-08-24T08:33:58-05:00",
+      "last_reply": "2025-08-27T07:10:18-05:00",
+      "root_message_id": "msg-57f2d81f0a6a"
+    },
+    {
+      "id": "thread-cb8da2a46401",
+      "subject": "preserve names in grid::unit() ?",
+      "message_count": 2,
+      "participants": [
+        "David Firth",
+        "Paul Murrell"
+      ],
+      "started": "2025-08-27T15:08:52+01:00",
+      "last_reply": "2025-08-29T15:55:56+12:00",
+      "root_message_id": "msg-cb8da2a46401"
+    },
+    {
+      "id": "thread-0775bbb038f2",
+      "subject": "The recent bug blitz",
+      "message_count": 2,
+      "participants": [
+        "Lluís Revilla",
+        "Mikael Jagan"
+      ],
+      "started": "2025-08-27T15:32:46-04:00",
+      "last_reply": "2025-08-29T19:16:31+02:00",
+      "root_message_id": "msg-0775bbb038f2"
+    }
+  ]
+}

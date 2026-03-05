@@ -1,0 +1,36 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2023-02",
+  "messages": [
+    {
+      "id": "msg-64a00e563ba5",
+      "message_id": "<CAMGHQ95wXZ=LMVkUjDRsCJ_0P2VAbWnQrj-4_NvdXRGMuvVDvA@mail.gmail.com>",
+      "from_name": "Alexey Sergushichev",
+      "from_email_hash": "17c8ed969e831803241a6049eb09a2d87e7c5a5a8f4474ba4416c267e5d9471b",
+      "date": "2023-02-28T18:19:00-06:00",
+      "subject": "[Rd] Incorrect behavior of ks.test and psmirnov functions with exact=TRUE",
+      "subject_clean": "Incorrect behavior of ks.test and psmirnov functions with exact=TRUE",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "HI,\n\nI've noticed what I think is an incorrect behavior of stats::psmirnov\nfunction and consequently of ks.test when run in an exact mode.\n\nFor example:\npsmirnov(1, sizes=c(50, 50), z=1:100, two.sided = FALSE, lower.tail = F,\nexact=TRUE)\n\nproduces 2.775558e-15\n\nHowever, the exact value should be 1/combination(100, 50), which is\n9.9e-30. While the absolute error is small, the relative error is huge, and\nit is not fixed by setting option log.p=T\n\nTo compare, SciPy has a correct implementation in scipy.stats.ks_2samp:\nscipy.stats.ks_2samp(list(range(1,51)), list(range(51, 101)),\nalternative=\"greater\", method=\"exact\")\nreturns 9.911653021418333e-30.\n\nI've tried to dig in a bit and the problem comes down to how the final\nvalue is calculated in psmirnov function:\n\n    if (log.p & !lower.tail)\n        return(log1p(-ret/exp(logdenom)))\n    if (!log.p & !lower.tail)\n        return(1 - ret/exp(logdenom))\n\nThere exp(logdenom) is a relatively good (but not perfect) approximation of\ncombination(100, 50) = 1.008913e+29, ret is also a good approximation of\ncombination(100, 50)-1 = 1.008913e+29 but there is not enough double\nprecision for 1 - ret/exp(logdenom) to capture 1/combination(100, 50).\n\nI don't have time to provide a fix, at least not now, but I think this\nbehavior (good absolute error, but poor relative error for small values)\nshould at least be mentioned in the manual of the methods psmirnov and/or\nks.test\n\nBest,\nAlexey Sergushichev\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "HI,\n\nI've noticed what I think is an incorrect behavior of stats::psmirnov\nfunction and consequently of ks.test when run in an exact mode.\n\nFor example:\npsmirnov(1, sizes=c(50, 50), z=1:100, two.sided",
+      "thread_id": "thread-64a00e563ba5",
+      "thread_depth": 0,
+      "month": "2023-02"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-64a00e563ba5",
+      "subject": "Incorrect behavior of ks.test and psmirnov functions with exact=TRUE",
+      "message_count": 1,
+      "participants": [
+        "Alexey Sergushichev"
+      ],
+      "started": "2023-02-28T18:19:00-06:00",
+      "last_reply": "2023-02-28T18:19:00-06:00",
+      "root_message_id": "msg-64a00e563ba5"
+    }
+  ]
+}
