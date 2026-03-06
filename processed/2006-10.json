@@ -9034,6 +9034,56 @@
       "thread_id": "thread-f029ee43222e",
       "thread_depth": 1,
       "month": "2006-10"
+    },
+    {
+      "id": "msg-f8b695f026d3",
+      "message_id": "<4547D9B0.3080505@r-project.org>",
+      "from_name": "John Chambers",
+      "from_email_hash": "07ce409e62c6fa8a42409d100cd19d8b5f4308ae065b786c7a703624eacfc072",
+      "date": "2006-10-31T18:18:08-05:00",
+      "subject": "[Rd] setReplaceMethod",
+      "subject_clean": "setReplaceMethod",
+      "in_reply_to": "<5959F116-B18B-4D0D-BD64-02F8B6EA880E@soc.soton.ac.uk>",
+      "references": [
+        "<5959F116-B18B-4D0D-BD64-02F8B6EA880E@soc.soton.ac.uk>"
+      ],
+      "body_plain": "There's a two-level issue here, principle and practice.\n\nThe principle is that the behavior of basic R functions on basic R data \ntypes is considered \"sealed\".  Math functions, arithmetic, etc. on basic \nvectors are not supposed to be alterable.\n\nThe function \"[<-\" is one of those functions.  If x is a basic vector \ntype, then x[i] <- value is considered sealed.  That's what the error \nmessage is telling you.  (By the way setReplaceMethod() has nothing to \ndo with the issue; it's just a way of relieving the programmer from \nknowing that x[i]<-value is really a call to the function \"[<-\"; again, \nthe error message shows that.)\n\nSince you are writing the method for x having class \"ANY\", that is even \nstronger than changing the behavior for a specific basic type.\n\nIf you were to convince the R management that in principle having a \nspecial class on the right side justified breaking the seal (and that \nwould take some arguing), then there is a practical problem.\n\nThe current implementation of primitives in C code examines the first \nargument only (except for binary operators, where both arguments are \nexamined).  The object is examined for having a non-basic class.  If \nit's a basic data type, no further checking for methods occurs.  So even \nif you were allowed to define the method, it wouldn't get called if x \nwas a numeric vector, for example.  Changing that would require changes \nat a low level, and almost certainly add some overhead to all calls.  \nExpect opposition.\n\nOtherwise, you must define some class and only expect your assignment to \npromote x if x  inherits from that class.  Or have another function, not \n\"[<-\", as the generic.\n\nBy the way, your method definition is not what you wanted in any case.  \nThe signature you meant to have was signature(x=\"ANY\", value = \"brob\").  \nAt least I assume it was the  right-hand side and not argument \"i\" that \nyou meant to have class \"brob\".  You don't actually need the x=\"ANY\" \npart, that is the default for omitted arguments--but it's clearer in \nthis case to be explicit.\n\n\n\nRobin Hankin wrote:\n> Hi\n>\n> If     x <- 1:10    then  x[5] <- 1i    will promote\n> x to be a complex vector.\n>\n> Suppose I  have an S4 class \"brob\", and have functions\n> is.brob(), as.brob(), as.numeric() and so forth (minimal self-contained\n> code below).\n>\n> If x is numeric (1:10, say) and y is a brob, what\n> is the best way to make\n>\n> x[5] <- y\n>\n> promote x to a brob in the same way as the complex example?\n>\n> Or is this not desirable for some reason?\n>\n>\n> My first idea was to use\n>\n> setReplaceMethod(\"[\",signature(\"ANY\",\"brob\"), ...)\n>\n> but this gives a seal error:\n>\n> Error in setMethod(paste(f, \"<-\", sep = \"\"), ..., where = where) :\n> \tthe method for function \"[<-\" and signature x=\"ANY\", i=\"brob\" is  \n> sealed and cannot be re-defined\n>\n>\n>\n>\n> so this can't be right.\n>\n>\n>\n>\n>\n>\n>\n>\n>\n>\n>\n> setClass(\"swift\",\n>           representation = \"VIRTUAL\"\n>           )\n>\n> setClass(\"brob\",\n>           representation = representation \n> (x=\"numeric\",positive=\"logical\"),\n>           prototype      = list(x=numeric(),positive=logical()),\n>           contains       = \"swift\"\n>           )\n>\n> setAs(\"brob\", \"numeric\", function(from){\n>    out <- exp(from at x)\n>    out[!from at positive] <- -out[!from at positive]\n>    return(out)\n> } )\n>\n> setMethod(\"as.numeric\",signature(x=\"brob\"),function(x){as(x,\"numeric\")})\n> is.brob <- function(x){is(x,\"brob\")}\n>\n> \"brob\" <- function(x=double(),positive){\n>    if(missing(positive)){\n>      positive <- rep(TRUE,length(x))\n>    }\n>    if(length(positive)==1){\n>      positive <- rep(positive,length(x))\n>    }\n>    new(\"brob\",x=as.numeric(x),positive=positive)\n> }\n>\n> \"as.brob\" <- function(x){\n>    if(is.brob(x)){\n>      return(x)\n>    } else if(is.complex(x)) {\n>      warning(\"imaginary parts discarded\")\n>      return(Recall(Re(x)))\n>    } else if(is.glub(x)){\n>      warning(\"imaginary parts discarded\")\n>      return(Re(x))\n>    } else {\n>      return(brob(log(abs(x)), x>=0))\n>    }\n> }\n>\n> setMethod(\"[\", \"brob\",\n>            function(x, i, j, drop){\n>              brob(x at x[i], x at positive[i])\n>            } )\n>\n> setReplaceMethod(\"[\",signature(x=\"brob\"),\n>                   function(x,i,j,value){\n>                     jj.x <- x at x\n>                     jj.pos <- x at positive\n>                     if(is.brob(value)){\n>                       jj.x[i] <- value at x\n>                       jj.pos[i] <- value at positive\n>                       return(brob(x=jj.x,positive=jj.pos))\n>                     } else {\n>                       x[i] <- as.brob(value)\n>                       return(x)\n>                     }\n>                   } )\n>\n>\n> setReplaceMethod(\"[\",signature(\"ANY\",\"brob\"),\n>\n>                   function(x,i,j,value){\n>                     x <- as.brob(x)\n>                     x[i] <- as.brob(value)\n>                     return(x)\n>                   }\n>                   )\n>\n>\n>\n>\n> --\n> Robin Hankin\n> Uncertainty Analyst\n> National Oceanography Centre, Southampton\n> European Way, Southampton SO14 3ZH, UK\n>   tel  023-8059-7743\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>",
+      "body_snippet": "There's a two-level issue here, principle and practice.\n\nThe principle is that the behavior of basic R functions on basic R data \ntypes is considered \"sealed\".  Math functions, arithmetic, etc. on bas",
+      "thread_id": "thread-f9a536e979c9",
+      "thread_depth": 1,
+      "month": "2006-10"
+    },
+    {
+      "id": "msg-ed99694a39ce",
+      "message_id": "<67DCA285A2D7754280D3B8E88EB5480211DDA48C@MSGBOSCLB2WIN.DMN1.FMR.COM>",
+      "from_name": "McGehee, Robert",
+      "from_email_hash": "c4ffe145a7d236d1298306c0caaa36b70a3de14b3e13bc602596f37a5ecdb95d",
+      "date": "2006-10-31T20:15:05-05:00",
+      "subject": "[Rd] Argument error reporting slowness",
+      "subject_clean": "Argument error reporting slowness",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hello,\nMy work with large datasets slows down a fair amount in R 2.4.0 when I\nmistakenly pass in a large dataset using an incorrect argument. That is,\nthe same error message for reporting an incorrect argument usage when I\npass in a 1e8 length matrix takes 3 minutes on R 2.4.0 versus 0.01\nseconds on R 2.3.1 This slowness may be an unintentional side effect of\na creating a better error message for reporting bad arguments. For even\nlarger data sets, I have chosen to kill my R session rather than wait\nout this error if mis-typing an argument name.\n\nFor instance,\n## In R 2.3.1, immediate reporting\n> system.time(cor(badArg = matrix(1:1e8)))\nError in cor(badArg = matrix(1:1e+07)) : unused argument(s) (badArg ...)\nTiming stopped at: 0 0.01 0.02 NA NA\n\n## In R 2.4.0, extremely slow\n> system.time(cor(badArg = matrix(1:1e8)))\nError in cor(badArg = matrix(1:1e+08)) : unused argument(s) (badArg =\nc(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,\n21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,\n39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,\n57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74,\n75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92,\n93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108,\n109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, \nTiming stopped at: 175.84 1.546 177.423 0 0\n\nBest,\nRobert\n\nplatform       x86_64-unknown-linux-gnu                   \narch           x86_64                                     \nos             linux-gnu                                  \nsystem         x86_64, linux-gnu                          \nstatus         Patched                                    \nmajor          2                                          \nminor          4.0                                        \nyear           2006                                       \nmonth          10                                         \nday            03                                         \nsvn rev        39576                                      \nlanguage       R                                          \nversion.string R version 2.4.0 Patched (2006-10-03 r39576)\n\nRobert McGehee\nQuantitative Analyst\nGeode Capital Management, LLC\n1 Post Office Square, 28th Floor | Boston, MA | 02109\nTel: 617/392-8396    Fax:617/476-6389\nmailto:robert.mcgehee at geodecapital.com\n\n\n\nThis e-mail, and any attachments hereto, are intended for us...{{dropped}}",
+      "body_snippet": "Hello,\nMy work with large datasets slows down a fair amount in R 2.4.0 when I\nmistakenly pass in a large dataset using an incorrect argument. That is,\nthe same error message for reporting an incorrect",
+      "thread_id": "thread-ed99694a39ce",
+      "thread_depth": 0,
+      "month": "2006-10"
+    },
+    {
+      "id": "msg-2b9b7cf6dea8",
+      "message_id": "<971536df0610311716u3fbc2fc7gda588c4feb92d9a8@mail.gmail.com>",
+      "from_name": "Gabor Grothendieck",
+      "from_email_hash": "2252aad0894f89a900da56345b1c4e0414e3b441d448c40b473f7149e06e5a05",
+      "date": "2006-10-31T20:16:11-05:00",
+      "subject": "[Rd] fields appearing in cran descriptions pages",
+      "subject_clean": "fields appearing in cran descriptions pages",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "What determines which fields appear in CRAN descriptions pages.\nFor example, for doBy there is no Date: but there is a vignette listed:\n\n   http://cran.r-project.org/src/contrib/Descriptions/doBy.html\n\nwhereas for gsubfn there is a Date: but there is no vignette listed\n(even though it has one).\n\n  http://cran.r-project.org/src/contrib/Descriptions/gsubfn.html",
+      "body_snippet": "What determines which fields appear in CRAN descriptions pages.\nFor example, for doBy there is no Date: but there is a vignette listed:\n\n   http://cran.r-project.org/src/contrib/Descriptions/doBy.html",
+      "thread_id": "thread-2b9b7cf6dea8",
+      "thread_depth": 0,
+      "month": "2006-10"
     }
   ],
   "threads": [
@@ -11126,13 +11176,36 @@
     {
       "id": "thread-f9a536e979c9",
       "subject": "setReplaceMethod",
-      "message_count": 1,
+      "message_count": 2,
       "participants": [
+        "John Chambers",
         "Robin Hankin"
       ],
       "started": "2006-10-31T15:24:38+00:00",
-      "last_reply": "2006-10-31T15:24:38+00:00",
+      "last_reply": "2006-10-31T18:18:08-05:00",
       "root_message_id": "msg-f9a536e979c9"
+    },
+    {
+      "id": "thread-ed99694a39ce",
+      "subject": "Argument error reporting slowness",
+      "message_count": 1,
+      "participants": [
+        "McGehee, Robert"
+      ],
+      "started": "2006-10-31T20:15:05-05:00",
+      "last_reply": "2006-10-31T20:15:05-05:00",
+      "root_message_id": "msg-ed99694a39ce"
+    },
+    {
+      "id": "thread-2b9b7cf6dea8",
+      "subject": "fields appearing in cran descriptions pages",
+      "message_count": 1,
+      "participants": [
+        "Gabor Grothendieck"
+      ],
+      "started": "2006-10-31T20:16:11-05:00",
+      "last_reply": "2006-10-31T20:16:11-05:00",
+      "root_message_id": "msg-2b9b7cf6dea8"
     }
   ]
 }

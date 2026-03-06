@@ -2200,6 +2200,38 @@
       "thread_id": "thread-913924e2eef5",
       "thread_depth": 2,
       "month": "2000-05"
+    },
+    {
+      "id": "msg-38b20e253bf8",
+      "message_id": "<Pine.LNX.4.10.10005311859490.3340-100000@bolker.zoo.ufl.edu>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "d08edf0cae3d275cf055ae0ae2d11c6d7db76f82f243f7b428105b56d670824b",
+      "date": "2000-05-31T19:10:41-04:00",
+      "subject": "[Rd] legend with multiple columns",
+      "subject_clean": "legend with multiple columns",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I have made a minor hack to \"legend\" (in R 1.0.0, but I didn't notice\nany changes to legend in the 1.0.1 NEWS) to allow the legend to be\nformatted in multiple columns, or horizontally (number of columns <-\nnumber of legend items).  (I find this helpful when I have lots of legend\nitems and not a lot of vertical space to squeeze the legend into.)\n  (Another hack I've considered is allowing location to be specified more\nflexibly, but I haven't bothered so far.)\n\n  I haven't stringently tested it, but it seems to work.\n\n-- \nBen Bolker                                  bolker@zoo.ufl.edu\nZoology Department, University of Florida   http://www.zoo.ufl.edu/bolker\n318 Carr Hall/Box 118525                    tel: (352) 392-5697\nGainesville, FL 32611-8525                  fax: (352) 392-3704\n\nPATCHES to legend.Rd and legend.R:\n\n*** legend2.txt\tWed May 31 14:45:18 2000\n--- legend2.R\tWed May 31 15:02:22 2000\n***************\n*** 1,7 ****\n! function (x, y, legend, fill, col = \"black\", lty, lwd, pch, bty = \"o\",\n! \t      bg = par(\"bg\"), cex = 1,\n!               xjust = 0, yjust = 1, x.intersp = 1, y.intersp = 1, adj = 0,\n!               text.width = NULL, merge = do.lines && has.pch, trace = FALSE)\n  {\n      if(is.list(x)) {\n          if(!missing(y)) {               # the 2nd arg maybe really is `legend'\n--- 1,9 ----\n! function (x, y, legend, fill, col = \"black\", lty, lwd, pch, bty = \"o\",\n!                        bg = par(\"bg\"), cex = 1,\n!                        xjust = 0, yjust = 1, x.intersp = 1, y.intersp = 1, adj = 0,\n!                        text.width = NULL, merge = do.lines && has.pch, trace = FALSE,\n!                        ncol=1, horiz =FALSE)\n!   ## BB hacked for multiple columns\n  {\n      if(is.list(x)) {\n          if(!missing(y)) {               # the 2nd arg maybe really is `legend'\n***************\n*** 67,72 ****\n--- 69,78 ----\n      do.lines <- (!missing(lty) && any(lty > 0)) || !missing(lwd)\n      n.leg <- length(legend)\n  \n+     if (horiz && ncol!=1) warning(\"horizontal specification overrides number of columns\")\n+     if (horiz) ncol <- n.leg\n+     n.legpercol <- ceiling(n.leg / ncol)  ## legends per column\n+ \n      if(has.pch <- !missing(pch)) {\n  \tif(is.character(pch) && nchar(pch[1]) > 1) {\n              if(length(pch) > 1)\n***************\n*** 98,108 ****\n  \n      } else {## nx == 1\n          ## -- (w,h) := (width,height) of the box to draw -- computed in steps\n!         h <- n.leg * ychar + yc\n!         w <- text.width + (1.5 + x.intersp) * xchar\n!         if(!missing(fill))      w <- w + dx.fill\n!         if(has.pch && !merge)   w <- w + dx.pch\n!         if(do.lines)\t\tw <- w + (2+x.off) * xchar\n          ##-- (w,h) are now the final box width/height.\n          left <- x      - xjust  * w\n          top  <- y + (1 - yjust) * h\n--- 104,115 ----\n  \n      } else {## nx == 1\n          ## -- (w,h) := (width,height) of the box to draw -- computed in steps\n!         h <- n.legpercol * ychar + yc\n!         w0 <- text.width + (x.intersp+1) * xchar\n!         if(!missing(fill))      w0 <- w0 + dx.fill\n!         if(has.pch && !merge)   w0 <- w0 + dx.pch\n!         if(do.lines)\t\tw0 <- w0 + (2+x.off) * xchar\n!         w <- w0*ncol+xchar\n          ##-- (w,h) are now the final box width/height.\n          left <- x      - xjust  * w\n          top  <- y + (1 - yjust) * h\n***************\n*** 112,119 ****\n  \trect2(left, top, dx = w, dy = h, col = bg)\n  \n      ## (xt[],yt[]) := 'current' vectors of (x/y) legend text\n!     xt <- rep(left, n.leg) + xchar\n!     yt <- top - (1:n.leg) * ychar\n  \n      if (!missing(fill)) {               #- draw filled boxes -------------\n  \tfill <- rep(fill, length.out=n.leg)\n--- 119,126 ----\n  \trect2(left, top, dx = w, dy = h, col = bg)\n  \n      ## (xt[],yt[]) := 'current' vectors of (x/y) legend text\n!     xt <- rep(left, n.leg) + (w0*rep(0:(ncol-1),rep(n.legpercol,ncol)))[1:n.leg] + xchar\n!     yt <- top - rep(1:n.legpercol,ncol)[1:n.leg] * ychar\n  \n      if (!missing(fill)) {               #- draw filled boxes -------------\n  \tfill <- rep(fill, length.out=n.leg)\n\n*** legend.Rd.old\tWed May 31 19:02:55 2000\n--- legend.Rd\tWed May 31 19:05:14 2000\n***************\n*** 43,48 ****\n--- 43,52 ----\n      Defaults to the proper value computed by \\code{\\link{strwidth}(legend)}.}\n    \\item{merge}{logical; if \\code{TRUE}, ``merge'' points and lines but\n      not filled boxes.  Defaults to \\code{TRUE} if there are points and lines.}\n+   \\item{ncol}{the number of columns in which to set the legend item (default is 1,\n+       a vertical legend.}\n+   \\item{horiz}{logical; if \\code{TRUE}, set the legend horizontally rather than\n+      vertically (specifying \\code{horiz} overrides the \\code{ncol} specification).}\n  }\n  \\description{\n    This function can be used to add legends to plots.  Note that a call\n\n-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n_._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._",
+      "body_snippet": "I have made a minor hack to \"legend\" (in R 1.0.0, but I didn't notice\nany changes to legend in the 1.0.1 NEWS) to allow the legend to be\nformatted in multiple columns, or horizontally (number of colum",
+      "thread_id": "thread-38b20e253bf8",
+      "thread_depth": 0,
+      "month": "2000-05"
+    },
+    {
+      "id": "msg-b4ae8c0108eb",
+      "message_id": "<Pine.LNX.4.10.10005311929350.3397-100000@bolker.zoo.ufl.edu>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "d08edf0cae3d275cf055ae0ae2d11c6d7db76f82f243f7b428105b56d670824b",
+      "date": "2000-05-31T19:30:05-04:00",
+      "subject": "[Rd] legend with multiple columns",
+      "subject_clean": "legend with multiple columns",
+      "in_reply_to": "<Pine.LNX.4.10.10005311859490.3340-100000@bolker.zoo.ufl.edu>",
+      "references": [],
+      "body_plain": "oops, replying to my own message.  I notice there's a typo: \"item\"\nshould be \"items\" in the description of the \"ncol\" argument ...\n\n-- \nBen Bolker                                  bolker@zoo.ufl.edu\nZoology Department, University of Florida   http://www.zoo.ufl.edu/bolker\n318 Carr Hall/Box 118525                    tel: (352) 392-5697\nGainesville, FL 32611-8525                  fax: (352) 392-3704\n\n-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n_._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._._",
+      "body_snippet": "oops, replying to my own message.  I notice there's a typo: \"item\"\nshould be \"items\" in the description of the \"ncol\" argument ...\n\n-- \nBen Bolker                                  bolker@zoo.ufl.edu\nZ",
+      "thread_id": "thread-38b20e253bf8",
+      "thread_depth": 1,
+      "month": "2000-05"
     }
   ],
   "threads": [
@@ -2995,6 +3027,17 @@
       "started": "2000-05-31T17:43:11+01:00",
       "last_reply": "2000-05-31T23:42:04+02:00",
       "root_message_id": "msg-913924e2eef5"
+    },
+    {
+      "id": "thread-38b20e253bf8",
+      "subject": "legend with multiple columns",
+      "message_count": 2,
+      "participants": [
+        "Ben Bolker"
+      ],
+      "started": "2000-05-31T19:10:41-04:00",
+      "last_reply": "2000-05-31T19:30:05-04:00",
+      "root_message_id": "msg-38b20e253bf8"
     }
   ]
 }
