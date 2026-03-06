@@ -143,6 +143,38 @@
       "thread_id": "thread-c52fe43eec01",
       "thread_depth": 4,
       "month": "2026-03"
+    },
+    {
+      "id": "msg-e6433043d9e6",
+      "message_id": "<20260306002442.7dc5e22d@Tarkus>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2026-03-06T00:24:42+03:00",
+      "subject": "[Rd] Latest R-devel fails to compile with --enable-strict-barrier",
+      "subject_clean": "Latest R-devel fails to compile with --enable-strict-barrier",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hello R developers,\n\n'.../configure --enable-strict-barrier && make' eventually fails to\nload tools.so due to an undefined reference to OBJECT().\n\nJudging by the disassembly, the call surfaces in deparseRd(), close to\nthe beginning of the function:\n\n    if(!isString(e) || LENGTH(e) != 1) \n        error(_(\"'deparseRd' only supports deparsing character elements\"));\n    e = STRING_ELT(e, 0);\n    return (TYPEOF(s) == INTSXP && !inherits(s, \"factor\"));\n    if(!isInteger(state) || LENGTH(state) != 5) error(_(\"bad state\"));\n\n    if (OBJECT(s)) {\n   12828:       48 89 df                mov    %rbx,%rdi\n   1282b:       e8 d0 19 ff ff          call   4200 <OBJECT at plt>\n   12830:       85 c0                   test   %eax,%eax\n   12832:       0f 85 57 03 00 00       jne    12b8f <deparseRd+0x3df>\n...\n        klass = getAttrib(s, R_ClassSymbol);\n   12b8f:       48 8b 05 ca 73 00 00    mov    0x73ca(%rip),%rax # R_ClassSymbol\n   12b96:       48 89 df                mov    %rbx,%rdi\n   12b99:       48 8b 30                mov    (%rax),%rsi\n   12b9c:       e8 3f 1b ff ff          call   46e0 <Rf_getAttrib at plt>\n\nLooking at the preprocessor output, I think that the call to OBJECT()\nappears through the inlined function isInteger(), which calls inlined\nfunction inherits(), which contains the call to OBJECT(), which is not\navailable to the 'tools' shared library due to being newly hidden.\n\nWithout strict barrier checking, OBJECT(s) gets expanded to\n((s)->sxpinfo.obj), and all works well.\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "Hello R developers,\n\n'.../configure --enable-strict-barrier && make' eventually fails to\nload tools.so due to an undefined reference to OBJECT().\n\nJudging by the disassembly, the call surfaces in depa",
+      "thread_id": "thread-e6433043d9e6",
+      "thread_depth": 0,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-23b034052915",
+      "message_id": "<CAPRVBcw+=8XbO8wz4zRrDZcNreQJ-M9k-S1J6MBeepT-XswBrA@mail.gmail.com>",
+      "from_name": "Michael Chirico",
+      "from_email_hash": "c7ae14eea7523abfb41c3b0b883332081fc591538823e9bc107ad314c96d8583",
+      "date": "2026-03-05T14:26:16-08:00",
+      "subject": "[Rd] Is \"difftime\" an appropriate addition to methods::.OldClassesList?",
+      "subject_clean": "Is \"difftime\" an appropriate addition to methods::.OldClassesList?",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I found myself needing to add methods::setOldClass(\"difftime\") in\norder to also set a coercion method for my class to difftime:\n\nmethods::setAs(\"myClass\", \"difftime\", ...)\n\nAnd thus avoid the on-load message:\n\nin method for ?coerce? with signature ?\"myClass\",\"difftime\"?: no\ndefinition for class ?difftime?\n\nI see 10 or so other packages also doing the same [1].\n\nI am wondering, though, since {base} owns this class, if it shouldn't\nbe registered already? I see inclusions for, e.g., closely-related S3\nclasses Date and POSIXt [2].\n\nOTOH, I see .OldClassesList hasn't really been edited in 15+ years, so\nmaybe this approach has lost favor and is better not amended anymore\n[3].\n\n(or maybe this is really an r-package-devel question about whether\nsupporting as(<my class>, \"difftime\") is actually beneficial...)\n\nMike C\n\n[1] https://github.com/search?q=org%3Acran%20%2FsetOldClass.*difftime%2F&type=code\n[2] https://github.com/r-devel/r-svn/blob/b7850c8cae0956592019c5f8f59e885d3d39ae6f/src/library/methods/R/BasicClasses.R#L550-L552\n[3] https://github.com/r-devel/r-svn/blame/b7850c8cae0956592019c5f8f59e885d3d39ae6f/src/library/methods/R/BasicClasses.R#L541-L569",
+      "body_snippet": "I found myself needing to add methods::setOldClass(\"difftime\") in\norder to also set a coercion method for my class to difftime:\n\nmethods::setAs(\"myClass\", \"difftime\", ...)\n\nAnd thus avoid the on-load ",
+      "thread_id": "thread-23b034052915",
+      "thread_depth": 0,
+      "month": "2026-03"
     }
   ],
   "threads": [
@@ -169,6 +201,28 @@
       "started": "2026-03-02T14:37:22+01:00",
       "last_reply": "2026-03-04T12:57:47+01:00",
       "root_message_id": "msg-c52fe43eec01"
+    },
+    {
+      "id": "thread-23b034052915",
+      "subject": "Is \"difftime\" an appropriate addition to methods::.OldClassesList?",
+      "message_count": 1,
+      "participants": [
+        "Michael Chirico"
+      ],
+      "started": "2026-03-05T14:26:16-08:00",
+      "last_reply": "2026-03-05T14:26:16-08:00",
+      "root_message_id": "msg-23b034052915"
+    },
+    {
+      "id": "thread-e6433043d9e6",
+      "subject": "Latest R-devel fails to compile with --enable-strict-barrier",
+      "message_count": 1,
+      "participants": [
+        "Ivan Krylov"
+      ],
+      "started": "2026-03-06T00:24:42+03:00",
+      "last_reply": "2026-03-06T00:24:42+03:00",
+      "root_message_id": "msg-e6433043d9e6"
     }
   ]
 }

@@ -633,3 +633,85 @@ Message-ID: <27048.7739.470561.910241@stat.math.ethz.ch>
 Martin
 
 
+From |kry|ov @end|ng |rom d|@root@org  Thu Mar  5 22:24:42 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 6 Mar 2026 00:24:42 +0300
+Subject: [Rd] Latest R-devel fails to compile with --enable-strict-barrier
+Message-ID: <20260306002442.7dc5e22d@Tarkus>
+
+Hello R developers,
+
+'.../configure --enable-strict-barrier && make' eventually fails to
+load tools.so due to an undefined reference to OBJECT().
+
+Judging by the disassembly, the call surfaces in deparseRd(), close to
+the beginning of the function:
+
+    if(!isString(e) || LENGTH(e) != 1) 
+        error(_("'deparseRd' only supports deparsing character elements"));
+    e = STRING_ELT(e, 0);
+    return (TYPEOF(s) == INTSXP && !inherits(s, "factor"));
+    if(!isInteger(state) || LENGTH(state) != 5) error(_("bad state"));
+
+    if (OBJECT(s)) {
+   12828:       48 89 df                mov    %rbx,%rdi
+   1282b:       e8 d0 19 ff ff          call   4200 <OBJECT at plt>
+   12830:       85 c0                   test   %eax,%eax
+   12832:       0f 85 57 03 00 00       jne    12b8f <deparseRd+0x3df>
+...
+        klass = getAttrib(s, R_ClassSymbol);
+   12b8f:       48 8b 05 ca 73 00 00    mov    0x73ca(%rip),%rax # R_ClassSymbol
+   12b96:       48 89 df                mov    %rbx,%rdi
+   12b99:       48 8b 30                mov    (%rax),%rsi
+   12b9c:       e8 3f 1b ff ff          call   46e0 <Rf_getAttrib at plt>
+
+Looking at the preprocessor output, I think that the call to OBJECT()
+appears through the inlined function isInteger(), which calls inlined
+function inherits(), which contains the call to OBJECT(), which is not
+available to the 'tools' shared library due to being newly hidden.
+
+Without strict barrier checking, OBJECT(s) gets expanded to
+((s)->sxpinfo.obj), and all works well.
+
+-- 
+Best regards,
+Ivan
+
+
+From m|ch@e|ch|r|co4 @end|ng |rom gm@||@com  Thu Mar  5 23:26:16 2026
+From: m|ch@e|ch|r|co4 @end|ng |rom gm@||@com (Michael Chirico)
+Date: Thu, 5 Mar 2026 14:26:16 -0800
+Subject: [Rd] Is "difftime" an appropriate addition to
+ methods::.OldClassesList?
+Message-ID: <CAPRVBcw+=8XbO8wz4zRrDZcNreQJ-M9k-S1J6MBeepT-XswBrA@mail.gmail.com>
+
+I found myself needing to add methods::setOldClass("difftime") in
+order to also set a coercion method for my class to difftime:
+
+methods::setAs("myClass", "difftime", ...)
+
+And thus avoid the on-load message:
+
+in method for ?coerce? with signature ?"myClass","difftime"?: no
+definition for class ?difftime?
+
+I see 10 or so other packages also doing the same [1].
+
+I am wondering, though, since {base} owns this class, if it shouldn't
+be registered already? I see inclusions for, e.g., closely-related S3
+classes Date and POSIXt [2].
+
+OTOH, I see .OldClassesList hasn't really been edited in 15+ years, so
+maybe this approach has lost favor and is better not amended anymore
+[3].
+
+(or maybe this is really an r-package-devel question about whether
+supporting as(<my class>, "difftime") is actually beneficial...)
+
+Mike C
+
+[1] https://github.com/search?q=org%3Acran%20%2FsetOldClass.*difftime%2F&type=code
+[2] https://github.com/r-devel/r-svn/blob/b7850c8cae0956592019c5f8f59e885d3d39ae6f/src/library/methods/R/BasicClasses.R#L550-L552
+[3] https://github.com/r-devel/r-svn/blame/b7850c8cae0956592019c5f8f59e885d3d39ae6f/src/library/methods/R/BasicClasses.R#L541-L569
+
+
