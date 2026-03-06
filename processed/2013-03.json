@@ -167,25 +167,6 @@
       "month": "2013-03"
     },
     {
-      "id": "msg-7c017bf3418b",
-      "message_id": "<513246D6.8010509@gmail.com>",
-      "from_name": "Michael Bach",
-      "from_email_hash": "c060d0db3a766d77d6d86b3ca7e53d27e87477df536c8c0475f551d188348dc4",
-      "date": "2013-03-02T19:37:10+01:00",
-      "subject": "[Rd] .Call interface: Use R SEXP as C mutable *char",
-      "subject_clean": ".Call interface: Use R SEXP as C mutable *char",
-      "in_reply_to": "<F9DF50AC-DA88-47E8-9DAC-35FE6F0EDAC9@r-project.org>",
-      "references": [
-        "<kgr816$432$1@ger.gmane.org>",
-        "<F9DF50AC-DA88-47E8-9DAC-35FE6F0EDAC9@r-project.org>"
-      ],
-      "body_plain": "On 3/1/13 11:32 PM, Simon Urbanek wrote:\n>> I am trying to do something along the lines of:\n>>\n>> SEXP test_fun (SEXP filename) {\n>>\n>> const char *inputfile = translateChar(STRING_ELT(filename, 0));\n>>\n>> int abc = some_function(inputfile);\n>>\n>> ...\n>>\n>> }\n>>\n>> The code compiles fine, but I get a warning:\n>> \"passing argument of 'some_function' discards qualifiers from pointer target type\"\n>>\n>> I read up on my issue and found this posting:\n>> https://stat.ethz.ch/pipermail/r-devel/2011-June/061221.html\n>>\n>> I gather that the 'some_function' (which is a function from another library) takes just '*char' as argument type so the 'const' qualifier is discarded.\n>>\n>> Of course I want my package to compile without warnings. All my other attempts led to similar 'discard' warnings (mainly initializations of helper variables).\n>>\n>> What is the recommended approach here?\n>>\n>\n> Well, it really depends on some_function. The issue here is that inputfile you get is immutable (aka read-only). However, the warning tells you that some_function() declares that it wants to modify its input, so you cannot pass an immutable object to it. So there are two options (rather just one, really ;)):\n>\n> a) some_function() really means it, you have to create a copy - there are many ways to do it, this is just one of them, pick your best\n> static char buf[512];\n> if (strlen(inputfile) + 1 > sizeof(buf)) Rf_error(\"File name is too long\");\n> strcpy(buf, inputfile);\n> int abc = some_function(buf);\n>\n> b) some_function() doesn't really mean it - it's just a bug in the declaration and the author really meant\n> int some_function(const char *fn)\n> This is dangerous, because you have to know for sure that this is a bug that will be fixed. Meanwhile you can work around the bug with\n> int abc = some_function((char*) buf);\n> but that will remove all checking so if some_function() decides to actually modify the argument (which it legally can as it was telling you it will), you are in deep trouble, because memory is being corrupted affecting the whole R. So don't do this!\n>\n\nI took The Only True Option b), i.e. a manual 'fix' and modified the .c \nand .h argument lists to 'const char *fn' after confirming that \nsome_function() does indeed not change the argument. I also filed a bug \nand submitted a patch upstream.\n\nThanks Simon for clarifications!\n\nBest Regards,\nMichael",
-      "body_snippet": "On 3/1/13 11:32 PM, Simon Urbanek wrote:\n>> I am trying to do something along the lines of:\n>>\n>> SEXP test_fun (SEXP filename) {\n>>\n>> const char *inputfile = translateChar(STRING_ELT(filename, 0));\n",
-      "thread_id": "thread-fde778b0a74b",
-      "thread_depth": 2,
-      "month": "2013-03"
-    },
-    {
       "id": "msg-b875f9ebfe87",
       "message_id": "<CAEM6MMwe=pKv6-x_gdDM=kh=o62-9iE+hpRR+=OjBEG2OSh2vQ@mail.gmail.com>",
       "from_name": "Nicole Haenni",
@@ -4383,7 +4364,7 @@
     {
       "id": "thread-fde778b0a74b",
       "subject": ".Call interface: Use R SEXP as C mutable *char",
-      "message_count": 4,
+      "message_count": 3,
       "participants": [
         "Michael Bach",
         "Simon Urbanek"
