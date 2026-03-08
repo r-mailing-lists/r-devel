@@ -143,6 +143,28 @@
       "month": "2016-02"
     },
     {
+      "id": "msg-b402a8b987a7",
+      "message_id": "<8B548E62-9105-4D2F-A7C0-DC215ECB2DE9@r-project.org>",
+      "from_name": "Simon Urbanek",
+      "from_email_hash": "4b8015e605c1e8a78e0fc166d7f94d0bc9cab6230366ee1dfdd8a0de17b4b371",
+      "date": "2016-02-01T10:45:09-05:00",
+      "subject": "[Rd] Wrong config check for __libc_stack_end",
+      "subject_clean": "Wrong config check for __libc_stack_end",
+      "in_reply_to": "<CAJDAfTBqWuG53=a8ei63ZFmCjXzTFJ6kQmKG7c20f5zqiHoRyw@mail.gmail.com>",
+      "references": [
+        "<CAJDAfTBZ5FNAsPuoRyk6CLEOPKG-JpY4OoQ3On-brcHS6UnafA@mail.gmail.com>",
+        "<CAJDAfTAC1U92DXWvxkx7U9ORtJXtY+_e8i3MT85B3o6MsaEkKA@mail.gmail.com>",
+        "<22191.8837.813670.863210@stat.math.ethz.ch>",
+        "<AB464163-D2A0-41EA-A4B1-74412D55AD47@r-project.org>",
+        "<CAJDAfTBqWuG53=a8ei63ZFmCjXzTFJ6kQmKG7c20f5zqiHoRyw@mail.gmail.com>"
+      ],
+      "body_plain": "On Feb 1, 2016, at 9:56 AM, Alba Pompeo <albapompeo at gmail.com> wrote:\n\n> @Simon. Here's what I did.\n> I checked out R revision 70059.\n> Ran export r_cv_libc_stack_end=no. (otherwise it would give that error\n> we talked about before)\n\nNo, the point was that you use a clean checkout (do NOT build in the sources) and don't override anything ..\n\n\n\n> Ran ./configure --without-recommended-packages. (otherwise it would\n> complain of not finding ./src/library/Recommended/MASS_*.tar.gz)\n> Ran make.\n> Ran make check. Log is here - http://pastebin.com/raw/cGJgqB8p\n> \n> What do you think? Is there anything else I can do to help solve this issue?\n> \n> \n> \n> On Mon, Feb 1, 2016 at 11:36 AM, Simon Urbanek\n> <simon.urbanek at r-project.org> wrote:\n>> \n>> On Feb 1, 2016, at 4:16 AM, Martin Maechler <maechler at stat.math.ethz.ch> wrote:\n>> \n>>>>>>>> Alba Pompeo <albapompeo at gmail.com>\n>>>>>>>>   on Fri, 29 Jan 2016 08:23:26 -0200 writes:\n>>> \n>>>> Here is my log from 'make check' using an Intel i5 64-bit\n>>>> processor - http://pastebin.com/raw/N6SYAuFX Here is\n>>>> Isaac's log from 'make check' using an Intel Atom 32-bit\n>>>> processor - http://pastebin.com/raw/sey6DEk9\n>>> \n>>>> We are both on Alpine Linux, which uses the musl\n>>>> libc. http://www.musl-libc.org/\n>>> \n>>>> Thank you very much.\n>>> \n>>> It probably would have helped to choose a different subject\n>>> which I now do.\n>>> \n>> \n>> Agreed, since there is actually no abuse, case was easily dismissed as bogus given the subject.\n>> \n>> \n>>>> On Thu, Jan 28, 2016 at 9:54 AM, Alba Pompeo\n>>>> <albapompeo at gmail.com> wrote:\n>>>>> Hello, developers of R.\n>>>>> \n>>>>> I have been unsuccessfully trying to build R on a musl\n>>>>> libc system for the last days.  ./configure works, but\n>>>>> make fails. The command that errors out is here -\n>>>>> http://pastebin.com/raw/UwFRsiqT\n>>>>> \n>>>>> It was brought to my attention that this is a (very\n>>>>> longstanding) abuse of a private glibc symbol in R.\n>>>>> \n>>>>> In R 3.2.3, it seems that configure is trying to test for\n>>>>> it on Linux.  It apparently fails to accurately test (as\n>>>>> demonstrated by the link error), perhaps because the test\n>>>>> program does not actually *use* __libc_stack_end so it\n>>>>> gets optimized out. (See line 35500 or so in\n>>>>> R-3.2.3/configure.)  Ideally, the test program would\n>>>>> check that a pointer to __libc_stack_end is non-null, but\n>>>>> that's an autoconf bug.\n>>> \n>>> So, ideally someone who knows autoconf much better than I do\n>>> should submit a bug report to the autoconf maintainers.\n>>> \n>> \n>> @Alba, can you, please, check that your hypothesis actually holds true and the latest R from trunk fixes the check for you?\n>> \n>> \n>>> Back to R: I'm not familiar with that part of the code, neither\n>>> the configuration, nor the usage (in  R/src/unix/system.c ).\n>>> However, that code seems to be using a a glibc \"feature\" widely\n>>> available which does help making R startup (a very tiny bit ??)\n>>> faster.\n>>> \n>> \n>> No, it's actually very crucial as it is used to detect stack overflows.\n>> \n>> Cheers,\n>> Simon\n>> \n>> \n>> \n>>>>> A work around was to 'export r_cv_libc_stack_end=no'\n>>>>> before configuring R.\n>>> \n>>> which *does* solve that problem, right?\n>>> \n>>>>> However, there are a couple little issues with non-ASCII\n>>>>> text and a *lot* of math differences, many of which say\n>>>>> \"*no* convergence: NOTIFY R-core!\".\n>>> \n>>> Hmm, I may be off, but these would look like entirely unrelated\n>>> with the libc_stack_end availibility, wouldn't they ?\n>>> \n>>> Maybe you / the musl developers should try to make those C\n>>> libraries more \"standard\", notably because I would see math\n>>> differences as something pretty grave for R, and indeed, I would\n>>> not want to use a platform where R's math functions work\n>>> incompatibly with all other platforms ... but maybe I\n>>> misunderstand completely.\n>>> \n>>> Hmm... I've found this,\n>>> \n>>> http://wiki.musl-libc.org/wiki/Functional_differences_from_glibc#Floating-point_and_mathematical_library\n>>> \n>>> which make what you say above more relevant/interesting.\n>>> \n>>> Still, from this thread I get that the C source code of R needs\n>>> considerable configuration patches before R can work with musl.\n>>> But that needs another thread, something like  'Building R with musl'.\n>>> \n>>>>> Until these are resolved, R can't be packaged for\n>>>>> distributions that use musl, such as Alpine Linux.\n>>> \n>>> which I agree would not be ideal.\n>>> Martin\n>>> \n>>> --\n>>> Martin <Maechler at stat.math.ethz.ch>  http://stat.ethz.ch/people/maechler\n>>> Seminar f?r Statistik, ETH Z?rich\n>>> \n>>> ______________________________________________\n>>> R-devel at r-project.org mailing list\n>>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>> \n>> \n>",
+      "body_snippet": "On Feb 1, 2016, at 9:56 AM, Alba Pompeo <albapompeo at gmail.com> wrote:\n\n> @Simon. Here's what I did.\n> I checked out R revision 70059.\n> Ran export r_cv_libc_stack_end=no. (otherwise it would give t",
+      "thread_id": "thread-dfae4264c004",
+      "thread_depth": 3,
+      "month": "2016-02"
+    },
+    {
       "id": "msg-e7cadb3d28a8",
       "message_id": "<5A694E77-F32F-41C4-8D6D-1E1119ABFCB1@r-project.org>",
       "from_name": "Simon Urbanek",
@@ -2475,7 +2497,7 @@
     {
       "id": "thread-dfae4264c004",
       "subject": "Wrong config check for __libc_stack_end",
-      "message_count": 12,
+      "message_count": 13,
       "participants": [
         "Alba Pompeo",
         "Martin Maechler",

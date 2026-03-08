@@ -3242,78 +3242,6 @@
       "thread_id": "thread-61cc490fe02b",
       "thread_depth": 0,
       "month": "2013-07"
-    },
-    {
-      "id": "msg-c8618f64a742",
-      "message_id": "<51F99A62.6040205@gmail.com>",
-      "from_name": "Paul Gilbert",
-      "from_email_hash": "aa7dbc26c3f15087b2ccda228b01f598ecfa2ae9d7fa19309941c01a2c4f0d2f",
-      "date": "2013-07-31T19:14:42-04:00",
-      "subject": "[Rd] Depends vs Imports",
-      "subject_clean": "Depends vs Imports",
-      "in_reply_to": null,
-      "references": [],
-      "body_plain": "I am being asked to modernize the Depends line in the DESCRIPTION file \nof some packages. Writing R Extensions says:\n\n   The general rules are\n\n      Packages whose namespace only is needed to load the package using\n    library(pkgname) must be listed in the ?Imports? field and not in\n    the ?Depends? field. Packages listed in imports or importFrom\n    directives in the NAMESPACE file should almost always be in\n    ?Imports? and not ?Depends?.\n\n      Packages that need to be attached to successfully load the\n     package using library(pkgname) must be listed in the\n     ?Depends? field, only.\n\nCould someone please explain a few points I thought I understood but \nobviously do not, or point to where these are explained:\n\n    -What does it mean for the namespace only to be needed? I thought \nthe namespace was needed if the package or some of its functions were \nmentioned in the NAMESPACE file, and that only the namespace was needed \nif only the generics were called, and not other functions. The above \nsuggests that I may be wrong about this. If so, that is, Imports will \nusually suffice, then when would Depends ever be needed when a package \nis mentioned in the NAMESPACE file?\n\n   -Should the package DESCRIPTION make any accommodation for the \nsituation where users will probably need to directly call functions in \nthe imported package, even though the package itself does not?\n\n    -What does \"need to be attached\" mean? Is there a distinction \nbetween a package being attached and a namespace being attached.\n\n    -Does \"successfully load\" mean something different from actually \nusing the package? That is, can we assume that if the package loads then \nall the functions to run things will actually be found?\n\n    -If pkg1 uses a function foo in pkg3 indirectly, by a call to a \nfunction in  pkg2 which then uses foo, how should pkg1 indicate the \nrelationship with foo's pkg3, or is there no need to indicate any \nrelationship with pkg3 because that is all looked after by pkg2?\n\nThanks,\nPaul",
-      "body_snippet": "I am being asked to modernize the Depends line in the DESCRIPTION file \nof some packages. Writing R Extensions says:\n\n   The general rules are\n\n      Packages whose namespace only is needed to load th",
-      "thread_id": "thread-c8618f64a742",
-      "thread_depth": 0,
-      "month": "2013-07"
-    },
-    {
-      "id": "msg-c486d11246e1",
-      "message_id": "<C627D03C-9632-4C9E-850F-AEF71872277D@r-project.org>",
-      "from_name": "Simon Urbanek",
-      "from_email_hash": "4b8015e605c1e8a78e0fc166d7f94d0bc9cab6230366ee1dfdd8a0de17b4b371",
-      "date": "2013-07-31T20:35:19-04:00",
-      "subject": "[Rd] Depends vs Imports",
-      "subject_clean": "Depends vs Imports",
-      "in_reply_to": "<51F99A62.6040205@gmail.com>",
-      "references": [
-        "<51F99A62.6040205@gmail.com>"
-      ],
-      "body_plain": "On Jul 31, 2013, at 7:14 PM, Paul Gilbert wrote:\n\n> I am being asked to modernize the Depends line in the DESCRIPTION file of some packages. Writing R Extensions says:\n> \n>  The general rules are\n> \n>     Packages whose namespace only is needed to load the package using\n>   library(pkgname) must be listed in the ?Imports? field and not in\n>   the ?Depends? field. Packages listed in imports or importFrom\n>   directives in the NAMESPACE file should almost always be in\n>   ?Imports? and not ?Depends?.\n> \n>     Packages that need to be attached to successfully load the\n>    package using library(pkgname) must be listed in the\n>    ?Depends? field, only.\n> \n> Could someone please explain a few points I thought I understood but obviously do not, or point to where these are explained:\n> \n>   -What does it mean for the namespace only to be needed? I thought the namespace was needed if the package or some of its functions were mentioned in the NAMESPACE file, and that only the namespace was needed if only the generics were called, and not other functions. The above suggests that I may be wrong about this. If so, that is, Imports will usually suffice, then when would Depends ever be needed when a package is mentioned in the NAMESPACE file?\n> \n\nIn the namespace era Depends is never really needed. All modern packages have no technical need for Depends anymore. Loosely speaking the only purpose of Depends today is to expose other package's functions to the user without re-exporting them.\n\n\n>  -Should the package DESCRIPTION make any accommodation for the situation where users will probably need to directly call functions in the imported package, even though the package itself does not?\n> \n>   -What does \"need to be attached\" mean? Is there a distinction between a package being attached and a namespace being attached.\n> \n\nNo, the distinction is between loaded and attached (namespace/package is synonymous here).\n\n\n>   -Does \"successfully load\" mean something different from actually using the package? That is, can we assume that if the package loads then all the functions to run things will actually be found?\n> \n\nDefine \"found\" - they will not be attached to the search path, so they will be found if you address them fully via myPackage::myFn but not just via myFn (except for another package that imports myPackage).\n\n\n>   -If pkg1 uses a function foo in pkg3 indirectly, by a call to a function in  pkg2 which then uses foo, how should pkg1 indicate the relationship with foo's pkg3, or is there no need to indicate any relationship with pkg3 because that is all looked after by pkg2?\n> \n\nThere is no need - how would you imagine being responsible for code that you did not write? pkg2 will import function from pkg1, but you're not importing them in pkg3, you don't even care about them so you have no direct relationship with pkg1 (imagine pkg2 switched to use pkg4 instead of pkg1).\n\n\nIMHO it's all really simple:\n\nload = functions exported in myPkg are available to interested parties as myPkg::foo or via direct imports - essentially this means the package can now be used\n\nattach = the namespace (and thus all exported functions) is attached to the search path - the only effect is that you have now added the exported functions to the global pool of functions - sort of like dumping them in the workspace (for all practical purposes, not technically)\n\nimport a function into a package = make sure that this function works in my package regardless of the search path (so I can write fn1 instead of pkg1::fn1 and still know it will come from pkg1 and not someone's workspace or other package that chose the same name)\n\nCheers,\nSimon",
-      "body_snippet": "On Jul 31, 2013, at 7:14 PM, Paul Gilbert wrote:\n\n> I am being asked to modernize the Depends line in the DESCRIPTION file of some packages. Writing R Extensions says:\n> \n>  The general rules are\n> \n>",
-      "thread_id": "thread-c8618f64a742",
-      "thread_depth": 1,
-      "month": "2013-07"
-    },
-    {
-      "id": "msg-b9fdf937788e",
-      "message_id": "<CAAmySGNr_dYq3_=cDGoOtFius_h5GJC=3sZqRuYJFqC0DhvgWw@mail.gmail.com>",
-      "from_name": "R. Michael Weylandt",
-      "from_email_hash": "44e8775a589b9ef81880469e200f3cce307c7180b4289ca1696a578afb772b3a",
-      "date": "2013-07-31T21:41:51-05:00",
-      "subject": "[Rd] Depends vs Imports",
-      "subject_clean": "Depends vs Imports",
-      "in_reply_to": "<C627D03C-9632-4C9E-850F-AEF71872277D@r-project.org>",
-      "references": [
-        "<51F99A62.6040205@gmail.com>",
-        "<C627D03C-9632-4C9E-850F-AEF71872277D@r-project.org>"
-      ],
-      "body_plain": "On Wed, Jul 31, 2013 at 7:35 PM, Simon Urbanek\n<simon.urbanek at r-project.org> wrote:\n>\n> On Jul 31, 2013, at 7:14 PM, Paul Gilbert wrote:\n>\n>> I am being asked to modernize the Depends line in the DESCRIPTION file of some packages. Writing R Extensions says:\n>>\n>>  The general rules are\n>>\n>>     Packages whose namespace only is needed to load the package using\n>>   library(pkgname) must be listed in the ?Imports? field and not in\n>>   the ?Depends? field. Packages listed in imports or importFrom\n>>   directives in the NAMESPACE file should almost always be in\n>>   ?Imports? and not ?Depends?.\n>>\n>>     Packages that need to be attached to successfully load the\n>>    package using library(pkgname) must be listed in the\n>>    ?Depends? field, only.\n>>\n>> Could someone please explain a few points I thought I understood but obviously do not, or point to where these are explained:\n>>\n>>   -What does it mean for the namespace only to be needed? I thought the namespace was needed if the package or some of its functions were mentioned in the NAMESPACE file, and that only the namespace was needed if only the generics were called, and not other functions. The above suggests that I may be wrong about this. If so, that is, Imports will usually suffice, then when would Depends ever be needed when a package is mentioned in the NAMESPACE file?\n>>\n>\n> In the namespace era Depends is never really needed. All modern packages have no technical need for Depends anymore. Loosely speaking the only purpose of Depends today is to expose other package's functions to the user without re-exporting them.\n>\n\nJust to make sure I understand this: an example would be if A provides\nan S3 generic and B provides a (registered but unexported) method for\nthat generic -- this would be a great time for B to list A as\n\"Depends\" instead of \"Imports\" to make sure the generic is available\nto the user?\n\nThanks,\nMichael",
-      "body_snippet": "On Wed, Jul 31, 2013 at 7:35 PM, Simon Urbanek\n<simon.urbanek at r-project.org> wrote:\n>\n> On Jul 31, 2013, at 7:14 PM, Paul Gilbert wrote:\n>\n>> I am being asked to modernize the Depends line in the D",
-      "thread_id": "thread-c8618f64a742",
-      "thread_depth": 2,
-      "month": "2013-07"
-    },
-    {
-      "id": "msg-8ae705cd8c4b",
-      "message_id": "<51F9D21B.3060000@gmail.com>",
-      "from_name": "Paul Gilbert",
-      "from_email_hash": "aa7dbc26c3f15087b2ccda228b01f598ecfa2ae9d7fa19309941c01a2c4f0d2f",
-      "date": "2013-07-31T23:12:27-04:00",
-      "subject": "[Rd] Depends vs Imports",
-      "subject_clean": "Depends vs Imports",
-      "in_reply_to": "<C627D03C-9632-4C9E-850F-AEF71872277D@r-project.org>",
-      "references": [
-        "<51F99A62.6040205@gmail.com>",
-        "<C627D03C-9632-4C9E-850F-AEF71872277D@r-project.org>"
-      ],
-      "body_plain": "Simon\n\nThanks, that helps a lot, but see below ..\n\nOn 13-07-31 08:35 PM, Simon Urbanek wrote:\n>\n> On Jul 31, 2013, at 7:14 PM, Paul Gilbert wrote:\n>\n>> I am being asked to modernize the Depends line in the DESCRIPTION\n>> file of some packages. Writing R Extensions says:\n>>\n>> The general rules are\n>>\n>> Packages whose namespace only is needed to load the package using\n>> library(pkgname) must be listed in the ?Imports? field and not in\n>> the ?Depends? field. Packages listed in imports or importFrom\n>> directives in the NAMESPACE file should almost always be in\n>> ?Imports? and not ?Depends?.\n>>\n>> Packages that need to be attached to successfully load the package\n>> using library(pkgname) must be listed in the ?Depends? field,\n>> only.\n>>\n>> Could someone please explain a few points I thought I understood\n>> but obviously do not, or point to where these are explained:\n>>\n>> -What does it mean for the namespace only to be needed? I thought\n>> the namespace was needed if the package or some of its functions\n>> were mentioned in the NAMESPACE file, and that only the namespace\n>> was needed if only the generics were called, and not other\n>> functions. The above suggests that I may be wrong about this. If\n>> so, that is, Imports will usually suffice, then when would Depends\n>> ever be needed when a package is mentioned in the NAMESPACE file?\n>>\n>\n> In the namespace era Depends is never really needed. All modern\n> packages have no technical need for Depends anymore. Loosely speaking\n> the only purpose of Depends today is to expose other package's\n> functions to the user without re-exporting them.\n\nThis seems to mostly work, except in the situation where a package is \nused that enhances an imported package. For example, I Import DBI but \nthe call dbDriver(\"MySQL\") fails looking for MySQL in package RMySQL if \nI only import that and do not list it in Depends. Am I missing something?\n\nSimilarly, I have a package tframePlus that provides extra methods (for \nzoo and xts) for my package tframe. Since tframe does not depend or \nimport tframePlus (in fact, the reverse), I seem to need tframePlus in \nDepends not Imports of another package that Imports tframe. Does this \nsound right or am I missing something else?\n\nAlso, I have a package TSMySQL which enhances my package TSdbi. When a \nuser uses TSMySQL they will want to use many functions in TSdbi. Here \nagain, I seem to need TSMySQL to Depend on TSdbi, for the reason you \nmention, exposing all the functions to the user.\n\n(I'm glad this is simple, I have trouble when things are difficult.)\n\nThanks again,\nPaul\n>\n>\n>> -Should the package DESCRIPTION make any accommodation for the\n>> situation where users will probably need to directly call functions\n>> in the imported package, even though the package itself does not?\n>>\n>> -What does \"need to be attached\" mean? Is there a distinction\n>> between a package being attached and a namespace being attached.\n>>\n>\n> No, the distinction is between loaded and attached (namespace/package\n> is synonymous here).\n>\n>\n>> -Does \"successfully load\" mean something different from actually\n>> using the package? That is, can we assume that if the package loads\n>> then all the functions to run things will actually be found?\n>>\n>\n> Define \"found\" - they will not be attached to the search path, so\n> they will be found if you address them fully via myPackage::myFn but\n> not just via myFn (except for another package that imports\n> myPackage).\n>\n>\n>> -If pkg1 uses a function foo in pkg3 indirectly, by a call to a\n>> function in  pkg2 which then uses foo, how should pkg1 indicate the\n>> relationship with foo's pkg3, or is there no need to indicate any\n>> relationship with pkg3 because that is all looked after by pkg2?\n>>\n>\n> There is no need - how would you imagine being responsible for code\n> that you did not write? pkg2 will import function from pkg1, but\n> you're not importing them in pkg3, you don't even care about them so\n> you have no direct relationship with pkg1 (imagine pkg2 switched to\n> use pkg4 instead of pkg1).\n>\n>\n> IMHO it's all really simple:\n>\n> load = functions exported in myPkg are available to interested\n> parties as myPkg::foo or via direct imports - essentially this means\n> the package can now be used\n>\n> attach = the namespace (and thus all exported functions) is attached\n> to the search path - the only effect is that you have now added the\n> exported functions to the global pool of functions - sort of like\n> dumping them in the workspace (for all practical purposes, not\n> technically)\n>\n> import a function into a package = make sure that this function works\n> in my package regardless of the search path (so I can write fn1\n> instead of pkg1::fn1 and still know it will come from pkg1 and not\n> someone's workspace or other package that chose the same name)\n>\n> Cheers, Simon\n>\n>",
-      "body_snippet": "Simon\n\nThanks, that helps a lot, but see below ..\n\nOn 13-07-31 08:35 PM, Simon Urbanek wrote:\n>\n> On Jul 31, 2013, at 7:14 PM, Paul Gilbert wrote:\n>\n>> I am being asked to modernize the Depends line i",
-      "thread_id": "thread-c8618f64a742",
-      "thread_depth": 2,
-      "month": "2013-07"
     }
   ],
   "threads": [
@@ -3989,19 +3917,6 @@
       "started": "2013-07-31T10:55:34-05:00",
       "last_reply": "2013-07-31T10:55:34-05:00",
       "root_message_id": "msg-61cc490fe02b"
-    },
-    {
-      "id": "thread-c8618f64a742",
-      "subject": "Depends vs Imports",
-      "message_count": 4,
-      "participants": [
-        "Paul Gilbert",
-        "R. Michael Weylandt",
-        "Simon Urbanek"
-      ],
-      "started": "2013-07-31T19:14:42-04:00",
-      "last_reply": "2013-07-31T23:12:27-04:00",
-      "root_message_id": "msg-c8618f64a742"
     }
   ]
 }

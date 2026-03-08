@@ -7252,45 +7252,6 @@
       "thread_id": "thread-7e46b5ba0ce4",
       "thread_depth": 1,
       "month": "2007-05"
-    },
-    {
-      "id": "msg-a05d94b83c42",
-      "message_id": "<Pine.GSO.4.56.0705311734520.2074@durian.statsci.com>",
-      "from_name": "Bill Dunlap",
-      "from_email_hash": "6ee7ee050c5026b6011c5a67a1b0625bfd69f5d71d7d03a41c8a7726d3be1e00",
-      "date": "2007-05-31T17:52:51-07:00",
-      "subject": "[Rd] Possible changes to connections",
-      "subject_clean": "Possible changes to connections",
-      "in_reply_to": "<m24plssytq.fsf@ziti.local>",
-      "references": [
-        "<Pine.LNX.4.64.0705301726400.11532@gannet.stats.ox.ac.uk>",
-        "<465E7B0B.2080005@altk.com>",
-        "<Pine.LNX.4.64.0705311534280.27499@gannet.stats.ox.ac.uk>",
-        "<m24plssytq.fsf@ziti.local>"
-      ],
-      "body_plain": "On Thu, 31 May 2007, Seth Falcon wrote:\n\n> > When I ran some tests I found 7 packages on CRAN that in their tests\n> > were not closing connections.  Four of those are maintained by R-core\n> > members.\n> > Even though none were by me, I think this is too easy to forget to\n> > do!\n>\n> I agree that it is easy to forget.  It is especially easy if one\n> creates so-called anonymous connection references like\n> readLines(file(path)) -- this anonymous idiom seems nature to me when\n> coding R and it would be nice to make it work for connections.\n\nI like the idea of the connection being closed when there\nare no more references to it.  I guess that means when the\ngarbage collector notices it has been orphaned, which may\ntake a while.\n\nHowever, one of my longstanding complaints about connections\nin Splus and R may have a bearing here also.  Currently, if you\nwant to have your file opened in a particular way, say for\nonly reading or for appending or in binary mode then you\nneed to specify open=mode when calling file().  However that\nalso tells it to actually open the file.  I would prefer that\nthere was a mode= argument to file that meant that when the\nfile is eventually opened it would be opened with that mode.\nopen= should be restricted to TRUE or FALSE, or IMO, be eliminated.\n(We have an open() function for that.)  With the current system\n   readLines(file(path))\ndoes not leave path open but\n   readLines(file(path, \"r\"))\ndoes leave it open.  E.g., using readLines(file(path))\nas Seth did appears to work fine:\n  > system(paste(\"/usr/sbin/lsof -p\", Sys.getpid(),\"|grep /tmp/twolines.txt\"))\n  > readLines(file(\"/tmp/twolines.txt\"))\n  [1] \"One,\"                 \"two, and that is it.\"\n  > system(paste(\"/usr/sbin/lsof -p\", Sys.getpid(),\"|grep /tmp/twolines.txt\"))\n  > # no lsof output means the file is not open\nbut asking to have it opened in readonly and binary\nmode leaks a file descriptor:\n  > system(paste(\"/usr/sbin/lsof -p\", Sys.getpid(),\"|grep /tmp/twolines.txt\"))\n  > readLines(file(\"/tmp/twolines.txt\", open=\"rb\"))\n  [1] \"One,\"                 \"two, and that is it.\"\n  > system(paste(\"/usr/sbin/lsof -p\", Sys.getpid(),\"|grep /tmp/twolines.txt\"))\n  R       16950 bill    3r   REG    8,2       26   229597 /tmp/twolines.txt\nThat difference sinces unnatural to me.\n\nOf course, we could just add the mode= argument and hope\npeople started using it instead of open=.\n\n----------------------------------------------------------------------------\nBill Dunlap\nInsightful Corporation\nbill at insightful dot com\n360-428-8146\n\n \"All statements in this message represent the opinions of the author and do\n not necessarily reflect Insightful Corporation policy or position.\"",
-      "body_snippet": "On Thu, 31 May 2007, Seth Falcon wrote:\n\n> > When I ran some tests I found 7 packages on CRAN that in their tests\n> > were not closing connections.  Four of those are maintained by R-core\n> > members.",
-      "thread_id": "thread-4e63a64ecd38",
-      "thread_depth": 4,
-      "month": "2007-05"
-    },
-    {
-      "id": "msg-52c4dc55afad",
-      "message_id": "<18015.29296.520924.232709@basebud.nulle.part>",
-      "from_name": "Dirk Eddelbuettel",
-      "from_email_hash": "447d8de83a7b9c5d61116890bacb6dc0c76aee31b3011a41fb7d3c62dac9042f",
-      "date": "2007-05-31T20:12:16-05:00",
-      "subject": "[Rd] Problems when linking to R shared library",
-      "subject_clean": "Problems when linking to R shared library",
-      "in_reply_to": "<007501c7a3ae$25c2f840$38540352@fuji>",
-      "references": [
-        "<007501c7a3ae$25c2f840$38540352@fuji>"
-      ],
-      "body_plain": "On 31 May 2007 at 19:04, John Maddock wrote:\n| Folks,\n| \n| I'm fairly sure that I'm doing something stupid, but I'm getting a few\n| really strange results from *some* of the distributions, but by no means \n| all,\n| when I link directly to the R shared library.\n\nWhen I try to build your program, I get very immediate and explicit messages:\n\nedd at basebud:~> g++ -Wall -O3 -I/usr/share/R/include -o /tmp/johnmaddock /tmp/johnmaddock.cc -lRmath\n/tmp/ccb5T7l9.o: In function `main':\njohnmaddock.cc:(.text+0xae): undefined reference to `Rf_pf'\njohnmaddock.cc:(.text+0xed): undefined reference to `Rf_pchisq'\njohnmaddock.cc:(.text+0x136): undefined reference to `Rf_pgamma'\njohnmaddock.cc:(.text+0x17a): undefined reference to `Rf_ppois'\njohnmaddock.cc:(.text+0x1b9): undefined reference to `Rf_qchisq'\njohnmaddock.cc:(.text+0x202): undefined reference to `Rf_qgamma'\ncollect2: ld returned 1 exit status\n\nwhich shows that the compiler/linker do not yet know about the functions you\nuse. \n\nYour mistake was to not do \n\n#define MATHLIB_STANDALONE 1\n\nbefore the #include of Rmath.h.  After that, all is well:\n\nedd at basebud:~> g++ -Wall -O3 -I/usr/share/R/include -o /tmp/johnmaddock /tmp/johnmaddock.cc -lRmath\nedd at basebud:~> /tmp/johnmaddock\n0.646447\n0.527633\n0.090204\n0.124652\n1.38629\n5.03504\nedd at basebud:~>                    \n\n| I've tried this on both Windows with the precompiled Mingw binary of R-2.5.0\n| (compiling my code with MinGW-3.4.2), and by building R-2.5.0 on Mandriva\n| Linux with gcc-3.4.4 and --enable-R-shlib.  The actual code is at the end of\n| the message, but the main cases are:\n| \n| std::cout << pf(1.5, 2.0, 3.0, 1, 0) << std::endl;\n| \n| Outputs 1, expect 0.646447\n\nGood.\n\n| std::cout << pchisq(1.5, 2.0, 1, 0) << std::endl;\n| \n| Outputs 1, expect 0.527633\n\nGood.\n \n| std::cout << pgamma(1.5, 2.0, 3.0, 1, 0) << std::endl;\n| \n| Outputs 1, expect 0.090204\n\nGood.\n \n| std::cout << ppois(2.0, 5.0, 1, 0) << std::endl;\n| \n| Outputs 0, expect 0.124652\n\nGood.\n \n \n| std::cout << qchisq(0.5, 2.0, 1, 0) << std::endl;\n| \n| Outputs -0.61379, expect 1.38629\n\nGood.\n \n| std::cout << qgamma(0.5, 2.0, 3.0, 1, 0) << std::endl;\n| \n| Outputs 0.0282703, expect 5.03504\n\nGood.\n \n| I should stress that within the R environment, I *do* get the values I\n| expect: though sometimes the arguments need adjusting as the C functions\n| have slightly different argument lists from the R versions.\n| \n| Also:\n| \n| std::cout << qpois(0.5, 5.0, 1, 0) << std::endl;\n| \n| Seems to go into an infinite loop inside qpois, while:\n| \n| qbeta(0.1, 1e-5, 1e-5, 1, 0);\n| \n| Raises an access violation inside R: although I should stress that all other\n| beta quantiles I've tested come out OK.\n| \n| Anyway, hopefully you can just tell me what an idiot I am :-)\n\nWe are too polite for that, we also insist that folks do the old RTFM -- the\n#define you missed is of course mentioned in the R Extensions manual.\n\nHth, Dirk\n\n \n| Thanks in advance for any help you can give,\n| \n| John Maddock.\n| \n| The complete source code is:\n| \n| #include <iostream>\n| #include <iomanip>\n| \n| extern \"C\" {\n| #include \"Rmath.h\"\n| }\n| \n| int main(int argc, const char** argv)\n| {\n|   std::cout << pf(1.5, 2.0, 3.0, 1, 0) << std::endl;\n|   std::cout << pchisq(1.5, 2.0, 1, 0) << std::endl;\n|   std::cout << pgamma(1.5, 2.0, 3.0, 1, 0) << std::endl;\n|   std::cout << ppois(2.0, 5.0, 1, 0) << std::endl;\n|   std::cout << qchisq(0.5, 2.0, 1, 0) << std::endl;\n|   std::cout << qgamma(0.5, 2.0, 3.0, 1, 0) << std::endl;\n|   //std::cout << qpois(0.5, 5.0, 1, 0) << std::endl;\n|   return 0;\n| }\n| \n| ______________________________________________\n| R-devel at r-project.org mailing list\n| https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nHell, there are no rules here - we're trying to accomplish something. \n                                                  -- Thomas A. Edison",
-      "body_snippet": "On 31 May 2007 at 19:04, John Maddock wrote:\n| Folks,\n| \n| I'm fairly sure that I'm doing something stupid, but I'm getting a few\n| really strange results from *some* of the distributions, but by no m",
-      "thread_id": "thread-02116d6b8127",
-      "thread_depth": 1,
-      "month": "2007-05"
     }
   ],
   "threads": [
@@ -8736,9 +8697,8 @@
     {
       "id": "thread-4e63a64ecd38",
       "subject": "Possible changes to connections",
-      "message_count": 10,
+      "message_count": 9,
       "participants": [
-        "Bill Dunlap",
         "Byron Ellis",
         "Jeffrey Horner",
         "Prof Brian Ripley",
@@ -8747,7 +8707,7 @@
         "mel"
       ],
       "started": "2007-05-30T18:06:43+01:00",
-      "last_reply": "2007-05-31T17:52:51-07:00",
+      "last_reply": "2007-05-31T14:43:42-07:00",
       "root_message_id": "msg-4e63a64ecd38"
     },
     {
@@ -8799,13 +8759,12 @@
     {
       "id": "thread-02116d6b8127",
       "subject": "Problems when linking to R shared library",
-      "message_count": 2,
+      "message_count": 1,
       "participants": [
-        "Dirk Eddelbuettel",
         "John Maddock"
       ],
       "started": "2007-05-31T19:04:25+01:00",
-      "last_reply": "2007-05-31T20:12:16-05:00",
+      "last_reply": "2007-05-31T19:04:25+01:00",
       "root_message_id": "msg-02116d6b8127"
     }
   ]

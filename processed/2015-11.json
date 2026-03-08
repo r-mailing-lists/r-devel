@@ -1457,25 +1457,6 @@
       "thread_id": "thread-38a1ddfe5f8d",
       "thread_depth": 1,
       "month": "2015-11"
-    },
-    {
-      "id": "msg-ce703600d6ca",
-      "message_id": "<CAF8bMcZt4EFL0Zg0LeLGV8k8Sk8bxdT94oc_-jZjJMi-sx_OUg@mail.gmail.com>",
-      "from_name": "William Dunlap",
-      "from_email_hash": "f2d7c86f8973847ec833317a92c6bf21dfd137e5fc779a0e1153dd49b8b69516",
-      "date": "2015-11-30T15:09:03-08:00",
-      "subject": "[Rd] Inconsistency in treating NaN-results?",
-      "subject_clean": "Inconsistency in treating NaN-results?",
-      "in_reply_to": "<CAFEqCdzQP1cY1xQtK-ko_Eo_Brji4mET7ZDSL+A7+etK5aCnsQ@mail.gmail.com>",
-      "references": [
-        "<CAOKDuOgd4PsfS+wDFS56m=9g_8ULBj0dxxMKbUg7iKJP1GQbrA@mail.gmail.com>",
-        "<CAFEqCdzQP1cY1xQtK-ko_Eo_Brji4mET7ZDSL+A7+etK5aCnsQ@mail.gmail.com>"
-      ],
-      "body_plain": "As a side note, Splus makes sin(x) NA, with a warning, for\nabs(x)>1.6*2^48 (about\n4.51e+14) because more than half the digits are incorrect in sin(x)\nfor such x.  E.g.,\nin R we get:\n\n> options(digits=16)\n> library(Rmpfr)\n> sin(4.6e14)\n[1] -0.792253849684354\n> sin(mpfr(4.6e14, precBits=500))\n1 'mpfr' number of precision  500   bits\n[1] -0.7922542110462653250609291646717356496505801794010...\n\nIf R did make sin(4.6e14) NaN, would you want a warning?\n\nBill Dunlap\nTIBCO Software\nwdunlap tibco.com\n\n\nOn Mon, Nov 30, 2015 at 2:38 PM, Greg Snow <538280 at gmail.com> wrote:\n> R and the S language that it is based on has evolved as much as it has\n> been designed, so there are often inconsistencies due similar\n> functionality evolving from different paths.  In some cases these\n> inconsistencies are resolved, but generally only once someone notices\n> and care enough to do something about it.  In some other cases the\n> inconsistencies are left for historical reasons and for back\n> compatibility (for example some functions use the na.rm option and\n> other use the na.action option for how to deal with missing values).\n>\n> That said, your report inconsistencies in some function calls, but\n> your calls are not completely consistent.  Consider:\n>\n>> sin(NaN)\n> [1] NaN\n>\n> See, no warning, just like your other cases.  Also consider the\n> difference between log(-1) and log(NaN).  It looks like the warning\n> comes mainly when going from one type of exception (Inf) to another\n> (NaN), but not when propagating an NaN.\n>\n> The 'sin' function (and others) do not know whether the argument was\n> typed in as Inf, or if it is the result of another function returning\n> Inf (well technically it could be made to figure out some common\n> cases, but I for one don't see it worth the effort).  So you could\n> have typed something like 'sin(myfun(x))' and sin looks like it\n> assumes that if myfun would have warned about creating an NaN value,\n> so a second warning is not needed, but myfun may legitimately return\n> Inf, so sin feels it helpful to warn in that case.  And warnings can\n> always be turned off and/or ignored.\n>\n> The only real exception that you show is 0/0 is does not start with\n> NaN, but produces NaN.  But infix operator functions tend to behave a\n> bit differently.\n>\n> On Thu, Nov 26, 2015 at 2:07 AM, Mark van der Loo\n> <mark.vanderloo at gmail.com> wrote:\n>> This question is more out of curiosity than a complaint or suggestion, but\n>> I'm just wondering.\n>>\n>> The behavior of R on calculations that result in NaN seems a bit\n>> inconsistent.\n>>\n>> # this is expected:\n>>> 0/0\n>> [1] NaN\n>>\n>> # but this gives a warning\n>>> sin(Inf)\n>> [1] NaN\n>> Warning message:\n>> In sin(Inf) : NaNs produced\n>>\n>> # and this again does not\n>>> exp(NaN)\n>> [1] NaN\n>>\n>>\n>> Conceptually, I like to think that R computes over the real line augmented\n>> with NaN, Inf, -Inf, NaN, and NA (which is technically also NaN). As far as\n>> I know, this set is closed under R's arithmetic operations and mathematical\n>> functions (following the IEEE standard on double precision). If that's the\n>> case, the result sin(Inf)=NaN seems normal to me and a warning is\n>> unnecessary.\n>>\n>> So why the choice to have warning on sin(Inf), but not on 0/0 or exp(Nan)?\n>> Is it just historical or am I missing a reasoning or some standard?\n>>\n>>\n>> Best,\n>> Mark\n>>\n>>> sessionInfo()\n>> R version 3.2.2 (2015-08-14)\n>> Platform: x86_64-pc-linux-gnu (64-bit)\n>> Running under: Ubuntu 14.04.3 LTS\n>>\n>> locale:\n>>  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n>>  [3] LC_TIME=nl_NL.UTF-8        LC_COLLATE=en_US.UTF-8\n>>  [5] LC_MONETARY=nl_NL.UTF-8    LC_MESSAGES=en_US.UTF-8\n>>  [7] LC_PAPER=nl_NL.UTF-8       LC_NAME=C\n>>  [9] LC_ADDRESS=C               LC_TELEPHONE=C\n>> [11] LC_MEASUREMENT=nl_NL.UTF-8 LC_IDENTIFICATION=C\n>>\n>>         [[alternative HTML version deleted]]\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>\n>\n> --\n> Gregory (Greg) L. Snow Ph.D.\n> 538280 at gmail.com\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
-      "body_snippet": "As a side note, Splus makes sin(x) NA, with a warning, for\nabs(x)>1.6*2^48 (about\n4.51e+14) because more than half the digits are incorrect in sin(x)\nfor such x.  E.g.,\nin R we get:\n\n> options(digits=",
-      "thread_id": "thread-38a1ddfe5f8d",
-      "thread_depth": 2,
-      "month": "2015-11"
     }
   ],
   "threads": [
@@ -1767,14 +1748,13 @@
     {
       "id": "thread-38a1ddfe5f8d",
       "subject": "Inconsistency in treating NaN-results?",
-      "message_count": 3,
+      "message_count": 2,
       "participants": [
         "Greg Snow",
-        "Mark van der Loo",
-        "William Dunlap"
+        "Mark van der Loo"
       ],
       "started": "2015-11-26T09:07:17+00:00",
-      "last_reply": "2015-11-30T15:09:03-08:00",
+      "last_reply": "2015-11-30T15:38:37-07:00",
       "root_message_id": "msg-38a1ddfe5f8d"
     },
     {

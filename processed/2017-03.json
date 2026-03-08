@@ -3843,61 +3843,6 @@
       "thread_id": "thread-24f3a65683b6",
       "thread_depth": 0,
       "month": "2017-03"
-    },
-    {
-      "id": "msg-b7f0f388c65b",
-      "message_id": "<CAFDcVCST6wRDGeMyzruL4Bq5JsTy2XH5HxwKMba-k=NqWAdewQ@mail.gmail.com>",
-      "from_name": "Henrik Bengtsson",
-      "from_email_hash": "64a3206ab5ef5f3eb33045076d839aa0671d85aac05489628035c18ce53b4a6e",
-      "date": "2017-03-31T20:50:58-07:00",
-      "subject": "[Rd] mean(x) != mean(rev(x)) different with x <- c(NA, NaN) for some builds",
-      "subject_clean": "mean(x) != mean(rev(x)) different with x <- c(NA, NaN) for some builds",
-      "in_reply_to": null,
-      "references": [],
-      "body_plain": "In R 3.3.3, I observe the following on Ubuntu 16.04 (when building\nfrom source as well as for the sudo apt r-base build):\n\n> x <- c(NA, NaN)\n> mean(x)\n[1] NA\n> mean(rev(x))\n[1] NaN\n\n> rowMeans(matrix(x, nrow = 1, ncol = 2))\n[1] NA\n> rowMeans(matrix(rev(x), nrow = 1, ncol = 2))\n[1] NaN\n\n> .rowMeans(x, m = 1, n = 2)\n[1] NA\n> .rowMeans(rev(x), m = 1, n = 2)\n[1] NaN\n\n> .rowSums(x, m = 1, n = 2)\n[1] NA\n> .rowSums(rev(x), m = 1, n = 2)\n[1] NaN\n\n> rowSums(matrix(x, nrow = 1, ncol = 2))\n[1] NA\n> rowSums(matrix(rev(x), nrow = 1, ncol = 2))\n[1] NaN\n\nI'd expect NA to trump NaN in all cases (with na.rm = FALSE).  sum()\ndoes not have this problem and returns NA in both cases (*).\n\nFor the same R version build from source on RHEL 6.6 system\n(completely different architecture), I get the expected result (= NA)\nfor all of the above cases, e.g.\n\n> x <- c(NA, NaN)\n> mean(x)\n[1] NA\n> mean(rev(x))\n[1] NA\n[...]\n\nBefore going insane trying to troubleshoot this, I have a vague memory\nthat this, or something related to this, has been discussed\npreviously, but I cannot locate it.\n\nIs the above a bug in R, a FAQ, a build error, overzealous compiler\noptimization, and / or ...?\n\nThanks,\n\nHenrik",
-      "body_snippet": "In R 3.3.3, I observe the following on Ubuntu 16.04 (when building\nfrom source as well as for the sudo apt r-base build):\n\n> x <- c(NA, NaN)\n> mean(x)\n[1] NA\n> mean(rev(x))\n[1] NaN\n\n> rowMeans(matrix(",
-      "thread_id": "thread-b7f0f388c65b",
-      "thread_depth": 0,
-      "month": "2017-03"
-    },
-    {
-      "id": "msg-6ab40f92978a",
-      "message_id": "<CAFDcVCQ_q=uDEKeFRYPtRHn_ea4nJ_y4PdtnksE4598e2RACvA@mail.gmail.com>",
-      "from_name": "Henrik Bengtsson",
-      "from_email_hash": "64a3206ab5ef5f3eb33045076d839aa0671d85aac05489628035c18ce53b4a6e",
-      "date": "2017-03-31T22:51:24-07:00",
-      "subject": "[Rd] mean(x) != mean(rev(x)) different with x <- c(NA, NaN) for some builds",
-      "subject_clean": "mean(x) != mean(rev(x)) different with x <- c(NA, NaN) for some builds",
-      "in_reply_to": "<8b7a61f1-536f-4646-90b7-fde714ad6116@stats.ox.ac.uk>",
-      "references": [
-        "<CAFDcVCST6wRDGeMyzruL4Bq5JsTy2XH5HxwKMba-k=NqWAdewQ@mail.gmail.com>",
-        "<8b7a61f1-536f-4646-90b7-fde714ad6116@stats.ox.ac.uk>"
-      ],
-      "body_plain": "On Fri, Mar 31, 2017 at 10:14 PM, Prof Brian Ripley\n<ripley at stats.ox.ac.uk> wrote:\n> From ?NA\n>\n>      Numerical computations using ?NA? will normally result in ?NA?: a\n>      possible exception is where ?NaN? is also involved, in which case\n>      either might result.\n>\n> and ?NaN\n>\n>      Computations involving ?NaN? will return ?NaN? or perhaps ?NA?:\n>      which of those two is not guaranteed and may depend on the R\n>      platform (since compilers may re-order computations).\n>\n> fortunes::fortune(14) applies (yet again).\n\nThanks; I'm often happy to have contributed to some of the fortune\ncounters, but not so sure about this one.   What's even worse is that\none of my own matrixStats NEWS has an entry go a few years back which\nmentions \"... incorrectly assumed that the value of prod(c(NaN, NA))\nis uniquely defined.  However, as documented in help(\"is.nan\"), it may\nbe NA or NaN depending on R system/platform.\"  I guess the joke is on\nme - it's April 1st after all.\n\nBut, technically one could test for ISNA(x) for each element before\ncalculating the intermediate sum, but since that is a quite expensive\ntest it is not done and sum += x is performed \"as is\" on NA and NaN\n(and -Inf and +Inf).  Is that correct?\n\n/Henrik\n\n>\n>\n> On 01/04/2017 04:50, Henrik Bengtsson wrote:\n>>\n>> In R 3.3.3, I observe the following on Ubuntu 16.04 (when building\n>> from source as well as for the sudo apt r-base build):\n>>\n>>> x <- c(NA, NaN)\n>>> mean(x)\n>>\n>> [1] NA\n>>>\n>>> mean(rev(x))\n>>\n>> [1] NaN\n>>\n>>> rowMeans(matrix(x, nrow = 1, ncol = 2))\n>>\n>> [1] NA\n>>>\n>>> rowMeans(matrix(rev(x), nrow = 1, ncol = 2))\n>>\n>> [1] NaN\n>>\n>>> .rowMeans(x, m = 1, n = 2)\n>>\n>> [1] NA\n>>>\n>>> .rowMeans(rev(x), m = 1, n = 2)\n>>\n>> [1] NaN\n>>\n>>> .rowSums(x, m = 1, n = 2)\n>>\n>> [1] NA\n>>>\n>>> .rowSums(rev(x), m = 1, n = 2)\n>>\n>> [1] NaN\n>>\n>>> rowSums(matrix(x, nrow = 1, ncol = 2))\n>>\n>> [1] NA\n>>>\n>>> rowSums(matrix(rev(x), nrow = 1, ncol = 2))\n>>\n>> [1] NaN\n>>\n>> I'd expect NA to trump NaN in all cases (with na.rm = FALSE).  sum()\n>> does not have this problem and returns NA in both cases (*).\n>>\n>> For the same R version build from source on RHEL 6.6 system\n>> (completely different architecture), I get the expected result (= NA)\n>> for all of the above cases, e.g.\n>>\n>>> x <- c(NA, NaN)\n>>> mean(x)\n>>\n>> [1] NA\n>>>\n>>> mean(rev(x))\n>>\n>> [1] NA\n>> [...]\n>>\n>> Before going insane trying to troubleshoot this, I have a vague memory\n>> that this, or something related to this, has been discussed\n>> previously, but I cannot locate it.\n>>\n>> Is the above a bug in R, a FAQ, a build error, overzealous compiler\n>> optimization, and / or ...?\n>>\n>> Thanks,\n>>\n>> Henrik\n>\n>\n>\n> --\n> Brian D. Ripley,                  ripley at stats.ox.ac.uk\n> Emeritus Professor of Applied Statistics, University of Oxford\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
-      "body_snippet": "On Fri, Mar 31, 2017 at 10:14 PM, Prof Brian Ripley\n<ripley at stats.ox.ac.uk> wrote:\n> From ?NA\n>\n>      Numerical computations using ?NA? will normally result in ?NA?: a\n>      possible exception is",
-      "thread_id": "thread-6ab40f92978a",
-      "thread_depth": 0,
-      "month": "2017-03"
-    },
-    {
-      "id": "msg-22fb02d0c6e5",
-      "message_id": "<CAFDcVCS1p4z_VuwiBdsxTKDCTmt+hk=e5Z4pUroYuxLjOWnNBA@mail.gmail.com>",
-      "from_name": "Henrik Bengtsson",
-      "from_email_hash": "64a3206ab5ef5f3eb33045076d839aa0671d85aac05489628035c18ce53b4a6e",
-      "date": "2017-03-31T23:52:19-07:00",
-      "subject": "[Rd] mean(x) != mean(rev(x)) different with x <- c(NA, NaN) for some builds",
-      "subject_clean": "mean(x) != mean(rev(x)) different with x <- c(NA, NaN) for some builds",
-      "in_reply_to": "<CAFDcVCQ_q=uDEKeFRYPtRHn_ea4nJ_y4PdtnksE4598e2RACvA@mail.gmail.com>",
-      "references": [
-        "<CAFDcVCST6wRDGeMyzruL4Bq5JsTy2XH5HxwKMba-k=NqWAdewQ@mail.gmail.com>",
-        "<8b7a61f1-536f-4646-90b7-fde714ad6116@stats.ox.ac.uk>",
-        "<CAFDcVCQ_q=uDEKeFRYPtRHn_ea4nJ_y4PdtnksE4598e2RACvA@mail.gmail.com>"
-      ],
-      "body_plain": "Although help(\"is.nan\") says:\n\n   \"Computations involving NaN will return NaN or perhaps NA: ...\"\n\nit might not be obvious that this is also why one may get:\n\n> mean(c(-Inf, +Inf, NA))\n[1] NaN\n\n> mean(c(-Inf, NA, +Inf))\n[1] NA\n\nThis is because internally the intermediate sum +Inf + -Inf is NaN in\nthe first case.\n\nMay I propose the following patch to that help paragraph:\n\nIndex: src/library/base/man/is.finite.Rd\n===================================================================\n--- src/library/base/man/is.finite.Rd (revision 72462)\n+++ src/library/base/man/is.finite.Rd (working copy)\n@@ -78,6 +78,8 @@\n   Computations involving \\code{NaN} will return \\code{NaN} or perhaps\n   \\code{\\link{NA}}: which of those two is not guaranteed and may depend\n   on the \\R platform (since compilers may re-order computations).\n+  This may also apply to computations involving both \\code{-Inf} and\n+  \\code{+Inf} in cases where they produce an intermediate \\code{NaN}.\n }\n \\value{\n   A logical vector of the same length as \\code{x}: \\code{dim},\n\n/Henrik\n\n\nOn Fri, Mar 31, 2017 at 10:51 PM, Henrik Bengtsson\n<henrik.bengtsson at gmail.com> wrote:\n> On Fri, Mar 31, 2017 at 10:14 PM, Prof Brian Ripley\n> <ripley at stats.ox.ac.uk> wrote:\n>> From ?NA\n>>\n>>      Numerical computations using ?NA? will normally result in ?NA?: a\n>>      possible exception is where ?NaN? is also involved, in which case\n>>      either might result.\n>>\n>> and ?NaN\n>>\n>>      Computations involving ?NaN? will return ?NaN? or perhaps ?NA?:\n>>      which of those two is not guaranteed and may depend on the R\n>>      platform (since compilers may re-order computations).\n>>\n>> fortunes::fortune(14) applies (yet again).\n>\n> Thanks; I'm often happy to have contributed to some of the fortune\n> counters, but not so sure about this one.   What's even worse is that\n> one of my own matrixStats NEWS has an entry go a few years back which\n> mentions \"... incorrectly assumed that the value of prod(c(NaN, NA))\n> is uniquely defined.  However, as documented in help(\"is.nan\"), it may\n> be NA or NaN depending on R system/platform.\"  I guess the joke is on\n> me - it's April 1st after all.\n>\n> But, technically one could test for ISNA(x) for each element before\n> calculating the intermediate sum, but since that is a quite expensive\n> test it is not done and sum += x is performed \"as is\" on NA and NaN\n> (and -Inf and +Inf).  Is that correct?\n>\n> /Henrik\n>\n>>\n>>\n>> On 01/04/2017 04:50, Henrik Bengtsson wrote:\n>>>\n>>> In R 3.3.3, I observe the following on Ubuntu 16.04 (when building\n>>> from source as well as for the sudo apt r-base build):\n>>>\n>>>> x <- c(NA, NaN)\n>>>> mean(x)\n>>>\n>>> [1] NA\n>>>>\n>>>> mean(rev(x))\n>>>\n>>> [1] NaN\n>>>\n>>>> rowMeans(matrix(x, nrow = 1, ncol = 2))\n>>>\n>>> [1] NA\n>>>>\n>>>> rowMeans(matrix(rev(x), nrow = 1, ncol = 2))\n>>>\n>>> [1] NaN\n>>>\n>>>> .rowMeans(x, m = 1, n = 2)\n>>>\n>>> [1] NA\n>>>>\n>>>> .rowMeans(rev(x), m = 1, n = 2)\n>>>\n>>> [1] NaN\n>>>\n>>>> .rowSums(x, m = 1, n = 2)\n>>>\n>>> [1] NA\n>>>>\n>>>> .rowSums(rev(x), m = 1, n = 2)\n>>>\n>>> [1] NaN\n>>>\n>>>> rowSums(matrix(x, nrow = 1, ncol = 2))\n>>>\n>>> [1] NA\n>>>>\n>>>> rowSums(matrix(rev(x), nrow = 1, ncol = 2))\n>>>\n>>> [1] NaN\n>>>\n>>> I'd expect NA to trump NaN in all cases (with na.rm = FALSE).  sum()\n>>> does not have this problem and returns NA in both cases (*).\n>>>\n>>> For the same R version build from source on RHEL 6.6 system\n>>> (completely different architecture), I get the expected result (= NA)\n>>> for all of the above cases, e.g.\n>>>\n>>>> x <- c(NA, NaN)\n>>>> mean(x)\n>>>\n>>> [1] NA\n>>>>\n>>>> mean(rev(x))\n>>>\n>>> [1] NA\n>>> [...]\n>>>\n>>> Before going insane trying to troubleshoot this, I have a vague memory\n>>> that this, or something related to this, has been discussed\n>>> previously, but I cannot locate it.\n>>>\n>>> Is the above a bug in R, a FAQ, a build error, overzealous compiler\n>>> optimization, and / or ...?\n>>>\n>>> Thanks,\n>>>\n>>> Henrik\n>>\n>>\n>>\n>> --\n>> Brian D. Ripley,                  ripley at stats.ox.ac.uk\n>> Emeritus Professor of Applied Statistics, University of Oxford\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel",
-      "body_snippet": "Although help(\"is.nan\") says:\n\n   \"Computations involving NaN will return NaN or perhaps NA: ...\"\n\nit might not be obvious that this is also why one may get:\n\n> mean(c(-Inf, +Inf, NA))\n[1] NaN\n\n> mean",
-      "thread_id": "thread-6ab40f92978a",
-      "thread_depth": 1,
-      "month": "2017-03"
     }
   ],
   "threads": [
@@ -4524,28 +4469,6 @@
       "started": "2017-03-31T14:29:17+02:00",
       "last_reply": "2017-03-31T14:29:17+02:00",
       "root_message_id": "msg-978442e50f1b"
-    },
-    {
-      "id": "thread-b7f0f388c65b",
-      "subject": "mean(x) != mean(rev(x)) different with x <- c(NA, NaN) for some builds",
-      "message_count": 1,
-      "participants": [
-        "Henrik Bengtsson"
-      ],
-      "started": "2017-03-31T20:50:58-07:00",
-      "last_reply": "2017-03-31T20:50:58-07:00",
-      "root_message_id": "msg-b7f0f388c65b"
-    },
-    {
-      "id": "thread-6ab40f92978a",
-      "subject": "mean(x) != mean(rev(x)) different with x <- c(NA, NaN) for some builds",
-      "message_count": 2,
-      "participants": [
-        "Henrik Bengtsson"
-      ],
-      "started": "2017-03-31T22:51:24-07:00",
-      "last_reply": "2017-03-31T23:52:19-07:00",
-      "root_message_id": "msg-6ab40f92978a"
     }
   ]
 }

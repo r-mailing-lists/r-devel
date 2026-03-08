@@ -3502,6 +3502,22 @@
       "message_id": "<11713874.post@talk.nabble.com>",
       "from_name": "Ctagz",
       "from_email_hash": "5c213dff1a5ff66705601f3cf887069368fe14db8fe3efa815e000bd75b95a22",
+      "date": "2007-07-20T11:50:28-07:00",
+      "subject": "[Rd] unable to load shared library: undefined symbol",
+      "subject_clean": "unable to load shared library: undefined symbol",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hi all, \n\nI'm a summer University research student and I've been wroking on writing a\npackage, Rsoam, to integrate R with Platform's symphony software to allow\nfor distributed computing.  When I \"R CMD check\" the package, I get the\nfollowing error when trying to load the Rsoam.so after building Rsoam.cpp: \n\n* checking whether the package can be loaded ... ERROR\nLoading required package: snow\nError in dyn.load(x, as.logical(local), as.logical(now)) : \n\tunable to load shared library '/root/Rsoam.Rcheck/Rsoam/libs/Rsoam.so':\n  /root/Rsoam.Rcheck/Rsoam/libs/Rsoam.so: undefined symbol:\n_ZTIN4soam13SoamExceptionE\nError in library(Rsoam) : .First.lib failed for 'Rsoam'\nError in dyn.unload(x) : dynamic/shared library\n'/root/Rsoam.Rcheck/Rsoam/libs/Rsoam.so' was not loaded\n\n            My Makevars file consists of: \n\nPKG_CPPFLAGS = -I/opt/symphonyDE/3.1/src -I/opt/symphonyDE/3.1/include\n-DGCC34 -Wall -DLINUX -Wno-deprecated\nPKG_LIBS = -L/opt/symphonyDE/3.1/src -L/opt/symphonyDE/3.1/include\n-L/opt/symphonyDE/3.1/linux2.6-glibc2.3-x86/lib -LsampleCommon -Lsoambase\n-Lsoamapi\n\n            and 00install.out has the following g++ build: \n\ng++ -I/usr/lib/R/include -I/usr/lib/R/include -I/opt/symphonyDE/3.1/src\n-I/opt/symphonyDE/3.1/include -DGCC34 -Wall -DLINUX -Wno-deprecated\n-I/usr/local/include    -fpic  -O2 -g -c Rsoam9.cpp -o Rsoam9.o\ng++ -shared -Wl,-O1 -o Rsoam.so Rsoam9.o -L/opt/symphonyDE/3.1/src\n-L/opt/symphonyDE/3.1/include\n-L/opt/symphonyDE/3.1/linux2.6-glibc2.3-x86/lib -LsampleCommon -Lsoambase\n-Lsoamapi  -L/usr/lib/R/lib -lR\n\nI thought I'd written the Makevars to a sufficient degree, but I guess that\nmay not actually be the case.  I understand that you guys are probably not\nfamiliar with symphony, but I was hoping if someone could tell me what slips\nthrough when I'm building this shared library?\n\n-Jon\n-- \nView this message in context: http://www.nabble.com/unable-to-load-shared-library%3A-undefined-symbol-tf4118911.html#a11713874\nSent from the R devel mailing list archive at Nabble.com.",
+      "body_snippet": "Hi all, \n\nI'm a summer University research student and I've been wroking on writing a\npackage, Rsoam, to integrate R with Platform's symphony software to allow\nfor distributed computing.  When I \"R CM",
+      "thread_id": "thread-576c25a04492",
+      "thread_depth": 0,
+      "month": "2007-07"
+    },
+    {
+      "id": "msg-576c25a04492",
+      "message_id": "<11713874.post@talk.nabble.com>",
+      "from_name": "Ctagz",
+      "from_email_hash": "5c213dff1a5ff66705601f3cf887069368fe14db8fe3efa815e000bd75b95a22",
       "date": "2007-07-20T13:48:43-07:00",
       "subject": "[Rd] unable to load shared library: undefined symbol",
       "subject_clean": "unable to load shared library: undefined symbol",
@@ -4782,6 +4798,60 @@
       "month": "2007-07"
     },
     {
+      "id": "msg-cb9975ea6377",
+      "message_id": "<20070727195424.BF65E667EE@slim.kubism.ku.dk>",
+      "from_name": "bill at insightful.com",
+      "from_email_hash": "6ee7ee050c5026b6011c5a67a1b0625bfd69f5d71d7d03a41c8a7726d3be1e00",
+      "date": "2007-07-27T21:54:24+02:00",
+      "subject": "[Rd] (PR#9811) sequence(c(2, 0, 3)) produces surprising results,",
+      "subject_clean": "(PR#9811) sequence(c(2, 0, 3)) produces surprising results,",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "On Fri, 27 Jul 2007, Prof Brian Ripley wrote:\n\n> This is as doumented, and I think you could say the same thing of seq().\n> BTW, sequence() allows negative inputs, and I don't think you want\n> sum(input) in that case.\n\nhelp(sequence) says contradictory things about\nthe nvec[i]==0 case:\n   For each element of 'nvec' the\n   sequence 'seq(nvec[i])' is created.  ...\nand\n   nvec: an integer vector each element\n   of which specifies the upper bound ...\n\n0 is not the upper bound of seq(0).\n\nIn any case, a suitably general multisequence function\nwould probably want vectors of both to's and from's.\n\nmerge.data.frame() requires a combination of a vectorized\nsequence function and rep.  It uses a .Internal to do\nthe job well.  (This is a case where the individual sequences\ntypically have length one or zero.)\n\n  > .Internal(merge(rep(1:3, c(3,0,5)), rep(1:4, c(2,2,3,2)), T, T))\n  $xi\n   [1] 1 1 2 2 3 3 4 4 4 5 5 5 6 6 6 7 7 7 8 8 8\n\n  $yi\n   [1] 1 2 1 2 1 2 5 6 7 5 6 7 5 6 7 5 6 7 5 6 7\n\n  $x.alone\n  integer(0)\n\n  $y.alone\n  integer(0)\n\nsequence and rep produce complementary outputs, except in the nvec[i]==0 case.\n  > rep(1:3, c(5,2,7)) # identifies group\n   [1] 1 1 1 1 1 2 2 3 3 3 3 3 3 3\n  > sequence(c(5,2,7)) # which in group\n   [1] 1 2 3 4 5 1 2 1 2 3 4 5 6 7\n\n----------------------------------------------------------------------------\nBill Dunlap\nInsightful Corporation\nbill at insightful dot com\n360-428-8146\n\n \"All statements in this message represent the opinions of the author and do\n not necessarily reflect Insightful Corporation policy or position.\"",
+      "body_snippet": "On Fri, 27 Jul 2007, Prof Brian Ripley wrote:\n\n> This is as doumented, and I think you could say the same thing of seq().\n> BTW, sequence() allows negative inputs, and I don't think you want\n> sum(inp",
+      "thread_id": "thread-cb9975ea6377",
+      "thread_depth": 0,
+      "month": "2007-07"
+    },
+    {
+      "id": "msg-5195086d7f80",
+      "message_id": "<46AA5353.3030806@cimr.cam.ac.uk>",
+      "from_name": "Hin-Tak Leung",
+      "from_email_hash": "b8e5042af3a81bcfcc354f681656fb197b3bd4f8f6fe48419452f7c623e96dc5",
+      "date": "2007-07-27T21:19:31+01:00",
+      "subject": "[Rd] Using R_MakeExternalPtr",
+      "subject_clean": "Using R_MakeExternalPtr",
+      "in_reply_to": "<11786494.post@talk.nabble.com>",
+      "references": [
+        "<11785023.post@talk.nabble.com>",
+        "<11786494.post@talk.nabble.com>"
+      ],
+      "body_plain": "As others as commented, everything going in/out of the .Call() interface\nneeds to be SEXP (even if it does nothing and you are returning\nR_NilValue).\n\nSecondly, your attached code is both (1) too long, and (2) incomplete.\n\nYou should write some *simple* R code that\nuses only soamInit() and soamUnInit() (the latter is missing and you had \nnot included it), Then fill the middle with soamSubmit(). Nobody really\nwant to read your 60+ line of R code (too long) and incomplete C code\n(too short) to work out what's broken. Use complete and short examples\nto illustrate your problem!\n\nAlso, you seem to take for granted that the typo/length of Argument\nin soamSubmit() are those you think they are... e.g. I would put in say, \nfor example:\n\nif ((JobID == R_NilValue) || ( TYPEOF(JobID) != INTSXP)) {\n     Rprintf(\"JobID unexpected!\\n\");\n     return R_NilValue;\n}\n\nJust to be on the safe side. You may find some surprises there -\ntrying to do INTEGER() on a REALSXP, or vice versa can be dangerous.\n\nI am still not convinced that your segfault is to do with externalptr -\ne.g. the '.Call() must return SEXP' is a basic R extension usage and you\ndidn't understand that one.\n\nJonathan Zhou wrote:\n> Hi all, \n> \n> Here is the R code function in where I called the two C++ and further below\n> are the 2 C++ functions I used to create the externalptr and use it : \n> \n> soam.Rapply <- function (x, func, ...,\n>                            join.method=cbind,\n>                            njobs,\n>                            batch.size=100,\n>                            packages=NULL,\n>                            savelist=NULL)\n> {\n>     if(missing(njobs))\n>         njobs <- max(1,ceiling(nrow(x)/batch.size))\n> \n>     if(!is.matrix(x) && !is.data.frame(x))\n>         stop(\"x must be a matrix or data frame\")\n> \n>     if(njobs>1)\n>         {rowSet <- lapply(splitIndices(nrow(x), njobs), function(i) x[i, ,\n> drop = FALSE])} else {rowSet <- list(x)}\n> \n>     sesCon <- .Call(\"soamInit\")\n> \n>     script <- \" \"\n> \n>     fname <- tempfile(pattern = \"Rsoam_data\", tmpdir = getwd())\n>     file(fname, open=\"w+\")\n>     if(!is.null(savelist)) {\n>         dump(savelist, fname)\n>         script<-readLines(fname)\n>     }\n> \n>     if(!is.null(packages))\n>     for(counter in 1:length(packages))\n>     {\n>         temp<-call(\"library\", packages[counter], character.only=TRUE)\n>         dput(temp, fname)\n>         pack.call<-readLines(fname)\n>         script<-append(script, pack.call)\n>     }\n> \n>     for(counter in 1:njobs)\n>     {\n>         caller <- paste(\"caller\", counter, sep = \"\")\n>         soam.call<-call(\"dput\", call(\"apply\", X=rowSet[[counter]], MARGIN=1,\n> FUN=func), caller)\n>         dput(soam.call, fname)\n>         soam.call<-readLines(fname)\n> \n>         temp<-append(script, soam.call)\n>         final.script = temp[1]\n>         for(count in 2:length(temp)){\n>             final.script<-paste(final.script, temp[count], \"\\n\")}\n> \n>         .Call(\"soamSubmit\", counter, sesCon, final.script, packages)\n>     }\n> \n>     .Call(\"soamGetResults\", sesCon, njobs, join.method, parent.frame())\n> \n>     for(job in 1:njobs)\n>     {\n>         caller <- paste(\"result\", job, sep = \"\")\n>         temp = dget(caller)\n>         if(job==1) {retval=temp} else {retval=join.method(retval,temp)}\n>     }\n> \n>     .Call(\"soamUninit\")\n> \n>     retval\n> }\n> \n> *** Here are the 2 C++ functions: \n> \n> extern \"C\"\n> {\n> SEXP soamInit ()\n> {\n>     // Initialize the API\n>     SoamFactory::initialize();\n> \n>     // Set up application specific information to be supplied to Symphony\n>     char appName[] = \"SampleAppCPP\";\n> \n>     // Set up application authentication information using the default\n> security provider\n>     DefaultSecurityCallback securityCB(\"Guest\", \"Guest\");\n> \n>     // Connect to the specified application\n>     ConnectionPtr conPtr = SoamFactory::connect(appName, &securityCB);\n> \n>     // Set up session creation attributes\n>     SessionCreationAttributes attributes;\n>     attributes.setSessionName(\"mySession\");\n>     attributes.setSessionType(\"ShortRunningTasks\");\n>     attributes.setSessionFlags(SF_RECEIVE_SYNC);\n> \n>     // Create a synchronous session\n>     Session* sesPtr = conPtr->createSession(attributes);\n> \n>     SEXP out = R_MakeExternalPtr((void*)temp, R_NilValue, R_NilValue);\n> \n>     return out;\n> }\n> }\n> \n> extern \"C\"\n> {\n>   void soamSubmit\t(SEXP jobID,\t\t//job ID\n> \t\t\t SEXP sesCon,\t\t//session pointer\n> \t\t\t SEXP caller,\t\t\t//objects\n> \t\t\t SEXP pack)\t\t\t//packages\n> {\n> \tchar* savelist = CHAR(STRING_ELT(caller, 0));\n> \tstring strTemp = \"\";\n> \tint job = INTEGER(jobID)[0];\n> \n> \tvoid* temp = R_ExternalPtrAddr(sesCon);\n>         Session* sesPtr = reinterpret_cast<Session*>(temp);\n> \n>     // Create a message\n> \tMyMessage inMsg(job, /*pack,*/ savelist);\n> \n>     // Send it\n>     TaskInputHandlePtr input = sesPtr->sendTaskInput(&inMsg);\n> }\n> }",
+      "body_snippet": "As others as commented, everything going in/out of the .Call() interface\nneeds to be SEXP (even if it does nothing and you are returning\nR_NilValue).\n\nSecondly, your attached code is both (1) too long",
+      "thread_id": "thread-8681e6a22c0a",
+      "thread_depth": 2,
+      "month": "2007-07"
+    },
+    {
+      "id": "msg-5195086d7f80",
+      "message_id": "<46AA5353.3030806@cimr.cam.ac.uk>",
+      "from_name": "Hin-Tak Leung",
+      "from_email_hash": "b8e5042af3a81bcfcc354f681656fb197b3bd4f8f6fe48419452f7c623e96dc5",
+      "date": "2007-07-27T21:19:31+01:00",
+      "subject": "[Rd] Using R_MakeExternalPtr",
+      "subject_clean": "Using R_MakeExternalPtr",
+      "in_reply_to": "<11786494.post@talk.nabble.com>",
+      "references": [
+        "<11785023.post@talk.nabble.com>",
+        "<11786494.post@talk.nabble.com>"
+      ],
+      "body_plain": "As others as commented, everything going in/out of the .Call() interface\nneeds to be SEXP (even if it does nothing and you are returning\nR_NilValue).\n\nSecondly, your attached code is both (1) too long, and (2) incomplete.\n\nYou should write some *simple* R code that\nuses only soamInit() and soamUnInit() (the latter is missing and you had \nnot included it), Then fill the middle with soamSubmit(). Nobody really\nwant to read your 60+ line of R code (too long) and incomplete C code\n(too short) to work out what's broken. Use complete and short examples\nto illustrate your problem!\n\nAlso, you seem to take for granted that the typo/length of Argument\nin soamSubmit() are those you think they are... e.g. I would put in say, \nfor example:\n\nif ((JobID == R_NilValue) || ( TYPEOF(JobID) != INTSXP)) {\n     Rprintf(\"JobID unexpected!\\n\");\n     return R_NilValue;\n}\n\nJust to be on the safe side. You may find some surprises there -\ntrying to do INTEGER() on a REALSXP, or vice versa can be dangerous.\n\nI am still not convinced that your segfault is to do with externalptr -\ne.g. the '.Call() must return SEXP' is a basic R extension usage and you\ndidn't understand that one.\n\nJonathan Zhou wrote:\n> Hi all, \n> \n> Here is the R code function in where I called the two C++ and further below\n> are the 2 C++ functions I used to create the externalptr and use it : \n> \n> soam.Rapply <- function (x, func, ...,\n>                            join.method=cbind,\n>                            njobs,\n>                            batch.size=100,\n>                            packages=NULL,\n>                            savelist=NULL)\n> {\n>     if(missing(njobs))\n>         njobs <- max(1,ceiling(nrow(x)/batch.size))\n> \n>     if(!is.matrix(x) && !is.data.frame(x))\n>         stop(\"x must be a matrix or data frame\")\n> \n>     if(njobs>1)\n>         {rowSet <- lapply(splitIndices(nrow(x), njobs), function(i) x[i, ,\n> drop = FALSE])} else {rowSet <- list(x)}\n> \n>     sesCon <- .Call(\"soamInit\")\n> \n>     script <- \" \"\n> \n>     fname <- tempfile(pattern = \"Rsoam_data\", tmpdir = getwd())\n>     file(fname, open=\"w+\")\n>     if(!is.null(savelist)) {\n>         dump(savelist, fname)\n>         script<-readLines(fname)\n>     }\n> \n>     if(!is.null(packages))\n>     for(counter in 1:length(packages))\n>     {\n>         temp<-call(\"library\", packages[counter], character.only=TRUE)\n>         dput(temp, fname)\n>         pack.call<-readLines(fname)\n>         script<-append(script, pack.call)\n>     }\n> \n>     for(counter in 1:njobs)\n>     {\n>         caller <- paste(\"caller\", counter, sep = \"\")\n>         soam.call<-call(\"dput\", call(\"apply\", X=rowSet[[counter]], MARGIN=1,\n> FUN=func), caller)\n>         dput(soam.call, fname)\n>         soam.call<-readLines(fname)\n> \n>         temp<-append(script, soam.call)\n>         final.script = temp[1]\n>         for(count in 2:length(temp)){\n>             final.script<-paste(final.script, temp[count], \"\\n\")}\n> \n>         .Call(\"soamSubmit\", counter, sesCon, final.script, packages)\n>     }\n> \n>     .Call(\"soamGetResults\", sesCon, njobs, join.method, parent.frame())\n> \n>     for(job in 1:njobs)\n>     {\n>         caller <- paste(\"result\", job, sep = \"\")\n>         temp = dget(caller)\n>         if(job==1) {retval=temp} else {retval=join.method(retval,temp)}\n>     }\n> \n>     .Call(\"soamUninit\")\n> \n>     retval\n> }\n> \n> *** Here are the 2 C++ functions: \n> \n> extern \"C\"\n> {\n> SEXP soamInit ()\n> {\n>     // Initialize the API\n>     SoamFactory::initialize();\n> \n>     // Set up application specific information to be supplied to Symphony\n>     char appName[] = \"SampleAppCPP\";\n> \n>     // Set up application authentication information using the default\n> security provider\n>     DefaultSecurityCallback securityCB(\"Guest\", \"Guest\");\n> \n>     // Connect to the specified application\n>     ConnectionPtr conPtr = SoamFactory::connect(appName, &securityCB);\n> \n>     // Set up session creation attributes\n>     SessionCreationAttributes attributes;\n>     attributes.setSessionName(\"mySession\");\n>     attributes.setSessionType(\"ShortRunningTasks\");\n>     attributes.setSessionFlags(SF_RECEIVE_SYNC);\n> \n>     // Create a synchronous session\n>     Session* sesPtr = conPtr->createSession(attributes);\n> \n>     SEXP out = R_MakeExternalPtr((void*)temp, R_NilValue, R_NilValue);\n> \n>     return out;\n> }\n> }\n> \n> extern \"C\"\n> {\n>   void soamSubmit\t(SEXP jobID,\t\t//job ID\n> \t\t\t SEXP sesCon,\t\t//session pointer\n> \t\t\t SEXP caller,\t\t\t//objects\n> \t\t\t SEXP pack)\t\t\t//packages\n> {\n> \tchar* savelist = CHAR(STRING_ELT(caller, 0));\n> \tstring strTemp = \"\";\n> \tint job = INTEGER(jobID)[0];\n> \n> \tvoid* temp = R_ExternalPtrAddr(sesCon);\n>         Session* sesPtr = reinterpret_cast<Session*>(temp);\n> \n>     // Create a message\n> \tMyMessage inMsg(job, /*pack,*/ savelist);\n> \n>     // Send it\n>     TaskInputHandlePtr input = sesPtr->sendTaskInput(&inMsg);\n> }\n> }",
+      "body_snippet": "As others as commented, everything going in/out of the .Call() interface\nneeds to be SEXP (even if it does nothing and you are returning\nR_NilValue).\n\nSecondly, your attached code is both (1) too long",
+      "thread_id": "thread-8681e6a22c0a",
+      "thread_depth": 2,
+      "month": "2007-07"
+    },
+    {
       "id": "msg-5195086d7f80",
       "message_id": "<46AA5353.3030806@cimr.cam.ac.uk>",
       "from_name": "Hin-Tak Leung",
@@ -4817,6 +4887,84 @@
       "body_snippet": "Yes, this is the intended behavior.  Nothing to do with implicit \ngenerics, but with some ongoing changes to make class \"structure\" and \nrelated classes such as \"array\" give trustworthy results consis",
       "thread_id": "thread-a433b5436133",
       "thread_depth": 2,
+      "month": "2007-07"
+    },
+    {
+      "id": "msg-df8af79f1522",
+      "message_id": "<46AB46E5.2080301@r-project.org>",
+      "from_name": "John Chambers",
+      "from_email_hash": "07ce409e62c6fa8a42409d100cd19d8b5f4308ae065b786c7a703624eacfc072",
+      "date": "2007-07-28T09:38:45-04:00",
+      "subject": "[Rd] R2.6 bug in arithmetics of S4 classes inherited from 'array', or intended behavior?",
+      "subject_clean": "R2.6 bug in arithmetics of S4 classes inherited from 'array', or intended behavior?",
+      "in_reply_to": "<1185187439.6294.58.camel@dirac>",
+      "references": [
+        "<1185181337.6294.29.camel@dirac>",
+        "<1185187439.6294.58.camel@dirac>"
+      ],
+      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070728/eddf5bea/attachment.pl",
+      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070728/eddf5bea/attachment.pl",
+      "thread_id": "thread-a433b5436133",
+      "thread_depth": 2,
+      "month": "2007-07"
+    },
+    {
+      "id": "msg-df8af79f1522",
+      "message_id": "<46AB46E5.2080301@r-project.org>",
+      "from_name": "John Chambers",
+      "from_email_hash": "07ce409e62c6fa8a42409d100cd19d8b5f4308ae065b786c7a703624eacfc072",
+      "date": "2007-07-28T09:38:45-04:00",
+      "subject": "[Rd] R2.6 bug in arithmetics of S4 classes inherited from 'array', or intended behavior?",
+      "subject_clean": "R2.6 bug in arithmetics of S4 classes inherited from 'array', or intended behavior?",
+      "in_reply_to": "<1185187439.6294.58.camel@dirac>",
+      "references": [
+        "<1185181337.6294.29.camel@dirac>",
+        "<1185187439.6294.58.camel@dirac>"
+      ],
+      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070728/eddf5bea/attachment-0001.pl",
+      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070728/eddf5bea/attachment-0001.pl",
+      "thread_id": "thread-a433b5436133",
+      "thread_depth": 2,
+      "month": "2007-07"
+    },
+    {
+      "id": "msg-2a8532af2f57",
+      "message_id": "<1185638632.32611.2.camel@carbon>",
+      "from_name": "Oleg Sklyar",
+      "from_email_hash": "cbe68d3f50967d8247a71d9d59695a0068054b30ff9287210abc49b35f0fad20",
+      "date": "2007-07-28T17:03:52+01:00",
+      "subject": "[Rd] R2.6 bug in arithmetics of S4 classes inherited from\t'array', or intended behavior?",
+      "subject_clean": "R2.6 bug in arithmetics of S4 classes inherited from\t'array', or intended behavior?",
+      "in_reply_to": "<46AB46E5.2080301@r-project.org>",
+      "references": [
+        "<1185181337.6294.29.camel@dirac>",
+        "<1185187439.6294.58.camel@dirac>",
+        "<46AB46E5.2080301@r-project.org>"
+      ],
+      "body_plain": "John, thank you for clarification. I just wonder that some packages\ncould also see that their behaviour has changed. Anyway, I redefined\nArith as the rest seems to work fine and also it is pretty straight\nforward in my case what the result of Arith should be. Thanks again.\nOleg\n\nOn Sat, 2007-07-28 at 09:38 -0400, John Chambers wrote:\n> Yes, this is the intended behavior.  Nothing to do with implicit\n> generics, but with some ongoing changes to make class \"structure\" and\n> related classes such as \"array\" give trustworthy results consistent\n> with the S language idea of vector structures.  There's a short note\n> in NEWS about the changes, added for the revision where the change was\n> introduced.\n> \n> As for programming your class, using showMethods(\"+\") as below will\n> tell you that the method is inherited from the group generic function\n> \"Ops\", so a method for that function is needed, if you _really_ know\n> what the results should be.\n> \n> The behavior of the base package code for operations is unacceptable\n> for trustworthy computations with classes.  Roughly, it takes the\n> attributes of the left-hand operand and inserts those into the result\n> of operating on the vector or array part.  So in the example below we\n> have two  unrelated classes that both extend \"array\".  A mixed\n> operation gives a result from class \"A1\" if done in one order and from\n> \"A2\" if done in the other order.  Both are likely wrong and quite\n> possibly seriously misleading.\n> \n> Even if the two objects came from the same class, copying one set of\n> attributes makes sense only if the two sets are identical (an\n> expensive test) and not necessarily even then, if any of the\n> attributes would be invalidated by the operation.\n> \n> Two acceptable results are either to reduce to the common inheritance\n> (array, here) or to call the result undefined and throw an error.  The\n> current implementation in 2.6.0  is the first, as the example shows:\n> \n> > setClass(\"A1\", contains=\"array\", representation(flag = \"character\"))\n> [1] \"A1\"\n> > setClass(\"A2\", contains=\"array\", representation(positive =\n> \"logical\"))\n> [1] \"A2\"\n> > a1 = new(\"A1\", array(1:8, rep(2,3)), flag = \"test\")\n> > a2 = new(\"A2\", array(8:1, rep(2,3)), positive = rep(TRUE,8))\n> > a1+a2\n> , , 1\n> \n>      [,1] [,2]\n> [1,]    9    9\n> [2,]    9    9\n> \n> , , 2\n> \n>      [,1] [,2]\n> [1,]    9    9\n> [2,]    9    9\n> \n> > showMethods(\"+\")\n> Function: + (package base)\n> e1=\"A1\", e2=\"A2\"\n>     (inherited from: e1=\"array\", e2=\"array\")\n>     (definition from function \"Ops\")\n> \n> \n> Oleg Sklyar wrote: \n> > Narrowed down to Rev. 42246:\n> > \n> > * ~/R/Rsvn: svn up -r42245\n> > * ~/R/Rsvn: make\n> > * ~/R/Rsvn: Rsvn CMD INSTALL ~/tmp/EBImage_2.1.13.tar.gz\n> > * ~/R/Rsvn: Rsvn\n> >   \n> > > version$version.string\n> > >     \n> > [1] \"R version 2.6.0 Under development (unstable) (2007-07-16 r42245)\"\n> >   \n> > > library(EBImage)\n> > > a <- Image(0,c(2,2))\n> > > class(a+a)\n> > >     \n> > [1] \"Image\"\n> > attr(,\"package\")\n> > [1] \"EBImage\"\n> > \n> > * ~/R/Rsvn: svn up -r42246\n> > * ~/R/Rsvn: make\n> > * ~/R/Rsvn: Rsvn CMD INSTALL ~/tmp/EBImage_2.1.13.tar.gz\n> > * ~/R/Rsvn: Rsvn\n> >   \n> > > version$version.string\n> > >     \n> > [1] \"R version 2.6.0 Under development (unstable) (2007-07-16 r42246)\"\n> >   \n> > > library(EBImage)\n> > > a <- Image(0,c(2,2))\n> > > class(a+a)\n> > >     \n> > [1] \"array\"\n> > \n> > * ~/R/Rsvn: svn log -r42246\n> > ------------------------------------------------------------------------\n> > r42246 | jmc | 2007-07-16 14:32:16 +0100 (Mon, 16 Jul 2007) | 1 line\n> > \n> > implicitGeneric() and structure class\n> > ------------------------------------------------------------------------\n> > \n> >",
+      "body_snippet": "John, thank you for clarification. I just wonder that some packages\ncould also see that their behaviour has changed. Anyway, I redefined\nArith as the rest seems to work fine and also it is pretty stra",
+      "thread_id": "thread-a433b5436133",
+      "thread_depth": 3,
+      "month": "2007-07"
+    },
+    {
+      "id": "msg-2a8532af2f57",
+      "message_id": "<1185638632.32611.2.camel@carbon>",
+      "from_name": "Oleg Sklyar",
+      "from_email_hash": "cbe68d3f50967d8247a71d9d59695a0068054b30ff9287210abc49b35f0fad20",
+      "date": "2007-07-28T17:03:52+01:00",
+      "subject": "[Rd] R2.6 bug in arithmetics of S4 classes inherited from\t'array', or intended behavior?",
+      "subject_clean": "R2.6 bug in arithmetics of S4 classes inherited from\t'array', or intended behavior?",
+      "in_reply_to": "<46AB46E5.2080301@r-project.org>",
+      "references": [
+        "<1185181337.6294.29.camel@dirac>",
+        "<1185187439.6294.58.camel@dirac>",
+        "<46AB46E5.2080301@r-project.org>"
+      ],
+      "body_plain": "John, thank you for clarification. I just wonder that some packages\ncould also see that their behaviour has changed. Anyway, I redefined\nArith as the rest seems to work fine and also it is pretty straight\nforward in my case what the result of Arith should be. Thanks again.\nOleg\n\nOn Sat, 2007-07-28 at 09:38 -0400, John Chambers wrote:\n> Yes, this is the intended behavior.  Nothing to do with implicit\n> generics, but with some ongoing changes to make class \"structure\" and\n> related classes such as \"array\" give trustworthy results consistent\n> with the S language idea of vector structures.  There's a short note\n> in NEWS about the changes, added for the revision where the change was\n> introduced.\n> \n> As for programming your class, using showMethods(\"+\") as below will\n> tell you that the method is inherited from the group generic function\n> \"Ops\", so a method for that function is needed, if you _really_ know\n> what the results should be.\n> \n> The behavior of the base package code for operations is unacceptable\n> for trustworthy computations with classes.  Roughly, it takes the\n> attributes of the left-hand operand and inserts those into the result\n> of operating on the vector or array part.  So in the example below we\n> have two  unrelated classes that both extend \"array\".  A mixed\n> operation gives a result from class \"A1\" if done in one order and from\n> \"A2\" if done in the other order.  Both are likely wrong and quite\n> possibly seriously misleading.\n> \n> Even if the two objects came from the same class, copying one set of\n> attributes makes sense only if the two sets are identical (an\n> expensive test) and not necessarily even then, if any of the\n> attributes would be invalidated by the operation.\n> \n> Two acceptable results are either to reduce to the common inheritance\n> (array, here) or to call the result undefined and throw an error.  The\n> current implementation in 2.6.0  is the first, as the example shows:\n> \n> > setClass(\"A1\", contains=\"array\", representation(flag = \"character\"))\n> [1] \"A1\"\n> > setClass(\"A2\", contains=\"array\", representation(positive =\n> \"logical\"))\n> [1] \"A2\"\n> > a1 = new(\"A1\", array(1:8, rep(2,3)), flag = \"test\")\n> > a2 = new(\"A2\", array(8:1, rep(2,3)), positive = rep(TRUE,8))\n> > a1+a2\n> , , 1\n> \n>      [,1] [,2]\n> [1,]    9    9\n> [2,]    9    9\n> \n> , , 2\n> \n>      [,1] [,2]\n> [1,]    9    9\n> [2,]    9    9\n> \n> > showMethods(\"+\")\n> Function: + (package base)\n> e1=\"A1\", e2=\"A2\"\n>     (inherited from: e1=\"array\", e2=\"array\")\n>     (definition from function \"Ops\")\n> \n> \n> Oleg Sklyar wrote: \n> > Narrowed down to Rev. 42246:\n> > \n> > * ~/R/Rsvn: svn up -r42245\n> > * ~/R/Rsvn: make\n> > * ~/R/Rsvn: Rsvn CMD INSTALL ~/tmp/EBImage_2.1.13.tar.gz\n> > * ~/R/Rsvn: Rsvn\n> >   \n> > > version$version.string\n> > >     \n> > [1] \"R version 2.6.0 Under development (unstable) (2007-07-16 r42245)\"\n> >   \n> > > library(EBImage)\n> > > a <- Image(0,c(2,2))\n> > > class(a+a)\n> > >     \n> > [1] \"Image\"\n> > attr(,\"package\")\n> > [1] \"EBImage\"\n> > \n> > * ~/R/Rsvn: svn up -r42246\n> > * ~/R/Rsvn: make\n> > * ~/R/Rsvn: Rsvn CMD INSTALL ~/tmp/EBImage_2.1.13.tar.gz\n> > * ~/R/Rsvn: Rsvn\n> >   \n> > > version$version.string\n> > >     \n> > [1] \"R version 2.6.0 Under development (unstable) (2007-07-16 r42246)\"\n> >   \n> > > library(EBImage)\n> > > a <- Image(0,c(2,2))\n> > > class(a+a)\n> > >     \n> > [1] \"array\"\n> > \n> > * ~/R/Rsvn: svn log -r42246\n> > ------------------------------------------------------------------------\n> > r42246 | jmc | 2007-07-16 14:32:16 +0100 (Mon, 16 Jul 2007) | 1 line\n> > \n> > implicitGeneric() and structure class\n> > ------------------------------------------------------------------------\n> > \n> >",
+      "body_snippet": "John, thank you for clarification. I just wonder that some packages\ncould also see that their behaviour has changed. Anyway, I redefined\nArith as the rest seems to work fine and also it is pretty stra",
+      "thread_id": "thread-a433b5436133",
+      "thread_depth": 3,
       "month": "2007-07"
     },
     {
@@ -5864,6 +6012,17 @@
       "root_message_id": "msg-c4d7fb9ce019"
     },
     {
+      "id": "thread-576c25a04492",
+      "subject": "unable to load shared library: undefined symbol",
+      "message_count": 1,
+      "participants": [
+        "Ctagz"
+      ],
+      "started": "2007-07-20T11:50:28-07:00",
+      "last_reply": "2007-07-20T11:50:28-07:00",
+      "root_message_id": "msg-576c25a04492"
+    },
+    {
       "id": "thread-02437212e170",
       "subject": "Bug in dev.print ? (PR#9801)",
       "message_count": 2,
@@ -5931,7 +6090,7 @@
     {
       "id": "thread-a433b5436133",
       "subject": "R2.6 bug in arithmetics of S4 classes inherited from 'array', or\tintended behavior?",
-      "message_count": 5,
+      "message_count": 9,
       "participants": [
         "John Chambers",
         "Oleg Sklyar",
@@ -6004,7 +6163,7 @@
     {
       "id": "thread-8681e6a22c0a",
       "subject": "Using R_MakeExternalPtr",
-      "message_count": 9,
+      "message_count": 11,
       "participants": [
         "Hin-Tak Leung",
         "Jonathan Zhou",
@@ -6191,6 +6350,17 @@
       "started": "2007-07-27T18:37:47+02:00",
       "last_reply": "2007-07-27T18:37:47+02:00",
       "root_message_id": "msg-ba67885bf308"
+    },
+    {
+      "id": "thread-cb9975ea6377",
+      "subject": "(PR#9811) sequence(c(2, 0, 3)) produces surprising results,",
+      "message_count": 1,
+      "participants": [
+        "bill at insightful.com"
+      ],
+      "started": "2007-07-27T21:54:24+02:00",
+      "last_reply": "2007-07-27T21:54:24+02:00",
+      "root_message_id": "msg-cb9975ea6377"
     },
     {
       "id": "thread-cb9975ea6377",

@@ -4127,6 +4127,22 @@
       "month": "2007-09"
     },
     {
+      "id": "msg-183c60de9778",
+      "message_id": "<59d7961d0709271130l227cd4e3n6394a883b248dcb7@mail.gmail.com>",
+      "from_name": "Henrik Bengtsson",
+      "from_email_hash": "9990c0a46f707a7b7a32dc78108db722c1ccf39a8c5733e31eb392daba5a47ca",
+      "date": "2007-09-27T11:30:34-07:00",
+      "subject": "[Rd] Unnecessary extra copy with matrix(..., dimnames=NULL) (Was: Re:  modifying large R objects in place)",
+      "subject_clean": "Unnecessary extra copy with matrix(..., dimnames=NULL) (Was: Re:  modifying large R objects in place)",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "As others already mentioned, in your example you are first creating an\ninteger matrix and the coercing it to a double matrix by assigning\n(double) 1 to element [1,1].  However, even when correcting for this\nmistake, there is an extra copy created when using matrix().\n\nTry this in a fresh vanilla R session:\n\n> print(gc())\n         used (Mb) gc trigger (Mb) max used (Mb)\nNcells 136684  3.7     350000  9.4   350000  9.4\nVcells  81026  0.7     786432  6.0   473127  3.7\n> x <- matrix(1, nrow=5000, ncol=5000)\n> print(gc())\n           used  (Mb) gc trigger  (Mb) max used  (Mb)\nNcells   136793   3.7     350000   9.4   350000   9.4\nVcells 25081043 191.4   27989266 213.6 25081056 191.4\n> x[1,1] <- 2\n> print(gc())\n           used  (Mb) gc trigger  (Mb) max used  (Mb)\nNcells   136797   3.7     350000   9.4   350000   9.4\nVcells 25081044 191.4   52830254 403.1 50081058 382.1\n\nSo, yes, in that x[1,1] <- 2 assignment an extra copy is created.  It\nis related to to the fact that there is NAMED matrix object being\ncreated inside matrix(), cf. the last rows in matrix():\n\n    x <- .Internal(matrix(data, nrow, ncol, byrow))\n    dimnames(x) <- dimnames\n    x\n\nHere is a patch for matrix() that avoids this problem *when dimnames\nis NULL* (which is many time the case):\n\nmatrix <- function(data=NA, nrow=1, ncol=1, byrow=FALSE, dimnames=NULL) {\n  data <- as.vector(data);\n\n  if(missing(nrow)) {\n    nrow <- ceiling(length(data)/ncol);\n  } else if(missing(ncol)) {\n    ncol <- ceiling(length(data)/nrow);\n  }\n\n  # Trick to avoid extra copy in the case when 'dimnames' is NULL.\n  if (is.null(dimnames)) {\n    .Internal(matrix(data, nrow, ncol, byrow));\n  } else {\n    x <- .Internal(matrix(data, nrow, ncol, byrow));\n    dimnames(x) <- dimnames;\n    x;\n  }\n} # matrix()\n\n\nTry the above again in a fresh R session with this patch applied and you'll get:\n\n> print(gc())\n         used (Mb) gc trigger (Mb) max used (Mb)\nNcells 136805  3.7     350000  9.4   350000  9.4\nVcells  81122  0.7     786432  6.0   473127  3.7\n> x <- matrix(1, nrow=5000, ncol=5000)\n> print(gc())\n           used  (Mb) gc trigger  (Mb) max used  (Mb)\nNcells   136919   3.7     350000   9.4   350000   9.4\nVcells 25081139 191.4   27989372 213.6 25081152 191.4\n> x[1,1] <- 2\n> print(gc())\n           used  (Mb) gc trigger  (Mb) max used  (Mb)\nNcells   136923   3.7     350000   9.4   350000   9.4\nVcells 25081140 191.4   29468840 224.9 25081276 191.4\n\nVoila!\n\nI talked to Luke Tierney about this and he though the internal method\nshould be updated to take the dimnames argument, i.e.\n.Internal(matrix(data, nrow, ncol, byrow, dimnames)).  However, until\nthat is happening, may I suggest this simple patch/workaround to go in\nR v2.6.0?\n\nCheers\n\nHenrik\n\n\nOn 9/27/07, Petr Savicky <savicky at cs.cas.cz> wrote:\n> On Wed, Sep 26, 2007 at 10:52:28AM -0700, Byron Ellis wrote:\n> > For the most part, doing anything to an R object result in it's\n> > duplication. You generally have to do a lot of work to NOT copy an R\n> > object.\n>\n> Thank you for your response. Unfortunately, you are right. For example,\n> the allocated memory determined by top command on Linux may change during\n> a session as follows:\n>   a <- matrix(as.integer(1),nrow=14100,ncol=14100) # 774m\n>   a[1,1] <- 0 # 3.0g\n>   gc() # 1.5g\n>\n> In the current applicatin, I modify the matrix only using my own C code\n> and only read it on R level. So, the above is not a big problem for me\n> (at least not now).\n>\n> However, there is a related thing, which could be a bug. The following\n> code determines the value of NAMED field in SEXP header of an object:\n>\n>   SEXP getnamed(SEXP a)\n>   {\n>       SEXP out;\n>       PROTECT(out = allocVector(INTSXP, 1));\n>       INTEGER(out)[0] = NAMED(a);\n>       UNPROTECT(1);\n>       return(out);\n>   }\n>\n> Now, consider the following session\n>\n>   u <- matrix(as.integer(1),nrow=5,ncol=3) + as.integer(0)\n>   .Call(\"getnamed\",u) # 1 (OK)\n>\n>   length(u)\n>   .Call(\"getnamed\",u) # 1 (OK)\n>\n>   dim(u)\n>   .Call(\"getnamed\",u) # 1 (OK)\n>\n>   nrow(u)\n>   .Call(\"getnamed\",u) # 2 (why?)\n>\n>   u <- matrix(as.integer(1),nrow=5,ncol=3) + as.integer(0)\n>   .Call(\"getnamed\",u) # 1 (OK)\n>   ncol(u)\n>   .Call(\"getnamed\",u) # 2 (so, ncol does the same)\n>\n> Is this a bug?\n>\n> Petr Savicky.\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>",
+      "body_snippet": "As others already mentioned, in your example you are first creating an\ninteger matrix and the coercing it to a double matrix by assigning\n(double) 1 to element [1,1].  However, even when correcting fo",
+      "thread_id": "thread-183c60de9778",
+      "thread_depth": 0,
+      "month": "2007-09"
+    },
+    {
       "id": "msg-87ef271cce7a",
       "message_id": "<fdh1od$sor$1@sea.gmane.org>",
       "from_name": "Earl F. Glynn",
@@ -5774,6 +5790,17 @@
       "started": "2007-09-26T21:03:57-05:00",
       "last_reply": "2007-09-27T13:53:38+00:00",
       "root_message_id": "msg-483deb8be06b"
+    },
+    {
+      "id": "thread-183c60de9778",
+      "subject": "Unnecessary extra copy with matrix(..., dimnames=NULL) (Was: Re:  modifying large R objects in place)",
+      "message_count": 1,
+      "participants": [
+        "Henrik Bengtsson"
+      ],
+      "started": "2007-09-27T11:30:34-07:00",
+      "last_reply": "2007-09-27T11:30:34-07:00",
+      "root_message_id": "msg-183c60de9778"
     },
     {
       "id": "thread-183c60de9778",
