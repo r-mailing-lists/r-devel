@@ -3496,24 +3496,6 @@
       "month": "2006-06"
     },
     {
-      "id": "msg-56999927204d",
-      "message_id": "<44907AD0.9070204@student.ethz.ch>",
-      "from_name": "Martin Hoffmann",
-      "from_email_hash": "092a6f681b4f757c536231d6160c85756de6de7b81f469ec027ff720069818a5",
-      "date": "2006-06-14T23:08:32+02:00",
-      "subject": "[Rd] Bug or not? (PR#8977)",
-      "subject_clean": "Bug or not? (PR#8977)",
-      "in_reply_to": "<44903508.6020909@fz-rossendorf.de>",
-      "references": [
-        "<44903508.6020909@fz-rossendorf.de>"
-      ],
-      "body_plain": "Joerg van den Hoff wrote:\n> \n>> Hi,\n>>\n>> I am writing this email, because I am not sure if the issue I have\n>> discovered is a bug or not.\n>>\n>> For a few days I have been fiddling around with a small program that\n>> calculates the reflectance of multilayer dielectric mirrors (eg. bragg\n>> mirrors). It does not really matter what I did, what matters is that I\n>> could not do that using R.\n>> I had some sample data which I used to test if my R program works\n>> correctly (if it fits the data it works). This sample data was for two\n>> different incident angles with respect to the normal of the hypothetical\n>> bragg mirror (0=B0 and 70=B0). The plots for 0=B0 matched perfectly\n>> but t=\n>> hose\n>> for 70=B0 were quite a bit off. After trying out all sorts of things for\n>> several days, I tried the same algorithm in octave (matlab clone, but\n>> open source). There, I got a perfect match for both 0=B0 and 70=B0. I\n>> alm=\n>> ost\n>> could not believe it, R must have calculated wrong.\n>>\n>> The R version I use at home at the moment is 2.2.1 on gentoo linux. I\n>> also tried version 2.1.0 at my university (debian stable), both had the\n>> same result.\n>>\n>> I uploaded everything to reproduce this to\n>>\n>> http://n.ethz.ch/student/homartin/r-vs-octave/\n>>\n>> There, you can also find the .pdf file of the comparison of the\n>> reference, the R output and the one from octave.\n>>\n>> The calculations are quite complex, nevertheless, I would be very happy\n>> to read your reply concerning this problem.\n>>\n>> Thanks in advance, best Regards,\n>>     Martin\n>>\n>>\n> \n> I get only the r-devel digest, so I could'nt respond the direct way\n> (this message will not show up in the correct thread, probably), but:\n> \n> \n> there is nothing wrong with the R results AFAICS: I translated your\n> octave script one-to-one to R (see attachment). this produces (within\n> floating point prec. (double)) the same results. I propose you go\n> through this and your own R-script (which honestly was unreadable to me\n> :-)) with browser() or debug() and compare results for Ms1, Ms2, Msr on\n> the way to localise the differences in computation.\n> if you uncomment the last few lines, source(\"Rs.R\") will give you\n> vectors which you can directly compare to the octave results (note that\n> the leading 499 zeros are still there, since I mimicked your octave script)\n> \n> so: really no bug, right?\n> \n> joerg\n\nNO BUG! I found out what was wrong and it was all my fault!\n\nThe etha functions were the problem. They should be etha_sX(thetaX)\nwhere thetaX is a function of theta. I made the etha_sX functions that\nway and defined the etha_sX functions to be functions of theta, NOT thetaX.\nBut when I used these I called them with thetaX instead of only theta.\n\nI would like to apologize for the \"bug\", I hope this didn't cost you too\nmuch time. Rest assured I feel quite embarrassed now :-?.\nI can imagine the script was hard to read, I am new to R and sometimes\nit is still hard for me to get things done at all.\n\nThanks for your time and the great product of course ;-).\n\nBest regards,\n\tMartin\n\n> \n> \n> ------------------------------------------------------------------------\n> \n> Rs <- function (lambda, theta, N) {\n> \n>    n0 = 3.66 \n>    n1 = 2.4 \n>    n2 = 1.45 \n>    nn = 1.00 \n> \n>    lambda_ref = 1000 \n>    lambda_min = 500  \n>    lambda_max = 1500 \n>    increment = 5 \n>    ymin = 0 \n>    ymax = 1 \n> \n>    d1 = lambda_ref /  4 / n1 \n>    d2 = lambda_ref / 4 / n2 \n> \n>    theta0 = asin( nn / n0 * sin( theta ) ) \n>    theta1 = asin( nn / n1 * sin( theta ) ) \n>    theta2 = asin( nn / n2 * sin( theta ) ) \n> \n>    etha_s0 = -n0 * cos( theta0 ) \n>    etha_s1 = n1 * cos( theta1 ) \n>    etha_s2 = n2 * cos( theta2 ) \n>    etha_sn = nn * cos( theta ) \n> \n>    delta1 = 2 * pi / lambda * n1 * d1 * cos( theta1 ) \n>    delta2 = 2 * pi / lambda * n2 * d2 * cos( theta2 ) \n> \n>    Ms1 = matrix(c(cos( delta1 ) , 1i / etha_s1 * sin( delta1 ) , 1i * etha_s1 * sin( delta1) , cos( delta1 )),2,2,byrow=T)\n>    Ms2 = matrix(c(cos( delta2 ) , 1i / etha_s2 * sin( delta2 ) , 1i * etha_s2 * sin( delta2) , cos( delta2 )) ,2,2,byrow=T) \n> \n>    dum = Ms2 %*% Ms1\n>    Msr <- diag(2) \n>    for (i in 1:N) Msr <- dum %*% Msr\n> \n>    Rs = ( abs( ( etha_sn * ( Msr[1 , 1] - etha_s0 * Msr[ 1 , 2 ] ) - ( Msr[ 2 , 1 ]\n>    - etha_s0 * Msr[ 2 , 2 ] ) ) / ( etha_sn * ( Msr[ 1 , 1 ]  - etha_s0 * Msr[ 1 ,\n>      2 ] ) + ( Msr[ 2 , 1 ]  - etha_s0 * Msr[2 , 2] ) ) ) )^2\n>    Rs\n> }\n> \n> ##r0deg <- r75deg <- numeric(1001)\n> ##for (i in 500:1500) r0deg[i]=Rs(i,0,5)\n> ##for (i in  500:1500) r75deg[i]=Rs(i,75*pi/180,5)\n> ##\n> ##oct0  <- read.table('o0deg,dat')\n> ##oct75 <- read.table('o75deg,dat')\n\n\n-- \nSometimes I wonder if I'm in my right mind.  Then it passes off and I'm\nas intelligent as ever.\n\t\t-- Samuel Beckett, \"Endgame\"\n\n-------------- next part --------------\nA non-text attachment was scrubbed...\nName: signature.asc\nType: application/pgp-signature\nSize: 254 bytes\nDesc: OpenPGP digital signature\nUrl : https://stat.ethz.ch/pipermail/r-devel/attachments/20060614/4ad917a8/attachment-0001.bin",
-      "body_snippet": "Joerg van den Hoff wrote:\n> \n>> Hi,\n>>\n>> I am writing this email, because I am not sure if the issue I have\n>> discovered is a bug or not.\n>>\n>> For a few days I have been fiddling around with a smal",
-      "thread_id": "thread-98adaa6eb3b3",
-      "thread_depth": 1,
-      "month": "2006-06"
-    },
-    {
       "id": "msg-0e7528fe78e6",
       "message_id": "<b3a7efa90606141436v12d1d05byf46fa7a0b90f4ff6@mail.gmail.com>",
       "from_name": "Dan Lipsitt",
@@ -6610,6 +6592,67 @@
       "thread_id": "thread-ebb06b77117c",
       "thread_depth": 2,
       "month": "2006-06"
+    },
+    {
+      "id": "msg-39785247c8f4",
+      "message_id": "<971536df0606301614g1dc5f4b5rd8aa55227a3ef305@mail.gmail.com>",
+      "from_name": "Gabor Grothendieck",
+      "from_email_hash": "2252aad0894f89a900da56345b1c4e0414e3b441d448c40b473f7149e06e5a05",
+      "date": "2006-06-30T19:14:45-04:00",
+      "subject": "[Rd] foo2Args()",
+      "subject_clean": "foo2Args()",
+      "in_reply_to": "<44A593A9.9010802@bank-banque-canada.ca>",
+      "references": [
+        "<44A58747.7080705@bank-banque-canada.ca>",
+        "<44A58CE6.2040903@stats.uwo.ca>",
+        "<44A593A9.9010802@bank-banque-canada.ca>"
+      ],
+      "body_plain": "On 6/30/06, Paul Gilbert <pgilbert at bank-banque-canada.ca> wrote:\n>\n>\n> Duncan Murdoch wrote:\n>\n> > On 6/30/2006 4:19 PM, Paul Gilbert wrote:\n> >\n> >> I was just considering trying to clean up the arguments to a function\n> >> that calls other functions,\n> >> and was playin with a suggestion Achim made during a conversation at\n> >> useR.  The idea is, instead of using list(), use a small function to\n> >> construct and check arguments. My hope was to be able to do this\n> >> without making it globally visible:\n> >>\n> >> foo <- function(x, args=foo2Args()) {\n> >>   foo2Args <- function(a=1, b=2){list(a,b)}\n> >>   # above would actual do more testing of args\n> >>   #now I would call foo2 with args, but to test just\n> >>   args\n> >>   }\n> >>\n> >> Now,\n> >>\n> >>  > foo(1)   # should I be surprized that this works\n> >> [[1]]\n> >> [1] 1\n> >>\n> >> [[2]]\n> >> [1] 2\n> >\n> >\n> > I don't think it really works, it's just a coincidence that the answer\n> > matches your expectations:\n> >\n> > > foo(3)\n> > [[1]]\n> > [1] 1\n> >\n> > [[2]]\n> > [1] 2\n> >\n> > Or maybe I am completely misunderstanding your expectations...\n> >\n> >>\n> >>  > foo(1, args=foo2Args(a=2, b=10)) # or that this does not\n> >> Error in foo(1, args = foo2Args(a = 2, b = 10)) :\n> >>     could not find function \"foo2Args\"\n> >\n> >\n> > This is a somewhat subtle thing about the way args are evaluated.\n> > What is done makes lots of sense once you understand it:\n> >\n> >  - When you specify an argument in the call, the expression you give\n> > is evaluated in the current context.  In the context where you made\n> > this call, foo2Args is not defined, hence the error.\n> >\n> >  - When you specify a default for an argument, it is evaluated in the\n> > local context of the function evaluation.  So as a default, foo2Args\n> > is recognized, because it's a local variable within foo.\n> >\n> > You also need to remember \"lazy evaluation\":  neither of the above\n> > actually take place until args is used.\n> >\n> > R is pretty flexible, so it's probably possible to do whatever you\n> > intended here; can you describe exactly what you want to happen?\n>\n> I guess what I want to happen is that when args is used it it gets\n> evaluated in the local context of the function, whether or not I am\n> specifying the argument or using the default. Is there a way to do that?\n>\n> What I expected to happen was that it would always get evaluated either\n> in the local context or in the calling context, i.e., it would fail or\n> not fail, but that would not depend on whether I am specifying the\n> argument or using the default, so your first points explain this.\n>\n\nI think its better that a function check its own arguments.  Having the\ncaller check the arguments by calling foo2Args seems to distribute\nthe functionality between the function and the caller so I don't think that\nthat is desirable.",
+      "body_snippet": "On 6/30/06, Paul Gilbert <pgilbert at bank-banque-canada.ca> wrote:\n>\n>\n> Duncan Murdoch wrote:\n>\n> > On 6/30/2006 4:19 PM, Paul Gilbert wrote:\n> >\n> >> I was just considering trying to clean up the a",
+      "thread_id": "thread-ebb06b77117c",
+      "thread_depth": 3,
+      "month": "2006-06"
+    },
+    {
+      "id": "msg-b4f6f239af86",
+      "message_id": "<44A5C3FB.1010202@stats.uwo.ca>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f10e1920504dfef879061667fbcfa0823bbc832410cad04707fb294db3bd8d83",
+      "date": "2006-06-30T20:38:19-04:00",
+      "subject": "[Rd] foo2Args()",
+      "subject_clean": "foo2Args()",
+      "in_reply_to": "<44A593A9.9010802@bank-banque-canada.ca>",
+      "references": [
+        "<44A58747.7080705@bank-banque-canada.ca>",
+        "<44A58CE6.2040903@stats.uwo.ca>",
+        "<44A593A9.9010802@bank-banque-canada.ca>"
+      ],
+      "body_plain": "On 6/30/2006 5:12 PM, Paul Gilbert wrote:\n> \n> Duncan Murdoch wrote:\n> \n>> On 6/30/2006 4:19 PM, Paul Gilbert wrote:\n>>\n>>> I was just considering trying to clean up the arguments to a function \n>>> that calls other functions,\n>>> and was playin with a suggestion Achim made during a conversation at \n>>> useR.  The idea is, instead of using list(), use a small function to \n>>> construct and check arguments. My hope was to be able to do this \n>>> without making it globally visible:\n>>>\n>>> foo <- function(x, args=foo2Args()) {\n>>>   foo2Args <- function(a=1, b=2){list(a,b)}\n>>>   # above would actual do more testing of args\n>>>   #now I would call foo2 with args, but to test just\n>>>   args\n>>>   }\n>>>  \n>>> Now,\n>>>\n>>>  > foo(1)   # should I be surprized that this works\n>>> [[1]]\n>>> [1] 1\n>>>\n>>> [[2]]\n>>> [1] 2\n>>\n>> I don't think it really works, it's just a coincidence that the answer \n>> matches your expectations:\n>>\n>>> foo(3)\n>> [[1]]\n>> [1] 1\n>>\n>> [[2]]\n>> [1] 2\n>>\n>> Or maybe I am completely misunderstanding your expectations...\n>>\n>>>  > foo(1, args=foo2Args(a=2, b=10)) # or that this does not\n>>> Error in foo(1, args = foo2Args(a = 2, b = 10)) :\n>>>     could not find function \"foo2Args\"\n>>\n>> This is a somewhat subtle thing about the way args are evaluated.  \n>> What is done makes lots of sense once you understand it:\n>>\n>>  - When you specify an argument in the call, the expression you give \n>> is evaluated in the current context.  In the context where you made \n>> this call, foo2Args is not defined, hence the error.\n>>\n>>  - When you specify a default for an argument, it is evaluated in the \n>> local context of the function evaluation.  So as a default, foo2Args \n>> is recognized, because it's a local variable within foo.\n>>\n>> You also need to remember \"lazy evaluation\":  neither of the above \n>> actually take place until args is used.\n>>\n>> R is pretty flexible, so it's probably possible to do whatever you \n>> intended here; can you describe exactly what you want to happen?\n> \n> I guess what I want to happen is that when args is used it it gets \n> evaluated in the local context of the function, whether or not I am \n> specifying the argument or using the default. Is there a way to do that?\n\nI think this would work:\n\n  foo <- function(x, args=foo2Args()) {\n    foo2Args <- function(a=1, b=2){list(a,b)}\n    # above would actual do more testing of args\n    #now I would call foo2 with args, but to test just\n    args <- eval(substitute(args))\n    args\n    }\n\nThe explanation is this:\n\nsubstitute(args) gets the expression attached to args without evaluating \nit. eval( substitute(args) ) then evaluates it; since I didn't say which \nenvironment to work in, it defaults to the current evaluation environment.\n\nHOWEVER, this function is a bad idea.  Users don't expect evaluation \nlike this.  For example, this would mess it up:\n\nargs <- 2\nfoo(1, args=foo2Args(a=args, b=10))\n\nbecause it would try to evaluate \"args\" in the local environment, rather \nthan where the user put it.  You'd get weird behaviour if any of the \nvalues in foo2Args used variables rather than constants, because they'd \nbe evaluated in the function, not in the user's workspace.\n\nDuncan Murdoch\n\n> \n> What I expected to happen was that it would always get evaluated either \n> in the local context or in the calling context, i.e., it would fail or \n> not fail, but that would not depend on whether I am specifying the \n> argument or using the default, so your first points explain this.\n> \n> Thanks,\n> Paul\n> \n>> Duncan Murdoch\n> ====================================================================================\n> \n> La version fran?aise suit le texte anglais.\n> \n> ------------------------------------------------------------------------------------\n> \n> This email may contain privileged and/or confidential inform...{{dropped}}\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On 6/30/2006 5:12 PM, Paul Gilbert wrote:\n> \n> Duncan Murdoch wrote:\n> \n>> On 6/30/2006 4:19 PM, Paul Gilbert wrote:\n>>\n>>> I was just considering trying to clean up the arguments to a function \n>>> t",
+      "thread_id": "thread-ebb06b77117c",
+      "thread_depth": 3,
+      "month": "2006-06"
+    },
+    {
+      "id": "msg-93a467c492e6",
+      "message_id": "<44A5C9FA.1010704@bank-banque-canada.ca>",
+      "from_name": "Paul Gilbert",
+      "from_email_hash": "51f348dc0febec9b32e9d9dcb86f6de731958e1295e818209b4c127bffef5569",
+      "date": "2006-06-30T21:03:54-04:00",
+      "subject": "[Rd] foo2Args()",
+      "subject_clean": "foo2Args()",
+      "in_reply_to": "<44A5C3FB.1010202@stats.uwo.ca>",
+      "references": [
+        "<44A58747.7080705@bank-banque-canada.ca>",
+        "<44A58CE6.2040903@stats.uwo.ca>",
+        "<44A593A9.9010802@bank-banque-canada.ca>",
+        "<44A5C3FB.1010202@stats.uwo.ca>"
+      ],
+      "body_plain": "Duncan Murdoch wrote:\n> On 6/30/2006 5:12 PM, Paul Gilbert wrote:\n>>\n>> Duncan Murdoch wrote:\n>>\n>>> On 6/30/2006 4:19 PM, Paul Gilbert wrote:\n>>>\n>>>> I was just considering trying to clean up the arguments to a \n>>>> function that calls other functions,\n>>>> and was playin with a suggestion Achim made during a conversation at \n>>>> useR.  The idea is, instead of using list(), use a small function to \n>>>> construct and check arguments. My hope was to be able to do this \n>>>> without making it globally visible:\n>>>>\n>>>> foo <- function(x, args=foo2Args()) {\n>>>>   foo2Args <- function(a=1, b=2){list(a,b)}\n>>>>   # above would actual do more testing of args\n>>>>   #now I would call foo2 with args, but to test just\n>>>>   args\n>>>>   }\n>>>>  \n>>>> Now,\n>>>>\n>>>>  > foo(1)   # should I be surprized that this works\n>>>> [[1]]\n>>>> [1] 1\n>>>>\n>>>> [[2]]\n>>>> [1] 2\n>>>\n>>> I don't think it really works, it's just a coincidence that the \n>>> answer matches your expectations:\n>>>\n>>>> foo(3)\n>>> [[1]]\n>>> [1] 1\n>>>\n>>> [[2]]\n>>> [1] 2\n>>>\n>>> Or maybe I am completely misunderstanding your expectations...\n>>>\n>>>>  > foo(1, args=foo2Args(a=2, b=10)) # or that this does not\n>>>> Error in foo(1, args = foo2Args(a = 2, b = 10)) :\n>>>>     could not find function \"foo2Args\"\n>>>\n>>> This is a somewhat subtle thing about the way args are evaluated.  \n>>> What is done makes lots of sense once you understand it:\n>>>\n>>>  - When you specify an argument in the call, the expression you give \n>>> is evaluated in the current context.  In the context where you made \n>>> this call, foo2Args is not defined, hence the error.\n>>>\n>>>  - When you specify a default for an argument, it is evaluated in the \n>>> local context of the function evaluation.  So as a default, foo2Args \n>>> is recognized, because it's a local variable within foo.\n>>>\n>>> You also need to remember \"lazy evaluation\":  neither of the above \n>>> actually take place until args is used.\n>>>\n>>> R is pretty flexible, so it's probably possible to do whatever you \n>>> intended here; can you describe exactly what you want to happen?\n>>\n>> I guess what I want to happen is that when args is used it it gets \n>> evaluated in the local context of the function, whether or not I am \n>> specifying the argument or using the default. Is there a way to do that?\n> \n> I think this would work:\n> \n>  foo <- function(x, args=foo2Args()) {\n>    foo2Args <- function(a=1, b=2){list(a,b)}\n>    # above would actual do more testing of args\n>    #now I would call foo2 with args, but to test just\n>    args <- eval(substitute(args))\n>    args\n>    }\n> \n> The explanation is this:\n> \n> substitute(args) gets the expression attached to args without evaluating \n> it. eval( substitute(args) ) then evaluates it; since I didn't say which \n> environment to work in, it defaults to the current evaluation environment.\n> \n> HOWEVER, this function is a bad idea.  Users don't expect evaluation \n> like this.  For example, this would mess it up:\n> \n> args <- 2\n> foo(1, args=foo2Args(a=args, b=10))\n> \n> because it would try to evaluate \"args\" in the local environment, rather \n> than where the user put it.  You'd get weird behaviour if any of the \n> values in foo2Args used variables rather than constants, because they'd \n> be evaluated in the function, not in the user's workspace.\n\nYes, I realized on the way home that what I want is not what I said, \nbecause I need the function to be found (thus in the local context) but \nI need the arguments to foo2Args from the calling context, if they are \nsupplied.\n\nThe general idea is to provide a nice clean way to pass arguments along \nto other functions. If foo is calling a few functions this becomes \nreally messy, and even moreso if those functions call other functions \nthat need arguments passed along. The way I have always done this is \nwith a list, but there may be some advantage to using a function that \nconstructs the argument. However, there are likely to be namespace \nconflicts if everyone does this and this constructing function name has \nto be exported, or even visible outside of the call to the function. For \nexample, one of the function I want to call is optim. If everyone that \ncalls optim wants to do this (supposing it is a good idea), they would \nall probably decide a good name for the function is optimArgs.\n\nPerhaps sticking with a list is the best idea.\n\nThanks,\nPaul\n> \n> Duncan Murdoch\n> \n>>\n>> What I expected to happen was that it would always get evaluated \n>> either in the local context or in the calling context, i.e., it would \n>> fail or not fail, but that would not depend on whether I am specifying \n>> the argument or using the default, so your first points explain this.\n>>\n>> Thanks,\n>> Paul\n>>\n>>> Duncan Murdoch\n====================================================================================\n\nLa version fran?aise suit le texte anglais.\n\n------------------------------------------------------------------------------------\n\nThis email may contain privileged and/or confidential inform...{{dropped}}",
+      "body_snippet": "Duncan Murdoch wrote:\n> On 6/30/2006 5:12 PM, Paul Gilbert wrote:\n>>\n>> Duncan Murdoch wrote:\n>>\n>>> On 6/30/2006 4:19 PM, Paul Gilbert wrote:\n>>>\n>>>> I was just considering trying to clean up the ar",
+      "thread_id": "thread-ebb06b77117c",
+      "thread_depth": 4,
+      "month": "2006-06"
     }
   ],
   "threads": [
@@ -7602,7 +7645,7 @@
     {
       "id": "thread-98adaa6eb3b3",
       "subject": "Bug or not? (PR#8977)",
-      "message_count": 3,
+      "message_count": 2,
       "participants": [
         "Joerg van den Hoff",
         "Martin Hoffmann"
@@ -8543,13 +8586,14 @@
     {
       "id": "thread-ebb06b77117c",
       "subject": "foo2Args()",
-      "message_count": 3,
+      "message_count": 6,
       "participants": [
         "Duncan Murdoch",
+        "Gabor Grothendieck",
         "Paul Gilbert"
       ],
       "started": "2006-06-30T16:19:19-04:00",
-      "last_reply": "2006-06-30T17:12:09-04:00",
+      "last_reply": "2006-06-30T21:03:54-04:00",
       "root_message_id": "msg-ebb06b77117c"
     },
     {

@@ -6818,6 +6818,22 @@
       "thread_id": "thread-d4c1ab5f19a0",
       "thread_depth": 0,
       "month": "2006-03"
+    },
+    {
+      "id": "msg-b8eb46d98c9f",
+      "message_id": "<200604010631.k316Vpex003171@gaea2.predict.com>",
+      "from_name": "Stephen C. Pope",
+      "from_email_hash": "9347617469fffa0b6980616b244019f96a5e24ede8c557f628beff50ffd5e1d4",
+      "date": "2006-03-31T23:31:35-07:00",
+      "subject": "[Rd] Sys.sleep() burns up CPU on Solaris 8",
+      "subject_clean": "Sys.sleep() burns up CPU on Solaris 8",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I noticed that R was burning up 100% of a CPU when a call to Sys.sleep() \nwas made. Upon investigation, I discovered that R_checkActivityEx() in \nsrc/unix/sys-std.c was putting the entire timeout (in usec) into the \nstruct timeval tv_usec member, leaving tv_sec set to 0.\n\nI don't know about other unix variants, but Solaris requires that the \ntimeout value be normalized (i.e. 0 <= tv_usec < 1000000). Because a \nvalue greater than 1000000 was being placed in tv_usec, select() was \nreturning an error (EINVAL) immediately, causing R_checkActivityEx() to \nreturn immediately. This caused do_syssleep() to loop continuously until \nthe desired elapsed time had evolved. A rather sleepless sleep ;-).\n\nThe following patch against R-2.2.1 fixes the problem. Note that the \ntest of the return value for R_SelectEx() was also incorrect; although \nharmless, it was treating the error return (-1) as a successful return.\n\nstephen pope\nscp at predict.com\n\n\nHere's the patch.\n\nbuild_main at mambo:/vobs/products/R> gdiff -ub src/unix/sys-std.c@@/main/3 \nsrc/unix/sys-std.c\n--- src/unix/sys-std.c@@/main/3 Thu Jan 12 11:39:55 2006\n+++ src/unix/sys-std.c  Fri Mar 31 23:12:16 2006\n@@ -294,13 +294,13 @@\n         else onintr();\n      }\n\n-    tv.tv_sec = 0;\n-    tv.tv_usec = usec;\n+    tv.tv_sec = usec/1000000;\n+    tv.tv_usec = usec % 1000000;\n      maxfd = setSelectMask(R_InputHandlers, &readMask);\n      if (ignore_stdin)\n         FD_CLR(fileno(stdin), &readMask);\n      if (R_SelectEx(maxfd+1, &readMask, NULL, NULL,\n-                  (usec >= 0) ? &tv : NULL, intr))\n+                   (usec >= 0) ? &tv : NULL, intr) > 0)\n         return(&readMask);\n      else\n         return(NULL);",
+      "body_snippet": "I noticed that R was burning up 100% of a CPU when a call to Sys.sleep() \nwas made. Upon investigation, I discovered that R_checkActivityEx() in \nsrc/unix/sys-std.c was putting the entire timeout (in ",
+      "thread_id": "thread-b8eb46d98c9f",
+      "thread_depth": 0,
+      "month": "2006-03"
     }
   ],
   "threads": [
@@ -8844,6 +8860,17 @@
       "started": "2006-03-31T15:23:00-05:00",
       "last_reply": "2006-03-31T15:23:00-05:00",
       "root_message_id": "msg-d4c1ab5f19a0"
+    },
+    {
+      "id": "thread-b8eb46d98c9f",
+      "subject": "Sys.sleep() burns up CPU on Solaris 8",
+      "message_count": 1,
+      "participants": [
+        "Stephen C. Pope"
+      ],
+      "started": "2006-03-31T23:31:35-07:00",
+      "last_reply": "2006-03-31T23:31:35-07:00",
+      "root_message_id": "msg-b8eb46d98c9f"
     }
   ]
 }

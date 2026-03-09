@@ -4474,6 +4474,100 @@
       "thread_id": "thread-5630b7a24cb1",
       "thread_depth": 0,
       "month": "2015-01"
+    },
+    {
+      "id": "msg-29cd605b8dca",
+      "message_id": "<CAFLer83nzRs1cV7Cpu7VWUEDrqaSC7kjrUBbMUHzaFAp97DQGA@mail.gmail.com>",
+      "from_name": "Zheng Da",
+      "from_email_hash": "2b7b5b046397d8edc2a78612e85d2e0e6bb5d11398c20e0e2814e9fd6fd11af8",
+      "date": "2015-01-31T18:30:03-05:00",
+      "subject": "[Rd] invoking R function in C++ in parallel",
+      "subject_clean": "invoking R function in C++ in parallel",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hello,\n\nI'm writing an R extension in C++. In the extension, I want to invoke\nan R function directly and it works when I use Rcpp in the serial\ncode. But what I really want is to invoke the R function in parallel\nwith openmp. When I do so, I got segmentation fault.\n\nI remember someone said that R isn't thread-safe. I think it's also\nunderstandable because an R function also has environment variables.\n\nMy question is:\nCan we make a copy of an R function (including its environment\nvariables) for each thread?\nAre there any ways to invoke an R function in C/C++ in multiple threads safely?\n\nThanks,\nDa",
+      "body_snippet": "Hello,\n\nI'm writing an R extension in C++. In the extension, I want to invoke\nan R function directly and it works when I use Rcpp in the serial\ncode. But what I really want is to invoke the R function",
+      "thread_id": "thread-29cd605b8dca",
+      "thread_depth": 0,
+      "month": "2015-01"
+    },
+    {
+      "id": "msg-65f9ea023285",
+      "message_id": "<21709.28119.188963.170738@max.nulle.part>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "447d8de83a7b9c5d61116890bacb6dc0c76aee31b3011a41fb7d3c62dac9042f",
+      "date": "2015-01-31T18:05:43-06:00",
+      "subject": "[Rd] invoking R function in C++ in parallel",
+      "subject_clean": "invoking R function in C++ in parallel",
+      "in_reply_to": "<CAFLer83nzRs1cV7Cpu7VWUEDrqaSC7kjrUBbMUHzaFAp97DQGA@mail.gmail.com>",
+      "references": [
+        "<CAFLer83nzRs1cV7Cpu7VWUEDrqaSC7kjrUBbMUHzaFAp97DQGA@mail.gmail.com>"
+      ],
+      "body_plain": "On 31 January 2015 at 18:30, Zheng Da wrote:\n| I'm writing an R extension in C++. In the extension, I want to invoke\n| an R function directly and it works when I use Rcpp in the serial\n| code. But what I really want is to invoke the R function in parallel\n| with openmp. When I do so, I got segmentation fault.\n| \n| I remember someone said that R isn't thread-safe. I think it's also\n| understandable because an R function also has environment variables.\n| \n| My question is:\n| Can we make a copy of an R function (including its environment\n| variables) for each thread?\n\nNope. And you pretty much just explained why.\n\nYou can \n \n - either work in something like OpenMP and run in multiple threads that\n   remain /completely/ shielded from R, ie no R calls, and not even R data\n   types as you cannot trigger gc() calls from different threads\n\n - or work via, say, the parallel or Rmpi packages in multiple _processes_\n   each of which could call its corresponding R interpreter (but that is\n   still slower).\n\nThere are some examples for OpenMP at the Rcpp Gallery: http://gallery.rcpp.org.\nYou may also enjoy the RcppParallel package.  \n\nBut none of this overcomes your main hurdle: no, you cannot call R from\ndifferent threads.\n\n| Are there any ways to invoke an R function in C/C++ in multiple threads safely?\n\nNo.  It is a design constraint.\n\nDirk\n\n-- \nhttp://dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "On 31 January 2015 at 18:30, Zheng Da wrote:\n| I'm writing an R extension in C++. In the extension, I want to invoke\n| an R function directly and it works when I use Rcpp in the serial\n| code. But wha",
+      "thread_id": "thread-29cd605b8dca",
+      "thread_depth": 1,
+      "month": "2015-01"
+    },
+    {
+      "id": "msg-f5ee0a8ba145",
+      "message_id": "<CABtg=K=oxOB_w8-baCvS5SN+OkMR0k0KHGjwLT5HeTnDZqhrNw@mail.gmail.com>",
+      "from_name": "Gábor Csárdi",
+      "from_email_hash": "be1b1aa2bf940edb4d90301c038c97e98b84ed5c8724f0d46a3b2ee263683539",
+      "date": "2015-01-31T19:29:48-05:00",
+      "subject": "[Rd] invoking R function in C++ in parallel",
+      "subject_clean": "invoking R function in C++ in parallel",
+      "in_reply_to": "<21709.28119.188963.170738@max.nulle.part>",
+      "references": [
+        "<CAFLer83nzRs1cV7Cpu7VWUEDrqaSC7kjrUBbMUHzaFAp97DQGA@mail.gmail.com>",
+        "<21709.28119.188963.170738@max.nulle.part>"
+      ],
+      "body_plain": "On Sat, Jan 31, 2015 at 7:05 PM, Dirk Eddelbuettel <edd at debian.org> wrote:\n[...]\n\n> - either work in something like OpenMP and run in multiple threads that\n>    remain /completely/ shielded from R, ie no R calls, and not even R data\n>    types as you cannot trigger gc() calls from different threads\n>\n\nI think you can use R objects, as long as you don't call R functions on\nthem (not even from R's C api, although some of them are currently fine)\nand consider them as read-only. E.g. if you have a numeric vector, you can\ndo\ndouble *cvec = REAL(vec);\nand then use cvec in your thread(s).\n\nThis is pretty restrictive, but could be enough in some cases.\n\nGabor\n\n[...]\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Sat, Jan 31, 2015 at 7:05 PM, Dirk Eddelbuettel <edd at debian.org> wrote:\n[...]\n\n> - either work in something like OpenMP and run in multiple threads that\n>    remain /completely/ shielded from R,",
+      "thread_id": "thread-29cd605b8dca",
+      "thread_depth": 2,
+      "month": "2015-01"
+    },
+    {
+      "id": "msg-ea1edfb0b332",
+      "message_id": "<21709.33317.869936.212965@max.nulle.part>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "447d8de83a7b9c5d61116890bacb6dc0c76aee31b3011a41fb7d3c62dac9042f",
+      "date": "2015-01-31T19:32:21-06:00",
+      "subject": "[Rd] invoking R function in C++ in parallel",
+      "subject_clean": "invoking R function in C++ in parallel",
+      "in_reply_to": "<CABtg=K=oxOB_w8-baCvS5SN+OkMR0k0KHGjwLT5HeTnDZqhrNw@mail.gmail.com>",
+      "references": [
+        "<CAFLer83nzRs1cV7Cpu7VWUEDrqaSC7kjrUBbMUHzaFAp97DQGA@mail.gmail.com>",
+        "<21709.28119.188963.170738@max.nulle.part>",
+        "<CABtg=K=oxOB_w8-baCvS5SN+OkMR0k0KHGjwLT5HeTnDZqhrNw@mail.gmail.com>"
+      ],
+      "body_plain": "On 31 January 2015 at 19:29, G?bor Cs?rdi wrote:\n| On Sat, Jan 31, 2015 at 7:05 PM, Dirk Eddelbuettel <edd at debian.org> wrote:\n| [...]\n| \n|     - either work in something like OpenMP and run in multiple threads that\n|     ? ?remain /completely/ shielded from R, ie no R calls, and not even R data\n|     ? ?types as you cannot trigger gc() calls from different threads\n| \n| \n| I think you can use R objects, as long as you don't call R functions on them\n| (not even from R's C api, although some of them are currently fine) and\n| consider them as read-only. E.g. if you have a numeric vector, you can do?\n| double *cvec = REAL(vec);\n| and then use cvec in your thread(s).\n\nYou and I are saying the same thing here: you call it read-only access; I\ncalled ot \"do not use R types\". We recommend the same approach in other\nplaces: instantiate std::vector<double> from RcppVector, don't use R calls.\n\nMy recommendation is to make it pretty plain: do not call R functions. Use\nother types. There are equivalent read-only constructors for some relevant\ndata types.\n\nRecall that OP, in the parts you chose not to quote, asked to call back to R\nin a multithreaded way. And we both say 'nope' here.\n\nAll this has come up before on rcpp-devel and SO.\n\nDirk\n\n-- \nhttp://dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "On 31 January 2015 at 19:29, G?bor Cs?rdi wrote:\n| On Sat, Jan 31, 2015 at 7:05 PM, Dirk Eddelbuettel <edd at debian.org> wrote:\n| [...]\n| \n|     - either work in something like OpenMP and run in mult",
+      "thread_id": "thread-29cd605b8dca",
+      "thread_depth": 3,
+      "month": "2015-01"
+    },
+    {
+      "id": "msg-6d21d3365ae7",
+      "message_id": "<CAFLer83PE1wSfsygS6dY2UXDv+X0DwiPV42ifQ=v6FA0F0EzHw@mail.gmail.com>",
+      "from_name": "Zheng Da",
+      "from_email_hash": "2b7b5b046397d8edc2a78612e85d2e0e6bb5d11398c20e0e2814e9fd6fd11af8",
+      "date": "2015-01-31T21:27:22-05:00",
+      "subject": "[Rd] invoking R function in C++ in parallel",
+      "subject_clean": "invoking R function in C++ in parallel",
+      "in_reply_to": "<21709.33317.869936.212965@max.nulle.part>",
+      "references": [
+        "<CAFLer83nzRs1cV7Cpu7VWUEDrqaSC7kjrUBbMUHzaFAp97DQGA@mail.gmail.com>",
+        "<21709.28119.188963.170738@max.nulle.part>",
+        "<CABtg=K=oxOB_w8-baCvS5SN+OkMR0k0KHGjwLT5HeTnDZqhrNw@mail.gmail.com>",
+        "<21709.33317.869936.212965@max.nulle.part>"
+      ],
+      "body_plain": "Thank you both.\nI think I have got the answer I need.\nI'll need to turn to another direction to search for my solution.\n\nBest,\nDa\n\nOn Sat, Jan 31, 2015 at 8:32 PM, Dirk Eddelbuettel <edd at debian.org> wrote:\n>\n> On 31 January 2015 at 19:29, G?bor Cs?rdi wrote:\n> | On Sat, Jan 31, 2015 at 7:05 PM, Dirk Eddelbuettel <edd at debian.org> wrote:\n> | [...]\n> |\n> |     - either work in something like OpenMP and run in multiple threads that\n> |        remain /completely/ shielded from R, ie no R calls, and not even R data\n> |        types as you cannot trigger gc() calls from different threads\n> |\n> |\n> | I think you can use R objects, as long as you don't call R functions on them\n> | (not even from R's C api, although some of them are currently fine) and\n> | consider them as read-only. E.g. if you have a numeric vector, you can do\n> | double *cvec = REAL(vec);\n> | and then use cvec in your thread(s).\n>\n> You and I are saying the same thing here: you call it read-only access; I\n> called ot \"do not use R types\". We recommend the same approach in other\n> places: instantiate std::vector<double> from RcppVector, don't use R calls.\n>\n> My recommendation is to make it pretty plain: do not call R functions. Use\n> other types. There are equivalent read-only constructors for some relevant\n> data types.\n>\n> Recall that OP, in the parts you chose not to quote, asked to call back to R\n> in a multithreaded way. And we both say 'nope' here.\n>\n> All this has come up before on rcpp-devel and SO.\n>\n> Dirk\n>\n> --\n> http://dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "Thank you both.\nI think I have got the answer I need.\nI'll need to turn to another direction to search for my solution.\n\nBest,\nDa\n\nOn Sat, Jan 31, 2015 at 8:32 PM, Dirk Eddelbuettel <edd at debian.org",
+      "thread_id": "thread-29cd605b8dca",
+      "thread_depth": 4,
+      "month": "2015-01"
     }
   ],
   "threads": [
@@ -5261,6 +5355,19 @@
       "started": "2015-01-31T06:15:46-08:00",
       "last_reply": "2015-01-31T06:15:46-08:00",
       "root_message_id": "msg-5630b7a24cb1"
+    },
+    {
+      "id": "thread-29cd605b8dca",
+      "subject": "invoking R function in C++ in parallel",
+      "message_count": 5,
+      "participants": [
+        "Dirk Eddelbuettel",
+        "Gábor Csárdi",
+        "Zheng Da"
+      ],
+      "started": "2015-01-31T18:30:03-05:00",
+      "last_reply": "2015-01-31T21:27:22-05:00",
+      "root_message_id": "msg-29cd605b8dca"
     }
   ]
 }

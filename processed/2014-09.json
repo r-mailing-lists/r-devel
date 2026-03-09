@@ -3032,6 +3032,24 @@
       "thread_id": "thread-c46e491f4350",
       "thread_depth": 0,
       "month": "2014-09"
+    },
+    {
+      "id": "msg-f17e6faaa234",
+      "message_id": "<CAFDcVCTq-28FFiQVnTTnbC3XwrkcDE1cv7W3VN1-YiGkR_N3jw@mail.gmail.com>",
+      "from_name": "Henrik Bengtsson",
+      "from_email_hash": "a578bc6fcbd48aad24b4b0f4186124fb1b69f77c14884741fd6a4c1cac8fc3bb",
+      "date": "2014-09-30T16:55:35-07:00",
+      "subject": "[Rd] Shallow copies",
+      "subject_clean": "Shallow copies",
+      "in_reply_to": "<CAE2Fiwnz9RkqpPvKfU=WkgqJiLfZyH-Xw=mmzR+c6F-7BVhpQg@mail.gmail.com>",
+      "references": [
+        "<CAE2Fiwnz9RkqpPvKfU=WkgqJiLfZyH-Xw=mmzR+c6F-7BVhpQg@mail.gmail.com>"
+      ],
+      "body_plain": "On Tue, Sep 30, 2014 at 2:20 PM, Matthieu Gomez\n<gomez.matthieu at gmail.com> wrote:\n> I have a question about shallow copies in R. Since R 3.1.0, subsetting\n> a dataframe with respect to its columns no longer result in deep\n> copies. This is an amazing change in my opinion. Now, subsetting a\n> data.frame by rows (or subsetting a matrix by columns or rows) still\n> does deep copies. In particular, it is my understanding that running a\n> command on a very large subset of rows (say \"sum\" or \"biglm\" on non\n> outliers observations) results in a deep copy of these rows first,\n> which can require twice as much the memory of the original\n> data.frame/matrix. If this is correct, I would be very interested to\n> know more on whether this behavior can/may change in future versions\n> of R.\n\nI let the experts comment on this, but subsetting/reshuffling columns\nin data.frame:s sound easy compared with what you're asking for.\nColumns of a data frame are basically just elements in a list and they\ndon't have to be contiguous in memory whereas the elements in a matrix\n(of a basic data type) needs to be contiguous in memory.\n\nHowever, somewhat related: Having lots of these temporary copies can\nbe quite time consuming for the garbage collector, so it's not just\nabout the memory but also about the overall processing time.  One of\nthe next improvements in the 'matrixStats' package is to add support\nfor specifying subsets of rows/columns to operate over - for the\npurpose of avoiding the auxiliary copies that you talk about, e.g.\n\n  cols <- c(1:14, 87:103)\n  rows <- seq(from=1, to=nrow(X), by=2)\n  y <- rowMedians(X, rows=rows, columns=cols)\n\ninstead of\n\n  y <- rowMedians(X[rows,cols])\n\nIt's a fairly simple task to implement, but I've got lots on my plate\nso I don't know when this will happen. (I welcome contributions via\ngithub.com/HenrikBengtsson/matrixStats.) Similar methods in R (e.g.\nrowSums()) could gain from this too.\n\n/Henrik\n(matrixStats)\n\nPS. Code compilation could translate rowMedians(X[rows,cols]) to\nrowMedians(X, rows=rows, columns=cols) but that's far in the future (I\nthink).\n\n>\n> Thanks a lot!,\n> Matthew\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On Tue, Sep 30, 2014 at 2:20 PM, Matthieu Gomez\n<gomez.matthieu at gmail.com> wrote:\n> I have a question about shallow copies in R. Since R 3.1.0, subsetting\n> a dataframe with respect to its columns ",
+      "thread_id": "thread-c46e491f4350",
+      "thread_depth": 1,
+      "month": "2014-09"
     }
   ],
   "threads": [
@@ -3679,12 +3697,13 @@
     {
       "id": "thread-c46e491f4350",
       "subject": "Shallow copies",
-      "message_count": 1,
+      "message_count": 2,
       "participants": [
+        "Henrik Bengtsson",
         "Matthieu Gomez"
       ],
       "started": "2014-09-30T17:20:48-04:00",
-      "last_reply": "2014-09-30T17:20:48-04:00",
+      "last_reply": "2014-09-30T16:55:35-07:00",
       "root_message_id": "msg-c46e491f4350"
     }
   ]

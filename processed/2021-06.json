@@ -1804,6 +1804,40 @@
       "thread_id": "thread-228005783159",
       "thread_depth": 0,
       "month": "2021-06"
+    },
+    {
+      "id": "msg-3a770e9708a2",
+      "message_id": "<CAD4oTHFdxdrbjmxYsy8_ZEvjkxPh5SdDGqhOJ2_-RiiYXt=Q5A@mail.gmail.com>",
+      "from_name": "Gabriel Becker",
+      "from_email_hash": "425e6304e1663b051566c94e9aaec800baad76542aedff5bf9f5f6dcc6eca188",
+      "date": "2021-06-30T16:02:53-07:00",
+      "subject": "[Rd] On read.csv and write.csv",
+      "subject_clean": "On read.csv and write.csv",
+      "in_reply_to": "<CWXP265MB3208A3DC3EE8F8E8489E258B81019@CWXP265MB3208.GBRP265.PROD.OUTLOOK.COM>",
+      "references": [
+        "<CWXP265MB3208A3DC3EE8F8E8489E258B81019@CWXP265MB3208.GBRP265.PROD.OUTLOOK.COM>"
+      ],
+      "body_plain": "Hi Stephen,\n\nPersonally, I don't have super strong feelings about this, but\nhttps://datatracker.ietf.org/doc/html/rfc4180#section-2 does say that the\noptional header line should have the same number of fields as the data\nrecords, so in as much as that is the \"CSV specification\", R's read.csv\nbehavior is supporting an extension, whereas its write.csv is\noutputting \"standard\" compliant csv.\n\nIt is possible that one or a few of the mentioned multitude of independent\nspecs do specify header can have one less, I don't know, but if so,\naccording to the ietf, its not overly common.\n\nI can't even speak to whether that is why the behavior is as it is, but I\nfigured it was worth mentioning.\n\n~G\n\nOn Wed, Jun 30, 2021 at 2:15 PM Stephen Ellison <S.Ellison at lgcgroup.com>\nwrote:\n\n> Apologies if this is a well-worn question; I haven?t found it so far but\n> there's a lot of r-dev and I may have missed it in the archives. In the\n> mean time:\n>\n> I've managed to avoid writing csv files with R for a couple of decades but\n> we're swopping data with a collaborator and I've tripped over an\n> inconsistency between read.csv and write.csv that seems less than helpful.\n> The default line number behaviour for read.csv is to assume that, when the\n> number of items in the first row is one less than the number in the second,\n> that the first column contains row names. write.csv, however, includes an\n> empty string (\"\") as the first header entry over row names when writing. On\n> rereading, the original row names are then treated as data with unknown\n> name, replaced by \"X\".\n>\n> That means that, unlike read.table and write.table,  something written\n> with write.csv is not read back correctly by read.csv .\n>\n> Is that intentional?\n> And whether it is intentional or not, is it wise?\n>\n> Example:\n>\n> ( D1 <- data.frame(A=letters[1:5], N=1:5, Y=rnorm(5) ) )\n> write.csv(D1, \"temp.csv\")\n>\n> ( D1w <- read.csv(\"temp.csv\") )\n>\n> # Note the unnecessary new X column ...\n> #Tidy up\n> unlink(\"temp.csv\")\n>\n> This differs from the parent .table defaults; write.table doesn?t add the\n> extra \"\" column label, so the object read back with read.table does not\n> contain an unwanted extra column.\n>\n> Wouldn?t it be more sensible if write.csv() and read.csv() were consistent\n> in the same sense as read.table and write.table?\n> Or at least if there were a switch (as.read.csv=TRUE ?) to tell write.csv\n> to omit the initial \"\", or vice versa?\n>\n> Currently using R version 4.1.0 on Windows, but this reproduces at least\n> as far back as 3.6\n>\n> Steve E\n>\n>\n> *******************************************************************\n> This email and any attachments are confidential. Any u...{{dropped:15}}",
+      "body_snippet": "Hi Stephen,\n\nPersonally, I don't have super strong feelings about this, but\nhttps://datatracker.ietf.org/doc/html/rfc4180#section-2 does say that the\noptional header line should have the same number o",
+      "thread_id": "thread-228005783159",
+      "thread_depth": 1,
+      "month": "2021-06"
+    },
+    {
+      "id": "msg-ac30a5d18036",
+      "message_id": "<d8920721-4a4d-820e-ab1c-55b693b15496@gmail.com>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2021-06-30T20:23:27-04:00",
+      "subject": "[Rd] undefined subclass warning",
+      "subject_clean": "undefined subclass warning",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "A colleague recently submitted a paper to JSS and was advised to \naddress the following warning which occurs when their package \n(https://CRAN.R-project.org/package=pcoxtime) is loaded:\n\nWarning message:\nIn .recacheSubclasses(def at className, def, env) :\n   undefined subclass \"numericVector\" of class \"Mnumeric\"; definition \nnot updated\n\nAfter much digging I *think* I've concluded that this comes from the \nfollowing import chain:\n\npcoxtime -> riskRegression -> rms -> quantreg -> MatrixModels\n\n   that is, loading any of these packages throws the warning. \nMatrixModels Imports: *only* {stats, methods, Matrix} and loading these \nby themselves is warning-less.\n\n    I assume there is some mismatch/incompatibility between MatrixModels \n(which was last updated 2021-03-01) and Matrix (2021-05-24), which has \nthis NEWS item in the most release 1.3-3 \n<https://cran.r-project.org/web/packages/Matrix/news.html>:\n\n* removed the nowhere used (and unexported but still active) class union \n\"Mnumeric\" which actually trickled into many base classes properties. \nNotably would it break validity of factor with a proposed change in \nvalidity checking, as factors were also \"Mnumeric\" but did not fulfill \nits validity method. Similarly removed (disabled) unused class union \n\"numericVector\".\n\n    It seems that REINSTALLING the package from source solves the \nproblem, which is nice, but I don't fully understand why; I guess ???? \nthere are class structures that are evaluated at install time and stored \nin the package environment ...\n\n   Any more explanations would be welcome.\n\n   cheers\n     Ben",
+      "body_snippet": "A colleague recently submitted a paper to JSS and was advised to \naddress the following warning which occurs when their package \n(https://CRAN.R-project.org/package=pcoxtime) is loaded:\n\nWarning messa",
+      "thread_id": "thread-ac30a5d18036",
+      "thread_depth": 0,
+      "month": "2021-06"
     }
   ],
   "threads": [
@@ -2096,14 +2130,26 @@
       "root_message_id": "msg-48a351a555ba"
     },
     {
-      "id": "thread-228005783159",
-      "subject": "On read.csv and write.csv",
+      "id": "thread-ac30a5d18036",
+      "subject": "undefined subclass warning",
       "message_count": 1,
       "participants": [
+        "Ben Bolker"
+      ],
+      "started": "2021-06-30T20:23:27-04:00",
+      "last_reply": "2021-06-30T20:23:27-04:00",
+      "root_message_id": "msg-ac30a5d18036"
+    },
+    {
+      "id": "thread-228005783159",
+      "subject": "On read.csv and write.csv",
+      "message_count": 2,
+      "participants": [
+        "Gabriel Becker",
         "Stephen Ellison"
       ],
       "started": "2021-06-30T21:15:03+00:00",
-      "last_reply": "2021-06-30T21:15:03+00:00",
+      "last_reply": "2021-06-30T16:02:53-07:00",
       "root_message_id": "msg-228005783159"
     }
   ]
