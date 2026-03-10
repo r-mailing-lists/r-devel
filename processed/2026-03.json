@@ -193,6 +193,201 @@
       "thread_id": "thread-23b034052915",
       "thread_depth": 1,
       "month": "2026-03"
+    },
+    {
+      "id": "msg-5c772df9a8fc",
+      "message_id": "<CANcXGiyf=4yGeoR8ZULVEcjKEGQqVRCXp9HK03tO4eL16aVYmA@mail.gmail.com>",
+      "from_name": "Simone Giannerini",
+      "from_email_hash": "f8affe26d3f04957fe679815bdfe4b06a126c2213775b0f3bc67ca9e47553422",
+      "date": "2026-03-09T12:43:07+01:00",
+      "subject": "[Rd] Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
+      "subject_clean": "Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Dear all,\n\nI think there is a (small) bug in\n\n  ar.yw.default   (line 142 of the source file ar.R)\n  ar.ols               (line 429 of the source file ar.R)\n  ar.burg.default (line 570 of the source file ar.R)\n\n\n   maic <- min(aic)\n\nshould be\n\n   maic <- min(xaic)\n\nNote that, apparently, this typo/bug does little harm since the\nsubsequent line of code\n\n   xaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else\n             ifelse(xaic == maic, 0, Inf), 0L:order.max)\n\ndoes not use maic but min(xaic) directly. In any case, after fixing,\none could replace min(xaic) with maic to avoid recomputing min(xaic).\nIn absence of comments I will file a bug report.\n\nKind regards\n\nSimone\n\n  Tested against R-devel 2026-03-06\n\n-- \n___________________________________________________\n\nSimone Giannerini\nDipartimento di Scienze Economiche e Statistiche\nUniversita' di Udine\nVia Tomadini 30/A - 33100 Udine,  ITALY\nTel: +39 0432 249577\nhttps://simonegiannerini.net/",
+      "body_snippet": "Dear all,\n\nI think there is a (small) bug in\n\n  ar.yw.default   (line 142 of the source file ar.R)\n  ar.ols               (line 429 of the source file ar.R)\n  ar.burg.default (line 570 of the source f",
+      "thread_id": "thread-5c772df9a8fc",
+      "thread_depth": 0,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-14b6c2899685",
+      "message_id": "<feba2c09-0a6c-4bc9-8cfb-a63b9b856e06@app.fastmail.com>",
+      "from_name": "Tim Taylor",
+      "from_email_hash": "e3071ae8257bda4085d8999a9801b324cc930f4864ac0aec1c44601958781446",
+      "date": "2026-03-09T11:53:18Z",
+      "subject": "[Rd] In glm explicitly search stats for family functions",
+      "subject_clean": "In glm explicitly search stats for family functions",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I appreciate there are likely many places where calling a stats function via `::` and without the stats package being loaded could be problematic but would R core have any interest in adapting functions to accommodate this where possible?\n\nThe example I ran in to today can be seen below:\n\nex <- function() {\n    counts <- c(18,17,15,20,10,20,25,13,12)\n    outcome <- gl(3,1,9)\n    treatment <- gl(3,3)\n    stats::glm(counts ~ outcome + treatment, family = \"poisson\")\n}\n\ntools::R(ex)\n#> \n#> Call:  stats::glm(formula = counts ~ outcome + treatment, family = \"poisson\")\n#> \n#> Coefficients:\n#> (Intercept)     outcome2     outcome3   treatment2   treatment3  \n#>   3.045e+00   -4.543e-01   -2.930e-01    6.972e-16    8.237e-16  \n#> \n#> Degrees of Freedom: 8 Total (i.e. Null);  4 Residual\n#> Null Deviance:\t    10.58 \n#> Residual Deviance: 5.129 \tAIC: 56.76\n\ntools::R(ex, env=c(\"R_DEFAULT_PACKAGES=NULL\"))\n#> Error: error in inferior call:\n#>   object 'poisson' of mode 'function' was not found\n\nThe second call fails due to the following line in glm:\n\nif (is.character(family)) \n        family <- get(family, mode = \"function\", envir = parent.frame())\n\nA non-breaking patch (AFAICT) could add an additional branch that explicitly searches a lookup of functions in the stats package if the above call to `get` failed.\n\nAgain I understand this could very much be a case of, \"don't do that\", but ...\n\nRegards\n\nTim",
+      "body_snippet": "I appreciate there are likely many places where calling a stats function via `::` and without the stats package being loaded could be problematic but would R core have any interest in adapting functio",
+      "thread_id": "thread-14b6c2899685",
+      "thread_depth": 0,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-545bac09a3c0",
+      "message_id": "<27054.48286.211150.898952@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-03-09T13:27:10+01:00",
+      "subject": "[Rd] Is \"difftime\" an appropriate addition to .OldClassesList?",
+      "subject_clean": "Is \"difftime\" an appropriate addition to .OldClassesList?",
+      "in_reply_to": "<fake-VM-id.65a7ce87f75825f6fb595bb92dceb333@talos.iv>",
+      "references": [
+        "<CAPRVBcw+=8XbO8wz4zRrDZcNreQJ-M9k-S1J6MBeepT-XswBrA@mail.gmail.com>",
+        "<27050.44584.478122.867248@stat.math.ethz.ch>"
+      ],
+      "body_plain": ">>>>> Martin Maechler \n>>>>>     on Fri, 6 Mar 2026 11:36:24 +0100 writes:\n\n>>>>> Michael Chirico \n>>>>>     on Thu, 5 Mar 2026 14:26:16 -0800 writes:\n\n    >> I found myself needing to add methods::setOldClass(\"difftime\") in\n    >> order to also set a coercion method for my class to difftime:\n\n    >> methods::setAs(\"myClass\", \"difftime\", ...)\n\n    >> And thus avoid the on-load message:\n\n    >> in method for ?coerce? with signature ?\"myClass\",\"difftime\"?: no\n    >> definition for class ?difftime?\n\n    >> I see 10 or so other packages also doing the same [1].\n\n    >> I am wondering, though, since {base} owns this class, if it shouldn't\n    >> be registered already? I see inclusions for, e.g., closely-related S3\n    >> classes Date and POSIXt [2].\n\n    > In my vague recollection  \"difftime\" came a bit later than \"Date\"\n    > and \"POSIXlt\".  This may be the reason for its non-presence.\n\n    >> OTOH, I see .OldClassesList hasn't really been edited in 15+ years, so\n    >> maybe this approach has lost favor and is better not amended anymore\n    >> [3].\n\n    > well, favors related to S4 have always been somewhat segregated ..\n\n    >> (or maybe this is really an r-package-devel question about whether\n    >> supporting as(<my class>, \"difftime\") is actually beneficial...)\n\n    > The use of  as(., <...>)  is an R-help question really  not\n    > restricted to package development at all.\n\n    > I agree that \"difftime\" does naturally belong alongside \"POSIXt\"\n    > and I am happy to add it to the list;\n    > (I did check to see if an unneeded   setOldClass(<already_set>)\n    > gives a warning, and it doesn't)\n\nWith svn rev 89582, I have committed this now to \"R-devel\".\nThank you, Michael, for the suggestion!\n\nMartin",
+      "body_snippet": ">>>>> Martin Maechler \n>>>>>     on Fri, 6 Mar 2026 11:36:24 +0100 writes:\n\n>>>>> Michael Chirico \n>>>>>     on Thu, 5 Mar 2026 14:26:16 -0800 writes:\n\n    >> I found myself needing to add methods::se",
+      "thread_id": "thread-23b034052915",
+      "thread_depth": 2,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-f2b282628975",
+      "message_id": "<27054.58598.817558.514533@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-03-09T16:19:02+01:00",
+      "subject": "[Rd] In glm explicitly search stats for family functions",
+      "subject_clean": "In glm explicitly search stats for family functions",
+      "in_reply_to": "<fake-VM-id.2d3c08adaa63ca2965d3363ff7220e73@talos.iv>",
+      "references": [
+        "<feba2c09-0a6c-4bc9-8cfb-a63b9b856e06@app.fastmail.com>"
+      ],
+      "body_plain": ">>>>> Tim Taylor \n>>>>>     on Mon, 09 Mar 2026 11:53:18 +0000 writes:\n\n    > I appreciate there are likely many places where calling a stats function via `::` and without the stats package being loaded could be problematic but would R core have any interest in adapting functions to accommodate this where possible?\n\nFor my part (just one R corer): No, not at all.\nUsing R without 'stats' is like  \"<your favorite> without\n<your_other_fav>\", e.g., like doing math without the (greek\nSigma) summation sign:  possible, but rarely a good idea and just\ncomplicating things unnecessarily.\n\nMartin\n\n\n    > The example I ran in to today can be seen below:\n\n    > ex <- function() {\n    > counts <- c(18,17,15,20,10,20,25,13,12)\n    > outcome <- gl(3,1,9)\n    > treatment <- gl(3,3)\n    > stats::glm(counts ~ outcome + treatment, family = \"poisson\")\n    > }\n\n    > tools::R(ex)\n    > #> \n    > #> Call:  stats::glm(formula = counts ~ outcome + treatment, family = \"poisson\")\n    > #> \n    > #> Coefficients:\n    > #> (Intercept)     outcome2     outcome3   treatment2   treatment3  \n    > #>   3.045e+00   -4.543e-01   -2.930e-01    6.972e-16    8.237e-16  \n    > #> \n    > #> Degrees of Freedom: 8 Total (i.e. Null);  4 Residual\n    > #> Null Deviance:\t    10.58 \n    > #> Residual Deviance: 5.129 \tAIC: 56.76\n\n    > tools::R(ex, env=c(\"R_DEFAULT_PACKAGES=NULL\"))\n    > #> Error: error in inferior call:\n    > #>   object 'poisson' of mode 'function' was not found\n\n    > The second call fails due to the following line in glm:\n\n    > if (is.character(family)) \n    > family <- get(family, mode = \"function\", envir = parent.frame())\n\n    > A non-breaking patch (AFAICT) could add an additional branch that explicitly searches a lookup of functions in the stats package if the above call to `get` failed.\n\n    > Again I understand this could very much be a case of, \"don't do that\", but ...\n\n    > Regards\n\n    > Tim\n\n    > ______________________________________________\n    > R-devel at r-project.org mailing list\n    > https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">>>>> Tim Taylor \n>>>>>     on Mon, 09 Mar 2026 11:53:18 +0000 writes:\n\n    > I appreciate there are likely many places where calling a stats function via `::` and without the stats package being load",
+      "thread_id": "thread-14b6c2899685",
+      "thread_depth": 1,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-a3964e2ca8ac",
+      "message_id": "<2111b4f6-75fc-4e42-b593-f4061a7f73fe@insa-toulouse.fr>",
+      "from_name": "Serguei Sokol",
+      "from_email_hash": "34be3025f4922685bcae387cf40058e097fc9ffa9fddffec27af066ca4f621f9",
+      "date": "2026-03-09T16:39:03+01:00",
+      "subject": "[Rd] In glm explicitly search stats for family functions",
+      "subject_clean": "In glm explicitly search stats for family functions",
+      "in_reply_to": "<feba2c09-0a6c-4bc9-8cfb-a63b9b856e06@app.fastmail.com>",
+      "references": [
+        "<feba2c09-0a6c-4bc9-8cfb-a63b9b856e06@app.fastmail.com>"
+      ],
+      "body_plain": "Le 09/03/2026 ? 12:53, Tim Taylor a ?crit?:\n> I appreciate there are likely many places where calling a stats function via `::` and without the stats package being loaded could be problematic but would R core have any interest in adapting functions to accommodate this where possible?\n>\n> The example I ran in to today can be seen below:\n>\n> ex <- function() {\n>      counts <- c(18,17,15,20,10,20,25,13,12)\n>      outcome <- gl(3,1,9)\n>      treatment <- gl(3,3)\n>      stats::glm(counts ~ outcome + treatment, family = \"poisson\")\n> }\n>\n> tools::R(ex)\n> #>\n> #> Call:  stats::glm(formula = counts ~ outcome + treatment, family = \"poisson\")\n> #>\n> #> Coefficients:\n> #> (Intercept)     outcome2     outcome3   treatment2   treatment3\n> #>   3.045e+00   -4.543e-01   -2.930e-01    6.972e-16    8.237e-16\n> #>\n> #> Degrees of Freedom: 8 Total (i.e. Null);  4 Residual\n> #> Null Deviance:\t    10.58\n> #> Residual Deviance: 5.129 \tAIC: 56.76\n>\n> tools::R(ex, env=c(\"R_DEFAULT_PACKAGES=NULL\"))\n> #> Error: error in inferior call:\n> #>   object 'poisson' of mode 'function' was not found\n>\n> The second call fails due to the following line in glm:\n>\n> if (is.character(family))\n>          family <- get(family, mode = \"function\", envir = parent.frame())\n>\n> A non-breaking patch (AFAICT) could add an additional branch that explicitly searches a lookup of functions in the stats package if the above call to `get` failed.\nYou can do it on your own side by modifying the function 'ex' like:\n\nex <- function() {\n     counts <- c(18,17,15,20,10,20,25,13,12)\n     outcome <- gl(3,1,9)\n     treatment <- gl(3,3)\n     require(stats)\n     stats::glm(counts ~ outcome + treatment, family = \"poisson\")\n}\n\nNote \"require(stats)\" before glm() call. In a classical R env, this is almost a no-cost operation because stats is already attached and in R_DEFAULT_PACKAGES=NULL\n  case, it does what you need.\n\nBest,\nSerguei.\n\n>\n> Again I understand this could very much be a case of, \"don't do that\", but ...\n>\n> Regards\n>\n> Tim\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>\n>\n>",
+      "body_snippet": "Le 09/03/2026 ? 12:53, Tim Taylor a ?crit?:\n> I appreciate there are likely many places where calling a stats function via `::` and without the stats package being loaded could be problematic but woul",
+      "thread_id": "thread-14b6c2899685",
+      "thread_depth": 1,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-f32ed005dc96",
+      "message_id": "<CAByPayH06uyOwtr7xhgS3fM7X1VVPUf0dmcoERiP9itymp36yQ@mail.gmail.com>",
+      "from_name": "Michał Bojanowski",
+      "from_email_hash": "841f0d3aaeba481d8956255936c3bafa308b9967ac065ecd188c09660bd5ec9f",
+      "date": "2026-03-09T16:47:20+01:00",
+      "subject": "[Rd] In glm explicitly search stats for family functions",
+      "subject_clean": "In glm explicitly search stats for family functions",
+      "in_reply_to": "<feba2c09-0a6c-4bc9-8cfb-a63b9b856e06@app.fastmail.com>",
+      "references": [
+        "<feba2c09-0a6c-4bc9-8cfb-a63b9b856e06@app.fastmail.com>"
+      ],
+      "body_plain": "I believe you can\n\nex3 <- function() {\n  counts <- c(18,17,15,20,10,20,25,13,12)\n  outcome <- gl(3,1,9)\n  treatment <- gl(3,3)\n  stats::glm(counts ~ outcome + treatment, family = stats::poisson)\n}\n\nI think if family is character it's searching in parent.frame() rather\nthan package namespace.\n\n\n~Michal\n\n\nOn Mon, Mar 9, 2026 at 12:54?PM Tim Taylor\n<tim.taylor at hiddenelephants.co.uk> wrote:\n>\n> I appreciate there are likely many places where calling a stats function via `::` and without the stats package being loaded could be problematic but would R core have any interest in adapting functions to accommodate this where possible?\n>\n> The example I ran in to today can be seen below:\n>\n> ex <- function() {\n>     counts <- c(18,17,15,20,10,20,25,13,12)\n>     outcome <- gl(3,1,9)\n>     treatment <- gl(3,3)\n>     stats::glm(counts ~ outcome + treatment, family = \"poisson\")\n> }\n>\n> tools::R(ex)\n> #>\n> #> Call:  stats::glm(formula = counts ~ outcome + treatment, family = \"poisson\")\n> #>\n> #> Coefficients:\n> #> (Intercept)     outcome2     outcome3   treatment2   treatment3\n> #>   3.045e+00   -4.543e-01   -2.930e-01    6.972e-16    8.237e-16\n> #>\n> #> Degrees of Freedom: 8 Total (i.e. Null);  4 Residual\n> #> Null Deviance:           10.58\n> #> Residual Deviance: 5.129     AIC: 56.76\n>\n> tools::R(ex, env=c(\"R_DEFAULT_PACKAGES=NULL\"))\n> #> Error: error in inferior call:\n> #>   object 'poisson' of mode 'function' was not found\n>\n> The second call fails due to the following line in glm:\n>\n> if (is.character(family))\n>         family <- get(family, mode = \"function\", envir = parent.frame())\n>\n> A non-breaking patch (AFAICT) could add an additional branch that explicitly searches a lookup of functions in the stats package if the above call to `get` failed.\n>\n> Again I understand this could very much be a case of, \"don't do that\", but ...\n>\n> Regards\n>\n> Tim\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "I believe you can\n\nex3 <- function() {\n  counts <- c(18,17,15,20,10,20,25,13,12)\n  outcome <- gl(3,1,9)\n  treatment <- gl(3,3)\n  stats::glm(counts ~ outcome + treatment, family = stats::poisson)\n}\n\nI ",
+      "thread_id": "thread-14b6c2899685",
+      "thread_depth": 1,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-6c84f75434cf",
+      "message_id": "<3443eaae-fcf3-4a82-b8e6-8af3abc7179d@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2026-03-09T11:49:13-04:00",
+      "subject": "[Rd] In glm explicitly search stats for family functions",
+      "subject_clean": "In glm explicitly search stats for family functions",
+      "in_reply_to": "<2111b4f6-75fc-4e42-b593-f4061a7f73fe@insa-toulouse.fr>",
+      "references": [
+        "<feba2c09-0a6c-4bc9-8cfb-a63b9b856e06@app.fastmail.com>",
+        "<2111b4f6-75fc-4e42-b593-f4061a7f73fe@insa-toulouse.fr>"
+      ],
+      "body_plain": "On 2026-03-09 11:39 a.m., Serguei Sokol via R-devel wrote:\n> Le 09/03/2026 ? 12:53, Tim Taylor a ?crit?:\n>> I appreciate there are likely many places where calling a stats function via `::` and without the stats package being loaded could be problematic but would R core have any interest in adapting functions to accommodate this where possible?\n>>\n>> The example I ran in to today can be seen below:\n>>\n>> ex <- function() {\n>>       counts <- c(18,17,15,20,10,20,25,13,12)\n>>       outcome <- gl(3,1,9)\n>>       treatment <- gl(3,3)\n>>       stats::glm(counts ~ outcome + treatment, family = \"poisson\")\n>> }\n>>\n>> tools::R(ex)\n>> #>\n>> #> Call:  stats::glm(formula = counts ~ outcome + treatment, family = \"poisson\")\n>> #>\n>> #> Coefficients:\n>> #> (Intercept)     outcome2     outcome3   treatment2   treatment3\n>> #>   3.045e+00   -4.543e-01   -2.930e-01    6.972e-16    8.237e-16\n>> #>\n>> #> Degrees of Freedom: 8 Total (i.e. Null);  4 Residual\n>> #> Null Deviance:\t    10.58\n>> #> Residual Deviance: 5.129 \tAIC: 56.76\n>>\n>> tools::R(ex, env=c(\"R_DEFAULT_PACKAGES=NULL\"))\n>> #> Error: error in inferior call:\n>> #>   object 'poisson' of mode 'function' was not found\n>>\n>> The second call fails due to the following line in glm:\n>>\n>> if (is.character(family))\n>>           family <- get(family, mode = \"function\", envir = parent.frame())\n>>\n>> A non-breaking patch (AFAICT) could add an additional branch that explicitly searches a lookup of functions in the stats package if the above call to `get` failed.\n> You can do it on your own side by modifying the function 'ex' like:\n> \n> ex <- function() {\n>       counts <- c(18,17,15,20,10,20,25,13,12)\n>       outcome <- gl(3,1,9)\n>       treatment <- gl(3,3)\n>       require(stats)\n>       stats::glm(counts ~ outcome + treatment, family = \"poisson\")\n> }\n> \n> Note \"require(stats)\" before glm() call. In a classical R env, this is almost a no-cost operation because stats is already attached and in R_DEFAULT_PACKAGES=NULL\n>    case, it does what you need.\n\nThat's a relatively harmless thing to do in your own scripts, but you \nshouldn't do that in a package that you expect others to use.  There may \nbe a reason they don't have stats on the search list, and that puts it \nthere.\n\nDuncan Murdoch",
+      "body_snippet": "On 2026-03-09 11:39 a.m., Serguei Sokol via R-devel wrote:\n> Le 09/03/2026 ? 12:53, Tim Taylor a ?crit?:\n>> I appreciate there are likely many places where calling a stats function via `::` and withou",
+      "thread_id": "thread-14b6c2899685",
+      "thread_depth": 2,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-9bf6ce298bd8",
+      "message_id": "<b27d1dab-ef52-45d9-97d9-1b2c76ca3279@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2026-03-09T11:49:19-04:00",
+      "subject": "[Rd] In glm explicitly search stats for family functions",
+      "subject_clean": "In glm explicitly search stats for family functions",
+      "in_reply_to": "<feba2c09-0a6c-4bc9-8cfb-a63b9b856e06@app.fastmail.com>",
+      "references": [
+        "<feba2c09-0a6c-4bc9-8cfb-a63b9b856e06@app.fastmail.com>"
+      ],
+      "body_plain": "On 2026-03-09 7:53 a.m., Tim Taylor wrote:\n> I appreciate there are likely many places where calling a stats function via `::` and without the stats package being loaded could be problematic but would R core have any interest in adapting functions to accommodate this where possible?\n> \n> The example I ran in to today can be seen below:\n> \n> ex <- function() {\n>      counts <- c(18,17,15,20,10,20,25,13,12)\n>      outcome <- gl(3,1,9)\n>      treatment <- gl(3,3)\n>      stats::glm(counts ~ outcome + treatment, family = \"poisson\")\n> }\n> \n> tools::R(ex)\n> #>\n> #> Call:  stats::glm(formula = counts ~ outcome + treatment, family = \"poisson\")\n> #>\n> #> Coefficients:\n> #> (Intercept)     outcome2     outcome3   treatment2   treatment3\n> #>   3.045e+00   -4.543e-01   -2.930e-01    6.972e-16    8.237e-16\n> #>\n> #> Degrees of Freedom: 8 Total (i.e. Null);  4 Residual\n> #> Null Deviance:\t    10.58\n> #> Residual Deviance: 5.129 \tAIC: 56.76\n> \n> tools::R(ex, env=c(\"R_DEFAULT_PACKAGES=NULL\"))\n> #> Error: error in inferior call:\n> #>   object 'poisson' of mode 'function' was not found\n> \n> The second call fails due to the following line in glm:\n> \n> if (is.character(family))\n>          family <- get(family, mode = \"function\", envir = parent.frame())\n> \n> A non-breaking patch (AFAICT) could add an additional branch that explicitly searches a lookup of functions in the stats package if the above call to `get` failed.\n> \n> Again I understand this could very much be a case of, \"don't do that\", but ...\n\nThere are several other cases in stats where functions assume that a \nfunction name passed as a string can be found on the search list.  They \naren't always consistent about the search order:\n\nC() searches for contr in the stats namespace first, as does \nmake.tables.aovproj().\n\ncontrasts() does like glm() for family, it looks in the parent frame.\nks.test.default() likewise.\n\nmake.tables.aovprojlist() looks locally first, but doesn't restrict the \nsearch to functions.\n\nI'm not sure I spotted all cases of this, and I didn't look in any other \nbase packages besides stats.\n\nSo I think a patch to fix this should determine a consistent approach, \nand apply it everywhere.  Maybe too big a can of worms?\n\nDuncan Murdoch",
+      "body_snippet": "On 2026-03-09 7:53 a.m., Tim Taylor wrote:\n> I appreciate there are likely many places where calling a stats function via `::` and without the stats package being loaded could be problematic but would",
+      "thread_id": "thread-14b6c2899685",
+      "thread_depth": 1,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-1a1f22530bcc",
+      "message_id": "<b49bfa97-5942-48b8-8264-41cdd7b7f6ba@app.fastmail.com>",
+      "from_name": "Tim Taylor",
+      "from_email_hash": "e3071ae8257bda4085d8999a9801b324cc930f4864ac0aec1c44601958781446",
+      "date": "2026-03-09T16:25:45Z",
+      "subject": "[Rd] In glm explicitly search stats for family functions",
+      "subject_clean": "In glm explicitly search stats for family functions",
+      "in_reply_to": "<b27d1dab-ef52-45d9-97d9-1b2c76ca3279@gmail.com>",
+      "references": [
+        "<feba2c09-0a6c-4bc9-8cfb-a63b9b856e06@app.fastmail.com>",
+        "<b27d1dab-ef52-45d9-97d9-1b2c76ca3279@gmail.com>"
+      ],
+      "body_plain": "Thank you Duncan\n\nYes, given Martin's comment it is probably too big a can for the reward.\n\nTo other commentators - the example was purely to illustrate what Duncan more clearly articulated (i.e. stats looking for strings on the search path).  In my own code I was evaluating things in an environment whose parent was `basenv()`. I'm now restructuring this as clearly it was a little too restrictive/fragile.\n\nBest\n\nTim \n\nOn Mon, 9 Mar 2026, at 3:49 PM, Duncan Murdoch wrote:\n> On 2026-03-09 7:53 a.m., Tim Taylor wrote:\n>> I appreciate there are likely many places where calling a stats function via `::` and without the stats package being loaded could be problematic but would R core have any interest in adapting functions to accommodate this where possible?\n>> \n>> The example I ran in to today can be seen below:\n>> \n>> ex <- function() {\n>>      counts <- c(18,17,15,20,10,20,25,13,12)\n>>      outcome <- gl(3,1,9)\n>>      treatment <- gl(3,3)\n>>      stats::glm(counts ~ outcome + treatment, family = \"poisson\")\n>> }\n>> \n>> tools::R(ex)\n>> #>\n>> #> Call:  stats::glm(formula = counts ~ outcome + treatment, family = \"poisson\")\n>> #>\n>> #> Coefficients:\n>> #> (Intercept)     outcome2     outcome3   treatment2   treatment3\n>> #>   3.045e+00   -4.543e-01   -2.930e-01    6.972e-16    8.237e-16\n>> #>\n>> #> Degrees of Freedom: 8 Total (i.e. Null);  4 Residual\n>> #> Null Deviance:\t    10.58\n>> #> Residual Deviance: 5.129 \tAIC: 56.76\n>> \n>> tools::R(ex, env=c(\"R_DEFAULT_PACKAGES=NULL\"))\n>> #> Error: error in inferior call:\n>> #>   object 'poisson' of mode 'function' was not found\n>> \n>> The second call fails due to the following line in glm:\n>> \n>> if (is.character(family))\n>>          family <- get(family, mode = \"function\", envir = parent.frame())\n>> \n>> A non-breaking patch (AFAICT) could add an additional branch that explicitly searches a lookup of functions in the stats package if the above call to `get` failed.\n>> \n>> Again I understand this could very much be a case of, \"don't do that\", but ...\n>\n> There are several other cases in stats where functions assume that a \n> function name passed as a string can be found on the search list.  They \n> aren't always consistent about the search order:\n>\n> C() searches for contr in the stats namespace first, as does \n> make.tables.aovproj().\n>\n> contrasts() does like glm() for family, it looks in the parent frame.\n> ks.test.default() likewise.\n>\n> make.tables.aovprojlist() looks locally first, but doesn't restrict the \n> search to functions.\n>\n> I'm not sure I spotted all cases of this, and I didn't look in any other \n> base packages besides stats.\n>\n> So I think a patch to fix this should determine a consistent approach, \n> and apply it everywhere.  Maybe too big a can of worms?\n>\n> Duncan Murdoch",
+      "body_snippet": "Thank you Duncan\n\nYes, given Martin's comment it is probably too big a can for the reward.\n\nTo other commentators - the example was purely to illustrate what Duncan more clearly articulated (i.e. stat",
+      "thread_id": "thread-14b6c2899685",
+      "thread_depth": 2,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-720b0f319081",
+      "message_id": "<DM6PR15MB40556B7BF3697914845A3BD9A979A@DM6PR15MB4055.namprd15.prod.outlook.com>",
+      "from_name": "Kushal Verma",
+      "from_email_hash": "5935d9c07fb8401784f62082639871311b2d7d2e711ec0eb44d275a2645e0893",
+      "date": "2026-03-09T17:42:42Z",
+      "subject": "[Rd] R on IBM AIX",
+      "subject_clean": "R on IBM AIX",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Dear R Community,\nI hope this message finds you well.\nI'm part of the IBM AIX Toolbox team. For the past eight years, we have been providing R support to our customers on IBM AIX as part of our toolbox offerings. R has been an invaluable tool for our users, and the demand for it continues to grow ? as you can see from the active discussions in our IBM AIX community forum<https://community.ibm.com/community/user/groups/community-home/digestviewer?CommunityKey=329e8662-cb5a-4e9e-80ee-47b1c3b5848c>.\nOver the years, we have identified a small set of trivial, non-intrusive patches that are necessary to build R on AIX. These patches do not alter R's behavior on any other platform ? they simply allow R to compile and run correctly in the AIX environment.\nWe would love to contribute these patches back to the R project so that AIX support is maintained natively, reducing the burden on our team and making R more accessible to the broader AIX user community.\nWe believe this aligns well with the spirit of open-source collaboration, and we are committed to working with the maintainers to ensure these changes meet the project's standards and guidelines.\nWe would be grateful for your guidance on the best way to submit these patches ? whether through a pull request, a bug report, or any other preferred channel.\nThank you so much for your time and for the incredible work you do maintaining R. We truly appreciate the community's efforts and look forward to contributing.\nWarm regards,\nKushal Verma\nIBM AIX Toolbox Team\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear R Community,\nI hope this message finds you well.\nI'm part of the IBM AIX Toolbox team. For the past eight years, we have been providing R support to our customers on IBM AIX as part of our toolbo",
+      "thread_id": "thread-720b0f319081",
+      "thread_depth": 0,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-511467a9253a",
+      "message_id": "<8521a67f-630f-429a-803f-a6a3758b15a6@gmail.com>",
+      "from_name": "Duncan Murdoch",
+      "from_email_hash": "f9a415d339fb179db05d60d3dad3c3f8a3545457db293eaaaa76ffc7f4ce0713",
+      "date": "2026-03-09T17:54:13-04:00",
+      "subject": "[Rd] R on IBM AIX",
+      "subject_clean": "R on IBM AIX",
+      "in_reply_to": "<DM6PR15MB40556B7BF3697914845A3BD9A979A@DM6PR15MB4055.namprd15.prod.outlook.com>",
+      "references": [
+        "<DM6PR15MB40556B7BF3697914845A3BD9A979A@DM6PR15MB4055.namprd15.prod.outlook.com>"
+      ],
+      "body_plain": "I haven't seen a response to this, so I'll give some general advice.\n\nYou need to give more details before you'll get an answer.  As far as I \nknow, R Core doesn't have an AIX system to test your patches on, so the \npatches need to be obviously safe and trouble free.  If they're not, \nthen I think R Core would be very reluctant to accept them.  They don't \nwant something that will interfere with future changes, and they \nprobably don't want something that will make it look like they're \nsupporting AIX when they don't have the resources to do that.\n\nSo the path forward that I'd suggest is that you should put together \nsome of the simple patches and submit them to the bugs.r-project.org \nsite.  You may need to follow the instructions there to get write access \nfirst if you don't already have it.\n\nDuncan Murdoch\n\n\nOn 2026-03-09 1:42 p.m., Kushal Verma via R-devel wrote:\n> Dear R Community,\n> I hope this message finds you well.\n> I'm part of the IBM AIX Toolbox team. For the past eight years, we have been providing R support to our customers on IBM AIX as part of our toolbox offerings. R has been an invaluable tool for our users, and the demand for it continues to grow ? as you can see from the active discussions in our IBM AIX community forum<https://community.ibm.com/community/user/groups/community-home/digestviewer?CommunityKey=329e8662-cb5a-4e9e-80ee-47b1c3b5848c>.\n> Over the years, we have identified a small set of trivial, non-intrusive patches that are necessary to build R on AIX. These patches do not alter R's behavior on any other platform ? they simply allow R to compile and run correctly in the AIX environment.\n> We would love to contribute these patches back to the R project so that AIX support is maintained natively, reducing the burden on our team and making R more accessible to the broader AIX user community.\n> We believe this aligns well with the spirit of open-source collaboration, and we are committed to working with the maintainers to ensure these changes meet the project's standards and guidelines.\n> We would be grateful for your guidance on the best way to submit these patches ? whether through a pull request, a bug report, or any other preferred channel.\n> Thank you so much for your time and for the incredible work you do maintaining R. We truly appreciate the community's efforts and look forward to contributing.\n> Warm regards,\n> Kushal Verma\n> IBM AIX Toolbox Team\n> \n> \n> \n> \t[[alternative HTML version deleted]]\n> \n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "I haven't seen a response to this, so I'll give some general advice.\n\nYou need to give more details before you'll get an answer.  As far as I \nknow, R Core doesn't have an AIX system to test your patc",
+      "thread_id": "thread-720b0f319081",
+      "thread_depth": 1,
+      "month": "2026-03"
     }
   ],
   "threads": [
@@ -223,13 +418,13 @@
     {
       "id": "thread-23b034052915",
       "subject": "Is \"difftime\" an appropriate addition to methods::.OldClassesList?",
-      "message_count": 2,
+      "message_count": 3,
       "participants": [
         "Martin Maechler",
         "Michael Chirico"
       ],
       "started": "2026-03-05T14:26:16-08:00",
-      "last_reply": "2026-03-06T11:36:24+01:00",
+      "last_reply": "2026-03-09T13:27:10+01:00",
       "root_message_id": "msg-23b034052915"
     },
     {
@@ -242,6 +437,44 @@
       "started": "2026-03-06T00:24:42+03:00",
       "last_reply": "2026-03-06T00:24:42+03:00",
       "root_message_id": "msg-e6433043d9e6"
+    },
+    {
+      "id": "thread-14b6c2899685",
+      "subject": "In glm explicitly search stats for family functions",
+      "message_count": 7,
+      "participants": [
+        "Duncan Murdoch",
+        "Martin Maechler",
+        "Michał Bojanowski",
+        "Serguei Sokol",
+        "Tim Taylor"
+      ],
+      "started": "2026-03-09T11:53:18+00:00",
+      "last_reply": "2026-03-09T16:25:45+00:00",
+      "root_message_id": "msg-14b6c2899685"
+    },
+    {
+      "id": "thread-5c772df9a8fc",
+      "subject": "Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
+      "message_count": 1,
+      "participants": [
+        "Simone Giannerini"
+      ],
+      "started": "2026-03-09T12:43:07+01:00",
+      "last_reply": "2026-03-09T12:43:07+01:00",
+      "root_message_id": "msg-5c772df9a8fc"
+    },
+    {
+      "id": "thread-720b0f319081",
+      "subject": "R on IBM AIX",
+      "message_count": 2,
+      "participants": [
+        "Duncan Murdoch",
+        "Kushal Verma"
+      ],
+      "started": "2026-03-09T17:42:42+00:00",
+      "last_reply": "2026-03-09T17:54:13-04:00",
+      "root_message_id": "msg-720b0f319081"
     }
   ]
 }
