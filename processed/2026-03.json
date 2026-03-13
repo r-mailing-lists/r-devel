@@ -420,6 +420,78 @@
       "thread_id": "thread-9afc9754fe5e",
       "thread_depth": 0,
       "month": "2026-03"
+    },
+    {
+      "id": "msg-0f2ca93dcdd0",
+      "message_id": "<1ce1ece4ab53cd889798e5d76bd850e2032fca01.camel@wur.nl>",
+      "from_name": "Mosqueira Sanchez, Iago",
+      "from_email_hash": "a5e1ec366dceb29d21fc9122b0795b4bba1db212f449548f7f6554f66a599994",
+      "date": "2026-03-12T07:26:06Z",
+      "subject": "[Rd] Timing of operations of S4 class",
+      "subject_clean": "Timing of operations of S4 class",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "An S4 class based on an array, but with a fixed number of dimensions,\nrequires overloading the '[' method so that drop=FALSE even when single\nelements are selected in one of them.\n\nThis works well, but once the S4 object is saved to a file and then loaded,\nthe speed drops greatly (20 times larger, code below), while memory usage\nincreases from 0 to 2.5 Mb.\n\nWhat could be causing this? Is there anything that can be done to avoid this\npenalty?\n\nIs the difference in timing between array and the S4 class just due to the\nS4 system? Using callNextMethod() inside the '[' method made it faster but\nnot if called with all arguments specified, as needed to override the\ndrop=TRUE default.\n\nAre there any suggestions of a better mechanism than the call to\n\nx at .Data <- x at .Data[i, j, k, l, m, n, drop=FALSE]\n\nthe method is using?\n\nMany thanks,\n\n\nIago\n\n\n# Set farray class, a 6D array\nsetClass(\"farray\",\trepresentation(\"array\"),\n\tprototype(array(as.numeric(NA), dim=c(1,1,1,1,1,1)))\n)\n\n# Overload '[' to ensure drop=FALSE\nsetMethod(\"[\", signature(x=\"farray\"),\n    function(x, i, j, k, l, m, n, ..., drop=FALSE) {\n      x at .Data <- x at .Data[i, j, k, l, m, n, drop=FALSE]\n      return(x)\n  }\n)\n\n# Example array\narr <- array(\n  runif(prod(c(10, 20, 2, 4, 2, 100))),\n  dim = c(10, 20, 2, 4, 2, 100),\n  dimnames = list(a=seq(10), b=seq(20), c=seq(2), d=seq(4), e=seq(2),\nf=seq(100))\n)\n\n# Example farray\nfarr <- new('farray', arr)\n\n# Save farr\nsaveRDS(farr, file='farr.rds')\n\n# Check speed\nlibrary(microbenchmark)\n\nlibrary(bench)\n\n# array\nmicrobenchmark(arr[1,1,1,1,1,1], times=500L, unit='us')\nbench::mark(arr[1,1,1,1,1,1])\n\n# remove and load\nrm(farr)\nfarr <- readRDS('farr.rds')\nmicrobenchmark(farr[1,1,1,1,1,1], times=500L, unit='us')\nbench::mark(farr[1,1,1,1,1,1])\n\n\n\n-- \nIago Mosqueira\n\nWageningen Marine Research\n\nHaringkade 1\nPostbus 68\n1976CP, IJmuiden\nThe Netherlands\n\nTel.: +31 (0)317 488 995\niago.mosqueira at wur.nl",
+      "body_snippet": "An S4 class based on an array, but with a fixed number of dimensions,\nrequires overloading the '[' method so that drop=FALSE even when single\nelements are selected in one of them.\n\nThis works well, bu",
+      "thread_id": "thread-0f2ca93dcdd0",
+      "thread_depth": 0,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-8fc88943fdd7",
+      "message_id": "<27058.40857.762563.725573@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-03-12T11:12:25Z",
+      "subject": "[Rd] Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
+      "subject_clean": "Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
+      "in_reply_to": "<fake-VM-id.de6d212f5024b0393ce4a3f4031ef156@talos.iv>",
+      "references": [
+        "<CANcXGiyf=4yGeoR8ZULVEcjKEGQqVRCXp9HK03tO4eL16aVYmA@mail.gmail.com>"
+      ],
+      "body_plain": ">>>>> Simone Giannerini \n>>>>>     on Mon, 9 Mar 2026 12:43:07 +0100 writes:\n\n    > Dear all,\n    > I think there is a (small) bug in\n\n    > ar.yw.default   (line 142 of the source file ar.R)\n    > ar.ols          (line 429 of the source file ar.R)\n    > ar.burg.default (line 570 of the source file ar.R)\n\n    > maic <- min(aic)\n\n    > should be\n\n    > maic <- min(xaic)\n\n    > Note that, apparently, this typo/bug does little harm since the\n    > subsequent line of code\n\n    > xaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else\n    > ifelse(xaic == maic, 0, Inf), 0L:order.max)\n\n    > does not use maic but min(xaic) directly. In any case, after fixing,\n    > one could replace min(xaic) with maic to avoid recomputing min(xaic).\n    > In absence of comments I will file a bug report.\n\nI'm looking into this, thank you, Simone.\nThis is not really a bug, e.g., in the sense of\n     https://www.R-project.org/bugs.html ,\nas you mention yourself that the code works (flawlessly).\n\nStill, of course,  (if you are right which I assume currently)\nit is a code infelicity we will be happy to fix.\n\nBest,\nMartin\n\n\n    > Kind regards\n    > Simone\n\n    > Tested against R-devel 2026-03-06\n\n    > ___________________________________________________\n\n    > Simone Giannerini\n    > Dipartimento di Scienze Economiche e Statistiche\n    > Universita' di Udine\n    > Via Tomadini 30/A - 33100 Udine,  ITALY\n    > Tel: +39 0432 249577\n    > https://simonegiannerini.net/",
+      "body_snippet": ">>>>> Simone Giannerini \n>>>>>     on Mon, 9 Mar 2026 12:43:07 +0100 writes:\n\n    > Dear all,\n    > I think there is a (small) bug in\n\n    > ar.yw.default   (line 142 of the source file ar.R)\n    > ar",
+      "thread_id": "thread-5c772df9a8fc",
+      "thread_depth": 1,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-b0181c062800",
+      "message_id": "<CANcXGixOnaC8bOu6pnunMfESrC_hkzauXxe3141X4UbwRGMYMg@mail.gmail.com>",
+      "from_name": "Simone Giannerini",
+      "from_email_hash": "f8affe26d3f04957fe679815bdfe4b06a126c2213775b0f3bc67ca9e47553422",
+      "date": "2026-03-12T17:17:53Z",
+      "subject": "[Rd] Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
+      "subject_clean": "Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
+      "in_reply_to": "<27058.40857.762563.725573@stat.math.ethz.ch>",
+      "references": [
+        "<CANcXGiyf=4yGeoR8ZULVEcjKEGQqVRCXp9HK03tO4eL16aVYmA@mail.gmail.com>",
+        "<fake-VM-id.de6d212f5024b0393ce4a3f4031ef156@talos.iv>",
+        "<27058.40857.762563.725573@stat.math.ethz.ch>"
+      ],
+      "body_plain": "Dear Martin,\n\nthanks for the reply,\n\nthe instruction after the bugged line of code is\n\nxaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else\n            ifelse(xaic == maic, 0, Inf), 0L:order.max)\n\nand checks whether  is.finite(maic), which, in the present version, is\nalways the case since maic is either 0 or 1.\nBut if min(xaic) is truly not finite, say, NA, then  xaic - min(xaic) will\nalso be a vector of NAs, which is not the intended output, so to me this\nlooks like a bug.\n\nKind regards,\n\nSimone\n\n\n\nOn Thu, Mar 12, 2026 at 12:12?PM Martin Maechler <maechler at stat.math.ethz.ch>\nwrote:\n\n> >>>>> Simone Giannerini\n> >>>>>     on Mon, 9 Mar 2026 12:43:07 +0100 writes:\n>\n>     > Dear all,\n>     > I think there is a (small) bug in\n>\n>     > ar.yw.default   (line 142 of the source file ar.R)\n>     > ar.ols          (line 429 of the source file ar.R)\n>     > ar.burg.default (line 570 of the source file ar.R)\n>\n>     > maic <- min(aic)\n>\n>     > should be\n>\n>     > maic <- min(xaic)\n>\n>     > Note that, apparently, this typo/bug does little harm since the\n>     > subsequent line of code\n>\n>     > xaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else\n>     > ifelse(xaic == maic, 0, Inf), 0L:order.max)\n>\n>     > does not use maic but min(xaic) directly. In any case, after fixing,\n>     > one could replace min(xaic) with maic to avoid recomputing min(xaic).\n>     > In absence of comments I will file a bug report.\n>\n> I'm looking into this, thank you, Simone.\n> This is not really a bug, e.g., in the sense of\n>      https://www.R-project.org/bugs.html ,\n> as you mention yourself that the code works (flawlessly).\n>\n> Still, of course,  (if you are right which I assume currently)\n> it is a code infelicity we will be happy to fix.\n>\n> Best,\n> Martin\n>\n>\n>     > Kind regards\n>     > Simone\n>\n>     > Tested against R-devel 2026-03-06\n>\n>     > ___________________________________________________\n>\n>     > Simone Giannerini\n>     > Dipartimento di Scienze Economiche e Statistiche\n>     > Universita' di Udine\n>     > Via Tomadini 30/A - 33100 Udine,  ITALY\n>     > Tel: +39 0432 249577\n>     > https://simonegiannerini.net/\n>\n\n\n-- \n___________________________________________________\n\nSimone Giannerini\nDipartimento di Scienze Economiche e Statistiche\nUniversita' di Udine\nVia Tomadini 30/A - 33100 Udine,  ITALY\nTel: +39 0432 249577\nhttps://simonegiannerini.net/\n___________________________________________________\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear Martin,\n\nthanks for the reply,\n\nthe instruction after the bugged line of code is\n\nxaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else\n            ifelse(xaic == maic, 0, Inf), 0L:order.max",
+      "thread_id": "thread-5c772df9a8fc",
+      "thread_depth": 2,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-502b7c0da650",
+      "message_id": "<CAP8nD2wUm1ZyFVayZmdbket5-OqzFBGfpnox4_+w3-puzMKEpg@mail.gmail.com>",
+      "from_name": "Ian Farm",
+      "from_email_hash": "13b1f193bad905e7fafc1f7d13fb73c1334933b89dcde22f4c326c80b0a586f6",
+      "date": "2026-03-12T21:30:19Z",
+      "subject": "[Rd] Timing of operations of S4 class",
+      "subject_clean": "Timing of operations of S4 class",
+      "in_reply_to": "<1ce1ece4ab53cd889798e5d76bd850e2032fca01.camel@wur.nl>",
+      "references": [
+        "<1ce1ece4ab53cd889798e5d76bd850e2032fca01.camel@wur.nl>"
+      ],
+      "body_plain": "Hello Iago,\n\nBefore being saved to RDS, farr is a wrapper ALTREP; it contains a\nreference to the array, and a separate list of attributes including the\nclass and dims. This avoids having to copy arr just to add some attributes.\nAfter being loaded from RDS, farr is not ALTREP; all of its attributes are\nattached to the array as normal.\n\nfarr1 <- new('farray', arr)\nfarr_rds <- tempfile(fileext = \".rds\")\nsaveRDS(new('farray', arr), file = farr_rds)\nfarr2 <- readRDS(farr_rds)\n\n.Internal(inspect(farr1, max.depth = 1))\n#> @7fd96c7c4d80 14 REALSXP g0c0 [OBJ,MARK,REF(3),S4,gp=0x10,ATT]  wrapper\n[srt=-2147483648,no_na=0]\n#>   @7fd976272000 14 REALSXP g0c7 [MARK,REF(8),ATT] (len=320000, tl=0)\n0.0586121,0.335355,0.365133,0.492381,0.0354994,...\n#>   ATTRIB:\n#>     @7fd9741a4f60 02 LISTSXP g0c0 [MARK,REF(1)]\n#> ATTRIB:\n#>   @7fd96c7c4c68 02 LISTSXP g0c0 [MARK,REF(1)]\n#>       ...\n\n.Internal(inspect(farr2, max.depth = 1))\n#> @7fd9764e4000 14 REALSXP g0c7 [OBJ,REF(1),S4,gp=0x10,ATT] (len=320000,\ntl=0) 0.0586121,0.335355,0.365133,0.492381,0.0354994,...\n#> ATTRIB:\n#>   @7fd96fc30a10 02 LISTSXP g0c0 [REF(1)]\n#>       ...\n\nUsing tracemem() on the array object (which is arr for farr1, and just\nfarr2 itself for farr2) shows that the array is copied once when subsetting\nfarr2, but not when subsetting farr1.\n\ntracemem(arr)\n#> [1] \"<0x7fd976272000>\"\nsub1 <- farr1[1,1,1,1,1,1]\n\ntracemem(farr2)\n#> [1] \"<0x7fd9764e4000>\"\nsub2 <- farr2[1,1,1,1,1,1]\n#> tracemem[0x7fd9764e4000 -> 0x7fd976756000]: getDataPart .local [\n\nThe copying happens during getDataPart(), i.e., x at .Data. As I understand\nit, for farr2, getDataPart() needs to strip the class attribute from the\narray, requiring it to copy the array. But for farr1, the class attribute\nis attached to the ALTREP object and not the array itself, so getDataPart()\ndoes not need to strip the class attribute from the array and does not need\nto copy it.\n\nI'd be interested to hear any suggestions to avoid copying the array here.\n\nCheers,\n\nIan\n\n____\nIan Farm\nLaboratory Manager, The Agroecology Lab & Soil Functions and Trajectories\nLab\nUniversity of Maine School of Food and Agriculture\n5762 Roger Clapp Greenhouses, Orono, Maine 04469\n\nOn Thu, Mar 12, 2026 at 7:01?AM Mosqueira Sanchez, Iago via R-devel <\nr-devel at r-project.org> wrote:\n\n> An S4 class based on an array, but with a fixed number of dimensions,\n> requires overloading the '[' method so that drop=FALSE even when single\n> elements are selected in one of them.\n>\n> This works well, but once the S4 object is saved to a file and then loaded,\n> the speed drops greatly (20 times larger, code below), while memory usage\n> increases from 0 to 2.5 Mb.\n>\n> What could be causing this? Is there anything that can be done to avoid\n> this\n> penalty?\n>\n> Is the difference in timing between array and the S4 class just due to the\n> S4 system? Using callNextMethod() inside the '[' method made it faster but\n> not if called with all arguments specified, as needed to override the\n> drop=TRUE default.\n>\n> Are there any suggestions of a better mechanism than the call to\n>\n> x at .Data <- x at .Data[i, j, k, l, m, n, drop=FALSE]\n>\n> the method is using?\n>\n> Many thanks,\n>\n>\n> Iago\n>\n>\n> # Set farray class, a 6D array\n> setClass(\"farray\",      representation(\"array\"),\n>         prototype(array(as.numeric(NA), dim=c(1,1,1,1,1,1)))\n> )\n>\n> # Overload '[' to ensure drop=FALSE\n> setMethod(\"[\", signature(x=\"farray\"),\n>     function(x, i, j, k, l, m, n, ..., drop=FALSE) {\n>       x at .Data <- x at .Data[i, j, k, l, m, n, drop=FALSE]\n>       return(x)\n>   }\n> )\n>\n> # Example array\n> arr <- array(\n>   runif(prod(c(10, 20, 2, 4, 2, 100))),\n>   dim = c(10, 20, 2, 4, 2, 100),\n>   dimnames = list(a=seq(10), b=seq(20), c=seq(2), d=seq(4), e=seq(2),\n> f=seq(100))\n> )\n>\n> # Example farray\n> farr <- new('farray', arr)\n>\n> # Save farr\n> saveRDS(farr, file='farr.rds')\n>\n> # Check speed\n> library(microbenchmark)\n>\n> library(bench)\n>\n> # array\n> microbenchmark(arr[1,1,1,1,1,1], times=500L, unit='us')\n> bench::mark(arr[1,1,1,1,1,1])\n>\n> # remove and load\n> rm(farr)\n> farr <- readRDS('farr.rds')\n> microbenchmark(farr[1,1,1,1,1,1], times=500L, unit='us')\n> bench::mark(farr[1,1,1,1,1,1])\n>\n>\n>\n> --\n> Iago Mosqueira\n>\n> Wageningen Marine Research\n>\n> Haringkade 1\n> Postbus 68\n> 1976CP, IJmuiden\n> The Netherlands\n>\n> Tel.: +31 (0)317 488 995\n> iago.mosqueira at wur.nl\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello Iago,\n\nBefore being saved to RDS, farr is a wrapper ALTREP; it contains a\nreference to the array, and a separate list of attributes including the\nclass and dims. This avoids having to copy arr j",
+      "thread_id": "thread-0f2ca93dcdd0",
+      "thread_depth": 1,
+      "month": "2026-03"
     }
   ],
   "threads": [
@@ -473,12 +545,13 @@
     {
       "id": "thread-5c772df9a8fc",
       "subject": "Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
-      "message_count": 1,
+      "message_count": 3,
       "participants": [
+        "Martin Maechler",
         "Simone Giannerini"
       ],
       "started": "2026-03-09T11:43:07Z",
-      "last_reply": "2026-03-09T11:43:07Z",
+      "last_reply": "2026-03-12T17:17:53Z",
       "root_message_id": "msg-5c772df9a8fc"
     },
     {
@@ -529,6 +602,18 @@
       "started": "2026-03-11T15:27:22Z",
       "last_reply": "2026-03-11T15:27:22Z",
       "root_message_id": "msg-9afc9754fe5e"
+    },
+    {
+      "id": "thread-0f2ca93dcdd0",
+      "subject": "Timing of operations of S4 class",
+      "message_count": 2,
+      "participants": [
+        "Ian Farm",
+        "Mosqueira Sanchez, Iago"
+      ],
+      "started": "2026-03-12T07:26:06Z",
+      "last_reply": "2026-03-12T21:30:19Z",
+      "root_message_id": "msg-0f2ca93dcdd0"
     }
   ]
 }

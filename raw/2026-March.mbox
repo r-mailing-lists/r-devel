@@ -1598,3 +1598,425 @@ Best
 -k
 
 
+From |@go@mo@que|r@ @end|ng |rom wur@n|  Thu Mar 12 08:26:06 2026
+From: |@go@mo@que|r@ @end|ng |rom wur@n| (Mosqueira Sanchez, Iago)
+Date: Thu, 12 Mar 2026 07:26:06 +0000
+Subject: [Rd] Timing of operations of S4 class
+Message-ID: <1ce1ece4ab53cd889798e5d76bd850e2032fca01.camel@wur.nl>
+
+An S4 class based on an array, but with a fixed number of dimensions,
+requires overloading the '[' method so that drop=FALSE even when single
+elements are selected in one of them.
+
+This works well, but once the S4 object is saved to a file and then loaded,
+the speed drops greatly (20 times larger, code below), while memory usage
+increases from 0 to 2.5 Mb.
+
+What could be causing this? Is there anything that can be done to avoid this
+penalty?
+
+Is the difference in timing between array and the S4 class just due to the
+S4 system? Using callNextMethod() inside the '[' method made it faster but
+not if called with all arguments specified, as needed to override the
+drop=TRUE default.
+
+Are there any suggestions of a better mechanism than the call to
+
+x at .Data <- x at .Data[i, j, k, l, m, n, drop=FALSE]
+
+the method is using?
+
+Many thanks,
+
+
+Iago
+
+
+# Set farray class, a 6D array
+setClass("farray",	representation("array"),
+	prototype(array(as.numeric(NA), dim=c(1,1,1,1,1,1)))
+)
+
+# Overload '[' to ensure drop=FALSE
+setMethod("[", signature(x="farray"),
+    function(x, i, j, k, l, m, n, ..., drop=FALSE) {
+      x at .Data <- x at .Data[i, j, k, l, m, n, drop=FALSE]
+      return(x)
+  }
+)
+
+# Example array
+arr <- array(
+  runif(prod(c(10, 20, 2, 4, 2, 100))),
+  dim = c(10, 20, 2, 4, 2, 100),
+  dimnames = list(a=seq(10), b=seq(20), c=seq(2), d=seq(4), e=seq(2),
+f=seq(100))
+)
+
+# Example farray
+farr <- new('farray', arr)
+
+# Save farr
+saveRDS(farr, file='farr.rds')
+
+# Check speed
+library(microbenchmark)
+
+library(bench)
+
+# array
+microbenchmark(arr[1,1,1,1,1,1], times=500L, unit='us')
+bench::mark(arr[1,1,1,1,1,1])
+
+# remove and load
+rm(farr)
+farr <- readRDS('farr.rds')
+microbenchmark(farr[1,1,1,1,1,1], times=500L, unit='us')
+bench::mark(farr[1,1,1,1,1,1])
+
+
+
+-- 
+Iago Mosqueira
+
+Wageningen Marine Research
+
+Haringkade 1
+Postbus 68
+1976CP, IJmuiden
+The Netherlands
+
+Tel.: +31 (0)317 488 995
+iago.mosqueira at wur.nl
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Mar 12 12:12:25 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 12 Mar 2026 12:12:25 +0100
+Subject: [Rd] Typo/bug in ar.yw.default, ar.ols, ar.burg.default
+In-Reply-To: <fake-VM-id.de6d212f5024b0393ce4a3f4031ef156@talos.iv>
+References: <CANcXGiyf=4yGeoR8ZULVEcjKEGQqVRCXp9HK03tO4eL16aVYmA@mail.gmail.com>
+Message-ID: <27058.40857.762563.725573@stat.math.ethz.ch>
+
+>>>>> Simone Giannerini 
+>>>>>     on Mon, 9 Mar 2026 12:43:07 +0100 writes:
+
+    > Dear all,
+    > I think there is a (small) bug in
+
+    > ar.yw.default   (line 142 of the source file ar.R)
+    > ar.ols          (line 429 of the source file ar.R)
+    > ar.burg.default (line 570 of the source file ar.R)
+
+    > maic <- min(aic)
+
+    > should be
+
+    > maic <- min(xaic)
+
+    > Note that, apparently, this typo/bug does little harm since the
+    > subsequent line of code
+
+    > xaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else
+    > ifelse(xaic == maic, 0, Inf), 0L:order.max)
+
+    > does not use maic but min(xaic) directly. In any case, after fixing,
+    > one could replace min(xaic) with maic to avoid recomputing min(xaic).
+    > In absence of comments I will file a bug report.
+
+I'm looking into this, thank you, Simone.
+This is not really a bug, e.g., in the sense of
+     https://www.R-project.org/bugs.html ,
+as you mention yourself that the code works (flawlessly).
+
+Still, of course,  (if you are right which I assume currently)
+it is a code infelicity we will be happy to fix.
+
+Best,
+Martin
+
+
+    > Kind regards
+    > Simone
+
+    > Tested against R-devel 2026-03-06
+
+    > ___________________________________________________
+
+    > Simone Giannerini
+    > Dipartimento di Scienze Economiche e Statistiche
+    > Universita' di Udine
+    > Via Tomadini 30/A - 33100 Udine,  ITALY
+    > Tel: +39 0432 249577
+    > https://simonegiannerini.net/
+
+
+From @g|@nner|n| @end|ng |rom gm@||@com  Thu Mar 12 18:17:53 2026
+From: @g|@nner|n| @end|ng |rom gm@||@com (Simone Giannerini)
+Date: Thu, 12 Mar 2026 18:17:53 +0100
+Subject: [Rd] Typo/bug in ar.yw.default, ar.ols, ar.burg.default
+In-Reply-To: <27058.40857.762563.725573@stat.math.ethz.ch>
+References: <CANcXGiyf=4yGeoR8ZULVEcjKEGQqVRCXp9HK03tO4eL16aVYmA@mail.gmail.com>
+ <fake-VM-id.de6d212f5024b0393ce4a3f4031ef156@talos.iv>
+ <27058.40857.762563.725573@stat.math.ethz.ch>
+Message-ID: <CANcXGixOnaC8bOu6pnunMfESrC_hkzauXxe3141X4UbwRGMYMg@mail.gmail.com>
+
+Dear Martin,
+
+thanks for the reply,
+
+the instruction after the bugged line of code is
+
+xaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else
+            ifelse(xaic == maic, 0, Inf), 0L:order.max)
+
+and checks whether  is.finite(maic), which, in the present version, is
+always the case since maic is either 0 or 1.
+But if min(xaic) is truly not finite, say, NA, then  xaic - min(xaic) will
+also be a vector of NAs, which is not the intended output, so to me this
+looks like a bug.
+
+Kind regards,
+
+Simone
+
+
+
+On Thu, Mar 12, 2026 at 12:12?PM Martin Maechler <maechler at stat.math.ethz.ch>
+wrote:
+
+> >>>>> Simone Giannerini
+> >>>>>     on Mon, 9 Mar 2026 12:43:07 +0100 writes:
+>
+>     > Dear all,
+>     > I think there is a (small) bug in
+>
+>     > ar.yw.default   (line 142 of the source file ar.R)
+>     > ar.ols          (line 429 of the source file ar.R)
+>     > ar.burg.default (line 570 of the source file ar.R)
+>
+>     > maic <- min(aic)
+>
+>     > should be
+>
+>     > maic <- min(xaic)
+>
+>     > Note that, apparently, this typo/bug does little harm since the
+>     > subsequent line of code
+>
+>     > xaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else
+>     > ifelse(xaic == maic, 0, Inf), 0L:order.max)
+>
+>     > does not use maic but min(xaic) directly. In any case, after fixing,
+>     > one could replace min(xaic) with maic to avoid recomputing min(xaic).
+>     > In absence of comments I will file a bug report.
+>
+> I'm looking into this, thank you, Simone.
+> This is not really a bug, e.g., in the sense of
+>      https://www.R-project.org/bugs.html ,
+> as you mention yourself that the code works (flawlessly).
+>
+> Still, of course,  (if you are right which I assume currently)
+> it is a code infelicity we will be happy to fix.
+>
+> Best,
+> Martin
+>
+>
+>     > Kind regards
+>     > Simone
+>
+>     > Tested against R-devel 2026-03-06
+>
+>     > ___________________________________________________
+>
+>     > Simone Giannerini
+>     > Dipartimento di Scienze Economiche e Statistiche
+>     > Universita' di Udine
+>     > Via Tomadini 30/A - 33100 Udine,  ITALY
+>     > Tel: +39 0432 249577
+>     > https://simonegiannerini.net/
+>
+
+
+-- 
+___________________________________________________
+
+Simone Giannerini
+Dipartimento di Scienze Economiche e Statistiche
+Universita' di Udine
+Via Tomadini 30/A - 33100 Udine,  ITALY
+Tel: +39 0432 249577
+https://simonegiannerini.net/
+___________________________________________________
+
+	[[alternative HTML version deleted]]
+
+
+From |@n@|@rm @end|ng |rom m@|ne@edu  Thu Mar 12 22:30:19 2026
+From: |@n@|@rm @end|ng |rom m@|ne@edu (Ian Farm)
+Date: Thu, 12 Mar 2026 17:30:19 -0400
+Subject: [Rd] Timing of operations of S4 class
+In-Reply-To: <1ce1ece4ab53cd889798e5d76bd850e2032fca01.camel@wur.nl>
+References: <1ce1ece4ab53cd889798e5d76bd850e2032fca01.camel@wur.nl>
+Message-ID: <CAP8nD2wUm1ZyFVayZmdbket5-OqzFBGfpnox4_+w3-puzMKEpg@mail.gmail.com>
+
+Hello Iago,
+
+Before being saved to RDS, farr is a wrapper ALTREP; it contains a
+reference to the array, and a separate list of attributes including the
+class and dims. This avoids having to copy arr just to add some attributes.
+After being loaded from RDS, farr is not ALTREP; all of its attributes are
+attached to the array as normal.
+
+farr1 <- new('farray', arr)
+farr_rds <- tempfile(fileext = ".rds")
+saveRDS(new('farray', arr), file = farr_rds)
+farr2 <- readRDS(farr_rds)
+
+.Internal(inspect(farr1, max.depth = 1))
+#> @7fd96c7c4d80 14 REALSXP g0c0 [OBJ,MARK,REF(3),S4,gp=0x10,ATT]  wrapper
+[srt=-2147483648,no_na=0]
+#>   @7fd976272000 14 REALSXP g0c7 [MARK,REF(8),ATT] (len=320000, tl=0)
+0.0586121,0.335355,0.365133,0.492381,0.0354994,...
+#>   ATTRIB:
+#>     @7fd9741a4f60 02 LISTSXP g0c0 [MARK,REF(1)]
+#> ATTRIB:
+#>   @7fd96c7c4c68 02 LISTSXP g0c0 [MARK,REF(1)]
+#>       ...
+
+.Internal(inspect(farr2, max.depth = 1))
+#> @7fd9764e4000 14 REALSXP g0c7 [OBJ,REF(1),S4,gp=0x10,ATT] (len=320000,
+tl=0) 0.0586121,0.335355,0.365133,0.492381,0.0354994,...
+#> ATTRIB:
+#>   @7fd96fc30a10 02 LISTSXP g0c0 [REF(1)]
+#>       ...
+
+Using tracemem() on the array object (which is arr for farr1, and just
+farr2 itself for farr2) shows that the array is copied once when subsetting
+farr2, but not when subsetting farr1.
+
+tracemem(arr)
+#> [1] "<0x7fd976272000>"
+sub1 <- farr1[1,1,1,1,1,1]
+
+tracemem(farr2)
+#> [1] "<0x7fd9764e4000>"
+sub2 <- farr2[1,1,1,1,1,1]
+#> tracemem[0x7fd9764e4000 -> 0x7fd976756000]: getDataPart .local [
+
+The copying happens during getDataPart(), i.e., x at .Data. As I understand
+it, for farr2, getDataPart() needs to strip the class attribute from the
+array, requiring it to copy the array. But for farr1, the class attribute
+is attached to the ALTREP object and not the array itself, so getDataPart()
+does not need to strip the class attribute from the array and does not need
+to copy it.
+
+I'd be interested to hear any suggestions to avoid copying the array here.
+
+Cheers,
+
+Ian
+
+____
+Ian Farm
+Laboratory Manager, The Agroecology Lab & Soil Functions and Trajectories
+Lab
+University of Maine School of Food and Agriculture
+5762 Roger Clapp Greenhouses, Orono, Maine 04469
+
+On Thu, Mar 12, 2026 at 7:01?AM Mosqueira Sanchez, Iago via R-devel <
+r-devel at r-project.org> wrote:
+
+> An S4 class based on an array, but with a fixed number of dimensions,
+> requires overloading the '[' method so that drop=FALSE even when single
+> elements are selected in one of them.
+>
+> This works well, but once the S4 object is saved to a file and then loaded,
+> the speed drops greatly (20 times larger, code below), while memory usage
+> increases from 0 to 2.5 Mb.
+>
+> What could be causing this? Is there anything that can be done to avoid
+> this
+> penalty?
+>
+> Is the difference in timing between array and the S4 class just due to the
+> S4 system? Using callNextMethod() inside the '[' method made it faster but
+> not if called with all arguments specified, as needed to override the
+> drop=TRUE default.
+>
+> Are there any suggestions of a better mechanism than the call to
+>
+> x at .Data <- x at .Data[i, j, k, l, m, n, drop=FALSE]
+>
+> the method is using?
+>
+> Many thanks,
+>
+>
+> Iago
+>
+>
+> # Set farray class, a 6D array
+> setClass("farray",      representation("array"),
+>         prototype(array(as.numeric(NA), dim=c(1,1,1,1,1,1)))
+> )
+>
+> # Overload '[' to ensure drop=FALSE
+> setMethod("[", signature(x="farray"),
+>     function(x, i, j, k, l, m, n, ..., drop=FALSE) {
+>       x at .Data <- x at .Data[i, j, k, l, m, n, drop=FALSE]
+>       return(x)
+>   }
+> )
+>
+> # Example array
+> arr <- array(
+>   runif(prod(c(10, 20, 2, 4, 2, 100))),
+>   dim = c(10, 20, 2, 4, 2, 100),
+>   dimnames = list(a=seq(10), b=seq(20), c=seq(2), d=seq(4), e=seq(2),
+> f=seq(100))
+> )
+>
+> # Example farray
+> farr <- new('farray', arr)
+>
+> # Save farr
+> saveRDS(farr, file='farr.rds')
+>
+> # Check speed
+> library(microbenchmark)
+>
+> library(bench)
+>
+> # array
+> microbenchmark(arr[1,1,1,1,1,1], times=500L, unit='us')
+> bench::mark(arr[1,1,1,1,1,1])
+>
+> # remove and load
+> rm(farr)
+> farr <- readRDS('farr.rds')
+> microbenchmark(farr[1,1,1,1,1,1], times=500L, unit='us')
+> bench::mark(farr[1,1,1,1,1,1])
+>
+>
+>
+> --
+> Iago Mosqueira
+>
+> Wageningen Marine Research
+>
+> Haringkade 1
+> Postbus 68
+> 1976CP, IJmuiden
+> The Netherlands
+>
+> Tel.: +31 (0)317 488 995
+> iago.mosqueira at wur.nl
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
