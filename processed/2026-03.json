@@ -492,6 +492,46 @@
       "thread_id": "thread-0f2ca93dcdd0",
       "thread_depth": 1,
       "month": "2026-03"
+    },
+    {
+      "id": "msg-1e6320336181",
+      "message_id": "<27059.49932.537947.112942@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-03-13T07:55:56Z",
+      "subject": "[Rd] Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
+      "subject_clean": "Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
+      "in_reply_to": "<fake-VM-id.3d5c8999c1592d5da776ae342ec0383b@talos.iv>",
+      "references": [
+        "<CANcXGiyf=4yGeoR8ZULVEcjKEGQqVRCXp9HK03tO4eL16aVYmA@mail.gmail.com>",
+        "<27058.40857.762563.725573@stat.math.ethz.ch>"
+      ],
+      "body_plain": ">>>>> Martin Maechler \n>>>>>     on Thu, 12 Mar 2026 12:12:25 +0100 writes:\n\n>>>>> Simone Giannerini \n>>>>>     on Mon, 9 Mar 2026 12:43:07 +0100 writes:\n\n    >> Dear all,\n    >> I think there is a (small) bug in\n\n    >> ar.yw.default   (line 142 of the source file ar.R)\n    >> ar.ols          (line 429 of the source file ar.R)\n    >> ar.burg.default (line 570 of the source file ar.R)\n\n    >> maic <- min(aic)\n\n    >> should be\n\n    >> maic <- min(xaic)\n\n    >> Note that, apparently, this typo/bug does little harm since the\n    >> subsequent line of code\n\n    >> xaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else\n    >>                  ifelse(xaic == maic, 0, Inf), 0L:order.max)\n\n    >> does not use maic but min(xaic) directly. \n\nbut that is _NOT_ true (as I only see now, when looking more closely):\n`maic` is even used *twice* in the above (2nd) construction of `xaic`.\nNote that the \"bad\" code,  maic <- min(aic)   would typically\nset maic to 1 (aic = TRUE is the default) or then 0 (for\naic=FALSE), hence always finite.\n\nConsequently the case where some 'xaic' where *not* finite (but\nNA, NaN, or +/-Inf) has never been dealt with \"properly\" till\nnow (and I think we not know if it *is* \"good\" now, as we\nprobably never had test code for such boundary cases ...)\n\nI still think the proposed change should happen, as  min(aic)\nnever made any sense.\nCan anyone think of / create artificial time series data where\nthe changed code would make a difference?\n\nMartin\n\n    >> does not use maic but min(xaic) directly. In any case, after fixing,\n    >> one could replace min(xaic) with maic to avoid recomputing min(xaic).\n    >> In absence of comments I will file a bug report.\n\n    > I'm looking into this, thank you, Simone.\n    > This is not really a bug, e.g., in the sense of\n    > https://www.R-project.org/bugs.html ,\n    > as you mention yourself that the code works (flawlessly).\n\n    > Still, of course,  (if you are right which I assume currently)\n    > it is a code infelicity we will be happy to fix.\n\n    > Best,\n    > Martin\n\n\n    >> Kind regards\n    >> Simone\n\n    >> Tested against R-devel 2026-03-06\n\n    >> ___________________________________________________\n\n    >> Simone Giannerini\n    >> Dipartimento di Scienze Economiche e Statistiche\n    >> Universita' di Udine\n    >> Via Tomadini 30/A - 33100 Udine,  ITALY\n    >> Tel: +39 0432 249577\n    >> https://simonegiannerini.net/\n\n    > ______________________________________________\n    > R-devel at r-project.org mailing list\n    > https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">>>>> Martin Maechler \n>>>>>     on Thu, 12 Mar 2026 12:12:25 +0100 writes:\n\n>>>>> Simone Giannerini \n>>>>>     on Mon, 9 Mar 2026 12:43:07 +0100 writes:\n\n    >> Dear all,\n    >> I think there is a (s",
+      "thread_id": "thread-5c772df9a8fc",
+      "thread_depth": 2,
+      "month": "2026-03"
+    },
+    {
+      "id": "msg-c55ca9868402",
+      "message_id": "<27059.51382.336942.825567@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-03-13T08:20:06Z",
+      "subject": "[Rd] Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
+      "subject_clean": "Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
+      "in_reply_to": "<fake-VM-id.f7b79bb9bd0548a9b9047dbe3521f3cf@talos.iv>",
+      "references": [
+        "<CANcXGiyf=4yGeoR8ZULVEcjKEGQqVRCXp9HK03tO4eL16aVYmA@mail.gmail.com>",
+        "<fake-VM-id.de6d212f5024b0393ce4a3f4031ef156@talos.iv>",
+        "<27058.40857.762563.725573@stat.math.ethz.ch>",
+        "<CANcXGixOnaC8bOu6pnunMfESrC_hkzauXxe3141X4UbwRGMYMg@mail.gmail.com>"
+      ],
+      "body_plain": ">>>>> Simone Giannerini \n>>>>>     on Thu, 12 Mar 2026 18:17:53 +0100 writes:\n\n    > Dear Martin,\n    > thanks for the reply,\n\n    > the instruction after the bugged line of code is\n\n    > xaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else\n    > ifelse(xaic == maic, 0, Inf), 0L:order.max)\n\n    > and checks whether  is.finite(maic), which, in the present version, is\n    > always the case since maic is either 0 or 1.\n    > But if min(xaic) is truly not finite, say, NA, then  xaic - min(xaic) will\n    > also be a vector of NAs, which is not the intended output, so to me this\n    > looks like a bug.\n\n    > Kind regards,\n\n    > Simone\n\nI wrote my reply before yours yesterday, but did only get to\nsend it off now (~ 20 min ago).\nI see you came to the same conclusion.\n\nMartin\n\n\n    > On Thu, Mar 12, 2026 at 12:12?PM Martin Maechler <maechler at stat.math.ethz.ch>\n    > wrote:\n\n    >> >>>>> Simone Giannerini\n    >> >>>>>     on Mon, 9 Mar 2026 12:43:07 +0100 writes:\n    >> \n    >> > Dear all,\n    >> > I think there is a (small) bug in\n    >> \n    >> > ar.yw.default   (line 142 of the source file ar.R)\n    >> > ar.ols          (line 429 of the source file ar.R)\n    >> > ar.burg.default (line 570 of the source file ar.R)\n    >> \n    >> > maic <- min(aic)\n    >> \n    >> > should be\n    >> \n    >> > maic <- min(xaic)\n    >> \n    >> > Note that, apparently, this typo/bug does little harm since the\n    >> > subsequent line of code\n    >> \n    >> > xaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else\n    >> > ifelse(xaic == maic, 0, Inf), 0L:order.max)\n    >> \n    >> > does not use maic but min(xaic) directly. In any case, after fixing,\n    >> > one could replace min(xaic) with maic to avoid recomputing min(xaic).\n    >> > In absence of comments I will file a bug report.\n    >> \n    >> I'm looking into this, thank you, Simone.\n    >> This is not really a bug, e.g., in the sense of\n    >> https://www.R-project.org/bugs.html ,\n    >> as you mention yourself that the code works (flawlessly).\n    >> \n    >> Still, of course,  (if you are right which I assume currently)\n    >> it is a code infelicity we will be happy to fix.\n    >> \n    >> Best,\n    >> Martin\n    >> \n    >> \n    >> > Kind regards\n    >> > Simone\n    >> \n    >> > Tested against R-devel 2026-03-06\n    >> \n    >> > ___________________________________________________\n    >> \n    >> > Simone Giannerini\n    >> > Dipartimento di Scienze Economiche e Statistiche\n    >> > Universita' di Udine\n    >> > Via Tomadini 30/A - 33100 Udine,  ITALY\n    >> > Tel: +39 0432 249577\n    >> > https://simonegiannerini.net/\n    >> \n\n\n    > -- \n    > ___________________________________________________\n\n    > Simone Giannerini\n    > Dipartimento di Scienze Economiche e Statistiche\n    > Universita' di Udine\n    > Via Tomadini 30/A - 33100 Udine,  ITALY\n    > Tel: +39 0432 249577\n    > https://simonegiannerini.net/\n    > ___________________________________________________\n\n    > [[alternative HTML version deleted]]",
+      "body_snippet": ">>>>> Simone Giannerini \n>>>>>     on Thu, 12 Mar 2026 18:17:53 +0100 writes:\n\n    > Dear Martin,\n    > thanks for the reply,\n\n    > the instruction after the bugged line of code is\n\n    > xaic <- set",
+      "thread_id": "thread-5c772df9a8fc",
+      "thread_depth": 3,
+      "month": "2026-03"
     }
   ],
   "threads": [
@@ -545,13 +585,13 @@
     {
       "id": "thread-5c772df9a8fc",
       "subject": "Typo/bug in ar.yw.default, ar.ols, ar.burg.default",
-      "message_count": 3,
+      "message_count": 5,
       "participants": [
         "Martin Maechler",
         "Simone Giannerini"
       ],
       "started": "2026-03-09T11:43:07Z",
-      "last_reply": "2026-03-12T17:17:53Z",
+      "last_reply": "2026-03-13T08:20:06Z",
       "root_message_id": "msg-5c772df9a8fc"
     },
     {

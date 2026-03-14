@@ -2020,3 +2020,202 @@ r-devel at r-project.org> wrote:
 	[[alternative HTML version deleted]]
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Mar 13 08:55:56 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 13 Mar 2026 08:55:56 +0100
+Subject: [Rd] Typo/bug in ar.yw.default, ar.ols, ar.burg.default
+In-Reply-To: <fake-VM-id.3d5c8999c1592d5da776ae342ec0383b@talos.iv>
+References: <CANcXGiyf=4yGeoR8ZULVEcjKEGQqVRCXp9HK03tO4eL16aVYmA@mail.gmail.com>
+ <27058.40857.762563.725573@stat.math.ethz.ch>
+Message-ID: <27059.49932.537947.112942@stat.math.ethz.ch>
+
+>>>>> Martin Maechler 
+>>>>>     on Thu, 12 Mar 2026 12:12:25 +0100 writes:
+
+>>>>> Simone Giannerini 
+>>>>>     on Mon, 9 Mar 2026 12:43:07 +0100 writes:
+
+    >> Dear all,
+    >> I think there is a (small) bug in
+
+    >> ar.yw.default   (line 142 of the source file ar.R)
+    >> ar.ols          (line 429 of the source file ar.R)
+    >> ar.burg.default (line 570 of the source file ar.R)
+
+    >> maic <- min(aic)
+
+    >> should be
+
+    >> maic <- min(xaic)
+
+    >> Note that, apparently, this typo/bug does little harm since the
+    >> subsequent line of code
+
+    >> xaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else
+    >>                  ifelse(xaic == maic, 0, Inf), 0L:order.max)
+
+    >> does not use maic but min(xaic) directly. 
+
+but that is _NOT_ true (as I only see now, when looking more closely):
+`maic` is even used *twice* in the above (2nd) construction of `xaic`.
+Note that the "bad" code,  maic <- min(aic)   would typically
+set maic to 1 (aic = TRUE is the default) or then 0 (for
+aic=FALSE), hence always finite.
+
+Consequently the case where some 'xaic' where *not* finite (but
+NA, NaN, or +/-Inf) has never been dealt with "properly" till
+now (and I think we not know if it *is* "good" now, as we
+probably never had test code for such boundary cases ...)
+
+I still think the proposed change should happen, as  min(aic)
+never made any sense.
+Can anyone think of / create artificial time series data where
+the changed code would make a difference?
+
+Martin
+
+    >> does not use maic but min(xaic) directly. In any case, after fixing,
+    >> one could replace min(xaic) with maic to avoid recomputing min(xaic).
+    >> In absence of comments I will file a bug report.
+
+    > I'm looking into this, thank you, Simone.
+    > This is not really a bug, e.g., in the sense of
+    > https://www.R-project.org/bugs.html ,
+    > as you mention yourself that the code works (flawlessly).
+
+    > Still, of course,  (if you are right which I assume currently)
+    > it is a code infelicity we will be happy to fix.
+
+    > Best,
+    > Martin
+
+
+    >> Kind regards
+    >> Simone
+
+    >> Tested against R-devel 2026-03-06
+
+    >> ___________________________________________________
+
+    >> Simone Giannerini
+    >> Dipartimento di Scienze Economiche e Statistiche
+    >> Universita' di Udine
+    >> Via Tomadini 30/A - 33100 Udine,  ITALY
+    >> Tel: +39 0432 249577
+    >> https://simonegiannerini.net/
+
+    > ______________________________________________
+    > R-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Mar 13 09:20:06 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 13 Mar 2026 09:20:06 +0100
+Subject: [Rd] Typo/bug in ar.yw.default, ar.ols, ar.burg.default
+In-Reply-To: <fake-VM-id.f7b79bb9bd0548a9b9047dbe3521f3cf@talos.iv>
+References: <CANcXGiyf=4yGeoR8ZULVEcjKEGQqVRCXp9HK03tO4eL16aVYmA@mail.gmail.com>
+ <fake-VM-id.de6d212f5024b0393ce4a3f4031ef156@talos.iv>
+ <27058.40857.762563.725573@stat.math.ethz.ch>
+ <CANcXGixOnaC8bOu6pnunMfESrC_hkzauXxe3141X4UbwRGMYMg@mail.gmail.com>
+Message-ID: <27059.51382.336942.825567@stat.math.ethz.ch>
+
+>>>>> Simone Giannerini 
+>>>>>     on Thu, 12 Mar 2026 18:17:53 +0100 writes:
+
+    > Dear Martin,
+    > thanks for the reply,
+
+    > the instruction after the bugged line of code is
+
+    > xaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else
+    > ifelse(xaic == maic, 0, Inf), 0L:order.max)
+
+    > and checks whether  is.finite(maic), which, in the present version, is
+    > always the case since maic is either 0 or 1.
+    > But if min(xaic) is truly not finite, say, NA, then  xaic - min(xaic) will
+    > also be a vector of NAs, which is not the intended output, so to me this
+    > looks like a bug.
+
+    > Kind regards,
+
+    > Simone
+
+I wrote my reply before yours yesterday, but did only get to
+send it off now (~ 20 min ago).
+I see you came to the same conclusion.
+
+Martin
+
+
+    > On Thu, Mar 12, 2026 at 12:12?PM Martin Maechler <maechler at stat.math.ethz.ch>
+    > wrote:
+
+    >> >>>>> Simone Giannerini
+    >> >>>>>     on Mon, 9 Mar 2026 12:43:07 +0100 writes:
+    >> 
+    >> > Dear all,
+    >> > I think there is a (small) bug in
+    >> 
+    >> > ar.yw.default   (line 142 of the source file ar.R)
+    >> > ar.ols          (line 429 of the source file ar.R)
+    >> > ar.burg.default (line 570 of the source file ar.R)
+    >> 
+    >> > maic <- min(aic)
+    >> 
+    >> > should be
+    >> 
+    >> > maic <- min(xaic)
+    >> 
+    >> > Note that, apparently, this typo/bug does little harm since the
+    >> > subsequent line of code
+    >> 
+    >> > xaic <- setNames(if(is.finite(maic)) xaic - min(xaic) else
+    >> > ifelse(xaic == maic, 0, Inf), 0L:order.max)
+    >> 
+    >> > does not use maic but min(xaic) directly. In any case, after fixing,
+    >> > one could replace min(xaic) with maic to avoid recomputing min(xaic).
+    >> > In absence of comments I will file a bug report.
+    >> 
+    >> I'm looking into this, thank you, Simone.
+    >> This is not really a bug, e.g., in the sense of
+    >> https://www.R-project.org/bugs.html ,
+    >> as you mention yourself that the code works (flawlessly).
+    >> 
+    >> Still, of course,  (if you are right which I assume currently)
+    >> it is a code infelicity we will be happy to fix.
+    >> 
+    >> Best,
+    >> Martin
+    >> 
+    >> 
+    >> > Kind regards
+    >> > Simone
+    >> 
+    >> > Tested against R-devel 2026-03-06
+    >> 
+    >> > ___________________________________________________
+    >> 
+    >> > Simone Giannerini
+    >> > Dipartimento di Scienze Economiche e Statistiche
+    >> > Universita' di Udine
+    >> > Via Tomadini 30/A - 33100 Udine,  ITALY
+    >> > Tel: +39 0432 249577
+    >> > https://simonegiannerini.net/
+    >> 
+
+
+    > -- 
+    > ___________________________________________________
+
+    > Simone Giannerini
+    > Dipartimento di Scienze Economiche e Statistiche
+    > Universita' di Udine
+    > Via Tomadini 30/A - 33100 Udine,  ITALY
+    > Tel: +39 0432 249577
+    > https://simonegiannerini.net/
+    > ___________________________________________________
+
+    > [[alternative HTML version deleted]]
+
+
