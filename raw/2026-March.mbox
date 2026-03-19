@@ -2219,3 +2219,58 @@ Martin
     > [[alternative HTML version deleted]]
 
 
+From m|ch@e|ch|r|co4 @end|ng |rom gm@||@com  Wed Mar 18 18:40:11 2026
+From: m|ch@e|ch|r|co4 @end|ng |rom gm@||@com (Michael Chirico)
+Date: Wed, 18 Mar 2026 10:40:11 -0700
+Subject: [Rd] Should as() find an ANY method even for an 'unregistered' S3
+ class?
+Message-ID: <CAPRVBczDzd0F1wvUOdhuQMAQvCPQB0HtX+5CsvSdmmhAeKQyRg@mail.gmail.com>
+
+We have
+
+setAs("ANY", "integer64", function(from) as.integer64(from))
+
+I expected that would work to default as(x, "integer64") to use the S3
+coercion, but not so for a different S3 class:
+
+x = 1e10
+class(x) = c("foo", "integer64")
+as(x, "integer64")
+# Error in as(x, "integer64") :
+#   internal problem in as(): ?foo? is(object, "integer64") is TRUE, but
+the metadata asserts that the 'is' relation is FALSE
+
+This can be solved by registering the S3 inheritance with S4:
+
+setOldClass(c("foo", "integer64"))
+as(x, "integer64") # no error
+
+But I still would have expected the "ANY" registration to have worked here.
+
+Further context:
+ - In {bit64} we refactored our c() method to use as(x, to) for generic
+coercion of inputs
+ - A downstream package extending the S3 class started erroring
+ - So as long as the ANY coercion is not found we have two options (this
+part bleeds into an r-package-devel topic)
+    1. special-case the coercion to 'integer64', which is back-compatible
+and solves the narrow issue for this particular coercion but may not be
+global
+    2. request the downstream (and future downstreams) to do the S4
+registration
+
+I also found that we can change our code:
+
+as(x, "integer64", ext=TRUE)
+
+But that directly goes against the documentation for ext=:
+
+> This argument is used internally; do not use it directly.
+
+I don't see anything else in ?as or ?setAs covering this case.
+
+Mike C
+
+	[[alternative HTML version deleted]]
+
+

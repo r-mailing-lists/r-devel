@@ -532,6 +532,22 @@
       "thread_id": "thread-5c772df9a8fc",
       "thread_depth": 3,
       "month": "2026-03"
+    },
+    {
+      "id": "msg-087490b0fe80",
+      "message_id": "<CAPRVBczDzd0F1wvUOdhuQMAQvCPQB0HtX+5CsvSdmmhAeKQyRg@mail.gmail.com>",
+      "from_name": "Michael Chirico",
+      "from_email_hash": "c7ae14eea7523abfb41c3b0b883332081fc591538823e9bc107ad314c96d8583",
+      "date": "2026-03-18T17:40:11Z",
+      "subject": "[Rd] Should as() find an ANY method even for an 'unregistered' S3 class?",
+      "subject_clean": "Should as() find an ANY method even for an 'unregistered' S3 class?",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "We have\n\nsetAs(\"ANY\", \"integer64\", function(from) as.integer64(from))\n\nI expected that would work to default as(x, \"integer64\") to use the S3\ncoercion, but not so for a different S3 class:\n\nx = 1e10\nclass(x) = c(\"foo\", \"integer64\")\nas(x, \"integer64\")\n# Error in as(x, \"integer64\") :\n#   internal problem in as(): ?foo? is(object, \"integer64\") is TRUE, but\nthe metadata asserts that the 'is' relation is FALSE\n\nThis can be solved by registering the S3 inheritance with S4:\n\nsetOldClass(c(\"foo\", \"integer64\"))\nas(x, \"integer64\") # no error\n\nBut I still would have expected the \"ANY\" registration to have worked here.\n\nFurther context:\n - In {bit64} we refactored our c() method to use as(x, to) for generic\ncoercion of inputs\n - A downstream package extending the S3 class started erroring\n - So as long as the ANY coercion is not found we have two options (this\npart bleeds into an r-package-devel topic)\n    1. special-case the coercion to 'integer64', which is back-compatible\nand solves the narrow issue for this particular coercion but may not be\nglobal\n    2. request the downstream (and future downstreams) to do the S4\nregistration\n\nI also found that we can change our code:\n\nas(x, \"integer64\", ext=TRUE)\n\nBut that directly goes against the documentation for ext=:\n\n> This argument is used internally; do not use it directly.\n\nI don't see anything else in ?as or ?setAs covering this case.\n\nMike C\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "We have\n\nsetAs(\"ANY\", \"integer64\", function(from) as.integer64(from))\n\nI expected that would work to default as(x, \"integer64\") to use the S3\ncoercion, but not so for a different S3 class:\n\nx = 1e10\nc",
+      "thread_id": "thread-087490b0fe80",
+      "thread_depth": 0,
+      "month": "2026-03"
     }
   ],
   "threads": [
@@ -654,6 +670,17 @@
       "started": "2026-03-12T07:26:06Z",
       "last_reply": "2026-03-12T21:30:19Z",
       "root_message_id": "msg-0f2ca93dcdd0"
+    },
+    {
+      "id": "thread-087490b0fe80",
+      "subject": "Should as() find an ANY method even for an 'unregistered' S3 class?",
+      "message_count": 1,
+      "participants": [
+        "Michael Chirico"
+      ],
+      "started": "2026-03-18T17:40:11Z",
+      "last_reply": "2026-03-18T17:40:11Z",
+      "root_message_id": "msg-087490b0fe80"
     }
   ]
 }
