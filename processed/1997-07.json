@@ -732,22 +732,6 @@
       "month": "1997-07"
     },
     {
-      "id": "msg-34a718be2910",
-      "message_id": "<199707281323.PAA18638@aragorn.ci.tuwien.ac.at>",
-      "from_name": "Kurt Hornik",
-      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
-      "date": "1997-07-28T13:23:48Z",
-      "subject": "R-alpha: R 0.50.a1:  small patches for graphics and image demo",
-      "subject_clean": "R-alpha: R 0.50.a1:  small patches for graphics and image demo",
-      "in_reply_to": null,
-      "references": [],
-      "body_plain": "Applying the following patches closes the following task (part 1 was\nalready taken care of).\n\nTASK:   New Problems\nSTATUS: Open\nFROM:   <Kurt.Hornik@ci.tuwien.ac.at>\n        New minor remarks:\n        * The documentation for `image' still has the old order z, x, y.\n        * Perhaps one should add `par(ask = T)' in the image demo?\n        * Perhaps one should save the original value of par() at the\n\tbeginning of the graphics demo, and restore that at its end\n\t(s.t. typically asking is turned off again).\n\nThanks,\n-k\n\n************************************************************************\n*** demos/graphics/graphics.orig\tSat Jul 26 10:40:03 1997\n--- demos/graphics/graphics\tSat Jul 26 10:37:50 1997\n***************\n*** 1,5 ****\n  ###-*- R -*-\n! par(ask = interactive() && .Device == \"X11\")\t# For source\n  \n  # Here is some code which illustrates some of the differences between\n  # R and S graphics capabilities.  Note that colors are generally specified\n--- 1,6 ----\n  ###-*- R -*-\n! \n! opar <- par(ask = interactive() && .Device == \"X11\")\t# For source\n  \n  # Here is some code which illustrates some of the differences between\n  # R and S graphics capabilities.  Note that colors are generally specified\n*************** data(\"volcano\")\n*** 115,121 ****\n  x <- 10*1:nrow(volcano)\n  y <- 10*1:ncol(volcano)\n  l <- pretty(range(volcano), 10)\n! opar <- par(bg=\"lightcyan\")\n  pin <- par(\"pin\")\n  xdelta <- diff(range(x))\n  ydelta <- diff(range(y))\n--- 116,122 ----\n  x <- 10*1:nrow(volcano)\n  y <- 10*1:ncol(volcano)\n  l <- pretty(range(volcano), 10)\n! par(bg=\"lightcyan\")\n  pin <- par(\"pin\")\n  xdelta <- diff(range(x))\n  ydelta <- diff(range(y))\n*************** mtext(\"10 Meter Contour Spacing\", side=3\n*** 141,144 ****\n--- 142,146 ----\n  par(bg=\"cornsilk\")\n  data(quakes)\n  coplot(long~lat|depth, data=quakes, pch=21, bg=\"green3\")\n+ \n  par(opar)\n*** demos/graphics/image.orig\tSat Jul 26 10:40:07 1997\n--- demos/graphics/image\tSat Jul 26 10:41:46 1997\n***************\n*** 1,4 ****\n--- 1,7 ----\n  #### -*- R -*-\n+ \n+ opar <- par(ask = interactive() && .Device == \"X11\") # For source\n+ \n  data(volcano)\n  x <- 10*(1:nrow(volcano))\n  y <- 10*(1:ncol(volcano))\n*************** axis(2, at=seq(100, 600, by=100))\n*** 30,32 ****\n--- 33,36 ----\n  box()\n  title(main=\"Maunga Whau Volcano\", font.main=4)\n  \n+ par(opar)\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
-      "body_snippet": "Applying the following patches closes the following task (part 1 was\nalready taken care of).\n\nTASK:   New Problems\nSTATUS: Open\nFROM:   <Kurt.Hornik@ci.tuwien.ac.at>\n        New minor remarks:\n       ",
-      "thread_id": "thread-34a718be2910",
-      "thread_depth": 0,
-      "month": "1997-07"
-    },
-    {
       "id": "msg-4eb27757ff46",
       "message_id": "<199707281323.PAA18639@aragorn.ci.tuwien.ac.at>",
       "from_name": "Kurt Hornik",
@@ -760,6 +744,22 @@
       "body_plain": "Thanks for fixing formula() and update().\n\nHere are some open problems.\n\n* effects:\n\n** There is no help available for effects()\n\n** The lm() help page has effects(lm.obj), but from the code it is clear\nthat the one-arg version cannot work.\n\nShouldn't it simply return z$effects?\n\n** The two-arg version only works for factors (?) ... otherwise,\n\tz$model.frame[factors & pattern != 0]\ngives an error.  Can someone explain to me what this is doing?\n\n* plot:\n\nThere should be a plot.lm() function which reports that useful\ndiagnostic plots have not been implemented yet.\n\nPerhaps we should do something like\n\n\tunimplemented <- function () {\n\t\tstop(\"Not implemented yet ... sorry.\")\n\t}\n\n\tplot.lm <- function (...) unimplemented()\n\tplot.glm <- function (...) unimplemented()\n\nand similarly for other stuff which is known to be missing?  (This would\nalso help improving the TASK handling :-))\n\n* predict:\n\n** There is no help available for predict()\n\n** The one-arg version of predict.default() cannot work.  For objects\nof class \"lm\", it should simply return the fitted values, right?\n\n** The two-arg version of predict.default() cannot work because no\nfitted object has a \"covmat\" component.  Anyway, shouldn't the general\nform be something like\n\tpredict(object, newdata, ...)\n???\n\nThanks,\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
       "body_snippet": "Thanks for fixing formula() and update().\n\nHere are some open problems.\n\n* effects:\n\n** There is no help available for effects()\n\n** The lm() help page has effects(lm.obj), but from the code it is cle",
       "thread_id": "thread-4eb27757ff46",
+      "thread_depth": 0,
+      "month": "1997-07"
+    },
+    {
+      "id": "msg-34a718be2910",
+      "message_id": "<199707281323.PAA18638@aragorn.ci.tuwien.ac.at>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
+      "date": "1997-07-28T13:23:48Z",
+      "subject": "R-alpha: R 0.50.a1:  small patches for graphics and image demo",
+      "subject_clean": "R-alpha: R 0.50.a1:  small patches for graphics and image demo",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Applying the following patches closes the following task (part 1 was\nalready taken care of).\n\nTASK:   New Problems\nSTATUS: Open\nFROM:   <Kurt.Hornik@ci.tuwien.ac.at>\n        New minor remarks:\n        * The documentation for `image' still has the old order z, x, y.\n        * Perhaps one should add `par(ask = T)' in the image demo?\n        * Perhaps one should save the original value of par() at the\n\tbeginning of the graphics demo, and restore that at its end\n\t(s.t. typically asking is turned off again).\n\nThanks,\n-k\n\n************************************************************************\n*** demos/graphics/graphics.orig\tSat Jul 26 10:40:03 1997\n--- demos/graphics/graphics\tSat Jul 26 10:37:50 1997\n***************\n*** 1,5 ****\n  ###-*- R -*-\n! par(ask = interactive() && .Device == \"X11\")\t# For source\n  \n  # Here is some code which illustrates some of the differences between\n  # R and S graphics capabilities.  Note that colors are generally specified\n--- 1,6 ----\n  ###-*- R -*-\n! \n! opar <- par(ask = interactive() && .Device == \"X11\")\t# For source\n  \n  # Here is some code which illustrates some of the differences between\n  # R and S graphics capabilities.  Note that colors are generally specified\n*************** data(\"volcano\")\n*** 115,121 ****\n  x <- 10*1:nrow(volcano)\n  y <- 10*1:ncol(volcano)\n  l <- pretty(range(volcano), 10)\n! opar <- par(bg=\"lightcyan\")\n  pin <- par(\"pin\")\n  xdelta <- diff(range(x))\n  ydelta <- diff(range(y))\n--- 116,122 ----\n  x <- 10*1:nrow(volcano)\n  y <- 10*1:ncol(volcano)\n  l <- pretty(range(volcano), 10)\n! par(bg=\"lightcyan\")\n  pin <- par(\"pin\")\n  xdelta <- diff(range(x))\n  ydelta <- diff(range(y))\n*************** mtext(\"10 Meter Contour Spacing\", side=3\n*** 141,144 ****\n--- 142,146 ----\n  par(bg=\"cornsilk\")\n  data(quakes)\n  coplot(long~lat|depth, data=quakes, pch=21, bg=\"green3\")\n+ \n  par(opar)\n*** demos/graphics/image.orig\tSat Jul 26 10:40:07 1997\n--- demos/graphics/image\tSat Jul 26 10:41:46 1997\n***************\n*** 1,4 ****\n--- 1,7 ----\n  #### -*- R -*-\n+ \n+ opar <- par(ask = interactive() && .Device == \"X11\") # For source\n+ \n  data(volcano)\n  x <- 10*(1:nrow(volcano))\n  y <- 10*(1:ncol(volcano))\n*************** axis(2, at=seq(100, 600, by=100))\n*** 30,32 ****\n--- 33,36 ----\n  box()\n  title(main=\"Maunga Whau Volcano\", font.main=4)\n  \n+ par(opar)\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
+      "body_snippet": "Applying the following patches closes the following task (part 1 was\nalready taken care of).\n\nTASK:   New Problems\nSTATUS: Open\nFROM:   <Kurt.Hornik@ci.tuwien.ac.at>\n        New minor remarks:\n       ",
+      "thread_id": "thread-34a718be2910",
       "thread_depth": 0,
       "month": "1997-07"
     },
@@ -780,18 +780,18 @@
       "month": "1997-07"
     },
     {
-      "id": "msg-fc6b2e30b998",
-      "message_id": "<199707281323.PAA18658@aragorn.ci.tuwien.ac.at>",
+      "id": "msg-9e7491c84053",
+      "message_id": "<199707281323.PAA18657@aragorn.ci.tuwien.ac.at>",
       "from_name": "Kurt Hornik",
       "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
       "date": "1997-07-28T13:23:49Z",
-      "subject": "R-alpha: R 0.50.a1 unlist() problems",
-      "subject_clean": "R-alpha: R 0.50.a1 unlist() problems",
+      "subject": "R-alpha: R 0.50.a1 problem",
+      "subject_clean": "R-alpha: R 0.50.a1 problem",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Two things.\n\nTASKS has\n\nTASK:\tNaming with Numeric Values and \"unlist\"\nSTATUS:\tOpen\nFROM:\t<hornik@ci.tuwien.ac.at>\n\tR> l <- list(\"11\" = 1:5)\n\tR> l\n\t$11\n\t[1] 1 2 3 4 5\n\tR> unlist(l)\n\t111 112 113 114 115 \n\t  1   2   3   4   5 \n\t[ Bug or feature ? ]\n\nThis seems to be a feature (at least, SPLUS does the same), so please\nclose that task.\n\n***\n\nHowever, please add the following.\n\n***********************************************************************\nR> x <- rnorm(20)\nR> y <- rnorm(20)\nR> z <- lm(y ~ x)\n\nR> typeof(z)\n[1] \"list\"\n\nR> unlist(z)\n[[1]]\n[1] 0.07030757\n\n[[2]]\n[1] -0.1790483\n\n[[3]]\nNULL\n\n[[4]]\nNULL\n\nand many more ending in\n\n[[152]]\nNULL\n\n[[153]]\nNULL\n\n[[154]]\nNULL\n***********************************************************************\n\nThis seems to be a BUG.  SPLUS gives\n\n***********************************************************************\n coefficients.(Intercept)       coefficients.x         residuals.1 \n \"-0.322342946956607\"     \"-0.351990317000716\" \"-1.05699395125055\"\n          residuals.2          residuals.3          residuals.4 \n \"0.0685214529487529\" \"-0.825270557482947\" \"-0.309643367007542\"\n          residuals.5         residuals.6          residuals.7 \n \"-0.970498865234358\" \"0.239072541069321\" \"-0.203418862242607\"\n           residuals.8          residuals.9        residuals.10 \n \"-0.0279508657540235\" \"-0.546704750104556\" \"-1.41036201719063\"\n         residuals.11         residuals.12       residuals.13 \n \"-0.177627379541701\" \"-0.159357852715235\" \"1.01771682562243\"\n***********************************************************************\n\netc etc\n\nI haven't looked into the unlist code at all.  Here's another problem.\n\n***********************************************************************\nR> l <- list(a = list(1:5, LETTERS[1:5]), b = \"Z\", c = NA)\nR> l\n$a\n$a[[1]]\n[1] 1 2 3 4 5\n\n$a[[2]]\n[1] \"A\" \"B\" \"C\" \"D\" \"E\"\n\n\n$b\n[1] \"Z\"\n\n$c\n[1] NA\n\nR> unlist(l)\nINTERNAL ERROR: ans_nnames = 10    ans_length = 12\nError: incorrect names vector length\n***********************************************************************\n\nHmm ...\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
-      "body_snippet": "Two things.\n\nTASKS has\n\nTASK:\tNaming with Numeric Values and \"unlist\"\nSTATUS:\tOpen\nFROM:\t<hornik@ci.tuwien.ac.at>\n\tR> l <- list(\"11\" = 1:5)\n\tR> l\n\t$11\n\t[1] 1 2 3 4 5\n\tR> unlist(l)\n\t111 112 113 114 115",
-      "thread_id": "thread-fc6b2e30b998",
+      "body_plain": "Here's something really strange.\n\n********************************************************\nR> x <- 1:5\nR> x\n[1] 1 2 3 4 5\n\nR> test1\nfunction (x) \n{\n        structure(x, call = sys.call())\n}\nR> test1(x)\n[1] 1 2 3 4 5\nattr(,\"call\")\ntest1(x)\n\nR> test2\nfunction (x) \n{\n        attr(x, \"call\") <- sys.call()\n        x\n}\nR> test2(x)\nError: stack overflow\n********************************************************\n\nUsing the attr() form results in an endless loop ...\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
+      "body_snippet": "Here's something really strange.\n\n********************************************************\nR> x <- 1:5\nR> x\n[1] 1 2 3 4 5\n\nR> test1\nfunction (x) \n{\n        structure(x, call = sys.call())\n}\nR> test1(x",
+      "thread_id": "thread-9e7491c84053",
       "thread_depth": 0,
       "month": "1997-07"
     },
@@ -812,18 +812,18 @@
       "month": "1997-07"
     },
     {
-      "id": "msg-9e7491c84053",
-      "message_id": "<199707281323.PAA18657@aragorn.ci.tuwien.ac.at>",
+      "id": "msg-fc6b2e30b998",
+      "message_id": "<199707281323.PAA18658@aragorn.ci.tuwien.ac.at>",
       "from_name": "Kurt Hornik",
       "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
       "date": "1997-07-28T13:23:49Z",
-      "subject": "R-alpha: R 0.50.a1 problem",
-      "subject_clean": "R-alpha: R 0.50.a1 problem",
+      "subject": "R-alpha: R 0.50.a1 unlist() problems",
+      "subject_clean": "R-alpha: R 0.50.a1 unlist() problems",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Here's something really strange.\n\n********************************************************\nR> x <- 1:5\nR> x\n[1] 1 2 3 4 5\n\nR> test1\nfunction (x) \n{\n        structure(x, call = sys.call())\n}\nR> test1(x)\n[1] 1 2 3 4 5\nattr(,\"call\")\ntest1(x)\n\nR> test2\nfunction (x) \n{\n        attr(x, \"call\") <- sys.call()\n        x\n}\nR> test2(x)\nError: stack overflow\n********************************************************\n\nUsing the attr() form results in an endless loop ...\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
-      "body_snippet": "Here's something really strange.\n\n********************************************************\nR> x <- 1:5\nR> x\n[1] 1 2 3 4 5\n\nR> test1\nfunction (x) \n{\n        structure(x, call = sys.call())\n}\nR> test1(x",
-      "thread_id": "thread-9e7491c84053",
+      "body_plain": "Two things.\n\nTASKS has\n\nTASK:\tNaming with Numeric Values and \"unlist\"\nSTATUS:\tOpen\nFROM:\t<hornik@ci.tuwien.ac.at>\n\tR> l <- list(\"11\" = 1:5)\n\tR> l\n\t$11\n\t[1] 1 2 3 4 5\n\tR> unlist(l)\n\t111 112 113 114 115 \n\t  1   2   3   4   5 \n\t[ Bug or feature ? ]\n\nThis seems to be a feature (at least, SPLUS does the same), so please\nclose that task.\n\n***\n\nHowever, please add the following.\n\n***********************************************************************\nR> x <- rnorm(20)\nR> y <- rnorm(20)\nR> z <- lm(y ~ x)\n\nR> typeof(z)\n[1] \"list\"\n\nR> unlist(z)\n[[1]]\n[1] 0.07030757\n\n[[2]]\n[1] -0.1790483\n\n[[3]]\nNULL\n\n[[4]]\nNULL\n\nand many more ending in\n\n[[152]]\nNULL\n\n[[153]]\nNULL\n\n[[154]]\nNULL\n***********************************************************************\n\nThis seems to be a BUG.  SPLUS gives\n\n***********************************************************************\n coefficients.(Intercept)       coefficients.x         residuals.1 \n \"-0.322342946956607\"     \"-0.351990317000716\" \"-1.05699395125055\"\n          residuals.2          residuals.3          residuals.4 \n \"0.0685214529487529\" \"-0.825270557482947\" \"-0.309643367007542\"\n          residuals.5         residuals.6          residuals.7 \n \"-0.970498865234358\" \"0.239072541069321\" \"-0.203418862242607\"\n           residuals.8          residuals.9        residuals.10 \n \"-0.0279508657540235\" \"-0.546704750104556\" \"-1.41036201719063\"\n         residuals.11         residuals.12       residuals.13 \n \"-0.177627379541701\" \"-0.159357852715235\" \"1.01771682562243\"\n***********************************************************************\n\netc etc\n\nI haven't looked into the unlist code at all.  Here's another problem.\n\n***********************************************************************\nR> l <- list(a = list(1:5, LETTERS[1:5]), b = \"Z\", c = NA)\nR> l\n$a\n$a[[1]]\n[1] 1 2 3 4 5\n\n$a[[2]]\n[1] \"A\" \"B\" \"C\" \"D\" \"E\"\n\n\n$b\n[1] \"Z\"\n\n$c\n[1] NA\n\nR> unlist(l)\nINTERNAL ERROR: ans_nnames = 10    ans_length = 12\nError: incorrect names vector length\n***********************************************************************\n\nHmm ...\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
+      "body_snippet": "Two things.\n\nTASKS has\n\nTASK:\tNaming with Numeric Values and \"unlist\"\nSTATUS:\tOpen\nFROM:\t<hornik@ci.tuwien.ac.at>\n\tR> l <- list(\"11\" = 1:5)\n\tR> l\n\t$11\n\t[1] 1 2 3 4 5\n\tR> unlist(l)\n\t111 112 113 114 115",
+      "thread_id": "thread-fc6b2e30b998",
       "thread_depth": 0,
       "month": "1997-07"
     },
@@ -1268,17 +1268,6 @@
       "root_message_id": "msg-06658d126b3f"
     },
     {
-      "id": "thread-a191e4152289",
-      "subject": "R-alpha: R 0.50.a1:  patch for NChisquare documentation",
-      "message_count": 1,
-      "participants": [
-        "Kurt Hornik"
-      ],
-      "started": "1997-07-28T13:23:46Z",
-      "last_reply": "1997-07-28T13:23:46Z",
-      "root_message_id": "msg-a191e4152289"
-    },
-    {
       "id": "thread-bf42f6ebf703",
       "subject": "R-alpha: R 0.50.a1 S_alloc BUG, priority = URGENT",
       "message_count": 1,
@@ -1288,6 +1277,17 @@
       "started": "1997-07-28T13:23:46Z",
       "last_reply": "1997-07-28T13:23:46Z",
       "root_message_id": "msg-bf42f6ebf703"
+    },
+    {
+      "id": "thread-a191e4152289",
+      "subject": "R-alpha: R 0.50.a1:  patch for NChisquare documentation",
+      "message_count": 1,
+      "participants": [
+        "Kurt Hornik"
+      ],
+      "started": "1997-07-28T13:23:46Z",
+      "last_reply": "1997-07-28T13:23:46Z",
+      "root_message_id": "msg-a191e4152289"
     },
     {
       "id": "thread-0900327a02a2",
@@ -1301,17 +1301,6 @@
       "root_message_id": "msg-0900327a02a2"
     },
     {
-      "id": "thread-67d069c00d4a",
-      "subject": "R-alpha: new functions",
-      "message_count": 1,
-      "participants": [
-        "Kurt Hornik"
-      ],
-      "started": "1997-07-28T13:23:47Z",
-      "last_reply": "1997-07-28T13:23:47Z",
-      "root_message_id": "msg-67d069c00d4a"
-    },
-    {
       "id": "thread-f20f2e1cd76c",
       "subject": "R-alpha: R 0.50.a1 suggestion",
       "message_count": 1,
@@ -1321,6 +1310,17 @@
       "started": "1997-07-28T13:23:47Z",
       "last_reply": "1997-07-28T13:23:47Z",
       "root_message_id": "msg-f20f2e1cd76c"
+    },
+    {
+      "id": "thread-67d069c00d4a",
+      "subject": "R-alpha: new functions",
+      "message_count": 1,
+      "participants": [
+        "Kurt Hornik"
+      ],
+      "started": "1997-07-28T13:23:47Z",
+      "last_reply": "1997-07-28T13:23:47Z",
+      "root_message_id": "msg-67d069c00d4a"
     },
     {
       "id": "thread-4eb27757ff46",
