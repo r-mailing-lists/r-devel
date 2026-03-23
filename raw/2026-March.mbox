@@ -2544,3 +2544,428 @@ Hi,
 	[[alternative HTML version deleted]]
 
 
+From iuke-tier@ey m@iii@g oii uiow@@edu  Sun Mar 22 20:05:47 2026
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Sun, 22 Mar 2026 14:05:47 -0500 (CDT)
+Subject: [Rd] [External]  defer removal of ENCLOS, FRAME, HASHTAB,
+ SET_ENCLOS?
+In-Reply-To: <CAJXgQP21uewKZNS8=WgGLhrJ5St-VzCpywSBUe=qetTR6pDrCw@mail.gmail.com>
+References: <CAJXgQP21uewKZNS8=WgGLhrJ5St-VzCpywSBUe=qetTR6pDrCw@mail.gmail.com>
+Message-ID: <46d15165-d0a3-992d-0b05-f87e05a3d7bb@uiowa.edu>
+
+On Fri, 20 Mar 2026, Kevin Ushey wrote:
+
+> Hi,
+>
+> The development version of R removes the symbols
+>
+>    ENCLOS, FRAME, HASHTAB, SET_ENCLOS
+>
+> as per r89522. Unfortunately, these symbols are used by current
+> versions of RStudio, and so these versions of RStudio are unable to
+> launch with the development versions of R. (By extension, they would
+> also fail to launch using R 4.6.0 when released.)
+>
+> On the RStudio side, we can work to adapt to these changes as quickly
+> as possible, but our experience is that users will often upgrade R
+> without necessarily upgrading RStudio in tandem.
+>
+> I'd like to propose keeping these symbols defined in R for now (even
+> if not publicly accessible via headers) just to ensure existing
+> versions of RStudio can continue to function as expected with the
+> upcoming release of R.
+
+I have removed the 'attribute_hidden' property from these entry points
+for now in r89673. I also added tools:::checkObjAPI to make it easier
+fo check for non-API useage in executables linked to R. For current
+R-devel and current RStudio on my mac this gives
+
+> rs <- "/Applications/RStudio.app/Contents/Resources/app/bin/rsession-arm64"
+> subset(tools:::checkObjAPI(rs), type == "F" & is.na(apitype))$name
+  [1] "ATTRIB"              "BODY"                "CLOENV"
+  [4] "ENCLOS"              "FORMALS"             "FRAME"
+  [7] "HASHTAB"             "locale2charset"      "NAMED" 
+[10] "OBJECT"              "PRCODE"              "PRENV" 
+[13] "PRVALUE"             "R_findVarLocInFrame" "R_lsInternal" 
+[16] "RDEBUG"              "Rf_findVar"          "Rf_findVarInFrame" 
+[19] "Rf_findVarInFrame3"  "Rf_sortVector"       "SET_ENCLOS" 
+[22] "SET_NAMED"           "SET_PRVALUE"         "SET_RDEBUG" 
+[25] "SYMVALUE" 
+> subset(tools:::checkObjAPI(rs), type == "V" & is.na(apitype))$name
+[1] "R_InputHandlers"  "R_SignalHandlers" "SaveAction"
+
+If you think some of these should be in the API you can make a case
+for that.
+
+Best,
+
+luke
+
+>
+> Thanks,
+> Kevin
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sun Mar 22 22:00:04 2026
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Mon, 23 Mar 2026 10:00:04 +1300
+Subject: [Rd] defer removal of ENCLOS, FRAME, HASHTAB, SET_ENCLOS
+In-Reply-To: <CA+JCgN0JZAxUV_VZQYR8d4C5bcPJmO2qhx-gt2ntnjnvOKhq5g@mail.gmail.com>
+References: <CA+JCgN0JZAxUV_VZQYR8d4C5bcPJmO2qhx-gt2ntnjnvOKhq5g@mail.gmail.com>
+Message-ID: <77304B48-36DF-46B3-BF7E-2E81AF92483A@R-project.org>
+
+Laurent,
+
+see R-exts 6.22 [1] in particular subsections 1 and 2. As for FRAME you use the accessor functions instead of accessing it directly.
+
+Cheers,
+Simon
+
+[1] - https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Moving-into-C-API-compliance
+
+
+> On 22 Mar 2026, at 12:00, Laurent Gautier <lgautier at gmail.com> wrote:
+> 
+> Hi,
+> 
+> I'd like to second that request. rpy2, a Python-R bridge, also
+> uses ENCLOS / SET_ENCLOS and to a lesser extent FRAME.
+> 
+> Also, what is the alternative suggested to replace the functionality
+> they offered?
+> 
+> 
+> Best,
+> 
+> Laurent
+> 
+> 
+> 
+> Hi,
+>> 
+>> The development version of R removes the symbols
+>> 
+>>    ENCLOS, FRAME, HASHTAB, SET_ENCLOS
+>> 
+>> as per r89522. Unfortunately, these symbols are used by current
+>> versions of RStudio, and so these versions of RStudio are unable to
+>> launch with the development versions of R. (By extension, they would
+>> also fail to launch using R 4.6.0 when released.)
+>> 
+>> On the RStudio side, we can work to adapt to these changes as quickly
+>> as possible, but our experience is that users will often upgrade R
+>> without necessarily upgrading RStudio in tandem.
+>> 
+>> I'd like to propose keeping these symbols defined in R for now (even
+>> if not publicly accessible via headers) just to ensure existing
+>> versions of RStudio can continue to function as expected with the
+>> upcoming release of R.
+>> 
+>> Thanks,
+>> Kevin
+>> 
+>> 
+> 
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+
+
+From kev|nu@hey @end|ng |rom gm@||@com  Sun Mar 22 22:21:35 2026
+From: kev|nu@hey @end|ng |rom gm@||@com (Kevin Ushey)
+Date: Sun, 22 Mar 2026 14:21:35 -0700
+Subject: [Rd] [External]  defer removal of ENCLOS, FRAME, HASHTAB,
+ SET_ENCLOS?
+In-Reply-To: <46d15165-d0a3-992d-0b05-f87e05a3d7bb@uiowa.edu>
+References: <CAJXgQP21uewKZNS8=WgGLhrJ5St-VzCpywSBUe=qetTR6pDrCw@mail.gmail.com>
+ <46d15165-d0a3-992d-0b05-f87e05a3d7bb@uiowa.edu>
+Message-ID: <CAJXgQP0SSwb9EhtuUK-nHo0c+p3-AW2j6JormV_rYCCKuDXQsA@mail.gmail.com>
+
+Hi Luke,
+
+Thank you for responding so quickly; it's much appreciated. I've
+messaged you separately for a small collection of API requests that I
+figure we can discuss off-list first.
+
+Best,
+Kevin
+
+On Sun, Mar 22, 2026 at 12:05?PM <luke-tierney at uiowa.edu> wrote:
+>
+> On Fri, 20 Mar 2026, Kevin Ushey wrote:
+>
+> > Hi,
+> >
+> > The development version of R removes the symbols
+> >
+> >    ENCLOS, FRAME, HASHTAB, SET_ENCLOS
+> >
+> > as per r89522. Unfortunately, these symbols are used by current
+> > versions of RStudio, and so these versions of RStudio are unable to
+> > launch with the development versions of R. (By extension, they would
+> > also fail to launch using R 4.6.0 when released.)
+> >
+> > On the RStudio side, we can work to adapt to these changes as quickly
+> > as possible, but our experience is that users will often upgrade R
+> > without necessarily upgrading RStudio in tandem.
+> >
+> > I'd like to propose keeping these symbols defined in R for now (even
+> > if not publicly accessible via headers) just to ensure existing
+> > versions of RStudio can continue to function as expected with the
+> > upcoming release of R.
+>
+> I have removed the 'attribute_hidden' property from these entry points
+> for now in r89673. I also added tools:::checkObjAPI to make it easier
+> fo check for non-API useage in executables linked to R. For current
+> R-devel and current RStudio on my mac this gives
+>
+> > rs <- "/Applications/RStudio.app/Contents/Resources/app/bin/rsession-arm64"
+> > subset(tools:::checkObjAPI(rs), type == "F" & is.na(apitype))$name
+>   [1] "ATTRIB"              "BODY"                "CLOENV"
+>   [4] "ENCLOS"              "FORMALS"             "FRAME"
+>   [7] "HASHTAB"             "locale2charset"      "NAMED"
+> [10] "OBJECT"              "PRCODE"              "PRENV"
+> [13] "PRVALUE"             "R_findVarLocInFrame" "R_lsInternal"
+> [16] "RDEBUG"              "Rf_findVar"          "Rf_findVarInFrame"
+> [19] "Rf_findVarInFrame3"  "Rf_sortVector"       "SET_ENCLOS"
+> [22] "SET_NAMED"           "SET_PRVALUE"         "SET_RDEBUG"
+> [25] "SYMVALUE"
+> > subset(tools:::checkObjAPI(rs), type == "V" & is.na(apitype))$name
+> [1] "R_InputHandlers"  "R_SignalHandlers" "SaveAction"
+>
+> If you think some of these should be in the API you can make a case
+> for that.
+>
+> Best,
+>
+> luke
+>
+> >
+> > Thanks,
+> > Kevin
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+>
+> --
+> Luke Tierney
+> Ralph E. Wareham Professor of Mathematical Sciences
+> University of Iowa                  Phone:             319-335-3386
+> Department of Statistics and        Fax:               319-335-3017
+>     Actuarial Science
+> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+
+From |g@ut|er @end|ng |rom gm@||@com  Mon Mar 23 01:13:47 2026
+From: |g@ut|er @end|ng |rom gm@||@com (Laurent Gautier)
+Date: Sun, 22 Mar 2026 20:13:47 -0400
+Subject: [Rd] defer removal of ENCLOS, FRAME, HASHTAB, SET_ENCLOS
+In-Reply-To: <77304B48-36DF-46B3-BF7E-2E81AF92483A@R-project.org>
+References: <CA+JCgN0JZAxUV_VZQYR8d4C5bcPJmO2qhx-gt2ntnjnvOKhq5g@mail.gmail.com>
+ <77304B48-36DF-46B3-BF7E-2E81AF92483A@R-project.org>
+Message-ID: <CA+JCgN2TCz9tsHdrP=Q+9Rgid_YGQ=Cs1SxwMV4-5kZZyABo_g@mail.gmail.com>
+
+Thanks Simon. This is really helpful.
+
+I did not find what is the replacement for SET_ENCLOS. The documentation
+shows how to create a new environment with a given parent environment but
+not how to reparent an existing environment (which SET_ENCLOS did).
+
+On Sun, Mar 22, 2026 at 5:00?PM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> Laurent,
+>
+> see R-exts 6.22 [1] in particular subsections 1 and 2. As for FRAME you
+> use the accessor functions instead of accessing it directly.
+>
+> Cheers,
+> Simon
+>
+> [1] -
+> https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Moving-into-C-API-compliance
+>
+>
+> > On 22 Mar 2026, at 12:00, Laurent Gautier <lgautier at gmail.com> wrote:
+> >
+> > Hi,
+> >
+> > I'd like to second that request. rpy2, a Python-R bridge, also
+> > uses ENCLOS / SET_ENCLOS and to a lesser extent FRAME.
+> >
+> > Also, what is the alternative suggested to replace the functionality
+> > they offered?
+> >
+> >
+> > Best,
+> >
+> > Laurent
+> >
+> >
+> >
+> > Hi,
+> >>
+> >> The development version of R removes the symbols
+> >>
+> >>    ENCLOS, FRAME, HASHTAB, SET_ENCLOS
+> >>
+> >> as per r89522. Unfortunately, these symbols are used by current
+> >> versions of RStudio, and so these versions of RStudio are unable to
+> >> launch with the development versions of R. (By extension, they would
+> >> also fail to launch using R 4.6.0 when released.)
+> >>
+> >> On the RStudio side, we can work to adapt to these changes as quickly
+> >> as possible, but our experience is that users will often upgrade R
+> >> without necessarily upgrading RStudio in tandem.
+> >>
+> >> I'd like to propose keeping these symbols defined in R for now (even
+> >> if not publicly accessible via headers) just to ensure existing
+> >> versions of RStudio can continue to function as expected with the
+> >> upcoming release of R.
+> >>
+> >> Thanks,
+> >> Kevin
+> >>
+> >>
+> >
+> > [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Mon Mar 23 02:17:58 2026
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Sun, 22 Mar 2026 20:17:58 -0500 (CDT)
+Subject: [Rd] [External] Re:  defer removal of ENCLOS, FRAME, HASHTAB,
+ SET_ENCLOS
+In-Reply-To: <CA+JCgN2TCz9tsHdrP=Q+9Rgid_YGQ=Cs1SxwMV4-5kZZyABo_g@mail.gmail.com>
+References: <CA+JCgN0JZAxUV_VZQYR8d4C5bcPJmO2qhx-gt2ntnjnvOKhq5g@mail.gmail.com>
+ <77304B48-36DF-46B3-BF7E-2E81AF92483A@R-project.org>
+ <CA+JCgN2TCz9tsHdrP=Q+9Rgid_YGQ=Cs1SxwMV4-5kZZyABo_g@mail.gmail.com>
+Message-ID: <61500feb-8529-98f8-8556-c1e74f35c68c@uiowa.edu>
+
+On Mon, 23 Mar 2026, Laurent Gautier wrote:
+
+> Thanks Simon. This is really helpful.
+>
+> I did not find what is the replacement for SET_ENCLOS. The documentation
+> shows how to create a new environment with a given parent environment but
+> not how to reparent an existing environment (which SET_ENCLOS did).
+
+There is no replacement; allowing this is too dangerous. See the
+comments on parent.env <- in parent.env.
+
+Best,
+
+luke
+
+>
+> On Sun, Mar 22, 2026 at 5:00?PM Simon Urbanek <simon.urbanek at r-project.org>
+> wrote:
+>
+>> Laurent,
+>>
+>> see R-exts 6.22 [1] in particular subsections 1 and 2. As for FRAME you
+>> use the accessor functions instead of accessing it directly.
+>>
+>> Cheers,
+>> Simon
+>>
+>> [1] -
+>> https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Moving-into-C-API-compliance
+>>
+>>
+>>> On 22 Mar 2026, at 12:00, Laurent Gautier <lgautier at gmail.com> wrote:
+>>>
+>>> Hi,
+>>>
+>>> I'd like to second that request. rpy2, a Python-R bridge, also
+>>> uses ENCLOS / SET_ENCLOS and to a lesser extent FRAME.
+>>>
+>>> Also, what is the alternative suggested to replace the functionality
+>>> they offered?
+>>>
+>>>
+>>> Best,
+>>>
+>>> Laurent
+>>>
+>>>
+>>>
+>>> Hi,
+>>>>
+>>>> The development version of R removes the symbols
+>>>>
+>>>>    ENCLOS, FRAME, HASHTAB, SET_ENCLOS
+>>>>
+>>>> as per r89522. Unfortunately, these symbols are used by current
+>>>> versions of RStudio, and so these versions of RStudio are unable to
+>>>> launch with the development versions of R. (By extension, they would
+>>>> also fail to launch using R 4.6.0 when released.)
+>>>>
+>>>> On the RStudio side, we can work to adapt to these changes as quickly
+>>>> as possible, but our experience is that users will often upgrade R
+>>>> without necessarily upgrading RStudio in tandem.
+>>>>
+>>>> I'd like to propose keeping these symbols defined in R for now (even
+>>>> if not publicly accessible via headers) just to ensure existing
+>>>> versions of RStudio can continue to function as expected with the
+>>>> upcoming release of R.
+>>>>
+>>>> Thanks,
+>>>> Kevin
+>>>>
+>>>>
+>>>
+>>> [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>
+>>
+>>
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
