@@ -3316,3 +3316,126 @@ Size: 833 bytes
 Desc: Digitale Signatur von OpenPGP
 URL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20260324/717777b0/attachment.sig>
 
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Wed Mar 25 04:54:00 2026
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Tue, 24 Mar 2026 20:54:00 -0700
+Subject: [Rd] R_SocketWaitMultiple(): Thinko leading to negative select()
+ timeouts(?)
+Message-ID: <CAFDcVCT4Wyq5hpBeinKLZ9=08qiqV_JHvoD-cQhtP6k6k-dGSw@mail.gmail.com>
+
+SUMMARY:
+
+I think there is a thinko in R_SocketWaitMultiple() that can result in:
+
+    howmany = R_SelectEx(maxfd+1, &rfd, &wfd, NULL, &tv, NULL);
+
+being called with a negative timeout 'tv' (tv.tv_sec and tv.tv_usec
+negative). I think the bug is that:
+
+        if (mytimeout < 0 || R_wait_usec / 1e-6 < mytimeout - used)
+
+should be:
+
+        if (mytimeout < 0 || R_wait_usec / 1e6 < mytimeout - used)
+
+
+DETAILS:
+
+Here is the code of interest:
+
+int R_SocketWaitMultiple(int nsock, int *insockfd, int *ready, int *write,
+             double mytimeout)
+{
+    fd_set rfd, wfd;
+    struct timeval tv;
+    double used = 0.0;
+    ...
+
+#ifdef Unix
+    if(R_wait_usec > 0) {
+        int delta;
+        if (mytimeout < 0 || R_wait_usec / 1e-6 < mytimeout - used)
+        delta = R_wait_usec;
+        else
+        delta = (int)ceil(1e6 * (mytimeout - used));
+        tv.tv_sec = delta / 1000000;
+        tv.tv_usec = (suseconds_t)(delta - tv.tv_sec * 1000000);
+    } else if (mytimeout >= 0) {
+        tv.tv_sec = (int)(mytimeout - used);
+        tv.tv_usec = (int)ceil(1e6 * (mytimeout - used - tv.tv_sec));
+    } else {  /* always poll occasionally--not really necessary */
+        tv.tv_sec = 60;
+        tv.tv_usec = 0;
+        }
+        ...
+#endif
+        ...
+
+    /* increment used value _before_ the select in case select
+       modifies tv (as Linux does) */
+    used += tv.tv_sec + 1e-6 * tv.tv_usec;
+
+    howmany = R_SelectEx(maxfd+1, &rfd, &wfd, NULL, &tv, NULL);
+
+
+If we look carefully, we find the following condition:
+
+    R_wait_usec / 1e-6 < mytimeout - used
+
+where:
+
+    extern int R_wait_usec;
+    double mytimeout;
+    double used;
+
+and 'mytimeout' and 'used' are in seconds, whereas 'R_wait_usec' is in
+microseconds. With 'R_wait_usec / 1e-6', we end up with a very large
+number in units of micro-microseconds, i.e. picoseconds. I think that
+is a thinko/typo, and the intended condition should be:
+
+   R_wait_usec / 1e6 < mytimeout - used
+
+or
+
+   R_wait_usec * 1e-6 < mytimeout - used
+
+That way both 'R_wait_usec / 1e6' and 'mytimeout - used' are in seconds.
+
+The problem with the current implementation is this condition:
+
+   R_wait_usec / 1e-6 < mytimeout - used
+
+will never be true, resulting in:
+
+    if (mytimeout < 0 || R_wait_usec / 1e-6 < mytimeout - used)
+        delta = R_wait_usec;
+    else
+        delta = (int)ceil(1e6 * (mytimeout - used));
+
+always resolving to (when mytimeout >= 0):
+
+    delta = (int)ceil(1e6 * (mytimeout - used));
+
+If 'used' > 'mytimeout', we end up with a negative 'delta', which in
+turn results in a negative 'tv' structure from:
+
+    tv.tv_sec = delta / 1000000;
+    tv.tv_usec = (suseconds_t)(delta - tv.tv_sec * 1000000);
+
+That causes 'used' to _decrease_ in:
+
+    used += tv.tv_sec + 1e-6 * tv.tv_usec;
+
+and
+
+    howmany = R_SelectEx(maxfd+1, &rfd, &wfd, NULL, &tv, NULL);
+
+being called with a negative timeout, which, I think, ends up calling
+select() with a negative timeout.
+
+/Henrik
+
+PS. I found this one while troubleshooting a weird PSOCK cluster node
++ Sys.sleep(1.0) stall experienced by a user on WSL2.
+
+

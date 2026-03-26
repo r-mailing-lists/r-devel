@@ -830,6 +830,22 @@
       "thread_id": "thread-30c19e0b64b5",
       "thread_depth": 4,
       "month": "2026-03"
+    },
+    {
+      "id": "msg-30a112c6a7a0",
+      "message_id": "<CAFDcVCT4Wyq5hpBeinKLZ9=08qiqV_JHvoD-cQhtP6k6k-dGSw@mail.gmail.com>",
+      "from_name": "Henrik Bengtsson",
+      "from_email_hash": "4861a2b833132ccee758def2caa0ac4dc6bbdf1b2c4e2f28a1b1b8a43ceeb278",
+      "date": "2026-03-25T03:54:00Z",
+      "subject": "[Rd] R_SocketWaitMultiple(): Thinko leading to negative select() timeouts(?)",
+      "subject_clean": "R_SocketWaitMultiple(): Thinko leading to negative select() timeouts(?)",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "SUMMARY:\n\nI think there is a thinko in R_SocketWaitMultiple() that can result in:\n\n    howmany = R_SelectEx(maxfd+1, &rfd, &wfd, NULL, &tv, NULL);\n\nbeing called with a negative timeout 'tv' (tv.tv_sec and tv.tv_usec\nnegative). I think the bug is that:\n\n        if (mytimeout < 0 || R_wait_usec / 1e-6 < mytimeout - used)\n\nshould be:\n\n        if (mytimeout < 0 || R_wait_usec / 1e6 < mytimeout - used)\n\n\nDETAILS:\n\nHere is the code of interest:\n\nint R_SocketWaitMultiple(int nsock, int *insockfd, int *ready, int *write,\n             double mytimeout)\n{\n    fd_set rfd, wfd;\n    struct timeval tv;\n    double used = 0.0;\n    ...\n\n#ifdef Unix\n    if(R_wait_usec > 0) {\n        int delta;\n        if (mytimeout < 0 || R_wait_usec / 1e-6 < mytimeout - used)\n        delta = R_wait_usec;\n        else\n        delta = (int)ceil(1e6 * (mytimeout - used));\n        tv.tv_sec = delta / 1000000;\n        tv.tv_usec = (suseconds_t)(delta - tv.tv_sec * 1000000);\n    } else if (mytimeout >= 0) {\n        tv.tv_sec = (int)(mytimeout - used);\n        tv.tv_usec = (int)ceil(1e6 * (mytimeout - used - tv.tv_sec));\n    } else {  /* always poll occasionally--not really necessary */\n        tv.tv_sec = 60;\n        tv.tv_usec = 0;\n        }\n        ...\n#endif\n        ...\n\n    /* increment used value _before_ the select in case select\n       modifies tv (as Linux does) */\n    used += tv.tv_sec + 1e-6 * tv.tv_usec;\n\n    howmany = R_SelectEx(maxfd+1, &rfd, &wfd, NULL, &tv, NULL);\n\n\nIf we look carefully, we find the following condition:\n\n    R_wait_usec / 1e-6 < mytimeout - used\n\nwhere:\n\n    extern int R_wait_usec;\n    double mytimeout;\n    double used;\n\nand 'mytimeout' and 'used' are in seconds, whereas 'R_wait_usec' is in\nmicroseconds. With 'R_wait_usec / 1e-6', we end up with a very large\nnumber in units of micro-microseconds, i.e. picoseconds. I think that\nis a thinko/typo, and the intended condition should be:\n\n   R_wait_usec / 1e6 < mytimeout - used\n\nor\n\n   R_wait_usec * 1e-6 < mytimeout - used\n\nThat way both 'R_wait_usec / 1e6' and 'mytimeout - used' are in seconds.\n\nThe problem with the current implementation is this condition:\n\n   R_wait_usec / 1e-6 < mytimeout - used\n\nwill never be true, resulting in:\n\n    if (mytimeout < 0 || R_wait_usec / 1e-6 < mytimeout - used)\n        delta = R_wait_usec;\n    else\n        delta = (int)ceil(1e6 * (mytimeout - used));\n\nalways resolving to (when mytimeout >= 0):\n\n    delta = (int)ceil(1e6 * (mytimeout - used));\n\nIf 'used' > 'mytimeout', we end up with a negative 'delta', which in\nturn results in a negative 'tv' structure from:\n\n    tv.tv_sec = delta / 1000000;\n    tv.tv_usec = (suseconds_t)(delta - tv.tv_sec * 1000000);\n\nThat causes 'used' to _decrease_ in:\n\n    used += tv.tv_sec + 1e-6 * tv.tv_usec;\n\nand\n\n    howmany = R_SelectEx(maxfd+1, &rfd, &wfd, NULL, &tv, NULL);\n\nbeing called with a negative timeout, which, I think, ends up calling\nselect() with a negative timeout.\n\n/Henrik\n\nPS. I found this one while troubleshooting a weird PSOCK cluster node\n+ Sys.sleep(1.0) stall experienced by a user on WSL2.",
+      "body_snippet": "SUMMARY:\n\nI think there is a thinko in R_SocketWaitMultiple() that can result in:\n\n    howmany = R_SelectEx(maxfd+1, &rfd, &wfd, NULL, &tv, NULL);\n\nbeing called with a negative timeout 'tv' (tv.tv_sec",
+      "thread_id": "thread-30a112c6a7a0",
+      "thread_depth": 0,
+      "month": "2026-03"
     }
   ],
   "threads": [
@@ -1001,6 +1017,17 @@
       "started": "2026-03-21T23:00:34Z",
       "last_reply": "2026-03-23T02:38:48Z",
       "root_message_id": "msg-df4e42f90a80"
+    },
+    {
+      "id": "thread-30a112c6a7a0",
+      "subject": "R_SocketWaitMultiple(): Thinko leading to negative select() timeouts(?)",
+      "message_count": 1,
+      "participants": [
+        "Henrik Bengtsson"
+      ],
+      "started": "2026-03-25T03:54:00Z",
+      "last_reply": "2026-03-25T03:54:00Z",
+      "root_message_id": "msg-30a112c6a7a0"
     }
   ]
 }
