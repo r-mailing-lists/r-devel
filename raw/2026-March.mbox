@@ -3439,3 +3439,1685 @@ PS. I found this one while troubleshooting a weird PSOCK cluster node
 + Sys.sleep(1.0) stall experienced by a user on WSL2.
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Mar 26 09:34:40 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 26 Mar 2026 09:34:40 +0100
+Subject: [Rd] 
+ R_SocketWaitMultiple(): Thinko leading to negative select()
+ timeouts(?)
+In-Reply-To: <fake-VM-id.000ab6db0422da9e2fea07c2bd2f2d3e@talos.iv>
+References: <CAFDcVCT4Wyq5hpBeinKLZ9=08qiqV_JHvoD-cQhtP6k6k-dGSw@mail.gmail.com>
+Message-ID: <27076.61344.527868.835757@stat.math.ethz.ch>
+
+>>>>> Henrik Bengtsson 
+>>>>>     on Tue, 24 Mar 2026 20:54:00 -0700 writes:
+
+    > SUMMARY:
+    > I think there is a thinko in R_SocketWaitMultiple() that can result in:
+
+    > howmany = R_SelectEx(maxfd+1, &rfd, &wfd, NULL, &tv, NULL);
+
+    > being called with a negative timeout 'tv' (tv.tv_sec and tv.tv_usec
+    > negative). I think the bug is that:
+
+    > if (mytimeout < 0 || R_wait_usec / 1e-6 < mytimeout - used)
+
+    > should be:
+
+    > if (mytimeout < 0 || R_wait_usec / 1e6 < mytimeout - used)
+
+or as you say below
+
+     if (mytimeout < 0 || R_wait_usec * 1e-6 < mytimeout - used)
+
+I've committed the latter,  as indeed, in
+<R>/src/modules/internet/Rsock.c   microseconds = ? sec --> 'usec"'
+are always multiplied by 1e-6 when transformed to  seconds
+(well, with one exception where *integer division*
+ delta / 1000000  is used).
+
+This "only" affects "Unix" ... it's still interesting that this
+has never be seen or noticed as having a negative effect in all
+the 23 years that this part of socket code exists...
+
+Thanks a lot, Henrik!
+
+Martin
+
+
+From bbo|ker @end|ng |rom gm@||@com  Thu Mar 26 13:15:14 2026
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Thu, 26 Mar 2026 08:15:14 -0400
+Subject: [Rd] recent changes to r-devel with package date checking?
+Message-ID: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+
+  Having just installed
+
+R Under development (unstable) (2026-03-25 r89702)
+
+and trying to run update.packages(), I'm seeing errors from within 
+old.packages(); some packages have a "Built" string where the date 
+component of the build string is not in an as.POSIXct-friendly format, e.g.
+
+ > instPkgs[k, "Built"]
+[1] "R 4.0.1; ; 'Sat, 30 May 2020 09:46:33 +0000'; unix"
+
+
+as opposed to
+
+ > instPkgs[k+1, "Built"]
+[1] "R 4.5.2; x86_64-pc-linux-gnu; 2025-12-15 12:38:09 UTC; unix"
+
+    This leads to
+
+ > traceback()
+10: stop("character string is not in a standard unambiguous format")
+9: as.POSIXlt.character(x, tz, ...)
+8: as.POSIXlt(x, tz, ...)
+7: as.POSIXct(as.POSIXlt(x, tz, ...), tz, ...)
+6: as.POSIXct.default(bc[3], "UTC")
+5: as.POSIXct(bc[3], "UTC")
+4: .builtDate(inst["Built"])
+3: isTRUE(.builtDate(repo["Built"]) > .builtDate(inst["Built"]))
+2: needs.install(onRepos, instPkgs[k, ])
+1: old.packages()
+
+
+I do see some changes from r89371 ("compare Built date when determining 
+where a binary is new") in 
+https://github.com/r-devel/r-svn/commit/d0ea3357b8a9865afa68a35d87ece6de6db099c5
+
+  (it definitely looks like the relevant code was added/changed in this 
+commit).  I can see that Dirk Eddelbuettel's "anytime" package would 
+guess this correctly:
+
+  anytime::anytime("Sat, 30 May 2020 09:46:33 +0000")
+[1] "2020-05-30 09:46:33 EDT"
+
+... but I can see that you wouldn't want to build in a bunch of 
+format-guessing machinery into base R at this point ...
+
+   I am installing packages via bspm/r2u, which seems like it might be 
+relevant ...
+
+   Any thoughts?
+
+    cheers
+    Ben Bolker
+
+
+From pd@|gd @end|ng |rom gm@||@com  Thu Mar 26 13:24:33 2026
+From: pd@|gd @end|ng |rom gm@||@com (Peter Dalgaard)
+Date: Thu, 26 Mar 2026 13:24:33 +0100
+Subject: [Rd] 
+ R_SocketWaitMultiple(): Thinko leading to negative select()
+ timeouts(?)
+In-Reply-To: <27076.61344.527868.835757@stat.math.ethz.ch>
+References: <CAFDcVCT4Wyq5hpBeinKLZ9=08qiqV_JHvoD-cQhtP6k6k-dGSw@mail.gmail.com>
+ <27076.61344.527868.835757@stat.math.ethz.ch>
+Message-ID: <3E8EEB89-37CD-41FD-9946-1DBFA9190DF9@gmail.com>
+
+Well, we have had mysterious stalls.... E.g. the popup for the CRAN mirror selection can be quite slow on Mac, and given the low reproducibility and difficulty in catching the problem in the act, the cause can go undetected for ages (not saying that this is actually caused by R_SocketWaitMultiple() of course.)
+
+-pd
+
+> On 26 Mar 2026, at 09.34, Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+> 
+>>>>>> Henrik Bengtsson 
+>>>>>>    on Tue, 24 Mar 2026 20:54:00 -0700 writes:
+> 
+>> SUMMARY:
+>> I think there is a thinko in R_SocketWaitMultiple() that can result in:
+> 
+>> howmany = R_SelectEx(maxfd+1, &rfd, &wfd, NULL, &tv, NULL);
+> 
+>> being called with a negative timeout 'tv' (tv.tv_sec and tv.tv_usec
+>> negative). I think the bug is that:
+> 
+>> if (mytimeout < 0 || R_wait_usec / 1e-6 < mytimeout - used)
+> 
+>> should be:
+> 
+>> if (mytimeout < 0 || R_wait_usec / 1e6 < mytimeout - used)
+> 
+> or as you say below
+> 
+>     if (mytimeout < 0 || R_wait_usec * 1e-6 < mytimeout - used)
+> 
+> I've committed the latter,  as indeed, in
+> <R>/src/modules/internet/Rsock.c   microseconds = ? sec --> 'usec"'
+> are always multiplied by 1e-6 when transformed to  seconds
+> (well, with one exception where *integer division*
+> delta / 1000000  is used).
+> 
+> This "only" affects "Unix" ... it's still interesting that this
+> has never be seen or noticed as having a negative effect in all
+> the 23 years that this part of socket code exists...
+> 
+> Thanks a lot, Henrik!
+> 
+> Martin
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Mar 26 14:00:01 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 26 Mar 2026 16:00:01 +0300
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+Message-ID: <20260326160001.4f9da269@arachnoid>
+
+On Thu, 26 Mar 2026 08:15:14 -0400
+Ben Bolker <bbolker at gmail.com> wrote:
+
+>    I am installing packages via bspm/r2u, which seems like it might
+> be relevant ...
+
+Must be relevant. On one of my systems, the packages with the RFC5322
+dates in the "Built" field all come from the Debian repository; the
+base packages and the manually installed ones all have the
+as.POSIXct-friendly format.
+
+It turns out that when building a Debian package from an R package,
+/usr/share/R/debian/r-cran.mk sets the timestamp based on the Debian
+changelog entry: https://bugs.debian.org/774031
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Thu Mar 26 14:37:26 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 26 Mar 2026 08:37:26 -0500
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <20260326160001.4f9da269@arachnoid>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+Message-ID: <27077.13974.808000.145601@paul.eddelbuettel.com>
+
+
+On 26 March 2026 at 16:00, Ivan Krylov via R-devel wrote:
+| It turns out that when building a Debian package from an R package,
+| /usr/share/R/debian/r-cran.mk sets the timestamp based on the Debian
+| changelog entry: https://bugs.debian.org/774031
+
+That is by-now fairly old code related the (very laudable) project of
+creating 'reproducible builds' [1].  As one easy way to break a reproducible
+build is to encode the current time (as time tends to vary ...) we took an
+easy out to stick with 'recent but fixed time' found in the changelog entry.
+
+If these last-minute-literally-before-4.6.0 changes broke that date
+processing then that may be a piece we need to pick up.  It should however
+only affect production of r-base-core_*.deb and friends.  Which AFAIK is not
+done regularly at CRAN. I do rebuild my local R-devel every few days both
+locally and a schedule Docker build for drd and friends, I do not auto-build
+the .deb files so I have not tried since the R 4.6.3 builds. It may actually
+be a good idea to put that task on a schedule at R(-devel) side.  If anybody
+in R Core wants to do so I'd be happy to assist off-line.
+
+Dirk
+
+[1] This was once a within-Debian initiative but it has spread much wider,
+see https://reproducible-builds.org/ -- and it is also a topic the R
+community at large does not seem to have picked up on despite all the
+interest in version pinning and freezing and whatnot because 'repro'.
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Mar 26 20:56:01 2026
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 27 Mar 2026 08:56:01 +1300
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <27077.13974.808000.145601@paul.eddelbuettel.com>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+Message-ID: <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+
+Ben,
+
+thanks for the report!
+
+Dirk,
+
+more below
+
+
+> On 27/03/2026, at 02:37, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> On 26 March 2026 at 16:00, Ivan Krylov via R-devel wrote:
+>> It turns out that when building a Debian package from an R package, | /usr/share/R/debian/r-cran.mk sets the timestamp based on the Debian | changelog entry: https://bugs.debian.org/774031
+>> 
+> That is by-now fairly old code related the (very laudable) project of creating 'reproducible builds' [1].  As one easy way to break a reproducible build is to encode the current time (as time tends to vary ...) we took an easy out to stick with 'recent but fixed time' found in the changelog entry.
+> 
+> If these last-minute-literally-before-4.6.0 changes broke that date processing then that may be a piece we need to pick up.
+
+
+FWIW the date comparison have been in place for a while and is unrelated to the recent changes, but, yes, it's easy enough to a) treat unrecognized timestamps as simply "old" and possibly b) add support for the Debian timestamps so I'll look into that.
+
+Cheers,
+Simon
+
+
+
+>  It should however only affect production of r-base-core_*.deb and friends.  Which AFAIK is not done regularly at CRAN. I do rebuild my local R-devel every few days both locally and a schedule Docker build for drd and friends, I do not auto-build the .deb files so I have not tried since the R 4.6.3 builds. It may actually be a good idea to put that task on a schedule at R(-devel) side.  If anybody in R Core wants to do so I'd be happy to assist off-line.
+> 
+> Dirk
+> 
+> [1] This was once a within-Debian initiative but it has spread much wider, see https://reproducible-builds.org/ -- and it is also a topic the R community at large does not seem to have picked up on despite all the interest in version pinning and freezing and whatnot because 'repro'.
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Thu Mar 26 21:29:43 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 26 Mar 2026 15:29:43 -0500
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+Message-ID: <27077.38711.595887.886808@paul.eddelbuettel.com>
+
+
+Hi Simon,
+
+On 27 March 2026 at 08:56, Simon Urbanek wrote:
+| FWIW the date comparison have been in place for a while and is unrelated to the recent changes, but, yes, it's easy enough to a) treat unrecognized timestamps as simply "old" and possibly b) add support for the Debian timestamps so I'll look into that.
+
+Appreciate that.
+
+If you look at 'svn blame' you will see that we put this in place many moons
+ago.  And if I look at my Debian buildlog, e.g. from Rserve two days ago, we
+see use of the '--built-timestamp' field for this very propagation.
+
+    [...]
+    make[1]: Entering directory '/build/rserve-1.8-19'
+    dh_auto_install
+    I: R Package: Rserve Version: 1.8-19
+    I: Building using R version 4.5.3-1
+    I: R API version: r-api-4.0
+    I: Using built-time from d/changelog: Tue, 24 Mar 2026 05:38:00 -0500
+    	mkdir -p /build/rserve-1.8-19/debian/r-cran-rserve/usr/lib/R/site-library
+    	R CMD INSTALL -l /build/rserve-1.8-19/debian/r-cran-rserve/usr/lib/R/site-library --clean . --built-timestamp="'Tue, 24 Mar 2026 05:38:00 -0500'"
+    * installing *source* package 'Rserve' ...
+    ** this is package 'Rserve' version '1.8-19'
+    [...]
+
+Here dh_auto_install is just a (distribution-wide) convenience wrapper from a
+system called debhelper, all this is (these days) standardized so much that
+there is a common caller for R package that sets this up. It is in a package
+dh-r with the R specific bits that plug into debhelper (it's all pretty old
+code by others, mostly in (horror) Perl, what is used now is in a file R/pm
+inside the dh-r package) but there is also the old hook 'r-cran.mk' we used
+to call directly that has the (no longer called, but replicated functionally
+in R.pm) bit with a comment and code:
+
+    ## Bug report #782764 with patch by Philipp Rinn building on what we had above
+    ## if no builttimeStamp is supplied, set built-time (to be set in DESCRIPTION).
+    ## to time of created source package based on stamp in changelog..
+    ## See discussion in http://bugs.debian.org/774031
+    
+    ifeq ($(builttimeStamp),)
+      builttime       := $(shell dpkg-parsechangelog -l$(CURDIR)/debian/changelog | awk -F': ' '/Date/ {print $$2}')
+      builttimeStamp  := "--built-timestamp=\"$(builttime)\""
+    endif
+
+and that links to https://bugs.debian.org/782764 from 2015 (!!) which has more.
+
+So in short we should for this be picking up our own (unchanged) timestamp
+from our changelog; it may be that when the option is not set a different
+format propagates and now creates a 'surprise'.
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Mar 26 21:57:49 2026
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 27 Mar 2026 09:57:49 +1300
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <27077.38711.595887.886808@paul.eddelbuettel.com>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+ <27077.38711.595887.886808@paul.eddelbuettel.com>
+Message-ID: <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+
+Dirk,
+
+can you clarify one thing for me? In principe, if I read the Debian specs correctly[1] using the changelog date creates an entry that is semantically incorrect for this field since it is the *source* change time, so does not reflect any re-builds, but whether that matters for our purpose depends. So the question is: if a package needs to be re-built (=new binary needs to be created) due to either another package's ABI change (classic example was Matrix, but there are other S4 cases), does that trigger in Debian a new source release with updated changelog even if the actual sources for the package don't change?
+
+Thanks,
+Simon
+
+[1] - https://www.debian.org/doc/debian-policy/ch-source.html#debian-changelog-debian-changelog
+
+
+> On 27 Mar 2026, at 09:29, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> Hi Simon,
+> 
+> On 27 March 2026 at 08:56, Simon Urbanek wrote:
+> | FWIW the date comparison have been in place for a while and is unrelated to the recent changes, but, yes, it's easy enough to a) treat unrecognized timestamps as simply "old" and possibly b) add support for the Debian timestamps so I'll look into that.
+> 
+> Appreciate that.
+> 
+> If you look at 'svn blame' you will see that we put this in place many moons
+> ago.  And if I look at my Debian buildlog, e.g. from Rserve two days ago, we
+> see use of the '--built-timestamp' field for this very propagation.
+> 
+>    [...]
+>    make[1]: Entering directory '/build/rserve-1.8-19'
+>    dh_auto_install
+>    I: R Package: Rserve Version: 1.8-19
+>    I: Building using R version 4.5.3-1
+>    I: R API version: r-api-4.0
+>    I: Using built-time from d/changelog: Tue, 24 Mar 2026 05:38:00 -0500
+>     mkdir -p /build/rserve-1.8-19/debian/r-cran-rserve/usr/lib/R/site-library
+>     R CMD INSTALL -l /build/rserve-1.8-19/debian/r-cran-rserve/usr/lib/R/site-library --clean . --built-timestamp="'Tue, 24 Mar 2026 05:38:00 -0500'"
+>    * installing *source* package 'Rserve' ...
+>    ** this is package 'Rserve' version '1.8-19'
+>    [...]
+> 
+> Here dh_auto_install is just a (distribution-wide) convenience wrapper from a
+> system called debhelper, all this is (these days) standardized so much that
+> there is a common caller for R package that sets this up. It is in a package
+> dh-r with the R specific bits that plug into debhelper (it's all pretty old
+> code by others, mostly in (horror) Perl, what is used now is in a file R/pm
+> inside the dh-r package) but there is also the old hook 'r-cran.mk' we used
+> to call directly that has the (no longer called, but replicated functionally
+> in R.pm) bit with a comment and code:
+> 
+>    ## Bug report #782764 with patch by Philipp Rinn building on what we had above
+>    ## if no builttimeStamp is supplied, set built-time (to be set in DESCRIPTION).
+>    ## to time of created source package based on stamp in changelog..
+>    ## See discussion in http://bugs.debian.org/774031
+> 
+>    ifeq ($(builttimeStamp),)
+>      builttime       := $(shell dpkg-parsechangelog -l$(CURDIR)/debian/changelog | awk -F': ' '/Date/ {print $$2}')
+>      builttimeStamp  := "--built-timestamp=\"$(builttime)\""
+>    endif
+> 
+> and that links to https://bugs.debian.org/782764 from 2015 (!!) which has more.
+> 
+> So in short we should for this be picking up our own (unchanged) timestamp
+> from our changelog; it may be that when the option is not set a different
+> format propagates and now creates a 'surprise'.
+> 
+> Cheers, Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Thu Mar 26 22:35:26 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 26 Mar 2026 16:35:26 -0500
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+ <27077.38711.595887.886808@paul.eddelbuettel.com>
+ <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+Message-ID: <27077.42654.376936.156948@paul.eddelbuettel.com>
+
+
+Hi Simon,
+
+On 27 March 2026 at 09:57, Simon Urbanek wrote:
+| can you clarify one thing for me? In principe, if I read the Debian specs
+| correctly[1] using the changelog date creates an entry that is semantically
+| incorrect for this field since it is the *source* change time, so does not
+| reflect any re-builds, but whether that matters for our purpose depends.  
+
+Let's step back for a second as I think you are reading something into the
+'builttime' stamp that is not there. 
+
+Recall that *everything* in Debian works off *package versions* and their
+sorting. Always has. Likely always will be. CRAN copied that. 1.2-3 is older
+than 1.2-4.
+
+The timestamp never entered, and never will. The timestamp, as per my earlier
+email in the thread, ensures that two binary builds are identical _because we
+impose an 'available recent time'_ (of when the maintainer last updated the
+package) simply because it shadows the package version sorting.  But again,
+the whole point of the (fixed) timestamp is to reduce (arbitrary) variation
+in the build artifact even when sources and build systems are fixed (and
+variation is caused from reflecting current time in the build, a source of
+variation).
+
+We can look at an example. As I tend to be on Ubuntu (which does more
+rebuilds for syncs anyway) I just glanced into the rocker/r-base container
+(aka r-base). And a few packages in we have 'bzip_1.0.8-6+b1' -- the sixth
+Debian variant of upstream 1.0.8, and here in '+b1' rebuilt because
+_something_ in the toolchain required it. That is triggered and executed by
+_the archive maintainers_ as opposed to the package maintainer -- and as a
+purely binary rebuild _it has no changelog entry_ and hence no timestamp to
+reason.
+
+Everything sorts by _version_.
+
+| So the question is: if a package needs to be re-built (=new binary needs to
+| be created) due to either another package's ABI change (classic example was
+
+It is guaranteed to get a new _version number_. There is an entire
+(elaborate) system of suffixes, usually '+b1' (for first binary rebuild)
+for unchanged sources. Changes source, of course, get a new versison.
+
+| Matrix, but there are other S4 cases), does that trigger in Debian a new
+| source release with updated changelog even if the actual sources for the
+| package don't change?
+
+Again, a valid question, but one 100% unrelated to 'builttimeStamp'. I am
+happy to go over how r-cran-matrix was or was not rebuilt. In that example, I
+think we may have forced new source minors (repeatedly) but it has been a
+while. And given the above, as these would be _maintainer_ rebuilds not
+archive rebuilds a new version number, or just a Debian minor, makes sense.
+
+Let me know if I misunderstood something but it seems to me that you were
+inferring issues simply not present here. Hope the explanation makes sense.
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From r@c|nej@ @end|ng |rom gm@||@com  Fri Mar 27 00:48:31 2026
+From: r@c|nej@ @end|ng |rom gm@||@com (Jeffrey Racine)
+Date: Thu, 26 Mar 2026 19:48:31 -0400
+Subject: [Rd] R 4.5.3 macOS arm64: severe matrix-product performance
+ regression vs R 4.5.2 due to libRblas.dylib selecting libRblas.0.dylib
+ instead of libRblas.vecLib.dylib
+Message-ID: <CANXaLo_obsy5x4x4cxcz-nyn0L6GiLqm0srn8v-cPAC2ZSQ9KQ@mail.gmail.com>
+
+Greetings,
+
+I am reporting a substantial performance regression on macOS arm64 when
+moving from `R 4.5.2` to `R 4.5.3`.
+
+This first appeared while benchmarking the `np` package, where a
+conditional-density least-squares cross-validation route (`npcdensbw(...,
+bwmethod="cv.ls")`) became roughly 5x slower under `R 4.5.3`. After
+investigation, the package itself appears not to be at fault: the
+regression can be reproduced directly with base matrix-product operations
+and seems to be caused by a change in which BLAS library `R 4.5.3` uses on
+macOS arm64.
+
+### System
+
+- Hardware: Apple Silicon (`aarch64`)
+- OS: macOS Tahoe 26.4
+- `R 4.5.2`: `R version 4.5.2 (2025-10-31)`
+- `R 4.5.3`: `R version 4.5.3 (2026-03-11)`
+
+### Summary of findings
+
+Using the official macOS arm64 installers:
+
+- `R-4.5.2-arm64.pkg`
+- `R-4.5.3-arm64.pkg`
+
+I unpacked both installers and compared their framework payloads.
+
+Key visible result:
+
+- In `R 4.5.2`, `Resources/lib/libRblas.dylib` points to
+`libRblas.vecLib.dylib`
+- In `R 4.5.3`, `Resources/lib/libRblas.dylib` points to `libRblas.0.dylib`
+
+Both payloads still contain both files:
+
+- `libRblas.0.dylib`
+- `libRblas.vecLib.dylib`
+
+### Payload evidence
+
+`R 4.5.2` unpacked payload:
+
+```text
+lrwxr-xr-x ... libRblas.dylib -> libRblas.vecLib.dylib
+-rwxr-xr-x ... libRblas.0.dylib
+-rwxr-xr-x ... libRblas.vecLib.dylib
+```
+
+`R 4.5.3` unpacked payload:
+
+```text
+lrwxr-xr-x ... libRblas.dylib -> libRblas.0.dylib
+-rwxr-xr-x ... libRblas.0.dylib
+-rwxr-xr-x ... libRblas.vecLib.dylib
+```
+
+Additional payload comparison:
+
+- `Makeconf`, `ldpaths`, `Renviron`, `bin/R`, and installer scripts were
+byte-identical between `4.5.2` and `4.5.3`
+- the executable `__text` sections of `libRblas.0.dylib` and
+`libRlapack.dylib` were identical
+- the executable `__text` section of `libR.dylib` differed
+
+### How the runtimes were tested
+
+I ran both R versions directly from the unpacked installer payloads using
+`Resources/bin/exec/R`, with `R_HOME` and `DYLD_LIBRARY_PATH` pointed at
+each unpacked framework. This avoids relying on the live installed system
+framework.
+
+Example invocation:
+
+```bash
+R_HOME=/tmp/R452_pkg/R-fw.pkg/Payload/R.framework/Versions/4.5-arm64/Resources
+\
+DYLD_LIBRARY_PATH=/tmp/R452_pkg/R-fw.pkg/Payload/R.framework/Versions/4.5-arm64/Resources/lib
+\
+/tmp/R452_pkg/R-fw.pkg/Payload/R.framework/Versions/4.5-arm64/Resources/bin/exec/R
+--vanilla -q -f /tmp/r_blas_probe2.R
+```
+
+and similarly for `R 4.5.3`.
+
+### Minimal reproducer
+
+```r
+set.seed(1)
+n <- 1000000L
+x <- rnorm(n)
+y <- rnorm(n)
+A <- matrix(rnorm(2000L*2000L), 2000L, 2000L)
+B <- matrix(rnorm(2000L*2000L), 2000L, 2000L)
+
+cat(R.version.string, "\n")
+cat("crossprod vec\n")
+print(system.time(for(i in 1:40) z <- crossprod(x, y)))
+cat("matmult\n")
+print(system.time(C <- A %*% B))
+```
+
+### Observed timings
+
+`R 4.5.2`:
+
+- `crossprod()` elapsed about `0.032s`
+- `%*%` elapsed about `0.034s`
+
+Observed output:
+
+```text
+R version 4.5.2 (2025-10-31)
+crossprod vec
+user system elapsed
+0.031 0.002 0.032
+matmult
+user system elapsed
+0.058 0.003 0.034
+```
+
+`R 4.5.3`:
+
+- `crossprod()` elapsed about `0.072s`
+- `%*%` elapsed about `2.443s`
+
+Observed output:
+
+```text
+R version 4.5.3 (2026-03-11)
+crossprod vec
+user system elapsed
+0.071 0.000 0.072
+matmult
+user system elapsed
+2.381 0.057 2.443
+```
+
+This is a very large regression for `%*%` and a clear regression for
+`crossprod()`.
+
+### Loaded libraries during runtime
+
+For the unpacked `R 4.5.2` process, `lsof` showed:
+
+```text
+... /tmp/R452_pkg/.../Resources/lib/libRblas.vecLib.dylib
+... /tmp/R452_pkg/.../Resources/lib/libR.dylib
+... /tmp/R452_pkg/.../Resources/lib/libRlapack.dylib
+```
+
+`vmmap` also showed that Apple Accelerate / vecLib libraries were mapped.
+
+For the unpacked `R 4.5.3` process, `lsof` showed:
+
+```text
+... /tmp/R453_pkg/.../Resources/lib/libRblas.0.dylib
+... /tmp/R453_pkg/.../Resources/lib/libR.dylib
+... /tmp/R453_pkg/.../Resources/lib/libRlapack.dylib
+```
+
+### Critical confirmation
+
+In a temporary copy of the unpacked `R 4.5.3` framework, I changed only
+this symlink:
+
+- from:
+
+```text
+libRblas.dylib -> libRblas.0.dylib
+```
+
+- to:
+
+```text
+libRblas.dylib -> libRblas.vecLib.dylib
+```
+
+After that single change, the `R 4.5.3` runtime regained the fast timings:
+
+```text
+R version 4.5.3 (2026-03-11)
+crossprod vec
+user system elapsed
+0.032 0.002 0.033
+matmult
+user system elapsed
+0.055 0.003 0.032
+```
+
+`lsof` then showed:
+
+```text
+... /tmp/R453_test/.../Resources/lib/libRblas.vecLib.dylib
+... /tmp/R453_test/.../Resources/lib/libR.dylib
+... /tmp/R453_test/.../Resources/lib/libRlapack.dylib
+```
+
+So the regression appears to be directly tied to the BLAS target selected
+by `libRblas.dylib` in the macOS arm64 `R 4.5.3` distribution.
+
+### Why this matters
+
+This caused a large apparent regression in package benchmarks, but the
+package code was not the source. The underlying issue is visible in base
+matrix-product operations.
+
+For performance-sensitive code relying on repeated dot products or matrix
+multiplies, the effect is substantial.
+
+One affected package-level example was `np::npcdensbw(..., bwmethod =
+"cv.ls")`,
+whose hot path repeatedly uses BLAS-backed dot products inside
+conditional-density CVLS block computations.
+
+### Expected behavior
+
+I would expect `R 4.5.3` on macOS arm64 not to regress dramatically
+relative to `R 4.5.2` for basic matrix products on the same hardware.
+
+At minimum, if the BLAS target changed intentionally, I would expect that
+change not to impose such a severe runtime penalty.
+
+### Request
+
+Could you please confirm whether the `libRblas.dylib -> libRblas.0.dylib`
+change in the macOS arm64 `R 4.5.3` installer was intentional?
+
+If intentional, is there a recommended way to restore the previous fast
+vecLib-backed behavior?
+
+If not intentional, this appears to be a macOS arm64 packaging/runtime
+regression in `R 4.5.3`.
+
+I can provide exact command transcripts and additional package-level
+evidence if helpful.
+
+## Local investigation notes
+
+This report was motivated by a package-level timing cliff in `np`, but the
+package code appears exonerated:
+
+- the relevant `np` hot path remains unchanged in current source
+- the same slowdown occurs across different `np` source snapshots when run
+under `R 4.5.3`
+- the same `np` source and same compiled package are fast again under `R
+4.5.2`
+
+The key practical interpretation is:
+
+- not a package source regression
+- likely an R macOS BLAS-linkage/runtime regression in `4.5.3`
+
+## Relevant local files
+
+- [R-4.5.2-arm64.pkg](/Users/jracine/Development/R-4.5.2-arm64.pkg)
+- [R-4.5.3-arm64.pkg](/Users/jracine/Development/R-4.5.3-arm64.pkg)
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Fri Mar 27 00:56:56 2026
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Thu, 26 Mar 2026 19:56:56 -0400
+Subject: [Rd] R 4.5.3 macOS arm64: severe matrix-product performance
+ regression vs R 4.5.2 due to libRblas.dylib selecting libRblas.0.dylib
+ instead of libRblas.vecLib.dylib
+In-Reply-To: <CANXaLo_obsy5x4x4cxcz-nyn0L6GiLqm0srn8v-cPAC2ZSQ9KQ@mail.gmail.com>
+References: <CANXaLo_obsy5x4x4cxcz-nyn0L6GiLqm0srn8v-cPAC2ZSQ9KQ@mail.gmail.com>
+Message-ID: <b94842b7-ee76-4cf2-8e76-6b39605f69ef@gmail.com>
+
+   Would the RhpcBLASctl 
+<https://CRAN.R-project.org/package=RhpcBLASctl> package work on MacOS 
+as a workaround/diagnostic tool?
+
+
+On 2026-03-26 7:48 p.m., Jeffrey Racine wrote:
+> Greetings,
+> 
+> I am reporting a substantial performance regression on macOS arm64 when
+> moving from `R 4.5.2` to `R 4.5.3`.
+> 
+> This first appeared while benchmarking the `np` package, where a
+> conditional-density least-squares cross-validation route (`npcdensbw(...,
+> bwmethod="cv.ls")`) became roughly 5x slower under `R 4.5.3`. After
+> investigation, the package itself appears not to be at fault: the
+> regression can be reproduced directly with base matrix-product operations
+> and seems to be caused by a change in which BLAS library `R 4.5.3` uses on
+> macOS arm64.
+> 
+> ### System
+> 
+> - Hardware: Apple Silicon (`aarch64`)
+> - OS: macOS Tahoe 26.4
+> - `R 4.5.2`: `R version 4.5.2 (2025-10-31)`
+> - `R 4.5.3`: `R version 4.5.3 (2026-03-11)`
+> 
+> ### Summary of findings
+> 
+> Using the official macOS arm64 installers:
+> 
+> - `R-4.5.2-arm64.pkg`
+> - `R-4.5.3-arm64.pkg`
+> 
+> I unpacked both installers and compared their framework payloads.
+> 
+> Key visible result:
+> 
+> - In `R 4.5.2`, `Resources/lib/libRblas.dylib` points to
+> `libRblas.vecLib.dylib`
+> - In `R 4.5.3`, `Resources/lib/libRblas.dylib` points to `libRblas.0.dylib`
+> 
+> Both payloads still contain both files:
+> 
+> - `libRblas.0.dylib`
+> - `libRblas.vecLib.dylib`
+> 
+> ### Payload evidence
+> 
+> `R 4.5.2` unpacked payload:
+> 
+> ```text
+> lrwxr-xr-x ... libRblas.dylib -> libRblas.vecLib.dylib
+> -rwxr-xr-x ... libRblas.0.dylib
+> -rwxr-xr-x ... libRblas.vecLib.dylib
+> ```
+> 
+> `R 4.5.3` unpacked payload:
+> 
+> ```text
+> lrwxr-xr-x ... libRblas.dylib -> libRblas.0.dylib
+> -rwxr-xr-x ... libRblas.0.dylib
+> -rwxr-xr-x ... libRblas.vecLib.dylib
+> ```
+> 
+> Additional payload comparison:
+> 
+> - `Makeconf`, `ldpaths`, `Renviron`, `bin/R`, and installer scripts were
+> byte-identical between `4.5.2` and `4.5.3`
+> - the executable `__text` sections of `libRblas.0.dylib` and
+> `libRlapack.dylib` were identical
+> - the executable `__text` section of `libR.dylib` differed
+> 
+> ### How the runtimes were tested
+> 
+> I ran both R versions directly from the unpacked installer payloads using
+> `Resources/bin/exec/R`, with `R_HOME` and `DYLD_LIBRARY_PATH` pointed at
+> each unpacked framework. This avoids relying on the live installed system
+> framework.
+> 
+> Example invocation:
+> 
+> ```bash
+> R_HOME=/tmp/R452_pkg/R-fw.pkg/Payload/R.framework/Versions/4.5-arm64/Resources
+> \
+> DYLD_LIBRARY_PATH=/tmp/R452_pkg/R-fw.pkg/Payload/R.framework/Versions/4.5-arm64/Resources/lib
+> \
+> /tmp/R452_pkg/R-fw.pkg/Payload/R.framework/Versions/4.5-arm64/Resources/bin/exec/R
+> --vanilla -q -f /tmp/r_blas_probe2.R
+> ```
+> 
+> and similarly for `R 4.5.3`.
+> 
+> ### Minimal reproducer
+> 
+> ```r
+> set.seed(1)
+> n <- 1000000L
+> x <- rnorm(n)
+> y <- rnorm(n)
+> A <- matrix(rnorm(2000L*2000L), 2000L, 2000L)
+> B <- matrix(rnorm(2000L*2000L), 2000L, 2000L)
+> 
+> cat(R.version.string, "\n")
+> cat("crossprod vec\n")
+> print(system.time(for(i in 1:40) z <- crossprod(x, y)))
+> cat("matmult\n")
+> print(system.time(C <- A %*% B))
+> ```
+> 
+> ### Observed timings
+> 
+> `R 4.5.2`:
+> 
+> - `crossprod()` elapsed about `0.032s`
+> - `%*%` elapsed about `0.034s`
+> 
+> Observed output:
+> 
+> ```text
+> R version 4.5.2 (2025-10-31)
+> crossprod vec
+> user system elapsed
+> 0.031 0.002 0.032
+> matmult
+> user system elapsed
+> 0.058 0.003 0.034
+> ```
+> 
+> `R 4.5.3`:
+> 
+> - `crossprod()` elapsed about `0.072s`
+> - `%*%` elapsed about `2.443s`
+> 
+> Observed output:
+> 
+> ```text
+> R version 4.5.3 (2026-03-11)
+> crossprod vec
+> user system elapsed
+> 0.071 0.000 0.072
+> matmult
+> user system elapsed
+> 2.381 0.057 2.443
+> ```
+> 
+> This is a very large regression for `%*%` and a clear regression for
+> `crossprod()`.
+> 
+> ### Loaded libraries during runtime
+> 
+> For the unpacked `R 4.5.2` process, `lsof` showed:
+> 
+> ```text
+> ... /tmp/R452_pkg/.../Resources/lib/libRblas.vecLib.dylib
+> ... /tmp/R452_pkg/.../Resources/lib/libR.dylib
+> ... /tmp/R452_pkg/.../Resources/lib/libRlapack.dylib
+> ```
+> 
+> `vmmap` also showed that Apple Accelerate / vecLib libraries were mapped.
+> 
+> For the unpacked `R 4.5.3` process, `lsof` showed:
+> 
+> ```text
+> ... /tmp/R453_pkg/.../Resources/lib/libRblas.0.dylib
+> ... /tmp/R453_pkg/.../Resources/lib/libR.dylib
+> ... /tmp/R453_pkg/.../Resources/lib/libRlapack.dylib
+> ```
+> 
+> ### Critical confirmation
+> 
+> In a temporary copy of the unpacked `R 4.5.3` framework, I changed only
+> this symlink:
+> 
+> - from:
+> 
+> ```text
+> libRblas.dylib -> libRblas.0.dylib
+> ```
+> 
+> - to:
+> 
+> ```text
+> libRblas.dylib -> libRblas.vecLib.dylib
+> ```
+> 
+> After that single change, the `R 4.5.3` runtime regained the fast timings:
+> 
+> ```text
+> R version 4.5.3 (2026-03-11)
+> crossprod vec
+> user system elapsed
+> 0.032 0.002 0.033
+> matmult
+> user system elapsed
+> 0.055 0.003 0.032
+> ```
+> 
+> `lsof` then showed:
+> 
+> ```text
+> ... /tmp/R453_test/.../Resources/lib/libRblas.vecLib.dylib
+> ... /tmp/R453_test/.../Resources/lib/libR.dylib
+> ... /tmp/R453_test/.../Resources/lib/libRlapack.dylib
+> ```
+> 
+> So the regression appears to be directly tied to the BLAS target selected
+> by `libRblas.dylib` in the macOS arm64 `R 4.5.3` distribution.
+> 
+> ### Why this matters
+> 
+> This caused a large apparent regression in package benchmarks, but the
+> package code was not the source. The underlying issue is visible in base
+> matrix-product operations.
+> 
+> For performance-sensitive code relying on repeated dot products or matrix
+> multiplies, the effect is substantial.
+> 
+> One affected package-level example was `np::npcdensbw(..., bwmethod =
+> "cv.ls")`,
+> whose hot path repeatedly uses BLAS-backed dot products inside
+> conditional-density CVLS block computations.
+> 
+> ### Expected behavior
+> 
+> I would expect `R 4.5.3` on macOS arm64 not to regress dramatically
+> relative to `R 4.5.2` for basic matrix products on the same hardware.
+> 
+> At minimum, if the BLAS target changed intentionally, I would expect that
+> change not to impose such a severe runtime penalty.
+> 
+> ### Request
+> 
+> Could you please confirm whether the `libRblas.dylib -> libRblas.0.dylib`
+> change in the macOS arm64 `R 4.5.3` installer was intentional?
+> 
+> If intentional, is there a recommended way to restore the previous fast
+> vecLib-backed behavior?
+> 
+> If not intentional, this appears to be a macOS arm64 packaging/runtime
+> regression in `R 4.5.3`.
+> 
+> I can provide exact command transcripts and additional package-level
+> evidence if helpful.
+> 
+> ## Local investigation notes
+> 
+> This report was motivated by a package-level timing cliff in `np`, but the
+> package code appears exonerated:
+> 
+> - the relevant `np` hot path remains unchanged in current source
+> - the same slowdown occurs across different `np` source snapshots when run
+> under `R 4.5.3`
+> - the same `np` source and same compiled package are fast again under `R
+> 4.5.2`
+> 
+> The key practical interpretation is:
+> 
+> - not a package source regression
+> - likely an R macOS BLAS-linkage/runtime regression in `4.5.3`
+> 
+> ## Relevant local files
+> 
+> - [R-4.5.2-arm64.pkg](/Users/jracine/Development/R-4.5.2-arm64.pkg)
+> - [R-4.5.3-arm64.pkg](/Users/jracine/Development/R-4.5.3-arm64.pkg)
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Mar 27 01:58:32 2026
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 27 Mar 2026 13:58:32 +1300
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <27077.42654.376936.156948@paul.eddelbuettel.com>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+ <27077.38711.595887.886808@paul.eddelbuettel.com>
+ <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+ <27077.42654.376936.156948@paul.eddelbuettel.com>
+Message-ID: <13DCFF52-D5E1-4883-AFE0-DFADE36C5290@R-project.org>
+
+Dirk,
+
+
+> On 27 Mar 2026, at 10:35, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> Hi Simon,
+> 
+> On 27 March 2026 at 09:57, Simon Urbanek wrote:
+> | can you clarify one thing for me? In principe, if I read the Debian specs
+> | correctly[1] using the changelog date creates an entry that is semantically
+> | incorrect for this field since it is the *source* change time, so does not
+> | reflect any re-builds, but whether that matters for our purpose depends.  
+> 
+> Let's step back for a second as I think you are reading something into the
+> 'builttime' stamp that is not there. 
+> 
+> Recall that *everything* in Debian works off *package versions* and their
+> sorting. Always has. Likely always will be. CRAN copied that. 1.2-3 is older
+> than 1.2-4.
+> 
+> The timestamp never entered, and never will. The timestamp, as per my earlier
+> email in the thread, ensures that two binary builds are identical _because we
+> impose an 'available recent time'_ (of when the maintainer last updated the
+> package) simply because it shadows the package version sorting.  But again,
+> the whole point of the (fixed) timestamp is to reduce (arbitrary) variation
+> in the build artifact even when sources and build systems are fixed (and
+> variation is caused from reflecting current time in the build, a source of
+> variation).
+> 
+> We can look at an example. As I tend to be on Ubuntu (which does more
+> rebuilds for syncs anyway) I just glanced into the rocker/r-base container
+> (aka r-base). And a few packages in we have 'bzip_1.0.8-6+b1' -- the sixth
+> Debian variant of upstream 1.0.8, and here in '+b1' rebuilt because
+> _something_ in the toolchain required it. That is triggered and executed by
+> _the archive maintainers_ as opposed to the package maintainer -- and as a
+> purely binary rebuild _it has no changelog entry_ and hence no timestamp to
+> reason.
+> 
+
+
+I was afraid of that, thanks for confirming. In that case this won't work, i.e., it cannot be just the source changelog, that is the wrong semantic information - you would have to update it in that case. The whole point of the Built timestamp is exactly to make sure it changes when the binaries change so it can be distinguished from any previously built binary, that is the definition of that field - they cannot be the same if the contents differ. Based on what you said we will simply ignore those if they are not correctly formatted as "legacy", since it is impossible for this to work anyway the way you are overriding it. To produce a valid entry you'll have to make sure they are set to the build timestamp (or in your world the maintainer build timestamp if I read that correctly, i.e., the timestamp when the new b... version was created) in the ISO form (or leave it untouched).
+
+Cheers,
+Simon
+
+
+
+> Everything sorts by _version_.
+> 
+> | So the question is: if a package needs to be re-built (=new binary needs to
+> | be created) due to either another package's ABI change (classic example was
+> 
+> It is guaranteed to get a new _version number_. There is an entire
+> (elaborate) system of suffixes, usually '+b1' (for first binary rebuild)
+> for unchanged sources. Changes source, of course, get a new versison.
+> 
+> | Matrix, but there are other S4 cases), does that trigger in Debian a new
+> | source release with updated changelog even if the actual sources for the
+> | package don't change?
+> 
+> Again, a valid question, but one 100% unrelated to 'builttimeStamp'. I am
+> happy to go over how r-cran-matrix was or was not rebuilt. In that example, I
+> think we may have forced new source minors (repeatedly) but it has been a
+> while. And given the above, as these would be _maintainer_ rebuilds not
+> archive rebuilds a new version number, or just a Debian minor, makes sense.
+> 
+> Let me know if I misunderstood something but it seems to me that you were
+> inferring issues simply not present here. Hope the explanation makes sense.
+> 
+> Cheers, Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Fri Mar 27 02:14:54 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 26 Mar 2026 20:14:54 -0500
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <13DCFF52-D5E1-4883-AFE0-DFADE36C5290@R-project.org>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+ <27077.38711.595887.886808@paul.eddelbuettel.com>
+ <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+ <27077.42654.376936.156948@paul.eddelbuettel.com>
+ <13DCFF52-D5E1-4883-AFE0-DFADE36C5290@R-project.org>
+Message-ID: <27077.55822.254302.128512@paul.eddelbuettel.com>
+
+
+Hi Simon,
+
+On 27 March 2026 at 13:58, Simon Urbanek wrote:
+| I was afraid of that, thanks for confirming. In that case this won't work, i.e., it cannot be just the source changelog, that is the wrong semantic information - you would have to update it in that case. The whole point of the Built timestamp is exactly to make sure it changes when the binaries change so it can be distinguished from any previously built binary, that is the definition of that field - they cannot be the same if the contents differ. Based on what you said we will simply ignore those if they are not correctly formatted as "legacy", since it is impossible for this to work anyway the way you are overriding it. To produce a valid entry you'll have to make sure they are set to the build timestamp (or in your world the maintainer build timestamp if I read that correctly, i.e., the timestamp when the new b... version was created) in the ISO form (or leave it untouched).
+
+I will admit that I no real idea what you are talking about, and what the
+current actual or perceived change is.
+
+Debian has signed its (package internal) changelog entries with the exact
+same RFC 822 (then current) form since the 1990s. This has not changed.  See
+below for samples from r-base maintained by Doug (initially) and myself. The
+file is also at https://sources.debian.org/src/r-base/4.5.3-1/debian/changelog
+
+As nothing changed on our end, if your processing now breaks it's not us. I
+am sure you can sort it out, but I am afraid I may not be able to help as you
+are not making yourself very clear (or maybe I just had a busy day...)
+
+Cheers, Dirk
+
+
+edd at paul:~/deb/r-base(master)$ awk '/^ -- / {print $6, $7, $8, $9, $10}' debian/changelog | wc -l
+542
+edd at paul:~/deb/r-base(master)$ awk '/^ -- / {print $6, $7, $8, $9, $10}' debian/changelog | head -5
+11 Mar 2026 07:09:46 -0500
+11 Mar 2026 06:42:01 -0500
+31 Oct 2025 06:47:11 -0500
+31 Oct 2025 06:00:34 -0500
+16 Jun 2025 07:07:46 -0500
+edd at paul:~/deb/r-base(master)$ awk '/^ -- / {print $6, $7, $8, $9, $10}' debian/changelog | tail -5
+14 Jan 1998 08:31:53 -0600
+12 Jan 1998 09:30:04 -0600
+4 Jan 1998 14:54:04 -0600
+23 Dec 1997 12:02:09 -0600
+23 Dec 1997 10:01:21 -0600
+edd at paul:~/deb/r-base(master)$
+
+| Cheers,
+| Simon
+| 
+| 
+| 
+| > Everything sorts by _version_.
+| > 
+| > | So the question is: if a package needs to be re-built (=new binary needs to
+| > | be created) due to either another package's ABI change (classic example was
+| > 
+| > It is guaranteed to get a new _version number_. There is an entire
+| > (elaborate) system of suffixes, usually '+b1' (for first binary rebuild)
+| > for unchanged sources. Changes source, of course, get a new versison.
+| > 
+| > | Matrix, but there are other S4 cases), does that trigger in Debian a new
+| > | source release with updated changelog even if the actual sources for the
+| > | package don't change?
+| > 
+| > Again, a valid question, but one 100% unrelated to 'builttimeStamp'. I am
+| > happy to go over how r-cran-matrix was or was not rebuilt. In that example, I
+| > think we may have forced new source minors (repeatedly) but it has been a
+| > while. And given the above, as these would be _maintainer_ rebuilds not
+| > archive rebuilds a new version number, or just a Debian minor, makes sense.
+| > 
+| > Let me know if I misunderstood something but it seems to me that you were
+| > inferring issues simply not present here. Hope the explanation makes sense.
+| > 
+| > Cheers, Dirk
+| > 
+| > -- 
+| > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+| > 
+| 
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Mar 27 02:27:14 2026
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 27 Mar 2026 14:27:14 +1300
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <27077.55822.254302.128512@paul.eddelbuettel.com>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+ <27077.38711.595887.886808@paul.eddelbuettel.com>
+ <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+ <27077.42654.376936.156948@paul.eddelbuettel.com>
+ <13DCFF52-D5E1-4883-AFE0-DFADE36C5290@R-project.org>
+ <27077.55822.254302.128512@paul.eddelbuettel.com>
+Message-ID: <68D2827E-CA46-48D5-BAF5-F10D9BA60FB3@R-project.org>
+
+Dirk,
+
+to be precise here, you are modifying an internal DESCRIPTION entry which is created and managed by R, and you are overwriting it with invalid content. The fact that this was not detected before is accidental, mostly due to the fact that that particular part was not checked by the R management tools. I was just trying to understand if at least your intention was aligned with the purpose of the field (it which case it would make sense to try to accommodate it), but from what you said it's not, because it does not change with re-builds that produce different binaries (that entry is specific to binary packages so must be set by the build process).
+
+Cheers,
+Simon
+
+
+> On 27 Mar 2026, at 14:14, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> Hi Simon,
+> 
+> On 27 March 2026 at 13:58, Simon Urbanek wrote:
+> | I was afraid of that, thanks for confirming. In that case this won't work, i.e., it cannot be just the source changelog, that is the wrong semantic information - you would have to update it in that case. The whole point of the Built timestamp is exactly to make sure it changes when the binaries change so it can be distinguished from any previously built binary, that is the definition of that field - they cannot be the same if the contents differ. Based on what you said we will simply ignore those if they are not correctly formatted as "legacy", since it is impossible for this to work anyway the way you are overriding it. To produce a valid entry you'll have to make sure they are set to the build timestamp (or in your world the maintainer build timestamp if I read that correctly, i.e., the timestamp when the new b... version was created) in the ISO form (or leave it untouched).
+> 
+> I will admit that I no real idea what you are talking about, and what the
+> current actual or perceived change is.
+> 
+> Debian has signed its (package internal) changelog entries with the exact
+> same RFC 822 (then current) form since the 1990s. This has not changed.  See
+> below for samples from r-base maintained by Doug (initially) and myself. The
+> file is also at https://sources.debian.org/src/r-base/4.5.3-1/debian/changelog
+> 
+> As nothing changed on our end, if your processing now breaks it's not us. I
+> am sure you can sort it out, but I am afraid I may not be able to help as you
+> are not making yourself very clear (or maybe I just had a busy day...)
+> 
+> Cheers, Dirk
+> 
+> 
+> edd at paul:~/deb/r-base(master)$ awk '/^ -- / {print $6, $7, $8, $9, $10}' debian/changelog | wc -l
+> 542
+> edd at paul:~/deb/r-base(master)$ awk '/^ -- / {print $6, $7, $8, $9, $10}' debian/changelog | head -5
+> 11 Mar 2026 07:09:46 -0500
+> 11 Mar 2026 06:42:01 -0500
+> 31 Oct 2025 06:47:11 -0500
+> 31 Oct 2025 06:00:34 -0500
+> 16 Jun 2025 07:07:46 -0500
+> edd at paul:~/deb/r-base(master)$ awk '/^ -- / {print $6, $7, $8, $9, $10}' debian/changelog | tail -5
+> 14 Jan 1998 08:31:53 -0600
+> 12 Jan 1998 09:30:04 -0600
+> 4 Jan 1998 14:54:04 -0600
+> 23 Dec 1997 12:02:09 -0600
+> 23 Dec 1997 10:01:21 -0600
+> edd at paul:~/deb/r-base(master)$
+> 
+> | Cheers,
+> | Simon
+> | 
+> | 
+> | 
+> | > Everything sorts by _version_.
+> | > 
+> | > | So the question is: if a package needs to be re-built (=new binary needs to
+> | > | be created) due to either another package's ABI change (classic example was
+> | > 
+> | > It is guaranteed to get a new _version number_. There is an entire
+> | > (elaborate) system of suffixes, usually '+b1' (for first binary rebuild)
+> | > for unchanged sources. Changes source, of course, get a new versison.
+> | > 
+> | > | Matrix, but there are other S4 cases), does that trigger in Debian a new
+> | > | source release with updated changelog even if the actual sources for the
+> | > | package don't change?
+> | > 
+> | > Again, a valid question, but one 100% unrelated to 'builttimeStamp'. I am
+> | > happy to go over how r-cran-matrix was or was not rebuilt. In that example, I
+> | > think we may have forced new source minors (repeatedly) but it has been a
+> | > while. And given the above, as these would be _maintainer_ rebuilds not
+> | > archive rebuilds a new version number, or just a Debian minor, makes sense.
+> | > 
+> | > Let me know if I misunderstood something but it seems to me that you were
+> | > inferring issues simply not present here. Hope the explanation makes sense.
+> | > 
+> | > Cheers, Dirk
+> | > 
+> | > -- 
+> | > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> | > 
+> | 
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Fri Mar 27 02:46:46 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 26 Mar 2026 20:46:46 -0500
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <68D2827E-CA46-48D5-BAF5-F10D9BA60FB3@R-project.org>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+ <27077.38711.595887.886808@paul.eddelbuettel.com>
+ <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+ <27077.42654.376936.156948@paul.eddelbuettel.com>
+ <13DCFF52-D5E1-4883-AFE0-DFADE36C5290@R-project.org>
+ <27077.55822.254302.128512@paul.eddelbuettel.com>
+ <68D2827E-CA46-48D5-BAF5-F10D9BA60FB3@R-project.org>
+Message-ID: <27077.57734.994113.828318@paul.eddelbuettel.com>
+
+
+Simon,
+
+As I mentioned earlier, we are passing a value back to R based a dual PRs to
+our R packaging, and R itself.  This was folded in 2015 [1] and has worked
+for 11 years. If it is broken now ... it may well have been dormant.
+
+Are we really only talking about parsing an RFC 822 date into an ISO date or
+is there more going here? If it is this, why can the date (coming in with a
+regularized format) not be converted as needed?
+
+Dirk, still puzzled
+
+
+[1] svn blame points at '67422   maechler', per docs/NEWS.3.Rd this does
+indeed go back the pair of patches to the Debian package (I referenced
+earlier) and to R itself (which I appear to have been involved):
+
+       \item \command{R CMD INSTALL} gains an  option
+       \option{--built-timestamp=STAMP} allowing 100\% reproducible
+       package building, thanks to Dirk Eddelbuettel.
+
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Mar 27 02:52:20 2026
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 27 Mar 2026 14:52:20 +1300
+Subject: [Rd] R 4.5.3 macOS arm64: severe matrix-product performance
+ regression vs R 4.5.2 due to libRblas.dylib selecting libRblas.0.dylib
+ instead of libRblas.vecLib.dylib
+In-Reply-To: <CANXaLo_obsy5x4x4cxcz-nyn0L6GiLqm0srn8v-cPAC2ZSQ9KQ@mail.gmail.com>
+References: <CANXaLo_obsy5x4x4cxcz-nyn0L6GiLqm0srn8v-cPAC2ZSQ9KQ@mail.gmail.com>
+Message-ID: <68EA52E0-EFA0-4F3B-84BF-44A27B8BFB2E@R-project.org>
+
+Jeffrey,
+
+the choice of BLAS is up to the user (See R for Mac FAQ 10.5 [1]), both are always available so it's your call to pick the one which works for you.
+
+Historically, we set the default reference BLAS for its stability, but in R 4.5.2 there was an attempt to enable the accelerated BLAS on arm64, because the performance difference can be up to 100x speed up on Apple Silicon hardware due to the fact that Accelerate can use the "secret" Apple matrix co-processor (AMX) for BLAS operations. Unfortunately, Accelerate is not fork-safe so it can break[2] when used with paralellization in R, so we have reverted back the default to the reference BLAS in R 4.5.3 as that one is guaranteed to work. If you know that the code you use is safe, you can switch to the accelerated BLAS.
+
+Cheers,
+Simon
+
+
+[1] - https://cran.r-project.org/bin/macosx/RMacOSX-FAQ.html#Which-BLAS-is-used-and-how-can-it-be-changed_003f
+[2] - https://stat.ethz.ch/pipermail/r-sig-mac/2026-January/015322.html
+
+
+
+> On 27 Mar 2026, at 12:48, Jeffrey Racine <racinejs at gmail.com> wrote:
+> 
+> Greetings,
+> 
+> I am reporting a substantial performance regression on macOS arm64 when
+> moving from `R 4.5.2` to `R 4.5.3`.
+> 
+> This first appeared while benchmarking the `np` package, where a
+> conditional-density least-squares cross-validation route (`npcdensbw(...,
+> bwmethod="cv.ls")`) became roughly 5x slower under `R 4.5.3`. After
+> investigation, the package itself appears not to be at fault: the
+> regression can be reproduced directly with base matrix-product operations
+> and seems to be caused by a change in which BLAS library `R 4.5.3` uses on
+> macOS arm64.
+> 
+> ### System
+> 
+> - Hardware: Apple Silicon (`aarch64`)
+> - OS: macOS Tahoe 26.4
+> - `R 4.5.2`: `R version 4.5.2 (2025-10-31)`
+> - `R 4.5.3`: `R version 4.5.3 (2026-03-11)`
+> 
+> ### Summary of findings
+> 
+> Using the official macOS arm64 installers:
+> 
+> - `R-4.5.2-arm64.pkg`
+> - `R-4.5.3-arm64.pkg`
+> 
+> I unpacked both installers and compared their framework payloads.
+> 
+> Key visible result:
+> 
+> - In `R 4.5.2`, `Resources/lib/libRblas.dylib` points to
+> `libRblas.vecLib.dylib`
+> - In `R 4.5.3`, `Resources/lib/libRblas.dylib` points to `libRblas.0.dylib`
+> 
+> Both payloads still contain both files:
+> 
+> - `libRblas.0.dylib`
+> - `libRblas.vecLib.dylib`
+> 
+> ### Payload evidence
+> 
+> `R 4.5.2` unpacked payload:
+> 
+> ```text
+> lrwxr-xr-x ... libRblas.dylib -> libRblas.vecLib.dylib
+> -rwxr-xr-x ... libRblas.0.dylib
+> -rwxr-xr-x ... libRblas.vecLib.dylib
+> ```
+> 
+> `R 4.5.3` unpacked payload:
+> 
+> ```text
+> lrwxr-xr-x ... libRblas.dylib -> libRblas.0.dylib
+> -rwxr-xr-x ... libRblas.0.dylib
+> -rwxr-xr-x ... libRblas.vecLib.dylib
+> ```
+> 
+> Additional payload comparison:
+> 
+> - `Makeconf`, `ldpaths`, `Renviron`, `bin/R`, and installer scripts were
+> byte-identical between `4.5.2` and `4.5.3`
+> - the executable `__text` sections of `libRblas.0.dylib` and
+> `libRlapack.dylib` were identical
+> - the executable `__text` section of `libR.dylib` differed
+> 
+> ### How the runtimes were tested
+> 
+> I ran both R versions directly from the unpacked installer payloads using
+> `Resources/bin/exec/R`, with `R_HOME` and `DYLD_LIBRARY_PATH` pointed at
+> each unpacked framework. This avoids relying on the live installed system
+> framework.
+> 
+> Example invocation:
+> 
+> ```bash
+> R_HOME=/tmp/R452_pkg/R-fw.pkg/Payload/R.framework/Versions/4.5-arm64/Resources
+> \
+> DYLD_LIBRARY_PATH=/tmp/R452_pkg/R-fw.pkg/Payload/R.framework/Versions/4.5-arm64/Resources/lib
+> \
+> /tmp/R452_pkg/R-fw.pkg/Payload/R.framework/Versions/4.5-arm64/Resources/bin/exec/R
+> --vanilla -q -f /tmp/r_blas_probe2.R
+> ```
+> 
+> and similarly for `R 4.5.3`.
+> 
+> ### Minimal reproducer
+> 
+> ```r
+> set.seed(1)
+> n <- 1000000L
+> x <- rnorm(n)
+> y <- rnorm(n)
+> A <- matrix(rnorm(2000L*2000L), 2000L, 2000L)
+> B <- matrix(rnorm(2000L*2000L), 2000L, 2000L)
+> 
+> cat(R.version.string, "\n")
+> cat("crossprod vec\n")
+> print(system.time(for(i in 1:40) z <- crossprod(x, y)))
+> cat("matmult\n")
+> print(system.time(C <- A %*% B))
+> ```
+> 
+> ### Observed timings
+> 
+> `R 4.5.2`:
+> 
+> - `crossprod()` elapsed about `0.032s`
+> - `%*%` elapsed about `0.034s`
+> 
+> Observed output:
+> 
+> ```text
+> R version 4.5.2 (2025-10-31)
+> crossprod vec
+> user system elapsed
+> 0.031 0.002 0.032
+> matmult
+> user system elapsed
+> 0.058 0.003 0.034
+> ```
+> 
+> `R 4.5.3`:
+> 
+> - `crossprod()` elapsed about `0.072s`
+> - `%*%` elapsed about `2.443s`
+> 
+> Observed output:
+> 
+> ```text
+> R version 4.5.3 (2026-03-11)
+> crossprod vec
+> user system elapsed
+> 0.071 0.000 0.072
+> matmult
+> user system elapsed
+> 2.381 0.057 2.443
+> ```
+> 
+> This is a very large regression for `%*%` and a clear regression for
+> `crossprod()`.
+> 
+> ### Loaded libraries during runtime
+> 
+> For the unpacked `R 4.5.2` process, `lsof` showed:
+> 
+> ```text
+> ... /tmp/R452_pkg/.../Resources/lib/libRblas.vecLib.dylib
+> ... /tmp/R452_pkg/.../Resources/lib/libR.dylib
+> ... /tmp/R452_pkg/.../Resources/lib/libRlapack.dylib
+> ```
+> 
+> `vmmap` also showed that Apple Accelerate / vecLib libraries were mapped.
+> 
+> For the unpacked `R 4.5.3` process, `lsof` showed:
+> 
+> ```text
+> ... /tmp/R453_pkg/.../Resources/lib/libRblas.0.dylib
+> ... /tmp/R453_pkg/.../Resources/lib/libR.dylib
+> ... /tmp/R453_pkg/.../Resources/lib/libRlapack.dylib
+> ```
+> 
+> ### Critical confirmation
+> 
+> In a temporary copy of the unpacked `R 4.5.3` framework, I changed only
+> this symlink:
+> 
+> - from:
+> 
+> ```text
+> libRblas.dylib -> libRblas.0.dylib
+> ```
+> 
+> - to:
+> 
+> ```text
+> libRblas.dylib -> libRblas.vecLib.dylib
+> ```
+> 
+> After that single change, the `R 4.5.3` runtime regained the fast timings:
+> 
+> ```text
+> R version 4.5.3 (2026-03-11)
+> crossprod vec
+> user system elapsed
+> 0.032 0.002 0.033
+> matmult
+> user system elapsed
+> 0.055 0.003 0.032
+> ```
+> 
+> `lsof` then showed:
+> 
+> ```text
+> ... /tmp/R453_test/.../Resources/lib/libRblas.vecLib.dylib
+> ... /tmp/R453_test/.../Resources/lib/libR.dylib
+> ... /tmp/R453_test/.../Resources/lib/libRlapack.dylib
+> ```
+> 
+> So the regression appears to be directly tied to the BLAS target selected
+> by `libRblas.dylib` in the macOS arm64 `R 4.5.3` distribution.
+> 
+> ### Why this matters
+> 
+> This caused a large apparent regression in package benchmarks, but the
+> package code was not the source. The underlying issue is visible in base
+> matrix-product operations.
+> 
+> For performance-sensitive code relying on repeated dot products or matrix
+> multiplies, the effect is substantial.
+> 
+> One affected package-level example was `np::npcdensbw(..., bwmethod =
+> "cv.ls")`,
+> whose hot path repeatedly uses BLAS-backed dot products inside
+> conditional-density CVLS block computations.
+> 
+> ### Expected behavior
+> 
+> I would expect `R 4.5.3` on macOS arm64 not to regress dramatically
+> relative to `R 4.5.2` for basic matrix products on the same hardware.
+> 
+> At minimum, if the BLAS target changed intentionally, I would expect that
+> change not to impose such a severe runtime penalty.
+> 
+> ### Request
+> 
+> Could you please confirm whether the `libRblas.dylib -> libRblas.0.dylib`
+> change in the macOS arm64 `R 4.5.3` installer was intentional?
+> 
+> If intentional, is there a recommended way to restore the previous fast
+> vecLib-backed behavior?
+> 
+> If not intentional, this appears to be a macOS arm64 packaging/runtime
+> regression in `R 4.5.3`.
+> 
+> I can provide exact command transcripts and additional package-level
+> evidence if helpful.
+> 
+> ## Local investigation notes
+> 
+> This report was motivated by a package-level timing cliff in `np`, but the
+> package code appears exonerated:
+> 
+> - the relevant `np` hot path remains unchanged in current source
+> - the same slowdown occurs across different `np` source snapshots when run
+> under `R 4.5.3`
+> - the same `np` source and same compiled package are fast again under `R
+> 4.5.2`
+> 
+> The key practical interpretation is:
+> 
+> - not a package source regression
+> - likely an R macOS BLAS-linkage/runtime regression in `4.5.3`
+> 
+> ## Relevant local files
+> 
+> - [R-4.5.2-arm64.pkg](/Users/jracine/Development/R-4.5.2-arm64.pkg)
+> - [R-4.5.3-arm64.pkg](/Users/jracine/Development/R-4.5.3-arm64.pkg)
+> 
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+
+
