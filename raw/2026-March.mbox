@@ -5121,3 +5121,556 @@ Simon
 > 
 
 
+From @uh@rto_@nggono @end|ng |rom y@hoo@com  Fri Mar 27 07:50:52 2026
+From: @uh@rto_@nggono @end|ng |rom y@hoo@com (Suharto Anggono Suharto Anggono)
+Date: Fri, 27 Mar 2026 06:50:52 +0000 (UTC)
+Subject: [Rd] diff(<ts-matrix>), Ops.ts -- R Bugzilla PR#18972
+In-Reply-To: <27048.7739.470561.910241@stat.math.ethz.ch>
+References: <2128797252.1120005.1771732693812.ref@mail.yahoo.com>
+ <2128797252.1120005.1771732693812@mail.yahoo.com>
+ <fake-VM-id.6d776b3ae1213c9af92fe6df6450ef4a@talos.iv>
+ <27036.17696.727900.514006@stat.math.ethz.ch>
+ <630650197.3484737.1772279863294@mail.yahoo.com>
+ <C981C64E-7FBA-4F8E-816F-D393B7EC3FEF@gmail.com>
+ <fake-VM-id.1e87d2dd26fb615308fceacb50668e83@talos.iv>
+ <27046.41873.814612.726309@stat.math.ethz.ch>
+ <1872996678.4809050.1772604318096@mail.yahoo.com>
+ <27048.6812.306265.880083@stat.math.ethz.ch>
+ <fake-VM-id.e680667cf19cd4b00410eae2f74abc3a@talos.iv>
+ <27048.7739.470561.910241@stat.math.ethz.ch>
+Message-ID: <773729532.669360.1774594252764@mail.yahoo.com>
+
+ To have usual storage mode of the result and for error if e1 and e2 are matrices with different number of columns, 'Ops.ts' could still use
+NextMethod(.Generic)
+even if e1 and e2 are not overlapping and just change e1 and e2.
+
+ if(is.null(e12))# if e1 or e2 is matrix but e1 & e2 are not overlapping, e12 is NULL ..
+ return(if(is.matrix(e1)) e1[0, , drop=FALSE]
+ else if(is.matrix(e2)) e2[0, , drop=FALSE]
+ ## else NULL ( == e12 )
+ )
+ e1 <- if(is.matrix(e1)) e12[, 1L:nc1 , drop = FALSE] else e12[, 1]
+ e2 <- if(is.matrix(e2)) e12[, nc1 + (1L:nc2), drop = FALSE] else e12[, nc1 + 1]
+
+could become
+
+ if(is.null(e12)) {# if e1 & e2 are not overlapping, e12 is NULL ..
+ e1 <- if(is.matrix(e1)) e1[0, , drop = FALSE] else e1[0]
+ e2 <- if(is.matrix(e2)) e2[0, , drop = FALSE] else e2[0]
+ } else {
+ e1 <- if(is.matrix(e1)) e12[, 1L:nc1 , drop = FALSE] else e12[, 1]
+ e2 <- if(is.matrix(e2)) e12[, nc1 + (1L:nc2), drop = FALSE] else e12[, nc1 + 1]
+ }
+
+_______
+On Wednesday, 4 March 2026 at 06:57:51 pm GMT+7, Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+
+
+>>>>> Martin Maechler
+>>>>>? ? on Wed, 4 Mar 2026 12:42:20 +0100 writes:
+
+>>>>> Suharto Anggono Suharto Anggono
+>>>>>? ? on Wed, 4 Mar 2026 06:05:18 +0000 (UTC) writes:
+
+? ? >> Then, please announce the change in NEWS. For example:
+? ? >> The result of arithmetic and comparison operations of non-overlapping "ts" objects where either is a matrix is now a matrix.
+
+? ? >> It seems that the statement "diff(<ts-matrix>) remains matrix, even when it has length zero" was meant for the change to 'Ops.ts'. But the wording is about diff(<ts-matrix>), which is included in the previous statement.
+
+? ? >> But I've just realized this :
+
+? ? >> Suppose that
+? ? >> x <- ts(0)
+
+? ? >> With the change, x - lag(x, -1) and x == lag(x, -1) are NULL.
+? ? >> In R 4.5.2, x - lag(x, -1) is integer(0) and x == lag(x, -1) is logical(0).
+
+? ? > Indeed, so we may even have to change R-devel further (for this
+? ? > rare boundary case).
+
+? ? > But the R 4.5.2? x - lag(x, -1)? giving integer(0)? is only somewhat better than
+? ? > giving NULL? when in principle the "truly correct" answer should
+? ? > be? double(0) and we'd rather get that right in R-devel.
+
+==> So, we should probably reopen R Bugzilla item PR#18972, at
+---> https://bugs.r-project.org/show_bug.cgi?id=18972
+
+Martin  
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Mar 27 09:37:42 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 27 Mar 2026 11:37:42 +0300
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <27077.57734.994113.828318@paul.eddelbuettel.com>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+ <27077.38711.595887.886808@paul.eddelbuettel.com>
+ <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+ <27077.42654.376936.156948@paul.eddelbuettel.com>
+ <13DCFF52-D5E1-4883-AFE0-DFADE36C5290@R-project.org>
+ <27077.55822.254302.128512@paul.eddelbuettel.com>
+ <68D2827E-CA46-48D5-BAF5-F10D9BA60FB3@R-project.org>
+ <27077.57734.994113.828318@paul.eddelbuettel.com>
+Message-ID: <20260327113742.1b83e1b4@Tarkus>
+
+On Thu, 26 Mar 2026 20:46:46 -0500
+Dirk Eddelbuettel <edd at debian.org> wrote:
+
+> Are we really only talking about parsing an RFC 822 date into an ISO
+> date or is there more going here? If it is this, why can the date
+> (coming in with a regularized format) not be converted as needed?
+
+R needs the "Built" date to differ between binary builds of the same
+version of the source package for approximately the same purpose as why
+the +b1 suffix is added to version numbers in Debian when rebuilding
+without changing the source. R uses the date as a proxy for
+binary-level dependencies (e.g. cached S4 classes [1] or ABI issues
+with LinkingTo [2]) that "disappear" upon re-installation from source.
+
+Interestingly, Debian rules for binNMUs [3] seem to fulfil this already:
+
+> The only file in the source package which is modified by the binNMU
+> is debian/changelog, which gets a new entry for the new version.
+
+In other words, when a binNMU happens, the Built: date is updated,
+which is what R cares about.
+
+So, e.g., r-cran-libcoin (1.0-9-1+b1) in bookworm has
+
+Built: R 4.2.1; x86_64-pc-linux-gnu; 'Sun, 18 Sep 2022 22:43:49 +0000'; unix
+
+with the binNMU timestamp from changelog.Debian.amd64 and not the
+source package timestamp from changelog.Debian. Actually, I see this
+for all r-cran-* packages with binNMUs that I have installed:
+
+dpkg -l | \
+ awk '
+  ($1=="ii" && $2 ~ /^r-cran-/ && $3 ~ /\+b/){
+   sub("r-cran-","",$2); print $2
+  }
+ ' | while read pkg; do
+  srcDate=$(dpkg-parsechangelog \
+   -l /usr/share/doc/r-cran-"$pkg"/changelog.Debian.gz -S Date)
+  binDate=$(dpkg-parsechangelog \
+   -l /usr/share/doc/r-cran-"$pkg"/changelog.Debian.amd64.gz -S Date)
+  pkgDesc=$(dpkg -L r-cran-"$pkg" | grep '/DESCRIPTION$')
+  grep -q "^Built:.*$srcDate" $pkgDesc && echo "$pkg has source date"
+  grep -q "^Built:.*$binDate" $pkgDesc && echo "$pkg has binary date"
+done
+
+So, while Simon's fix in r89726 avoided the immediate breakage, the
+dates patched in by the Debian build system should be safe to use as
+well. r-cran.mk would just need to use something like:
+
+builttime := $(shell dpkg-parsechangelog -l$(CURDIR)/debian/changelog -S Timestamp)
+builttimeR := $(shell date -u -d @$(builttime) +"%Y-%m-%d %H:%M:%S UTC")
+builttimeStamp := "--built-timestamp=\"$(builttimeR)\""
+
+instead of the RFC 5322 format.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://stat.ethz.ch/pipermail/r-devel/2022-September/081971.html
+Also discussed in
+https://stat.ethz.ch/pipermail/r-devel/2023-August/082769.html
+https://stat.ethz.ch/pipermail/r-devel/2025-January/083779.html
+
+[2]
+https://stat.ethz.ch/pipermail/r-package-devel/2025q1/011376.html
+
+[3]
+https://wiki.debian.org/binNMU
+
+
+From edd @end|ng |rom deb|@n@org  Fri Mar 27 13:42:44 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 27 Mar 2026 07:42:44 -0500
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <20260327113742.1b83e1b4@Tarkus>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+ <27077.38711.595887.886808@paul.eddelbuettel.com>
+ <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+ <27077.42654.376936.156948@paul.eddelbuettel.com>
+ <13DCFF52-D5E1-4883-AFE0-DFADE36C5290@R-project.org>
+ <27077.55822.254302.128512@paul.eddelbuettel.com>
+ <68D2827E-CA46-48D5-BAF5-F10D9BA60FB3@R-project.org>
+ <27077.57734.994113.828318@paul.eddelbuettel.com>
+ <20260327113742.1b83e1b4@Tarkus>
+Message-ID: <27078.31556.809382.274763@paul.eddelbuettel.com>
+
+
+On 27 March 2026 at 11:37, Ivan Krylov wrote:
+| On Thu, 26 Mar 2026 20:46:46 -0500
+| Dirk Eddelbuettel <edd at debian.org> wrote:
+| 
+| > Are we really only talking about parsing an RFC 822 date into an ISO
+| > date or is there more going here? If it is this, why can the date
+| > (coming in with a regularized format) not be converted as needed?
+| 
+| R needs the "Built" date to differ between binary builds of the same
+| version of the source package for approximately the same purpose as why
+| the +b1 suffix is added to version numbers in Debian when rebuilding
+| without changing the source. R uses the date as a proxy for
+| binary-level dependencies (e.g. cached S4 classes [1] or ABI issues
+| with LinkingTo [2]) that "disappear" upon re-installation from source.
+
+Ok, now things slowly fall into place. I may have missed / skipped earlier
+parts. We are talking about a timestamp R uses and stores in the Built field
+in DESCRIPTION, correct?  Which, when a common timestamp is used / imposed,
+comes via the --built-timestamp option.
+
+| Interestingly, Debian rules for binNMUs [3] seem to fulfil this already:
+| 
+| > The only file in the source package which is modified by the binNMU
+| > is debian/changelog, which gets a new entry for the new version.
+| 
+| In other words, when a binNMU happens, the Built: date is updated,
+| which is what R cares about.
+| 
+| So, e.g., r-cran-libcoin (1.0-9-1+b1) in bookworm has
+| 
+| Built: R 4.2.1; x86_64-pc-linux-gnu; 'Sun, 18 Sep 2022 22:43:49 +0000'; unix
+| 
+| with the binNMU timestamp from changelog.Debian.amd64 and not the
+| source package timestamp from changelog.Debian.
+
+Perfect. That is the missing link.
+
+| Actually, I see this
+| for all r-cran-* packages with binNMUs that I have installed:
+| 
+| dpkg -l | \
+|  awk '
+|   ($1=="ii" && $2 ~ /^r-cran-/ && $3 ~ /\+b/){
+|    sub("r-cran-","",$2); print $2
+|   }
+|  ' | while read pkg; do
+|   srcDate=$(dpkg-parsechangelog \
+|    -l /usr/share/doc/r-cran-"$pkg"/changelog.Debian.gz -S Date)
+|   binDate=$(dpkg-parsechangelog \
+|    -l /usr/share/doc/r-cran-"$pkg"/changelog.Debian.amd64.gz -S Date)
+|   pkgDesc=$(dpkg -L r-cran-"$pkg" | grep '/DESCRIPTION$')
+|   grep -q "^Built:.*$srcDate" $pkgDesc && echo "$pkg has source date"
+|   grep -q "^Built:.*$binDate" $pkgDesc && echo "$pkg has binary date"
+| done
+| 
+| So, while Simon's fix in r89726 avoided the immediate breakage, the
+| dates patched in by the Debian build system should be safe to use as
+| well. r-cran.mk would just need to use something like:
+| 
+| builttime := $(shell dpkg-parsechangelog -l$(CURDIR)/debian/changelog -S Timestamp)
+| builttimeR := $(shell date -u -d @$(builttime) +"%Y-%m-%d %H:%M:%S UTC")
+| builttimeStamp := "--built-timestamp=\"$(builttimeR)\""
+| 
+| instead of the RFC 5322 format.
+
+Very good but we a) would need this in 'R.pm' inside the dh-r package
+providing the 'R' plugin all (!!) r-(cran|bioc)-* packages use via the
+standard file debian/rules reduced to this
+
+    %:
+  	    dh $@ --buildsystem R
+
+That said, given that R's use in very recent version changed, could / should
+the parsing happen when R receives tbe value from the Debian changelog? If I
+start from, say, my most recent Matrix changelog time of
+
+    Sat, 21 Mar 2026 12:24:09 -0500
+
+should be parseable with base R too via e.g
+
+    > ts <- "Sat, 21 Mar 2026 12:24:09 -0500"
+    > strptime(ts, "%a, %d %b %Y %T %z", tz="UTC")
+    [1] "2026-03-21 17:24:09 UTC"
+    > 
+
+and given the proper read this should be expressable in whatever format
+DESCRIPTION::Built needs.  As you demonstrated above the binary porters
+already switch to the correct (updated) timestamp.
+
+So could R not convert it as needed?  This may be a simpler code path
+change. OTOH if we only care about new build then getting a patch into dh-r
+should be viable. Perl-writing volunteers welcome :) )
+
+Thanks for all the additional context, Ivan. I really appreciate it.
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From ht @end|ng |rom he@therturner@net  Fri Mar 27 17:05:27 2026
+From: ht @end|ng |rom he@therturner@net (Heather Turner)
+Date: Fri, 27 Mar 2026 16:05:27 +0000
+Subject: [Rd] Upcoming R Dev Days/R Project Sprint
+Message-ID: <3508f3cc-e110-4cd1-9ad1-18876f48f75b@app.fastmail.com>
+
+Dear All,
+
+Upcoming R Dev Days with open registration, these events are hybrid:
+
+R Dev Day @ Rencontres R, Nantes, France, Fri 19 June
+https://pretix.eu/r-contributors/r-dev-day-rr2026/
+Registration deadline: Fri 29 May
+
+R Dev Day @ CascadiaR, Portland USA, Fri 26 June
+https://pretix.eu/r-contributors/r-dev-day-cascadiar-2026
+Registration deadline: Fri 12 June
+
+Upcoming contributor events with open application and limited remote participation - travel funding is available to attend the R Project Sprint:
+
+R Dev Day @ useR! 2026, Warsaw, Poland, Fri 10 July
+https://user2026.r-project.org/additional/r-dev-day.html 
+Application deadline: Fri 24 April
+
+R Project Sprint 2026, Birmingham, UK, Tue 1 - Thu 3 September
+https://contributor.r-project.org/r-project-sprint-2026
+Application deadline: Fri 8 May
+
+We hope that you can join us at one or more of these events!
+
+Best wishes,
+
+Heather
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Mar 27 22:55:27 2026
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sat, 28 Mar 2026 10:55:27 +1300
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <20260327113742.1b83e1b4@Tarkus>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+ <27077.38711.595887.886808@paul.eddelbuettel.com>
+ <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+ <27077.42654.376936.156948@paul.eddelbuettel.com>
+ <13DCFF52-D5E1-4883-AFE0-DFADE36C5290@R-project.org>
+ <27077.55822.254302.128512@paul.eddelbuettel.com>
+ <68D2827E-CA46-48D5-BAF5-F10D9BA60FB3@R-project.org>
+ <27077.57734.994113.828318@paul.eddelbuettel.com>
+ <20260327113742.1b83e1b4@Tarkus>
+Message-ID: <E287C042-41BC-40DE-9C81-8B07D9860422@R-project.org>
+
+Ivan,
+
+thanks, you have clarified the main question I wanted to have answered, so in that case the semantic meaning actually *does* match in R and Debian so I'm perfectly happy to accommodate the old date format as fallback since that will be useful in that context then.
+
+On related topic on the other side: what we could really do is have --build-timestamp try to parse the value and always store the ISO UTC form to make sure that field is always valid (and warn/error if it is not valid), but of course that only works for the future.
+
+Thanks
+Simon
+
+
+> On 27/03/2026, at 21:37, Ivan Krylov <ikrylov at disroot.org> wrote:
+> 
+> On Thu, 26 Mar 2026 20:46:46 -0500
+> Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+>> Are we really only talking about parsing an RFC 822 date into an ISO
+>> date or is there more going here? If it is this, why can the date
+>> (coming in with a regularized format) not be converted as needed?
+> 
+> R needs the "Built" date to differ between binary builds of the same
+> version of the source package for approximately the same purpose as why
+> the +b1 suffix is added to version numbers in Debian when rebuilding
+> without changing the source. R uses the date as a proxy for
+> binary-level dependencies (e.g. cached S4 classes [1] or ABI issues
+> with LinkingTo [2]) that "disappear" upon re-installation from source.
+> 
+> Interestingly, Debian rules for binNMUs [3] seem to fulfil this already:
+> 
+>> The only file in the source package which is modified by the binNMU
+>> is debian/changelog, which gets a new entry for the new version.
+> 
+> In other words, when a binNMU happens, the Built: date is updated,
+> which is what R cares about.
+> 
+> So, e.g., r-cran-libcoin (1.0-9-1+b1) in bookworm has
+> 
+> Built: R 4.2.1; x86_64-pc-linux-gnu; 'Sun, 18 Sep 2022 22:43:49 +0000'; unix
+> 
+> with the binNMU timestamp from changelog.Debian.amd64 and not the
+> source package timestamp from changelog.Debian. Actually, I see this
+> for all r-cran-* packages with binNMUs that I have installed:
+> 
+> dpkg -l | \
+> awk '
+>  ($1=="ii" && $2 ~ /^r-cran-/ && $3 ~ /\+b/){
+>   sub("r-cran-","",$2); print $2
+>  }
+> ' | while read pkg; do
+>  srcDate=$(dpkg-parsechangelog \
+>   -l /usr/share/doc/r-cran-"$pkg"/changelog.Debian.gz -S Date)
+>  binDate=$(dpkg-parsechangelog \
+>   -l /usr/share/doc/r-cran-"$pkg"/changelog.Debian.amd64.gz -S Date)
+>  pkgDesc=$(dpkg -L r-cran-"$pkg" | grep '/DESCRIPTION$')
+>  grep -q "^Built:.*$srcDate" $pkgDesc && echo "$pkg has source date"
+>  grep -q "^Built:.*$binDate" $pkgDesc && echo "$pkg has binary date"
+> done
+> 
+> So, while Simon's fix in r89726 avoided the immediate breakage, the
+> dates patched in by the Debian build system should be safe to use as
+> well. r-cran.mk would just need to use something like:
+> 
+> builttime := $(shell dpkg-parsechangelog -l$(CURDIR)/debian/changelog -S Timestamp)
+> builttimeR := $(shell date -u -d @$(builttime) +"%Y-%m-%d %H:%M:%S UTC")
+> builttimeStamp := "--built-timestamp=\"$(builttimeR)\""
+> 
+> instead of the RFC 5322 format.
+> 
+> -- 
+> Best regards,
+> Ivan
+> 
+> [1]
+> https://stat.ethz.ch/pipermail/r-devel/2022-September/081971.html
+> Also discussed in
+> https://stat.ethz.ch/pipermail/r-devel/2023-August/082769.html
+> https://stat.ethz.ch/pipermail/r-devel/2025-January/083779.html
+> 
+> [2]
+> https://stat.ethz.ch/pipermail/r-package-devel/2025q1/011376.html
+> 
+> [3]
+> https://wiki.debian.org/binNMU
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Fri Mar 27 23:09:26 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 27 Mar 2026 17:09:26 -0500
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <27078.31556.809382.274763@paul.eddelbuettel.com>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+ <27077.38711.595887.886808@paul.eddelbuettel.com>
+ <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+ <27077.42654.376936.156948@paul.eddelbuettel.com>
+ <13DCFF52-D5E1-4883-AFE0-DFADE36C5290@R-project.org>
+ <27077.55822.254302.128512@paul.eddelbuettel.com>
+ <68D2827E-CA46-48D5-BAF5-F10D9BA60FB3@R-project.org>
+ <27077.57734.994113.828318@paul.eddelbuettel.com>
+ <20260327113742.1b83e1b4@Tarkus>
+ <27078.31556.809382.274763@paul.eddelbuettel.com>
+Message-ID: <27079.22.985139.821169@paul.eddelbuettel.com>
+
+
+Simon,
+
+Just for closure, there were two not-fully-overlapping discussions going on.
+
+1) Some breakage having to do with the time field, and you pointing at the
+fact that Debian builds supply one.
+
+As I was trying to provide in context, this is done _chiefly_ to ensure
+repeated builds from the same source tarball are bitwise identical. And that
+is achieved by replaced a read of 'current time' with a fixed string of
+'recent time', taken for convenience from debian/changelog as it is both
+guaranteed to be present (in the context where this came up: producing .deb
+binaries for the Debiann (and derivatives) distro).
+
+The key really is 'fixed string'. That the RFC 822 format is used is a)
+because it is there, b) easily understood, c) even if less general than ISO
+8601 and, importantly, accessible with a single call. The helper implementing
+this these days is the 'buildsystem' provider for R used by debhelper,
+implemented in the file [1] on Debian / Ubuntu. It has this one-line accessor
+(on line 219 in my installed version)
+
+   my $changelog_time = Dpkg::Changelog::Parse::changelog_parse()->{Date};
+
+Again, as this is passed into to build and meant to be _fixed_ there is no
+additional parsing or formatting.
+
+2) You / R Core decide to use the Built: field inside of DESCRIPTION to sort
+builds and depedendecies. With my Debian hat on, I slightly slant my head and
+try hard to not say much more here. We are using a more extended scheme that
+evolved over the years, and we seem to need all (added) components. The
+entire discussion under 1) above was about making a resulting artifact, here
+.deb files, be bitwise fixed and identical. R tries hard to do a lot a of
+things with fewer resources. The DESCRIPTION file has source information in
+the source tar.gz archive, but it also contains added fields created at
+'install' or binary build time in the installed directory, or created binary
+tarball. That can have challenges, but you know better and are well placed to
+fight them.
+
+Now, with 1) and 2), I think it does indeed become clear that in order to use
+the timestamp passed in (as described in 1) above) for comparison, you
+probably want to normalize it.  As Ivan very helpfully demonstrated, even
+when there are binary 'non-maintainer builds' aka NMUs (ie builds made to
+keep the archive consistent in build artifact without any source changes),
+the appropriate buildstamp appears to be passed on as is. You would still
+need to parse it to make it ISO 8601 (or alike) comparable.  Or ... maybe you
+skip the step as the binaries you aim to produce are _not_ .deb binaries but
+new-style CRAN binaries in a more naked compressed tar archive, and nobody
+(as far as I know) is looking at reproducibility at the bit level as the
+reproducible builds initative [2] that triggered the changes in 1) does.
+
+
+Now, getting back to 1) above, it will not be affected if you make a change
+to the timestamp passed in as long as the same changed string is passed
+through. If the same transformation is done, we still have bitwise identical
+builds satisfying the reproducibe builds initiative [2] that the Debian
+builds aim at.
+
+Makes sense?
+
+Cheers, Dirk
+
+[1] /usr/share/perl5/Debian/Debhelper/Buildsystem/R.pm
+[2] https://reproducible-builds.org/
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From edd @end|ng |rom deb|@n@org  Fri Mar 27 23:12:34 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 27 Mar 2026 17:12:34 -0500
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <E287C042-41BC-40DE-9C81-8B07D9860422@R-project.org>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+ <27077.38711.595887.886808@paul.eddelbuettel.com>
+ <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+ <27077.42654.376936.156948@paul.eddelbuettel.com>
+ <13DCFF52-D5E1-4883-AFE0-DFADE36C5290@R-project.org>
+ <27077.55822.254302.128512@paul.eddelbuettel.com>
+ <68D2827E-CA46-48D5-BAF5-F10D9BA60FB3@R-project.org>
+ <27077.57734.994113.828318@paul.eddelbuettel.com>
+ <20260327113742.1b83e1b4@Tarkus>
+ <E287C042-41BC-40DE-9C81-8B07D9860422@R-project.org>
+Message-ID: <27079.210.554500.623567@paul.eddelbuettel.com>
+
+
+On 28 March 2026 at 10:55, Simon Urbanek wrote:
+| On related topic on the other side: what we could really do is have --build-timestamp try to parse the value and always store the ISO UTC form to make sure that field is always valid (and warn/error if it is not valid), but of course that only works for the future.
+
+This came in while I concurrently wrote a longer reply -- that, inter alia,
+included a reference to the one-line lookup on the debian/changelog timestamp
+via the (Perl-based) dh-r plugin R.pm. There is no R code involved there
+anyway, but Perl would of course have similar time parsing abilities. If
+someone wants to patch that, the dh-r authors will likely take it. Otherwise
+it may be easier in to pick that up R's tools package.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
