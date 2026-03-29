@@ -5674,3 +5674,106 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From |uc@r @end|ng |rom |edor@project@org  Sat Mar 28 11:19:03 2026
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Sat, 28 Mar 2026 11:19:03 +0100
+Subject: [Rd] Accessors returning (void *) 1 for zero-length vectors
+Message-ID: <CALEXWq1b4j-rP0TdwfqgJf4dJzBM9MJogULmgXnJjB5jphGNtQ@mail.gmail.com>
+
+Hi,
+
+We were recently bitten by this [1] (see [2]), when an Rcpp user tried
+to std::copy() a vector that may be of length zero and got an UB error
+due to misaligned memory. Returning (void *) 1 seems like a very odd
+choice to me. The comment suggests that this was a workaround for
+Matrix. Wouldn't it be wiser to just fix Matrix and return NULL
+instead, which is expected and easier to check and to handle?
+
+[1] https://github.com/wch/r-source/commit/d00ce14c27db627d8644cce8551b792362cc46bf
+[2] https://github.com/RcppCore/Rcpp/issues/1461
+
+Best,
+-- 
+I?aki ?car
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sat Mar 28 23:09:03 2026
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sat, 28 Mar 2026 18:09:03 -0400
+Subject: [Rd] tiny bib glitch in src/librar/stats/man/spectrum.Rd
+Message-ID: <966f1002-af91-48c3-9bb5-9cc09f39432a@gmail.com>
+
+   (I think I'm having bad R-devel karma these days.)
+
+   I hit some errors installing the latest r-devel, but they seem to 
+have been transient.  In the meantime, while I was poking around I found 
+a minor issue (I think) with the use of the bibcitep macro  in one of 
+the stats man pages.
+
+
+R/src/library/stats/man/spectrum.Rd has the line:
+
+   \bibcitep{e.g.,|R:Bloomfield:1976|} or 1 and range
+
+When running code to parse this I'm getting the warning
+
+Warning: spectrum.Rd:66: Could not find bibentries for the following keys:
+   ?e.g.?
+
+I think this is because the comma after "e.g." means that the arguments 
+of bibcitep are being interpreted as a comma-separated list of bibtex 
+keys: from WRE,
+
+ > Textual and parenthetical citations are obtained via, respectively, 
+\bibcitet and \bibcitep (the naming follows that of \citet and \citep in 
+the LaTeX natbib package (Daly 2010). These single-argument macros both 
+take either a comma-separated list of one or more keyspecs or a single 
+citespec of the form before|keyspec|after with both ?|? mandatory and 
+before and after possibly empty text to be inserted before and after the 
+citation if not empty.
+
+
+From @eb@meyer @end|ng |rom |@u@de  Sun Mar 29 01:02:03 2026
+From: @eb@meyer @end|ng |rom |@u@de (Sebastian Meyer)
+Date: Sun, 29 Mar 2026 01:02:03 +0100
+Subject: [Rd] tiny bib glitch in src/librar/stats/man/spectrum.Rd
+In-Reply-To: <966f1002-af91-48c3-9bb5-9cc09f39432a@gmail.com>
+References: <966f1002-af91-48c3-9bb5-9cc09f39432a@gmail.com>
+Message-ID: <ad1c678b-1a56-4224-8f1d-5656850c1d1a@fau.de>
+
+Am 28.03.26 um 23:09 schrieb Ben Bolker:
+> R/src/library/stats/man/spectrum.Rd has the line:
+> 
+>     \bibcitep{e.g.,|R:Bloomfield:1976|} or 1 and range
+> 
+> When running code to parse this I'm getting the warning
+> 
+> Warning: spectrum.Rd:66: Could not find bibentries for the following keys:
+>     ?e.g.?
+
+Thanks for testing. I'm not sure what you mean by "running code to parse 
+this". This warning would appear when using the above \bibcitep 
+expression from r89703 with R < r89703.
+
+> 
+> I think this is because the comma after "e.g." means that the arguments
+> of bibcitep are being interpreted as a comma-separated list of bibtex
+> keys: from WRE,
+> 
+>   > Textual and parenthetical citations are obtained via, respectively,
+> \bibcitet and \bibcitep (the naming follows that of \citet and \citep in
+> the LaTeX natbib package (Daly 2010). These single-argument macros both
+> take either a comma-separated list of one or more keyspecs or a single
+> citespec of the form before|keyspec|after with both ?|? mandatory and
+> before and after possibly empty text to be inserted before and after the
+> citation if not empty.
+
+Right and it is intended that "e.g.,|R:Bloomfield:1976|" works as a 
+single 'citespec' where the 'before' part contains a comma as part of 
+the text. Commas are needed relatively often in such pre/post-notes, and 
+the restriction to a single annotated key avoids more cumbersome syntax 
+variants that would require non-Rd-style escapes for commas.
+
+	Sebastian Meyer
+
+
