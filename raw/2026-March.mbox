@@ -5777,3 +5777,118 @@ variants that would require non-Rd-style escapes for commas.
 	Sebastian Meyer
 
 
+From edd @end|ng |rom deb|@n@org  Sun Mar 29 16:40:32 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sun, 29 Mar 2026 09:40:32 -0500
+Subject: [Rd] recent changes to r-devel with package date checking?
+In-Reply-To: <27079.210.554500.623567@paul.eddelbuettel.com>
+References: <a706bc12-bc86-45f7-a024-d95b62b3eb26@gmail.com>
+ <20260326160001.4f9da269@arachnoid>
+ <27077.13974.808000.145601@paul.eddelbuettel.com>
+ <E0D2337F-A510-4F4C-B17C-05D71EAE21C3@R-project.org>
+ <27077.38711.595887.886808@paul.eddelbuettel.com>
+ <4B15E0AF-6135-4EE4-92DF-2E6CE5996338@R-project.org>
+ <27077.42654.376936.156948@paul.eddelbuettel.com>
+ <13DCFF52-D5E1-4883-AFE0-DFADE36C5290@R-project.org>
+ <27077.55822.254302.128512@paul.eddelbuettel.com>
+ <68D2827E-CA46-48D5-BAF5-F10D9BA60FB3@R-project.org>
+ <27077.57734.994113.828318@paul.eddelbuettel.com>
+ <20260327113742.1b83e1b4@Tarkus>
+ <E287C042-41BC-40DE-9C81-8B07D9860422@R-project.org>
+ <27079.210.554500.623567@paul.eddelbuettel.com>
+Message-ID: <27081.14816.985749.331437@paul.eddelbuettel.com>
+
+
+Hi Simon,
+
+I put up bug report 19037 with the diff below. Now we can pass a timestamp
+in, and if it in RFC 822 format, it gets transformed into ISO 8601 format.
+
+Demo and diff below, hope it helps.
+
+Cheers, Dirk
+
+### Demo
+
+Using anytime to create an RFC 822 date:
+
+edd at paul:~/git/tidycpp(master)$ Rscript --vanilla -e 'cat(anytime::rfc2822(Sys.time()),"\n")' 
+Sun, 29 Mar 2026 09:36:29 -0500 
+edd at paul:~/git/tidycpp(master)$ 
+edd at paul:~/git/tidycpp(master)$ RD CMD INSTALL --built-timestamp='Sun, 29 Mar 2026 09:36:29 -0500' . 
+* installing to library ?/usr/local/lib/R-devel/lib/R/library?
+* installing *source* package ?tidyCpp? ...
+** this is package ?tidyCpp? version ?0.0.11?
+** using staged installation
+** inst
+** help
+*** installing help indices
+** building package indices
+** installing vignettes
+** testing if installed package can be loaded from temporary location
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (tidyCpp)
+edd at paul:~/git/tidycpp(master)$ grep Built /usr/local/lib/R-devel/lib/R/library/tidyCpp/DESCRIPTION 
+Built: R 4.7.0; ; 2026-03-29 14:36:29 UTC; unix
+edd at paul:~/git/tidycpp(master)$ 
+
+Or if we want one from a debian/changelog:
+
+edd at paul:~/git/tidycpp(master)$ grep ' -- Dirk' ~/deb/r-base/debian/changelog | head -1
+ -- Dirk Eddelbuettel <edd at debian.org>  Wed, 11 Mar 2026 07:09:46 -0500
+edd at paul:~/git/tidycpp(master)$ 
+edd at paul:~/git/tidycpp(master)$ RD CMD INSTALL --built-timestamp='Wed, 11 Mar 2026 07:09:46 -0500' . 
+* installing to library ?/usr/local/lib/R-devel/lib/R/library?
+* installing *source* package ?tidyCpp? ...
+** this is package ?tidyCpp? version ?0.0.11?
+** using staged installation
+** inst
+** help
+*** installing help indices
+** building package indices
+** installing vignettes
+** testing if installed package can be loaded from temporary location
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (tidyCpp)
+edd at paul:~/git/tidycpp(master)$ grep Built /usr/local/lib/R-devel/lib/R/library/tidyCpp/DESCRIPTION 
+Built: R 4.7.0; ; 2026-03-11 12:09:46 UTC; unix
+edd at paul:~/git/tidycpp(master)$ 
+
+
+### Diff (also in bug report 19037)
+
+edd at paul:~/git/tidycpp(master)$ cat /tmp/r/r-builtstamp-r89738.updated.diff 
+Index: src/library/tools/R/admin.R
+===================================================================
+--- src/library/tools/R/admin.R (revision 89738)
++++ src/library/tools/R/admin.R (working copy)
+@@ -1,7 +1,7 @@
+ #  File src/library/tools/R/admin.R
+ #  Part of the R package, https://www.R-project.org
+ #
+-#  Copyright (C) 1995-2025 The R Core Team
++#  Copyright (C) 1995-2026 The R Core Team
+ #
+ #  This program is free software; you can redistribute it and/or modify
+ #  it under the terms of the GNU General Public License as published by
+@@ -65,6 +65,12 @@
+         ## Prefer date in ISO 8601 format, UTC, avoid sub-seconds.
+         builtStamp <- format(Sys.time(), "%Y-%m-%d %H:%M:%S",
+                              tz = "UTC", usetz = TRUE)
++    } else {
++        ## Debian may have passed a timestamp in RFC 822 format,
++        ## if it parses use it but as ISO 8601, UTC, no sub-seconds
++        if (!is.na(res <- strptime(builtStamp, "%a, %d %b %Y %T %z", tz="UTC")))
++            builtStamp <- format(res, "%Y-%m-%d %H:%M:%S",
++                                 tz = "UTC", usetz = TRUE)
+     }
+     Built <-
+        paste0("R ",
+edd at paul:~/git/tidycpp(master)$ 
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
