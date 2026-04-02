@@ -1,0 +1,196 @@
+From therne@u @end|ng |rom m@yo@edu  Wed Apr  1 21:29:59 2026
+From: therne@u @end|ng |rom m@yo@edu (Therneau, Terry M., Ph.D.)
+Date: Wed, 01 Apr 2026 14:29:59 -0500
+Subject: [Rd] bool?
+Message-ID: <d47e12e2-977d-4030-8a3d-3fab36263621@mayo.edu>
+
+I have code that works on Rdevel, but for regular R? (4.4.1) the compile step fails with 
+messages about "bool".? ?Text is below.
+The hmmeigen.c function is question was essentially a "lift" of the R eigen code,? 
+however, I want both the right and left eigenvalues, so I modified the call to dgeev to 
+return both.
+
+I am guessing that something in a .h file has changed?? ?The 4.4.1 version is the 
+department compute infrastructure, and I can't update versions there.
+
+Terry T.
+
+----------
+
+using C compiler: ?gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28)?
+gcc -I"/home/biotools/r/R-4.4.1/lib64/R/include" -DNDEBUG ?-I/usr/local/include? ? -fpic? 
+-g -O2? -c hmmeigen.c -o hmmeigen.o
+hmmeigen.c: In function ?hmmeigen?:
+hmmeigen.c:38:5: error: unknown type name ?bool?; did you mean ?_Bool??
+ ? ? ?bool complexValues;
+ ? ? ?^~~~
+ ? ? ?_Bool
+hmmeigen.c:79:21: error: ?false? undeclared (first use in this function); did you mean 
+?fabsl??
+ ? ? ?complexValues = false;
+ ? ? ? ? ? ? ? ? ? ? ?^~~~~
+ ? ? ? ? ? ? ? ? ? ? ?fabsl
+hmmeigen.c:79:21: note: each undeclared identifier is reported only once for each function 
+it appears in
+hmmeigen.c:85:22: error: ?true? undeclared (first use in this function); did you mean ?trunc??
+ ? ? ? complexValues = true;
+ ? ? ? ? ? ? ? ? ? ? ? ^~~~
+ ? ? ? ? ? ? ? ? ? ? ? trunc
+make: *** [/home/biotools/r/R-4.4.1/lib64/R/etc/Makeconf:195: hmmeigen.o] Error 1
+ERROR: compilation failed for package ?icmsh?
+* removing ?/home/therneau/Rlib/icmsh?
+
+-- 
+Terry M Therneau, PhD
+Department of Quantitative Health Sciences
+Mayo Clinic
+therneau at mayo.edu
+
+"TERR-ree THUR-noh"
+
+	[[alternative HTML version deleted]]
+
+
+From therne@u @end|ng |rom m@yo@edu  Wed Apr  1 21:34:04 2026
+From: therne@u @end|ng |rom m@yo@edu (Therneau, Terry M., Ph.D.)
+Date: Wed, 01 Apr 2026 14:34:04 -0500
+Subject: [Rd] compilation failure
+Message-ID: <a31a4038-05ea-4349-b2a1-5375e87e983a@mayo.edu>
+
+I just tried to pull down the latest R-devel.
+
+svn up
+tools/rsync-recommended
+./configure
+make
+
+lots of standard stuff flies by, then
+
+make[3]: Entering directory '/usr/local/src/R-devel/src/main'
+make[3]: *** No rule to make target '../../src/include/R_ext/PrtUtil.h', needed by 
+'builtin.o'.? Stop.
+
+------------
+
+ > sessionInfo()
+R Under development (unstable) (2026-01-09 r89293)
+Platform: x86_64-pc-linux-gnu
+Running under: Ubuntu 22.04.5 LTS
+
+Matrix products: default
+BLAS:? ?/usr/local/src/R-devel/lib/libRblas.so
+LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.10.0 LAPACK version 3.10.0
+
+locale:
+ ?[1] LC_CTYPE=en_US.UTF-8? ? ? ?LC_NUMERIC=C
+ ?[3] LC_TIME=en_US.UTF-8? ? ? ? LC_COLLATE=C
+ ?[5] LC_MONETARY=en_US.UTF-8? ? LC_MESSAGES=en_US.UTF-8
+ ?[7] LC_PAPER=en_US.UTF-8? ? ? ?LC_NAME=C
+ ?[9] LC_ADDRESS=C? ? ? ? ? ? ? ?LC_TELEPHONE=C
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C
+
+time zone: America/Chicago
+tzcode source: system (glibc)
+
+attached base packages:
+[1] stats? ? ?graphics? grDevices utils? ? ?datasets? methods ?base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.6.0
+ >
+
+
+-- 
+Terry M Therneau, PhD
+Department of Quantitative Health Sciences
+Mayo Clinic
+therneau at mayo.edu
+
+"TERR-ree THUR-noh"
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Apr  1 21:50:12 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 1 Apr 2026 22:50:12 +0300
+Subject: [Rd] compilation failure
+In-Reply-To: <a31a4038-05ea-4349-b2a1-5375e87e983a@mayo.edu>
+References: <a31a4038-05ea-4349-b2a1-5375e87e983a@mayo.edu>
+Message-ID: <20260401225012.2e488952@Tarkus>
+
+On Wed, 01 Apr 2026 14:34:04 -0500
+"Therneau, Terry M., Ph.D. via R-devel" <r-devel at r-project.org> wrote:
+
+> make[3]: Entering directory '/usr/local/src/R-devel/src/main'
+> make[3]: *** No rule to make target
+> '../../src/include/R_ext/PrtUtil.h', needed by 'builtin.o'.? Stop.
+
+There's probably a way to remove only a single Makefile (in src/main) to
+force it to be re-generated (by another .../configure run?) without
+mentioning a header file that had been deleted, but 'make clean'
+followed by 'make' should solve this problem too.
+
+-- 
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Apr  1 22:00:36 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 1 Apr 2026 23:00:36 +0300
+Subject: [Rd] bool?
+In-Reply-To: <d47e12e2-977d-4030-8a3d-3fab36263621@mayo.edu>
+References: <d47e12e2-977d-4030-8a3d-3fab36263621@mayo.edu>
+Message-ID: <20260401230036.6c59a992@Tarkus>
+
+On Wed, 01 Apr 2026 14:29:59 -0500
+"Therneau, Terry M., Ph.D. via R-devel" <r-devel at r-project.org> wrote:
+
+> I have code that works on Rdevel, but for regular R? (4.4.1) the
+> compile step fails with messages about "bool".?
+
+> hmmeigen.c:38:5: error: unknown type name ?bool?; did you mean
+> ?_Bool??
+
+On R >= 4.5, <R_ext/Boolean.h> includes <stdbool.h>, which (until C23)
+provides the 'bool' type and the 'true' / 'false' constants. Starting
+with C23, the type and the keywords are built-in, but the header still
+exists.
+
+On previous versions of R, <stdbool.h> is not included automatically.
+
+-- 
+Best regards,
+Ivan
+
+
+From therne@u @end|ng |rom m@yo@edu  Wed Apr  1 23:24:56 2026
+From: therne@u @end|ng |rom m@yo@edu (Therneau, Terry M., Ph.D.)
+Date: Wed, 01 Apr 2026 16:24:56 -0500
+Subject: [Rd] compilation failurena.rm=T)
+In-Reply-To: <20260401225012.2e488952@Tarkus>
+References: <a31a4038-05ea-4349-b2a1-5375e87e983a@mayo.edu>
+ <20260401225012.2e488952@Tarkus>
+Message-ID: <0fcb58a1-1fef-48d0-8228-fbd18e2d164c@mayo.edu>
+
+Thank you Ivan, that solved the issue.
+
+On 4/1/26 14:50, Ivan Krylov wrote:
+> External Email Notice: This message was sent by someone outside Mayo Clinic.
+>
+> On Wed, 01 Apr 2026 14:34:04 -0500
+> "Therneau, Terry M., Ph.D. via R-devel"<r-devel at r-project.org> wrote:
+>
+>> make[3]: Entering directory '/usr/local/src/R-devel/src/main'
+>> make[3]: *** No rule to make target
+>> '../../src/include/R_ext/PrtUtil.h', needed by 'builtin.o'.? Stop.
+> There's probably a way to remove only a single Makefile (in src/main) to
+> force it to be re-generated (by another .../configure run?) without
+> mentioning a header file that had been deleted, but 'make clean'
+> followed by 'make' should solve this problem too.
+>
+
+	[[alternative HTML version deleted]]
+
+
