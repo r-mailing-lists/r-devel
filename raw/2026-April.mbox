@@ -194,3 +194,283 @@ On 4/1/26 14:50, Ivan Krylov wrote:
 	[[alternative HTML version deleted]]
 
 
+From therne@u @end|ng |rom m@yo@edu  Mon Apr  6 20:40:46 2026
+From: therne@u @end|ng |rom m@yo@edu (Therneau, Terry M., Ph.D.)
+Date: Mon, 06 Apr 2026 13:40:46 -0500
+Subject: [Rd] R CMD check issue
+Message-ID: <0298c48e-9d2a-4106-bf94-90622efdce03@mayo.edu>
+
+I'm doing something less usual in a package (with some help from others).? ? The big 
+picture: I'm solving a particular varianct of hidden Markov models, which involves a 
+zillion calls for a matrix exponential and its derivative, and I've been doing everything 
+I can think of to speed it up.? ?The secondary picture is that I don't like to work with 
+source code files that go on for page after page, I have a terrible time 
+editing/managing/whatever such.
+
+The issue: I end up using an envionment trick to pass along a long list of parameters 
+(about 34 vectors or lists), or I should say to make them findable without having to send 
+them down the call chain as arguments.? ?R CMD check flags the pair of function at the end 
+of the chain, which actually use them, as each having 34 "no visible binding for global 
+variable? xyz" messages.? ? ?In the short term I can just live with it, but if I ever want 
+to submit to CRAN I'll need something more formal.? ?I'm happy to give more details to 
+whomever might want to pitch in.
+
+PS. The first pass had about 40 such warnings, i.e, these 'spurious' ones along with a 
+half dozen misspelled variable names -- I overall like what the check does for me, it's 
+just overzealous in this case.
+
+Terry T.
+
+-- 
+Terry M Therneau, PhD
+Department of Quantitative Health Sciences
+Mayo Clinic
+therneau at mayo.edu
+
+"TERR-ree THUR-noh"
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Apr  6 21:25:21 2026
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 6 Apr 2026 15:25:21 -0400
+Subject: [Rd] R CMD check issue
+In-Reply-To: <0298c48e-9d2a-4106-bf94-90622efdce03@mayo.edu>
+References: <0298c48e-9d2a-4106-bf94-90622efdce03@mayo.edu>
+Message-ID: <2fd6b1e3-0ec9-41d8-8f64-a2c556fc032a@gmail.com>
+
+This might not be compatible with your need for speed, but you can do
+
+   env$var
+
+to access a variable in the specified environment.  Something similar 
+would work with a list instead of an eime nvironment, but then changes 
+to var would not be saved to the original list, and name completion 
+could hide errors (i.e. env$v doesn't find anything if the variable is 
+named "var", but lst$v would find "var").
+
+In the usual case where you only work with a few variables at a time you 
+would probably save some time with code like
+
+   var <- env$var
+   # work with it.  Changes would need to be explicitly saved!
+
+Duncan Murdoch
+
+On 2026-04-06 2:40 p.m., Therneau, Terry M., Ph.D. via R-devel wrote:
+> I'm doing something less usual in a package (with some help from others).? ? The big
+> picture: I'm solving a particular varianct of hidden Markov models, which involves a
+> zillion calls for a matrix exponential and its derivative, and I've been doing everything
+> I can think of to speed it up.? ?The secondary picture is that I don't like to work with
+> source code files that go on for page after page, I have a terrible time
+> editing/managing/whatever such.
+> 
+> The issue: I end up using an envionment trick to pass along a long list of parameters
+> (about 34 vectors or lists), or I should say to make them findable without having to send
+> them down the call chain as arguments.? ?R CMD check flags the pair of function at the end
+> of the chain, which actually use them, as each having 34 "no visible binding for global
+> variable? xyz" messages.? ? ?In the short term I can just live with it, but if I ever want
+> to submit to CRAN I'll need something more formal.? ?I'm happy to give more details to
+> whomever might want to pitch in.
+> 
+> PS. The first pass had about 40 such warnings, i.e, these 'spurious' ones along with a
+> half dozen misspelled variable names -- I overall like what the check does for me, it's
+> just overzealous in this case.
+> 
+> Terry T.
+>
+
+
+From kev|n@r@coombe@ @end|ng |rom gm@||@com  Mon Apr  6 21:46:01 2026
+From: kev|n@r@coombe@ @end|ng |rom gm@||@com (Kevin R. Coombes)
+Date: Mon, 6 Apr 2026 15:46:01 -0400
+Subject: [Rd] R CMD check issue
+In-Reply-To: <2fd6b1e3-0ec9-41d8-8f64-a2c556fc032a@gmail.com>
+References: <0298c48e-9d2a-4106-bf94-90622efdce03@mayo.edu>
+ <2fd6b1e3-0ec9-41d8-8f64-a2c556fc032a@gmail.com>
+Message-ID: <b23cc5ee-d7bb-4a12-988b-2d42c8079a10@gmail.com>
+
+Can you "cheat" that answer by using
+
+if (!exists("v1")) {
+ ? ?v1 <- env$v1
+ ? ?v2 <- end$v2
+ ? ?# ...
+}
+
+and then go ahead and use the names as you wish? The CRAN check would go 
+away, since you have explicitly defined all the names. But shouldn't the 
+run time already know the names, so the definitions get skipped?
+
+ ? ? Kevin
+
+On 4/6/2026 3:25 PM, Duncan Murdoch wrote:
+> This might not be compatible with your need for speed, but you can do
+>
+> ? env$var
+>
+> to access a variable in the specified environment.? Something similar 
+> would work with a list instead of an eime nvironment, but then changes 
+> to var would not be saved to the original list, and name completion 
+> could hide errors (i.e. env$v doesn't find anything if the variable is 
+> named "var", but lst$v would find "var").
+>
+> In the usual case where you only work with a few variables at a time 
+> you would probably save some time with code like
+>
+> ? var <- env$var
+> ? # work with it.? Changes would need to be explicitly saved!
+>
+> Duncan Murdoch
+>
+> On 2026-04-06 2:40 p.m., Therneau, Terry M., Ph.D. via R-devel wrote:
+>> I'm doing something less usual in a package (with some help from 
+>> others).? ? The big
+>> picture: I'm solving a particular varianct of hidden Markov models, 
+>> which involves a
+>> zillion calls for a matrix exponential and its derivative, and I've 
+>> been doing everything
+>> I can think of to speed it up.? ?The secondary picture is that I 
+>> don't like to work with
+>> source code files that go on for page after page, I have a terrible time
+>> editing/managing/whatever such.
+>>
+>> The issue: I end up using an envionment trick to pass along a long 
+>> list of parameters
+>> (about 34 vectors or lists), or I should say to make them findable 
+>> without having to send
+>> them down the call chain as arguments.? ?R CMD check flags the pair 
+>> of function at the end
+>> of the chain, which actually use them, as each having 34 "no visible 
+>> binding for global
+>> variable? xyz" messages.? ? ?In the short term I can just live with 
+>> it, but if I ever want
+>> to submit to CRAN I'll need something more formal.? ?I'm happy to 
+>> give more details to
+>> whomever might want to pitch in.
+>>
+>> PS. The first pass had about 40 such warnings, i.e, these 'spurious' 
+>> ones along with a
+>> half dozen misspelled variable names -- I overall like what the check 
+>> does for me, it's
+>> just overzealous in this case.
+>>
+>> Terry T.
+>>
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From nnov|c@ @end|ng |rom gm@||@com  Mon Apr  6 21:52:32 2026
+From: nnov|c@ @end|ng |rom gm@||@com (Novica Nakov)
+Date: Mon, 6 Apr 2026 21:52:32 +0200
+Subject: [Rd] R CMD check issue
+In-Reply-To: <0298c48e-9d2a-4106-bf94-90622efdce03@mayo.edu>
+References: <0298c48e-9d2a-4106-bf94-90622efdce03@mayo.edu>
+Message-ID: <d0aee0b8-e309-4e0d-8c3e-48a0d2706f7c@gmail.com>
+
+
+
+On 4/6/26 20:40, Therneau, Terry M., Ph.D. via R-devel wrote:
+
+> In the short term I can just live with it, but if I ever want
+> to submit to CRAN I'll need something more formal.
+
+I think dealing with this type of warnings is via utils::globalVariables()
+
+-- nnvc
+
+
+From therne@u @end|ng |rom m@yo@edu  Tue Apr  7 01:08:40 2026
+From: therne@u @end|ng |rom m@yo@edu (Therneau, Terry M., Ph.D.)
+Date: Mon, 06 Apr 2026 18:08:40 -0500
+Subject: [Rd] R CMD check issue
+In-Reply-To: <2fd6b1e3-0ec9-41d8-8f64-a2c556fc032a@gmail.com>
+References: <0298c48e-9d2a-4106-bf94-90622efdce03@mayo.edu>
+ <2fd6b1e3-0ec9-41d8-8f64-a2c556fc032a@gmail.com>
+Message-ID: <3ff96fbe-db70-41ab-84e6-af4291d51773@mayo.edu>
+
+Duncan,
+ ?The two three things that go back and forth between the maximizer and the "evaluate the 
+likelihood" function are passed in the usual fashion, i.e., current parameter estimates, 
+loglik, and derivatives.? ? The likelihood function in question is multifaceted,? and I 
+pre-create a bunch of indies and helper functions to remove? almost all the if-then-else 
+stuff from that repeated compuation.? ? My 34 objects in question are set once and then 
+stay static.
+
+Your suggestion of passing a single environment "zed" say down the chain, and referring to 
+zed$abc, zed$def, etc.? might be the way to go.? ?My suspicion would be that resolving 
+zed$abc won't be slower than? resolving abc in the envionment of the parent.? ? And it 
+will add more typing, but also more clarity, to the loglik function at the end of the line.
+
+My setup function creates all this stuff then calls the maximer, which calls loglik1,? but 
+loglik1 doesn't do the work, it calls mclapply(loglik2, ...)? one copy of loglik2 per 
+patient, loglik2 does the real work.? ? ?In a data set with 17k subjects (vignette) I 
+worried about constructing a long argument list, 17k * number of iterations times.? ?The 
+trickery is making a copy of loglik2 that sees the enviroment of the setup function.
+
+I'll chew on this for a bit.
+Terry
+
+
+
+
+
+
+ ?cmsh( list of formulas, data, id,? another list of formulas, ...)? ?is called by the 
+user; its job is to figure out what they want, complain about their arguments,
+etc.
+ ? ? ?cmsh.fit:? set up and execute the fit, in particular generate all these helpers,
+ ? ? ? ? ? calls the maximizer(), with initial parameters + the loglik function it should 
+call "clog1"
+
+On 4/6/26 14:25, Duncan Murdoch wrote:
+> External Email Notice: This message was sent by someone outside Mayo Clinic.
+>
+> This might not be compatible with your need for speed, but you can do
+>
+> ? env$var
+>
+> to access a variable in the specified environment.? Something similar would work with a 
+> list instead of an eime nvironment, but then changes to var would not be saved to the 
+> original list, and name completion could hide errors (i.e. env$v doesn't find anything 
+> if the variable is named "var", but lst$v would find "var").
+>
+> In the usual case where you only work with a few variables at a time you would probably 
+> save some time with code like
+>
+> ? var <- env$var
+> ? # work with it.? Changes would need to be explicitly saved!
+>
+> Duncan Murdoch
+>
+> On 2026-04-06 2:40 p.m., Therneau, Terry M., Ph.D. via R-devel wrote:
+>> I'm doing something less usual in a package (with some help from others).? ? The big
+>> picture: I'm solving a particular varianct of hidden Markov models, which involves a
+>> zillion calls for a matrix exponential and its derivative, and I've been doing everything
+>> I can think of to speed it up.? ?The secondary picture is that I don't like to work with
+>> source code files that go on for page after page, I have a terrible time
+>> editing/managing/whatever such.
+>>
+>> The issue: I end up using an envionment trick to pass along a long list of parameters
+>> (about 34 vectors or lists), or I should say to make them findable without having to send
+>> them down the call chain as arguments.? ?R CMD check flags the pair of function at the end
+>> of the chain, which actually use them, as each having 34 "no visible binding for global
+>> variable? xyz" messages.? ? ?In the short term I can just live with it, but if I ever want
+>> to submit to CRAN I'll need something more formal.? ?I'm happy to give more details to
+>> whomever might want to pitch in.
+>>
+>> PS. The first pass had about 40 such warnings, i.e, these 'spurious' ones along with a
+>> half dozen misspelled variable names -- I overall like what the check does for me, it's
+>> just overzealous in this case.
+>>
+>> Terry T.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
