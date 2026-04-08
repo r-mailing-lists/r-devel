@@ -474,3 +474,412 @@ On 4/6/26 14:25, Duncan Murdoch wrote:
 	[[alternative HTML version deleted]]
 
 
+From |w@|dron@re@e@rch @end|ng |rom gm@||@com  Tue Apr  7 05:32:45 2026
+From: |w@|dron@re@e@rch @end|ng |rom gm@||@com (Levi Waldron)
+Date: Mon, 6 Apr 2026 23:32:45 -0400
+Subject: [Rd] unsafe parsing of DESCRIPTION Authors@R
+Message-ID: <CAOUXvx4-MATh8LN_jikbDHksjCFjkmJjZs9OBChthirCU2HHFA@mail.gmail.com>
+
+This issue arose during an AI-assisted security review of core Bioconductor
+packages, that an attacker could execute arbitrary code on any system that
+calls `utils:::.read_authors_at_R_field()` or other tools for parsing a
+DESCRIPTION file,  regardless of whether it installs, builds, or checks the
+package. I put some details and a reprex at
+https://github.com/lwaldron/nothing/tree/check-vulnerability. Let me know
+if you'd prefer I take the github page down.
+
+This seems worse than the inherent .onLoad(), tests/, etc vulnerabilities,
+because it can be exploited in environments not intended to install or
+check packages or run their code, like the CRAN incoming package queue
+which does seem to parse the DESCRIPTION file.
+
+-Levi
+
+-- 
+
+Levi Waldron
+
+Professor and Chair
+
+Department of Epidemiology and Biostatistics
+
+CUNY Graduate School of Public Health and Health Policy
+
+Institute for Implementation Science in Population Health
+
+55 W 125th St, New York NY 10035
+
+https://waldronlab.io
+
+Join the microbiome Virtual International Forum: https://microbiome-vif.org
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue Apr  7 07:06:21 2026
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Tue, 7 Apr 2026 17:06:21 +1200
+Subject: [Rd] unsafe parsing of DESCRIPTION Authors@R
+In-Reply-To: <CAOUXvx4-MATh8LN_jikbDHksjCFjkmJjZs9OBChthirCU2HHFA@mail.gmail.com>
+References: <CAOUXvx4-MATh8LN_jikbDHksjCFjkmJjZs9OBChthirCU2HHFA@mail.gmail.com>
+Message-ID: <817090B2-0F02-479D-A6CA-168609FA9A82@R-project.org>
+
+Levi,
+
+there are numerous ways that R code can be evaluated (Authors at R is just one of several examples), this is well known and not unexpected. After all, you can simply call source() or eval() at any point, so it is not clear what threat model you have in mind. (BTW: your GitHub page requires 3rd party package so I fail to see the point as you can always install a package that does anything). By definition, installing a package or running R code gives the user full access to R and the system - so adding a system() doesn't do anything new - if you can run R code then you could have simply written system() yourself instead.
+
+I understand where you are coming from, but it should be expected that anything that deals with packages is by design executing code from the package, so you can always create a malicious package - by design. That doesn't mean that we shouldn't strive to limit eval()s or to perform validity checks, but this is not practical in all instances, because R relies heavily on the ability to run R code in those instances - by design. For example, some use a canonical document in the package that is parsed when creating the authors list instead of embedding it directly in the DESCRIPTION. We could disallow that and limit the language (funnily, we discussed exactly this case last year in Vienna), but this is just one of many use-cases of this approach, there are several others in the packages toolbox. You can always find internal R functions that do various tasks using eval(), so I think the starting premise that this shouldn't happen is simply wrong. The only way you can get something "safe" is to disallow R code and only enable very specific API (like REST or OCAP), anything else is free for all by design.
+
+Cheers,
+Simon
+
+
+> On 7 Apr 2026, at 15:32, Levi Waldron <lwaldron.research at gmail.com> wrote:
+> 
+> This issue arose during an AI-assisted security review of core Bioconductor
+> packages, that an attacker could execute arbitrary code on any system that
+> calls `utils:::.read_authors_at_R_field()` or other tools for parsing a
+> DESCRIPTION file,  regardless of whether it installs, builds, or checks the
+> package. I put some details and a reprex at
+> https://github.com/lwaldron/nothing/tree/check-vulnerability. Let me know
+> if you'd prefer I take the github page down.
+> 
+> This seems worse than the inherent .onLoad(), tests/, etc vulnerabilities,
+> because it can be exploited in environments not intended to install or
+> check packages or run their code, like the CRAN incoming package queue
+> which does seem to parse the DESCRIPTION file.
+> 
+> -Levi
+> 
+> -- 
+> 
+> Levi Waldron
+> 
+> Professor and Chair
+> 
+> Department of Epidemiology and Biostatistics
+> 
+> CUNY Graduate School of Public Health and Health Policy
+> 
+> Institute for Implementation Science in Population Health
+> 
+> 55 W 125th St, New York NY 10035
+> 
+> https://waldronlab.io
+> 
+> Join the microbiome Virtual International Forum: https://microbiome-vif.org
+> 
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+
+
+From @uh@rto_@nggono @end|ng |rom y@hoo@com  Tue Apr  7 12:34:46 2026
+From: @uh@rto_@nggono @end|ng |rom y@hoo@com (Suharto Anggono Suharto Anggono)
+Date: Tue, 7 Apr 2026 10:34:46 +0000 (UTC)
+Subject: [Rd] Revisit c.POSIXlt , [<-.POSIXlt , [[<-.POSIXlt ?
+References: <1804279034.1260983.1775558086062.ref@mail.yahoo.com>
+Message-ID: <1804279034.1260983.1775558086062@mail.yahoo.com>
+
+As I have proposed in Bug 18989 Comment 1 (https://bugs.r-project.org/show_bug.cgi?id=18989#c1), 'c.POSIXlt' in R devel and R 4.6.0 alpha currently tries to preserve sub-second accuracy by proceeding as usual and then replacing the fractional part of the 'sec' component with the "fractional part" of the 'sec' component (x$sec - floor(x$sec), or x$sec %% 1) of the original POSIXlt object.
+
+However, as I have raised in Bug 18989 Comment 8 (https://bugs.r-project.org/show_bug.cgi?id=18989#c8), there are boundary cases, like
+c(as.POSIXlt("9999-12-31 23:59:59.99999", tz="UTC")) ,
+where the result is a full second ahead of the correct time, worse than not correcting the 'sec' component.
+
+Because of the issue and with '[<-.POSIXlt' and '[[<-.POSIXlt' still using as.POSIXlt(as.POSIXct(*), tz = *) without correction, reverting to the original code is an option for 'c.POSIXlt' for R 4.6.0.
+
+Alternatively, if the 'c.POSIXlt' feature is to be kept, I think the fixed I have proposed in Bug 18989 Comment 9 (https://bugs.r-project.org/show_bug.cgi?id=18989#c9), applying 'floor' to the 'sec' component before converting to POSIXct, is good enough. It can be wrong only in range where not all whole seconds can be represented by POSIXct ("double" type). Or fixing the issue should wait for a future release?
+
+As I have raised in Bug 18919 Comment 9 (https://bugs.r-project.org/show_bug.cgi?id=18919#c9), an intriguing case for me with current '[<-.POSIXlt' in R devel and R 4.6.0 alpha is that subassigning a POSIXlt object with the same time zone can have different result to subassigning a POSIXlt object with the exact same time with different, but equivalent, time zone. For example,
+
+x1 <- as.POSIXlt(.POSIXct(0, tz = "UTC"))
+x1[1L] <- as.POSIXlt("2006-02-20 11:16:16.683", tz = "UTC")
+
+versus
+
+x1 <- as.POSIXlt(.POSIXct(0, tz = "UTC"))
+x1[1L] <- as.POSIXlt("2006-02-20 11:16:16.683", tz = "GMT")
+
+.
+
+Because the branching condition in '[<-.POSIXlt' uses 'identical' on 'tzone' attributes, the case is not only like "UTC" versus "GMT" or "Etc/UTC". "Non-deterministic POSIXlt tzone in Europe/London around UTC 0" was a case (has been fixed). It can also be 3-element versus 1-element 'tzone' attribute. As noted in Description of Bug 19005 (https://bugs.r-project.org/show_bug.cgi?id=19005#c0), 'as.POSIXlt.character' produces 1-element 'tzone' attribute. Example:
+
+x1 <- as.POSIXlt(.POSIXct(1e9, tz = "Europe/London"))
+x1[1L] <- strptime("2006-02-20 11:16:16.683", "%Y-%m-%d %H:%M:%OS", tz = "Europe/London")
+
+versus
+
+x1 <- as.POSIXlt(.POSIXct(1e9, tz = "Europe/London"))
+x1[1L] <- as.POSIXlt("2006-02-20 11:16:16.683", tz = "Europe/London")
+
+The difference can be eliminated by removing branching and using as.POSIXlt(as.POSIXct(*), tz = *) in all cases. However, I expect subassignment to be precise. Using the subassigned object as is is more expected for me. Will the issue be tackled, maybe in a future release of R?
+
+In '[<-.POSIXlt',
+as.POSIXlt(as.POSIXct(*), tz = *)
+is also applied when 'value' is not a POSIXlt object. I think
+as.POSIXlt(*, tz = *)
+could be used instead. Bug 18919 Comment 10 says that the behaviour was chosen to be consistent with 'c.POSIXlt', which seemed desirable. Does R Core agree? For character string, yes, 'Ops.POSIXt' also uses as.POSIXct(*), which interprets it as being in the current time zone.
+
+Finally, I think the change of
+
+as.POSIXlt(value)
+
+to
+
+if(inherits(value, "POSIXlt") && identical(tz, attr(value, "tzone")))
+    value
+else as.POSIXlt(as.POSIXct(value), tz = tz[1L]))
+
+in '[<-.POSIXlt' and '[[<-.POSIXlt', which is the core of PR#18919, deserves a NEWS item mentioning time zone. For example,
+In subassigning 'val' to a POSIXlt object 'x', x[i] <- val and x[[i]] <- val, now 'val' is converted to the time zone of 'x'.
+
+
+From |w@|dron@re@e@rch @end|ng |rom gm@||@com  Tue Apr  7 19:35:27 2026
+From: |w@|dron@re@e@rch @end|ng |rom gm@||@com (Levi Waldron)
+Date: Tue, 7 Apr 2026 13:35:27 -0400
+Subject: [Rd] unsafe parsing of DESCRIPTION Authors@R
+In-Reply-To: <817090B2-0F02-479D-A6CA-168609FA9A82@R-project.org>
+References: <CAOUXvx4-MATh8LN_jikbDHksjCFjkmJjZs9OBChthirCU2HHFA@mail.gmail.com>
+ <817090B2-0F02-479D-A6CA-168609FA9A82@R-project.org>
+Message-ID: <CAOUXvx4zs_wTB25F1_n_p7bjYRCu5Q5wWqfEnX32ucruGopv-w@mail.gmail.com>
+
+Thanks, Simon. Just to clarify:
+
+> there are numerous ways that R code can be evaluated (Authors at R is just
+one of several examples), this is well known and not unexpected. After all,
+you can simply call source() or eval() at any point, so it is not clear
+what threat model you have in mind. (BTW: your GitHub page requires 3rd
+party package so I fail to see the point as you can always install a
+package that does anything).
+
+A scenario I had in mind was that the CRAN incoming package server sends an
+immediate email containing a confirmation link and an interpreted version
+of DESCRIPTION, prior to any build/check. If that server is using
+desc::description or utils:::.read_authors_at_R_field, then this might
+provide an attacker an efficient way to modify trusted packages in the
+queue before they're sent to build servers.
+
+BTW the example demonstrated arbitrary code execution when 1) installing a
+package with no dependencies and no R/, src/, tests/, or other code outside
+of its DESCRIPTION, and 2) parsing its DESCRIPTION file using
+desc::description without installing it, but it would apply to anything
+else that results in utils:::.read_authors_at_R_field(). I was surprised
+that arbitrary code execution can happen when installing but before loading
+a package, or when parsing its DESCRIPTION without ever installing it, but
+if that introduces no new risks, I'm glad to hear it.
+
+Sincerely,
+Levi
+
+On Tue, Apr 7, 2026 at 1:06?AM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> Levi,
+>
+> there are numerous ways that R code can be evaluated (Authors at R is just
+> one of several examples), this is well known and not unexpected. After all,
+> you can simply call source() or eval() at any point, so it is not clear
+> what threat model you have in mind. (BTW: your GitHub page requires 3rd
+> party package so I fail to see the point as you can always install a
+> package that does anything). By definition, installing a package or running
+> R code gives the user full access to R and the system - so adding a
+> system() doesn't do anything new - if you can run R code then you could
+> have simply written system() yourself instead.
+>
+> I understand where you are coming from, but it should be expected that
+> anything that deals with packages is by design executing code from the
+> package, so you can always create a malicious package - by design. That
+> doesn't mean that we shouldn't strive to limit eval()s or to perform
+> validity checks, but this is not practical in all instances, because R
+> relies heavily on the ability to run R code in those instances - by design.
+> For example, some use a canonical document in the package that is parsed
+> when creating the authors list instead of embedding it directly in the
+> DESCRIPTION. We could disallow that and limit the language (funnily, we
+> discussed exactly this case last year in Vienna), but this is just one of
+> many use-cases of this approach, there are several others in the packages
+> toolbox. You can always find internal R functions that do various tasks
+> using eval(), so I think the starting premise that this shouldn't happen is
+> simply wrong. The only way you can get something "safe" is to disallow R
+> code and only enable very specific API (like REST or OCAP), anything else
+> is free for all by design.
+>
+> Cheers,
+> Simon
+>
+>
+> > On 7 Apr 2026, at 15:32, Levi Waldron <lwaldron.research at gmail.com>
+> wrote:
+> >
+> > This issue arose during an AI-assisted security review of core
+> Bioconductor
+> > packages, that an attacker could execute arbitrary code on any system
+> that
+> > calls `utils:::.read_authors_at_R_field()` or other tools for parsing a
+> > DESCRIPTION file,  regardless of whether it installs, builds, or checks
+> the
+> > package. I put some details and a reprex at
+> > https://github.com/lwaldron/nothing/tree/check-vulnerability. Let me
+> know
+> > if you'd prefer I take the github page down.
+> >
+> > This seems worse than the inherent .onLoad(), tests/, etc
+> vulnerabilities,
+> > because it can be exploited in environments not intended to install or
+> > check packages or run their code, like the CRAN incoming package queue
+> > which does seem to parse the DESCRIPTION file.
+> >
+> > -Levi
+> >
+> > --
+> >
+> > Levi Waldron
+> >
+> > Professor and Chair
+> >
+> > Department of Epidemiology and Biostatistics
+> >
+> > CUNY Graduate School of Public Health and Health Policy
+> >
+> > Institute for Implementation Science in Population Health
+> >
+> > 55 W 125th St, New York NY 10035
+> >
+> > https://waldronlab.io
+> >
+> > Join the microbiome Virtual International Forum:
+> https://microbiome-vif.org
+> >
+> > [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+>
+>
+
+-- 
+
+Levi Waldron
+
+Professor and Chair
+
+Department of Epidemiology and Biostatistics
+
+CUNY Graduate School of Public Health and Health Policy
+
+Institute for Implementation Science in Population Health
+
+55 W 125th St, New York NY 10035
+
+https://waldronlab.io
+
+Book a meeting with me <https://bit.ly/meetlw>
+
+Join the microbiome Virtual International Forum: https://microbiome-vif.org
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue Apr  7 22:27:18 2026
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 8 Apr 2026 08:27:18 +1200
+Subject: [Rd] unsafe parsing of DESCRIPTION Authors@R
+In-Reply-To: <CAOUXvx4zs_wTB25F1_n_p7bjYRCu5Q5wWqfEnX32ucruGopv-w@mail.gmail.com>
+References: <CAOUXvx4-MATh8LN_jikbDHksjCFjkmJjZs9OBChthirCU2HHFA@mail.gmail.com>
+ <817090B2-0F02-479D-A6CA-168609FA9A82@R-project.org>
+ <CAOUXvx4zs_wTB25F1_n_p7bjYRCu5Q5wWqfEnX32ucruGopv-w@mail.gmail.com>
+Message-ID: <173139A0-46EC-4D65-BD3D-10682E21E522@R-project.org>
+
+Levi,
+
+thanks, I understand what you are saying in that compared to other eval'ed things Authors at R may possibly have an increased chance of being used in contexts other than package building/installation. As I said, that particular instance is something that is on our TODO list (so you just successfully bumped its priority :)), but I'm just cautioning that it's not the only way, so, generally, dealing with packages should be considered "dirty" in that you should assume it involves executing code from the package, so corresponding precautions should be taken when handling packages from untrusted sources.
+
+Thanks,
+Simon
+
+
+> On 8/04/2026, at 05:35, Levi Waldron <lwaldron.research at gmail.com> wrote:
+> 
+> Thanks, Simon. Just to clarify:
+> 
+> > there are numerous ways that R code can be evaluated (Authors at R is just one of several examples), this is well known and not unexpected. After all, you can simply call source() or eval() at any point, so it is not clear what threat model you have in mind. (BTW: your GitHub page requires 3rd party package so I fail to see the point as you can always install a package that does anything). 
+> 
+> A scenario I had in mind was that the CRAN incoming package server sends an immediate email containing a confirmation link and an interpreted version of DESCRIPTION, prior to any build/check. If that server is using desc::description or utils:::.read_authors_at_R_field, then this might provide an attacker an efficient way to modify trusted packages in the queue before they're sent to build servers. 
+> 
+> BTW the example demonstrated arbitrary code execution when 1) installing a package with no dependencies and no R/, src/, tests/, or other code outside of its DESCRIPTION, and 2) parsing its DESCRIPTION file using desc::description without installing it, but it would apply to anything else that results in utils:::.read_authors_at_R_field(). I was surprised that arbitrary code execution can happen when installing but before loading a package, or when parsing its DESCRIPTION without ever installing it, but if that introduces no new risks, I'm glad to hear it.
+> 
+> Sincerely,
+> Levi
+> 
+> On Tue, Apr 7, 2026 at 1:06?AM Simon Urbanek <simon.urbanek at r-project.org> wrote:
+> Levi,
+> 
+> there are numerous ways that R code can be evaluated (Authors at R is just one of several examples), this is well known and not unexpected. After all, you can simply call source() or eval() at any point, so it is not clear what threat model you have in mind. (BTW: your GitHub page requires 3rd party package so I fail to see the point as you can always install a package that does anything). By definition, installing a package or running R code gives the user full access to R and the system - so adding a system() doesn't do anything new - if you can run R code then you could have simply written system() yourself instead.
+> 
+> I understand where you are coming from, but it should be expected that anything that deals with packages is by design executing code from the package, so you can always create a malicious package - by design. That doesn't mean that we shouldn't strive to limit eval()s or to perform validity checks, but this is not practical in all instances, because R relies heavily on the ability to run R code in those instances - by design. For example, some use a canonical document in the package that is parsed when creating the authors list instead of embedding it directly in the DESCRIPTION. We could disallow that and limit the language (funnily, we discussed exactly this case last year in Vienna), but this is just one of many use-cases of this approach, there are several others in the packages toolbox. You can always find internal R functions that do various tasks using eval(), so I think the starting premise that this shouldn't happen is simply wrong. The only way you can get something "safe" is to disallow R code and only enable very specific API (like REST or OCAP), anything else is free for all by design.
+> 
+> Cheers,
+> Simon
+> 
+> 
+> > On 7 Apr 2026, at 15:32, Levi Waldron <lwaldron.research at gmail.com> wrote:
+> > 
+> > This issue arose during an AI-assisted security review of core Bioconductor
+> > packages, that an attacker could execute arbitrary code on any system that
+> > calls `utils:::.read_authors_at_R_field()` or other tools for parsing a
+> > DESCRIPTION file,  regardless of whether it installs, builds, or checks the
+> > package. I put some details and a reprex at
+> > https://github.com/lwaldron/nothing/tree/check-vulnerability. Let me know
+> > if you'd prefer I take the github page down.
+> > 
+> > This seems worse than the inherent .onLoad(), tests/, etc vulnerabilities,
+> > because it can be exploited in environments not intended to install or
+> > check packages or run their code, like the CRAN incoming package queue
+> > which does seem to parse the DESCRIPTION file.
+> > 
+> > -Levi
+> > 
+> > -- 
+> > 
+> > Levi Waldron
+> > 
+> > Professor and Chair
+> > 
+> > Department of Epidemiology and Biostatistics
+> > 
+> > CUNY Graduate School of Public Health and Health Policy
+> > 
+> > Institute for Implementation Science in Population Health
+> > 
+> > 55 W 125th St, New York NY 10035
+> > 
+> > https://waldronlab.io
+> > 
+> > Join the microbiome Virtual International Forum: https://microbiome-vif.org
+> > 
+> > [[alternative HTML version deleted]]
+> > 
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+> > 
+> 
+> 
+> 
+> -- 
+> Levi Waldron                                                
+> Professor and Chair
+> Department of Epidemiology and Biostatistics
+> CUNY Graduate School of Public Health and Health Policy
+> Institute for Implementation Science in Population Health
+> 55 W 125th St, New York NY 10035
+> https://waldronlab.io
+> Book a meeting with me
+> Join the microbiome Virtual International Forum: https://microbiome-vif.org
+
+
