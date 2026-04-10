@@ -1020,3 +1020,90 @@ To resolve the thread:
     > Dirk
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Apr  9 20:41:22 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 9 Apr 2026 20:41:22 +0200
+Subject: [Rd] diff(<ts-matrix>), Ops.ts -- R Bugzilla PR#18972
+In-Reply-To: <fake-VM-id.e6fd0bb01ece2fef0ae24f0905695788@talos.iv>
+References: <2128797252.1120005.1771732693812.ref@mail.yahoo.com>
+ <2128797252.1120005.1771732693812@mail.yahoo.com>
+ <fake-VM-id.6d776b3ae1213c9af92fe6df6450ef4a@talos.iv>
+ <27036.17696.727900.514006@stat.math.ethz.ch>
+ <630650197.3484737.1772279863294@mail.yahoo.com>
+ <C981C64E-7FBA-4F8E-816F-D393B7EC3FEF@gmail.com>
+ <fake-VM-id.1e87d2dd26fb615308fceacb50668e83@talos.iv>
+ <27046.41873.814612.726309@stat.math.ethz.ch>
+ <1872996678.4809050.1772604318096@mail.yahoo.com>
+ <27048.6812.306265.880083@stat.math.ethz.ch>
+ <fake-VM-id.e680667cf19cd4b00410eae2f74abc3a@talos.iv>
+ <27048.7739.470561.910241@stat.math.ethz.ch>
+ <773729532.669360.1774594252764@mail.yahoo.com>
+Message-ID: <27095.62162.443123.426058@stat.math.ethz.ch>
+
+>>>>> Suharto Anggono Suharto Anggono 
+>>>>>     on Fri, 27 Mar 2026 06:50:52 +0000 (UTC) writes:
+
+    > To have usual storage mode of the result and for error if e1 and e2 are matrices with different number of columns, 'Ops.ts' could still use
+    > NextMethod(.Generic)
+    > even if e1 and e2 are not overlapping and just change e1 and e2.
+
+    > if(is.null(e12))# if e1 or e2 is matrix but e1 & e2 are not overlapping, e12 is NULL ..
+    >    return(if(is.matrix(e1))      e1[0, , drop=FALSE]
+    >           else if(is.matrix(e2)) e2[0, , drop=FALSE]
+    >    ## else NULL ( == e12 )
+    >    )
+    > e1 <- if(is.matrix(e1)) e12[, 1L:nc1 , drop = FALSE] else e12[, 1]
+    > e2 <- if(is.matrix(e2)) e12[, nc1 + (1L:nc2), drop = FALSE] else e12[, nc1 + 1]
+
+    > could become
+
+    > if(is.null(e12)) {# if e1 & e2 are not overlapping, e12 is NULL ..
+    > e1 <- if(is.matrix(e1)) e1[0, , drop = FALSE] else e1[0]
+    > e2 <- if(is.matrix(e2)) e2[0, , drop = FALSE] else e2[0]
+    > } else {
+    > e1 <- if(is.matrix(e1)) e12[, 1L:nc1 , drop = FALSE] else e12[, 1]
+    > e2 <- if(is.matrix(e2)) e12[, nc1 + (1L:nc2), drop = FALSE] else e12[, nc1 + 1]
+    > }
+
+You are right.  It's better to be more consistent than a tiny
+bit faster.
+===> committed in svn r89843   --- will also port to R 4.6.0 alpha
+
+Martin
+
+    > _______
+    > On Wednesday, 4 March 2026 at 06:57:51 pm GMT+7, Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+
+
+>>>>> Martin Maechler
+    >>>>>> on Wed, 4 Mar 2026 12:42:20 +0100 writes:
+
+>>>>> Suharto Anggono Suharto Anggono
+    >>>>>> on Wed, 4 Mar 2026 06:05:18 +0000 (UTC) writes:
+
+    >     >> Then, please announce the change in NEWS. For example:
+    >     >> The result of arithmetic and comparison operations of non-overlapping "ts" objects where either is a matrix is now a matrix.
+
+    >     >> It seems that the statement "diff(<ts-matrix>) remains matrix, even when it has length zero" was meant for the change to 'Ops.ts'. But the wording is about diff(<ts-matrix>), which is included in the previous statement.
+
+    >     >> But I've just realized this :
+
+    >     >> Suppose that
+    >     >> x <- ts(0)
+
+    >     >> With the change, x - lag(x, -1) and x == lag(x, -1) are NULL.
+    >     >> In R 4.5.2, x - lag(x, -1) is integer(0) and x == lag(x, -1) is logical(0).
+
+    >     > Indeed, so we may even have to change R-devel further (for this
+    >     > rare boundary case).
+
+    >     > But the R 4.5.2  x - lag(x, -1)  giving integer(0)  is only somewhat better than
+    >     > giving NULL  when in principle the "truly correct" answer should
+    >     > be double(0) and we'd rather get that right in R-devel.
+
+    > ==> So, we should probably reopen R Bugzilla item PR#18972, at
+    ---> https://bugs.r-project.org/show_bug.cgi?id=18972
+
+    > Martin
+
+
