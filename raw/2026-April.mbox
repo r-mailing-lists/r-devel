@@ -1107,3 +1107,185 @@ Martin
     > Martin
 
 
+From edd @end|ng |rom deb|@n@org  Fri Apr 10 13:26:47 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 10 Apr 2026 06:26:47 -0500
+Subject: [Rd] Trivial typo in Defn.h
+Message-ID: <27096.56951.274747.580578@paul.eddelbuettel.com>
+
+
+This does not seem worth going to bugzilla for. src/include/Defn.h has
+
+/* Internal header, not installed, usied in some standard packages */
+
+Should of course be 'used', not 'usied'.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+Sponsor me for Tour de Shore 2026! Donate at
+   https://www.pledgereg.com/536435 
+More about the ride at
+   https://dirk.eddelbuettel.com/blog/2026/04/03#sponsor_tour_de_shore_2026
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Fri Apr 10 14:23:18 2026
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Fri, 10 Apr 2026 07:23:18 -0500 (CDT)
+Subject: [Rd] [External]  Trivial typo in Defn.h
+In-Reply-To: <27096.56951.274747.580578@paul.eddelbuettel.com>
+References: <27096.56951.274747.580578@paul.eddelbuettel.com>
+Message-ID: <fc56ffa9-fc9d-7786-d7c1-6e5f86e54479@uiowa.edu>
+
+Thanks; fixed now.
+
+luke
+
+On Fri, 10 Apr 2026, Dirk Eddelbuettel wrote:
+
+>
+> This does not seem worth going to bugzilla for. src/include/Defn.h has
+>
+> /* Internal header, not installed, usied in some standard packages */
+>
+> Should of course be 'used', not 'usied'.
+>
+> Dirk
+>
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Apr 10 16:58:20 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 10 Apr 2026 16:58:20 +0200
+Subject: [Rd] Revisit c.POSIXlt , [<-.POSIXlt , [[<-.POSIXlt ?
+In-Reply-To: <fake-VM-id.b7632a73456b0be045b83615cecc8e5d@talos.iv>
+References: <1804279034.1260983.1775558086062.ref@mail.yahoo.com>
+ <1804279034.1260983.1775558086062@mail.yahoo.com>
+Message-ID: <27097.4108.50021.462875@stat.math.ethz.ch>
+
+>>>>> Suharto Anggono Suharto Anggono via R-devel 
+>>>>>     on Tue, 7 Apr 2026 10:34:46 +0000 (UTC) writes:
+
+    > As I have proposed in Bug 18989 Comment 1 (https://bugs.r-project.org/show_bug.cgi?id=18989#c1), 'c.POSIXlt' in R devel and R 4.6.0 alpha currently tries to preserve sub-second accuracy by proceeding as usual and then replacing the fractional part of the 'sec' component with the "fractional part" of the 'sec' component (x$sec - floor(x$sec), or x$sec %% 1) of the original POSIXlt object.
+    > However, as I have raised in Bug 18989 Comment 8 (https://bugs.r-project.org/show_bug.cgi?id=18989#c8), there are boundary cases, like
+    > c(as.POSIXlt("9999-12-31 23:59:59.99999", tz="UTC")) ,
+    > where the result is a full second ahead of the correct time, worse than not correcting the 'sec' component.
+
+I have not seen a case where R-devel (and 4.6.0 beta)  differ
+from R 4.5.x -- see below for my test code
+
+    > Because of the issue and with '[<-.POSIXlt' and '[[<-.POSIXlt' still using as.POSIXlt(as.POSIXct(*), tz = *) without correction, reverting to the original code is an option for 'c.POSIXlt' for R 4.6.0.
+
+R 4.6.0 will not be changed for this.  It is  R 4.6.0 beta for
+almost a day now which means "code freeze" it will not receive
+not very important and in this case untested code changes.
+
+
+    > Alternatively, if the 'c.POSIXlt' feature is to be kept, I think the fixed I have proposed in Bug 18989 Comment 9 (https://bugs.r-project.org/show_bug.cgi?id=18989#c9), applying 'floor' to the 'sec' component before converting to POSIXct, is good enough. It can be wrong only in range where not all whole seconds can be represented by POSIXct ("double" type). Or fixing the issue should wait for a future release?
+
+My problem is that I have (locally) implemented some of your
+proposals you mention above and below __but__ I have not been
+able to find _any_ difference in behaviour of my local R-devel
+version and the current "R-devel" ... even R 4.5.3  not showing
+any different behavior.
+
+My test script file, `datetime3_lt_subsec.R`, is attached here
+
+   	https://bugs.r-project.org/show_bug.cgi?id=18989#c13
+
+I may have been "unlucky" somehow, but that script runs two
+nested for loops on POSIXlt vector length 11, with increasing
+number of relevant digits in the <POSIXlt> x$sec,
+inspired by your 
+	 as.POSIXlt("9999-12-31 23:59:59.99999", tz="UTC")
+above; it uses all of
+ `[`, `[[`, `$`,
+ `[<-`, `[[<-`, `$<-`,
+(I think) and looks at "balanced" and "tzone" attributes, but I
+don't see any problem.
+
+I'd be really glad if you could modify (part of) it, or extend
+it with examples were your proposed changes make a difference.
+
+    > As I have raised in Bug 18919 Comment 9 (https://bugs.r-project.org/show_bug.cgi?id=18919#c9), an intriguing case for me with current '[<-.POSIXlt' in R devel and R 4.6.0 alpha is that subassigning a POSIXlt object with the same time zone can have different result to subassigning a POSIXlt object with the exact same time with different, but equivalent, time zone. For example,
+
+    > x1 <- as.POSIXlt(.POSIXct(0, tz = "UTC"))
+    > x1[1L] <- as.POSIXlt("2006-02-20 11:16:16.683", tz = "UTC")
+
+    > versus
+
+    > x1 <- as.POSIXlt(.POSIXct(0, tz = "UTC"))
+    > x1[1L] <- as.POSIXlt("2006-02-20 11:16:16.683", tz = "GMT")
+
+    > .
+
+    > Because the branching condition in '[<-.POSIXlt' uses 'identical' on 'tzone' attributes, the case is not only like "UTC" versus "GMT" or "Etc/UTC". "Non-deterministic POSIXlt tzone in Europe/London around UTC 0" was a case (has been fixed). It can also be 3-element versus 1-element 'tzone' attribute.
+
+Indeed, (3-element vs 1-element "tzone" in <POSIXlt>):  That is
+sometimes kind of ugly / inconsistent currently, but probably
+not relevant in much R code around and would be a different topic.
+
+
+ > As noted in Description of Bug 19005 (https://bugs.r-project.org/show_bug.cgi?id=19005#c0), 'as.POSIXlt.character' produces 1-element 'tzone' attribute. Example:
+
+    > x1 <- as.POSIXlt(.POSIXct(1e9, tz = "Europe/London"))
+    > x1[1L] <- strptime("2006-02-20 11:16:16.683", "%Y-%m-%d %H:%M:%OS", tz = "Europe/London")
+
+    > versus
+
+    > x1 <- as.POSIXlt(.POSIXct(1e9, tz = "Europe/London"))
+    > x1[1L] <- as.POSIXlt("2006-02-20 11:16:16.683", tz = "Europe/London")
+
+    > The difference can be eliminated by removing branching and using as.POSIXlt(as.POSIXct(*), tz = *) in all cases. However, I expect subassignment to be precise. Using the subassigned object as is is more expected for me. Will the issue be tackled, maybe in a future release of R?
+
+    > In '[<-.POSIXlt',
+    >    as.POSIXlt(as.POSIXct(*), tz = *)
+    > is also applied when 'value' is not a POSIXlt object. I think
+    >    as.POSIXlt(*, tz = *)
+    > could be used instead. Bug 18919 Comment 10 says that the behaviour was chosen to be consistent with 'c.POSIXlt', which seemed desirable. Does R Core agree?
+
+    > For character string, yes, 'Ops.POSIXt' also uses as.POSIXct(*), 
+    > which interprets it as being in the current time zone. 
+
+Indeed; Ops.POSIXt working via as.POSIXct() in all cases is
+something I'd like to change, notably for what in S4 is the "Compare" subgroup
+of the "Ops".
+Here (with S3), we'd need to "dispatch" inside Ops.POSIXt();
+__however__ that is yet another topic, in my view not part of
+any of the open Bugzilla PRs you've been mentioning here.
+
+
+    > Finally, I think the change of
+
+    > 	       as.POSIXlt(value)
+
+    > to
+
+    >    if(inherits(value, "POSIXlt") && identical(tz, attr(value, "tzone")))
+    >        value
+    >    else as.POSIXlt(as.POSIXct(value), tz = tz[1L]))
+
+    > in '[<-.POSIXlt' and '[[<-.POSIXlt', which is the core of PR#18919, deserves a NEWS item mentioning time zone. For example,
+    > In subassigning 'val' to a POSIXlt object 'x', x[i] <- val and x[[i]] <- val, now 'val' is converted to the time zone of 'x'.
+
+Yes, you are right; I will add this to the (relatively old) NEWS of R 4.5.2 ..
+
+Thank you for trying to help with the Wishlist in
+ https://bugs.r-project.org/show_bug.cgi?id=18989
+
+Best regards,
+Martin
+
+
