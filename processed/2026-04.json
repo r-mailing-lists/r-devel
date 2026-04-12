@@ -447,6 +447,43 @@
       "thread_id": "thread-c810d5da5a57",
       "thread_depth": 1,
       "month": "2026-04"
+    },
+    {
+      "id": "msg-010048807b83",
+      "message_id": "<27098.9045.637893.621464@hornik.net>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "38d7001af840d889a64ba1cdcb8ec8beb738b8daf9643622801f3acb78b6052a",
+      "date": "2026-04-11T10:32:53Z",
+      "subject": "[Rd] unsafe parsing of DESCRIPTION Authors@R",
+      "subject_clean": "unsafe parsing of DESCRIPTION Authors@R",
+      "in_reply_to": "<173139A0-46EC-4D65-BD3D-10682E21E522@R-project.org>",
+      "references": [
+        "<CAOUXvx4-MATh8LN_jikbDHksjCFjkmJjZs9OBChthirCU2HHFA@mail.gmail.com>",
+        "<817090B2-0F02-479D-A6CA-168609FA9A82@R-project.org>",
+        "<CAOUXvx4zs_wTB25F1_n_p7bjYRCu5Q5wWqfEnX32ucruGopv-w@mail.gmail.com>",
+        "<173139A0-46EC-4D65-BD3D-10682E21E522@R-project.org>"
+      ],
+      "body_plain": ">>>>> Simon Urbanek writes:\n\nIndeed, you/Simon and I had discussed this some time ago and put on our\nTODO lists, but with low priority :-)\n\nSo I changed priorities.  The current situation on CRAN Authors at R uses\nis quite manageable: about 20 packages use \"strange\" calls in these, in\nmost cases from mis-specifying the ORCID comment like\n\n  comment(ORCID = ...)\n  ORCID = \n\ninstead of\n\n  comment = c(ORCID = ...)\n\nYesterday I committed \n\nr89866 | hornik | 2026-04-10 21:31:32 +0200 (Fri, 10 Apr 2026) | 1 line\nComplain about possibly unsafe calls in Authors at R.\n\nso these calls now get speeding tickets which also give check NOTEs,\nlike \n\n* checking DESCRIPTION meta-information ... NOTE\nMalformed Authors at R field:\n  Found the following possibly unsafe calls:\n    comment(\"SwissMarbledWhite\")\n  Please only use calls to ?person?, ?c?, ?list?, ?paste?, ?paste0?.\n\nI will \"eventually\" change the reader code to no longer eval when seeing\ncalls not in the whitelist.\n\nThe harder part will be narrowing down the calls allowed in CITATION\nfiles, where the original design was to be permissive.  \n\nBest\n-k\n\n> Levi,\n> thanks, I understand what you are saying in that compared to other eval'ed things Authors at R may possibly have an increased chance of being used in contexts other than package building/installation. As I said, that particular instance is something that is on our TODO list (so you just successfully bumped its priority :)), but I'm just cautioning that it's not the only way, so, generally, dealing with packages should be considered \"dirty\" in that you should assume it involves executing code from the package, so corresponding precautions should be taken when handling packages from untrusted sources.\n\n> Thanks,\n> Simon\n\n\n>> On 8/04/2026, at 05:35, Levi Waldron <lwaldron.research at gmail.com> wrote:\n>> \n>> Thanks, Simon. Just to clarify:\n>> \n>> > there are numerous ways that R code can be evaluated (Authors at R is just one of several examples), this is well known and not unexpected. After all, you can simply call source() or eval() at any point, so it is not clear what threat model you have in mind. (BTW: your GitHub page requires 3rd party package so I fail to see the point as you can always install a package that does anything). \n>> \n>> A scenario I had in mind was that the CRAN incoming package server sends an immediate email containing a confirmation link and an interpreted version of DESCRIPTION, prior to any build/check. If that server is using desc::description or utils:::.read_authors_at_R_field, then this might provide an attacker an efficient way to modify trusted packages in the queue before they're sent to build servers. \n>> \n>> BTW the example demonstrated arbitrary code execution when 1) installing a package with no dependencies and no R/, src/, tests/, or other code outside of its DESCRIPTION, and 2) parsing its DESCRIPTION file using desc::description without installing it, but it would apply to anything else that results in utils:::.read_authors_at_R_field(). I was surprised that arbitrary code execution can happen when installing but before loading a package, or when parsing its DESCRIPTION without ever installing it, but if that introduces no new risks, I'm glad to hear it.\n>> \n>> Sincerely,\n>> Levi\n>> \n>> On Tue, Apr 7, 2026 at 1:06?AM Simon Urbanek <simon.urbanek at r-project.org> wrote:\n>> Levi,\n>> \n>> there are numerous ways that R code can be evaluated (Authors at R is just one of several examples), this is well known and not unexpected. After all, you can simply call source() or eval() at any point, so it is not clear what threat model you have in mind. (BTW: your GitHub page requires 3rd party package so I fail to see the point as you can always install a package that does anything). By definition, installing a package or running R code gives the user full access to R and the system - so adding a system() doesn't do anything new - if you can run R code then you could have simply written system() yourself instead.\n>> \n>> I understand where you are coming from, but it should be expected that anything that deals with packages is by design executing code from the package, so you can always create a malicious package - by design. That doesn't mean that we shouldn't strive to limit eval()s or to perform validity checks, but this is not practical in all instances, because R relies heavily on the ability to run R code in those instances - by design. For example, some use a canonical document in the package that is parsed when creating the authors list instead of embedding it directly in the DESCRIPTION. We could disallow that and limit the language (funnily, we discussed exactly this case last year in Vienna), but this is just one of many use-cases of this approach, there are several others in the packages toolbox. You can always find internal R functions that do various tasks using eval(), so I think the starting premise that this shouldn't happen is simply wrong. The only way you can get something \"safe\" is to disallow R code and only enable very specific API (like REST or OCAP), anything else is free for all by design.\n>> \n>> Cheers,\n>> Simon\n>> \n>> \n>> > On 7 Apr 2026, at 15:32, Levi Waldron <lwaldron.research at gmail.com> wrote:\n>> > \n>> > This issue arose during an AI-assisted security review of core Bioconductor\n>> > packages, that an attacker could execute arbitrary code on any system that\n>> > calls `utils:::.read_authors_at_R_field()` or other tools for parsing a\n>> > DESCRIPTION file,  regardless of whether it installs, builds, or checks the\n>> > package. I put some details and a reprex at\n>> > https://github.com/lwaldron/nothing/tree/check-vulnerability. Let me know\n>> > if you'd prefer I take the github page down.\n>> > \n>> > This seems worse than the inherent .onLoad(), tests/, etc vulnerabilities,\n>> > because it can be exploited in environments not intended to install or\n>> > check packages or run their code, like the CRAN incoming package queue\n>> > which does seem to parse the DESCRIPTION file.\n>> > \n>> > -Levi\n>> > \n>> > -- \n>> > \n>> > Levi Waldron\n>> > \n>> > Professor and Chair\n>> > \n>> > Department of Epidemiology and Biostatistics\n>> > \n>> > CUNY Graduate School of Public Health and Health Policy\n>> > \n>> > Institute for Implementation Science in Population Health\n>> > \n>> > 55 W 125th St, New York NY 10035\n>> > \n>> > https://waldronlab.io\n>> > \n>> > Join the microbiome Virtual International Forum: https://microbiome-vif.org\n>> > \n>> > [[alternative HTML version deleted]]\n>> > \n>> > ______________________________________________\n>> > R-devel at r-project.org mailing list\n>> > https://stat.ethz.ch/mailman/listinfo/r-devel\n>> > \n>> \n>> \n>> \n>> -- \n>> Levi Waldron                                                \n>> Professor and Chair\n>> Department of Epidemiology and Biostatistics\n>> CUNY Graduate School of Public Health and Health Policy\n>> Institute for Implementation Science in Population Health\n>> 55 W 125th St, New York NY 10035\n>> https://waldronlab.io\n>> Book a meeting with me\n>> Join the microbiome Virtual International Forum: https://microbiome-vif.org\n\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">>>>> Simon Urbanek writes:\n\nIndeed, you/Simon and I had discussed this some time ago and put on our\nTODO lists, but with low priority :-)\n\nSo I changed priorities.  The current situation on CRAN Auth",
+      "thread_id": "thread-4a99b2c1747c",
+      "thread_depth": 4,
+      "month": "2026-04"
+    },
+    {
+      "id": "msg-da278ea2d9bd",
+      "message_id": "<8a6df3d4-5f33-9720-5f6b-4a8238f88772@uiowa.edu>",
+      "from_name": "iuke-tier@ey m@iii@g oii uiow@@edu",
+      "from_email_hash": "d99ccb54811d841ac041f12e5dfc823053fe0bdf1cebd8d1047b8e5f0d6a24b7",
+      "date": "2026-04-11T19:28:17Z",
+      "subject": "[Rd] Removing declarations for non-API functions",
+      "subject_clean": "Removing declarations for non-API functions",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "As part of clarifying R's C API for use in packages we are planning to\nremove declarations of non-API functions from public header files.\nActual uses leading to symbol references in shared libraries have been\nreceiving check WARNINGs for some time. But in some cases code may\nstill contain uses of these functions that cause compiler errors. In\nsome cases such code is directly in packages; in other cases it is\nbrought in by linking to other packages.\n\nUsing a current R-devel you can set -DNO_LEGACY_NONAPI in Makevars and\ntry to install your package to check if removal of these non-API\ndeclarations might affect you.\n\nBest,\n\nluke\n\n-- \nLuke Tierney\nRalph E. Wareham Professor of Mathematical Sciences\nUniversity of Iowa                  Phone:             319-335-3386\nDepartment of Statistics and        Fax:               319-335-3017\n    Actuarial Science\n241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu\nIowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu",
+      "body_snippet": "As part of clarifying R's C API for use in packages we are planning to\nremove declarations of non-API functions from public header files.\nActual uses leading to symbol references in shared libraries h",
+      "thread_id": "thread-da278ea2d9bd",
+      "thread_depth": 0,
+      "month": "2026-04"
     }
   ],
   "threads": [
@@ -491,13 +528,14 @@
     {
       "id": "thread-4a99b2c1747c",
       "subject": "unsafe parsing of DESCRIPTION Authors@R",
-      "message_count": 4,
+      "message_count": 5,
       "participants": [
+        "Kurt Hornik",
         "Levi Waldron",
         "Simon Urbanek"
       ],
       "started": "2026-04-07T03:32:45Z",
-      "last_reply": "2026-04-07T20:27:18Z",
+      "last_reply": "2026-04-11T10:32:53Z",
       "root_message_id": "msg-4a99b2c1747c"
     },
     {
@@ -548,6 +586,17 @@
       "started": "2026-04-10T11:26:47Z",
       "last_reply": "2026-04-10T12:23:18Z",
       "root_message_id": "msg-d2073eda7c39"
+    },
+    {
+      "id": "thread-da278ea2d9bd",
+      "subject": "Removing declarations for non-API functions",
+      "message_count": 1,
+      "participants": [
+        "iuke-tier@ey m@iii@g oii uiow@@edu"
+      ],
+      "started": "2026-04-11T19:28:17Z",
+      "last_reply": "2026-04-11T19:28:17Z",
+      "root_message_id": "msg-da278ea2d9bd"
     }
   ]
 }
