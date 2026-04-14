@@ -1490,3 +1490,360 @@ Department of Statistics and        Fax:               319-335-3017
 Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
 
 
+From @@d@o @end|ng |rom m||berg@dev  Mon Apr 13 16:01:04 2026
+From: @@d@o @end|ng |rom m||berg@dev (Sadao Milberg)
+Date: Mon, 13 Apr 2026 14:01:04 +0000
+Subject: [Rd] [External] Re: defer removal of ENCLOS, FRAME, HASHTAB,
+ SET_ENCLOS
+In-Reply-To: <b1999139-c093-4391-8456-55c133b7af0e@yahoo.com>
+References: <CA+JCgN1-iix_YU1ht726Xv9vv12D90SGz_j8qxhP1b3mNFfb2w@mail.gmail.com>
+ <b1999139-c093-4391-8456-55c133b7af0e@yahoo.com>
+Message-ID: <dc39b077-ed60-4e1c-bb6c-66cca1ebd8e6@milberg.dev>
+
+
+> On Sun, Mar 22, 2026 at 9:18?PM <luke-tierney at uiowa.edu> wrote:
+> 
+>> On Mon, 23 Mar 2026, Laurent Gautier wrote:
+>>
+>>> Thanks Simon. This is really helpful.
+>>>
+>>> I did not find what is the replacement for SET_ENCLOS. The documentation
+>>> shows how to create a new environment with a given parent environment but
+>>> not how to reparent an existing environment (which SET_ENCLOS did).
+>>
+>> There is no replacement; allowing this is too dangerous. See the
+>> comments on parent.env <- in parent.env.
+> 
+> It feels like `environments` are both a general purpose user-level data
+> structure -- something like an odd equivalent to a string->object
+> mapping --, and a more fundamental inner component of the language --
+> something like a namespace/closure --.
+> For the former, it should not be a dangerous operation. A lineage of
+> environments in R can be represented as a general tree. Reparenting a
+> sub-tree seems like a standard operation.
+> 
+> Two additional notes:
+> 
+> - Shouldn't SET_ENCLOS be removed *after* `parent.env<-` is removed?
+> Using a C APIs should be more "dangerous" than code written in the
+> scripting language.
+
+I agree that environments and the ability to re-parent them is a useful general 
+purpose R data structure.  Of course the stern warning in `?parent.env<-` has been 
+there for a quarter century, but maybe (inadvisably) one might have come to think the 
+"near future" had passed and thus `parent.env<-` was here to stay.
+
+Will `parent.env<-` be removed?  Or is the plan to allow `parent.env<-` to 
+discriminate between safe and unsafe (disallowed) use?  It looks like the C 
+implementation already carries out quite a few checks that SET_ENCLOS doesn't. If the 
+plan is to retire, is there a timeline?
+
+I see there was a May 2024 [1] discussion of circular environment reference lookups 
+being uninterruptible.  Is that the main remaining concern nowadays?
+
+Best,
+
+Sadao.
+
+[1]: https://stat.ethz.ch/pipermail/r-devel/2024-May/083403.html
+
+> 
+> - Is `R_parentEnv()` a good name when the man page for `parent.env<-` has
+> """
+> The enclosing environment is distinguished from the _parent frame_: the
+> latter (returned by
+> ?parent.frame?) refers to the environment of the caller of a function.
+> Since confusion is so easy,
+> it is best never to use  ?parent? in connection with an environment
+> (despite the presence
+> of the function ?parent.env?).
+> """
+> ? `R_enclosingEnv()` would seem more consistent with that man page.
+> 
+> 
+>> Best,
+>>
+>> luke
+>>
+>>>
+>>> On Sun, Mar 22, 2026 at 5:00?PM Simon Urbanek <
+>> simon.urbanek at r-project.org>
+>>> wrote:
+>>>
+>>>> Laurent,
+>>>>
+>>>> see R-exts 6.22 [1] in particular subsections 1 and 2. As for FRAME you
+>>>> use the accessor functions instead of accessing it directly.
+>>>>
+>>>> Cheers,
+>>>> Simon
+>>>>
+>>>> [1] -
+>>>>
+>> https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Moving-into-C-API-compliance
+>>>>
+>>>>
+>>>>> On 22 Mar 2026, at 12:00, Laurent Gautier <lgautier at gmail.com> wrote:
+>>>>>
+>>>>> Hi,
+>>>>>
+>>>>> I'd like to second that request. rpy2, a Python-R bridge, also
+>>>>> uses ENCLOS / SET_ENCLOS and to a lesser extent FRAME.
+>>>>>
+>>>>> Also, what is the alternative suggested to replace the functionality
+>>>>> they offered?
+>>>>>
+>>>>>
+>>>>> Best,
+>>>>>
+>>>>> Laurent
+>>>>>
+>>>>>
+>>>>>
+>>>>> Hi,
+>>>>>>
+>>>>>> The development version of R removes the symbols
+>>>>>>
+>>>>>>     ENCLOS, FRAME, HASHTAB, SET_ENCLOS
+>>>>>>
+>>>>>> as per r89522. Unfortunately, these symbols are used by current
+>>>>>> versions of RStudio, and so these versions of RStudio are unable to
+>>>>>> launch with the development versions of R. (By extension, they would
+>>>>>> also fail to launch using R 4.6.0 when released.)
+>>>>>>
+>>>>>> On the RStudio side, we can work to adapt to these changes as quickly
+>>>>>> as possible, but our experience is that users will often upgrade R
+>>>>>> without necessarily upgrading RStudio in tandem.
+>>>>>>
+>>>>>> I'd like to propose keeping these symbols defined in R for now (even
+>>>>>> if not publicly accessible via headers) just to ensure existing
+>>>>>> versions of RStudio can continue to function as expected with the
+>>>>>> upcoming release of R.
+>>>>>>
+>>>>>> Thanks,
+>>>>>> Kevin
+>>>>>>
+>>>>>>
+>>>>>
+>>>>> [[alternative HTML version deleted]]
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>>
+>>>>
+>>>>
+>>>
+>>>        [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>
+>>
+>> --
+>> Luke Tierney
+>> Ralph E. Wareham Professor of Mathematical Sciences
+>> University of Iowa                  Phone:             319-335-3386
+>> Department of Statistics and        Fax:               319-335-3017
+>>      Actuarial Science
+>> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+>> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Mon Apr 13 17:44:16 2026
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Mon, 13 Apr 2026 10:44:16 -0500 (CDT)
+Subject: [Rd] [External] Re: defer removal of ENCLOS, FRAME, HASHTAB,
+ SET_ENCLOS
+In-Reply-To: <dc39b077-ed60-4e1c-bb6c-66cca1ebd8e6@milberg.dev>
+References: <CA+JCgN1-iix_YU1ht726Xv9vv12D90SGz_j8qxhP1b3mNFfb2w@mail.gmail.com>
+ <b1999139-c093-4391-8456-55c133b7af0e@yahoo.com>
+ <dc39b077-ed60-4e1c-bb6c-66cca1ebd8e6@milberg.dev>
+Message-ID: <a4803c7b-4bcf-e5bd-bf20-eb207eecb9df@uiowa.edu>
+
+On Mon, 13 Apr 2026, Sadao Milberg wrote:
+
+> [You don't often get email from sadao at milberg.dev. Learn why this is important at https://aka.ms/LearnAboutSenderIdentification ]
+>
+>> On Sun, Mar 22, 2026 at 9:18?PM <luke-tierney at uiowa.edu> wrote:
+>>
+>>> On Mon, 23 Mar 2026, Laurent Gautier wrote:
+>>>
+>>>> Thanks Simon. This is really helpful.
+>>>>
+>>>> I did not find what is the replacement for SET_ENCLOS. The documentation
+>>>> shows how to create a new environment with a given parent environment but
+>>>> not how to reparent an existing environment (which SET_ENCLOS did).
+>>>
+>>> There is no replacement; allowing this is too dangerous. See the
+>>> comments on parent.env <- in parent.env.
+>>
+>> It feels like `environments` are both a general purpose user-level data
+>> structure -- something like an odd equivalent to a string->object
+>> mapping --, and a more fundamental inner component of the language --
+>> something like a namespace/closure --.
+>> For the former, it should not be a dangerous operation. A lineage of
+>> environments in R can be represented as a general tree. Reparenting a
+>> sub-tree seems like a standard operation.
+>>
+>> Two additional notes:
+>>
+>> - Shouldn't SET_ENCLOS be removed *after* `parent.env<-` is removed?
+>> Using a C APIs should be more "dangerous" than code written in the
+>> scripting language.
+>
+> I agree that environments and the ability to re-parent them is a useful general
+> purpose R data structure.  Of course the stern warning in `?parent.env<-` has been
+> there for a quarter century, but maybe (inadvisably) one might have come to think the
+> "near future" had passed and thus `parent.env<-` was here to stay.
+>
+> Will `parent.env<-` be removed?  Or is the plan to allow `parent.env<-` to
+> discriminate between safe and unsafe (disallowed) use?  It looks like the C
+> implementation already carries out quite a few checks that SET_ENCLOS doesn't. If the
+> plan is to retire, is there a timeline?
+
+You should assume that it will be removed. As doing so is not high
+priority there is no timeline.
+
+Best,
+
+luke
+
+>
+> I see there was a May 2024 [1] discussion of circular environment reference lookups
+> being uninterruptible.  Is that the main remaining concern nowadays?
+>
+> Best,
+>
+> Sadao.
+>
+> [1]: https://stat.ethz.ch/pipermail/r-devel/2024-May/083403.html
+>
+>>
+>> - Is `R_parentEnv()` a good name when the man page for `parent.env<-` has
+>> """
+>> The enclosing environment is distinguished from the _parent frame_: the
+>> latter (returned by
+>> ?parent.frame?) refers to the environment of the caller of a function.
+>> Since confusion is so easy,
+>> it is best never to use  ?parent? in connection with an environment
+>> (despite the presence
+>> of the function ?parent.env?).
+>> """
+>> ? `R_enclosingEnv()` would seem more consistent with that man page.
+>>
+>>
+>>> Best,
+>>>
+>>> luke
+>>>
+>>>>
+>>>> On Sun, Mar 22, 2026 at 5:00?PM Simon Urbanek <
+>>> simon.urbanek at r-project.org>
+>>>> wrote:
+>>>>
+>>>>> Laurent,
+>>>>>
+>>>>> see R-exts 6.22 [1] in particular subsections 1 and 2. As for FRAME you
+>>>>> use the accessor functions instead of accessing it directly.
+>>>>>
+>>>>> Cheers,
+>>>>> Simon
+>>>>>
+>>>>> [1] -
+>>>>>
+>>> https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Moving-into-C-API-compliance
+>>>>>
+>>>>>
+>>>>>> On 22 Mar 2026, at 12:00, Laurent Gautier <lgautier at gmail.com> wrote:
+>>>>>>
+>>>>>> Hi,
+>>>>>>
+>>>>>> I'd like to second that request. rpy2, a Python-R bridge, also
+>>>>>> uses ENCLOS / SET_ENCLOS and to a lesser extent FRAME.
+>>>>>>
+>>>>>> Also, what is the alternative suggested to replace the functionality
+>>>>>> they offered?
+>>>>>>
+>>>>>>
+>>>>>> Best,
+>>>>>>
+>>>>>> Laurent
+>>>>>>
+>>>>>>
+>>>>>>
+>>>>>> Hi,
+>>>>>>>
+>>>>>>> The development version of R removes the symbols
+>>>>>>>
+>>>>>>>     ENCLOS, FRAME, HASHTAB, SET_ENCLOS
+>>>>>>>
+>>>>>>> as per r89522. Unfortunately, these symbols are used by current
+>>>>>>> versions of RStudio, and so these versions of RStudio are unable to
+>>>>>>> launch with the development versions of R. (By extension, they would
+>>>>>>> also fail to launch using R 4.6.0 when released.)
+>>>>>>>
+>>>>>>> On the RStudio side, we can work to adapt to these changes as quickly
+>>>>>>> as possible, but our experience is that users will often upgrade R
+>>>>>>> without necessarily upgrading RStudio in tandem.
+>>>>>>>
+>>>>>>> I'd like to propose keeping these symbols defined in R for now (even
+>>>>>>> if not publicly accessible via headers) just to ensure existing
+>>>>>>> versions of RStudio can continue to function as expected with the
+>>>>>>> upcoming release of R.
+>>>>>>>
+>>>>>>> Thanks,
+>>>>>>> Kevin
+>>>>>>>
+>>>>>>>
+>>>>>>
+>>>>>> [[alternative HTML version deleted]]
+>>>>>>
+>>>>>> ______________________________________________
+>>>>>> R-devel at r-project.org mailing list
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>>>
+>>>>>
+>>>>>
+>>>>
+>>>>        [[alternative HTML version deleted]]
+>>>>
+>>>> ______________________________________________
+>>>> R-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>
+>>>
+>>> --
+>>> Luke Tierney
+>>> Ralph E. Wareham Professor of Mathematical Sciences
+>>> University of Iowa                  Phone:             319-335-3386
+>>> Department of Statistics and        Fax:               319-335-3017
+>>>      Actuarial Science
+>>> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+>>> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+>>
+>>       [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+>
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
