@@ -169,34 +169,18 @@
       "month": "1997-08"
     },
     {
-      "id": "msg-fc937d85eb47",
-      "message_id": "<199708041115.NAA21209@aragorn.ci.tuwien.ac.at>",
+      "id": "msg-ace064b2bd3f",
+      "message_id": "<199708041115.NAA21208@aragorn.ci.tuwien.ac.at>",
       "from_name": "Kurt Hornik",
       "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
       "date": "1997-08-04T11:15:54Z",
-      "subject": "R-alpha: ports ...",
-      "subject_clean": "R-alpha: ports ...",
+      "subject": "R-alpha: `axes' argument for barplot()",
+      "subject_clean": "R-alpha: `axes' argument for barplot()",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Just wanted to mention that I've more or less successfully completed\nports of the V&R library `class' (I hope I can also have lda and qda in\nthere soon) and the library `clus' by Anja Struyf, Mia Hubert, and Peter\nJ. Rousseeuw provided via the Journal of Statistical Software, volume 1.\nFor `clus', the plots needed to be rotated because R barplot does not\nsupport the `horiz' argument yet (and having `scale' work as in S would\nalso be nice)\n\nI've added the current versions into my r-contrib Debian package, and\nwill officially release them after 0.50 is out.\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
-      "body_snippet": "Just wanted to mention that I've more or less successfully completed\nports of the V&R library `class' (I hope I can also have lda and qda in\nthere soon) and the library `clus' by Anja Struyf, Mia Hube",
-      "thread_id": "thread-fc937d85eb47",
-      "thread_depth": 0,
-      "month": "1997-08"
-    },
-    {
-      "id": "msg-81d38a09c9cc",
-      "message_id": "<199708041115.NAA21211@aragorn.ci.tuwien.ac.at>",
-      "from_name": "Kurt Hornik",
-      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
-      "date": "1997-08-04T11:15:54Z",
-      "subject": "R-alpha: scale()",
-      "subject_clean": "R-alpha: scale()",
-      "in_reply_to": null,
-      "references": [],
-      "body_plain": "Here is a version of the function scale() which may be worth adding to\nthe distribution.  No NA's yet, though.  And yes, I could also write\ndocumentation if necessary ...\n\n-k\n\n***********************************************************************\nscale <- function(x, center = TRUE, scale = TRUE) {\n  x <- as.matrix(x)\n  nc <- ncol(x)\n  if (is.logical(center)) {\n    if (center)\n      x <- sweep(x, 2, apply(x, 2, mean))\n  }\n  else if (is.numeric(center) && (length(center) == nc))\n    x <- sweep(x, 2, center)\n  else\n    stop(\"Length of center must equal the number of columns of x\")\n  if (is.logical(scale)) {\n    if (scale)\n      x <- sweep(x, 2, apply(x, 2, function (v)\n\t\t\t     sum(v^2) / max(1, length(v) - 1)), \"/\")\n  }\n  else if (is.numeric(scale) && length(scale) == nc)\n    x <- sweep(x, 2, scale, \"/\")\n  else\n    stop(\"Length of scale must equal the number of columns of x\")\n  x\n}\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
-      "body_snippet": "Here is a version of the function scale() which may be worth adding to\nthe distribution.  No NA's yet, though.  And yes, I could also write\ndocumentation if necessary ...\n\n-k\n\n************************",
-      "thread_id": "thread-81d38a09c9cc",
+      "body_plain": "Clearly, barplot should have an `axes' argument.  The following trivial\npatch does that ... pls apply.\n\n-k\n\n*** src/library/base/funs/barplot.orig\tSat Aug  2 15:58:44 1997\n--- src/library/base/funs/barplot\tSat Aug  2 16:00:22 1997\n***************\n*** 1,7 ****\n  \"barplot\" <-\n  function (height, names.arg, col=NULL, border=par(\"fg\"),\n  \tbeside=FALSE, space=0.2, legend.text,\n! \tmain=NULL, xlab=NULL, ylab=NULL, xlim, ylim, ...)\n  {\n  \topar <- par(yaxs=\"i\", xpd=TRUE)\n  \ton.exit(par(opar))\n--- 1,7 ----\n  \"barplot\" <-\n  function (height, names.arg, col=NULL, border=par(\"fg\"),\n  \tbeside=FALSE, space=0.2, legend.text,\n! \tmain=NULL, xlab=NULL, ylab=NULL, xlim, ylim, axes = TRUE, ...)\n  {\n  \topar <- par(yaxs=\"i\", xpd=TRUE)\n  \ton.exit(par(opar))\n*************** function (height, names.arg, col=NULL, b\n*** 68,72 ****\n  \t\t\txjust=1, yjust=1)\n  \t}\n  \ttitle(main=main, xlab=xlab, ylab=ylab, ...)\n! \taxis(2)\n  }\n--- 68,73 ----\n  \t\t\txjust=1, yjust=1)\n  \t}\n  \ttitle(main=main, xlab=xlab, ylab=ylab, ...)\n! \tif (axes)\n! \t\taxis(2)\n  }\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
+      "body_snippet": "Clearly, barplot should have an `axes' argument.  The following trivial\npatch does that ... pls apply.\n\n-k\n\n*** src/library/base/funs/barplot.orig\tSat Aug  2 15:58:44 1997\n--- src/library/base/funs/ba",
+      "thread_id": "thread-ace064b2bd3f",
       "thread_depth": 0,
       "month": "1997-08"
     },
@@ -233,18 +217,34 @@
       "month": "1997-08"
     },
     {
-      "id": "msg-ace064b2bd3f",
-      "message_id": "<199708041115.NAA21208@aragorn.ci.tuwien.ac.at>",
+      "id": "msg-fc937d85eb47",
+      "message_id": "<199708041115.NAA21209@aragorn.ci.tuwien.ac.at>",
       "from_name": "Kurt Hornik",
       "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
       "date": "1997-08-04T11:15:54Z",
-      "subject": "R-alpha: `axes' argument for barplot()",
-      "subject_clean": "R-alpha: `axes' argument for barplot()",
+      "subject": "R-alpha: ports ...",
+      "subject_clean": "R-alpha: ports ...",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Clearly, barplot should have an `axes' argument.  The following trivial\npatch does that ... pls apply.\n\n-k\n\n*** src/library/base/funs/barplot.orig\tSat Aug  2 15:58:44 1997\n--- src/library/base/funs/barplot\tSat Aug  2 16:00:22 1997\n***************\n*** 1,7 ****\n  \"barplot\" <-\n  function (height, names.arg, col=NULL, border=par(\"fg\"),\n  \tbeside=FALSE, space=0.2, legend.text,\n! \tmain=NULL, xlab=NULL, ylab=NULL, xlim, ylim, ...)\n  {\n  \topar <- par(yaxs=\"i\", xpd=TRUE)\n  \ton.exit(par(opar))\n--- 1,7 ----\n  \"barplot\" <-\n  function (height, names.arg, col=NULL, border=par(\"fg\"),\n  \tbeside=FALSE, space=0.2, legend.text,\n! \tmain=NULL, xlab=NULL, ylab=NULL, xlim, ylim, axes = TRUE, ...)\n  {\n  \topar <- par(yaxs=\"i\", xpd=TRUE)\n  \ton.exit(par(opar))\n*************** function (height, names.arg, col=NULL, b\n*** 68,72 ****\n  \t\t\txjust=1, yjust=1)\n  \t}\n  \ttitle(main=main, xlab=xlab, ylab=ylab, ...)\n! \taxis(2)\n  }\n--- 68,73 ----\n  \t\t\txjust=1, yjust=1)\n  \t}\n  \ttitle(main=main, xlab=xlab, ylab=ylab, ...)\n! \tif (axes)\n! \t\taxis(2)\n  }\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
-      "body_snippet": "Clearly, barplot should have an `axes' argument.  The following trivial\npatch does that ... pls apply.\n\n-k\n\n*** src/library/base/funs/barplot.orig\tSat Aug  2 15:58:44 1997\n--- src/library/base/funs/ba",
-      "thread_id": "thread-ace064b2bd3f",
+      "body_plain": "Just wanted to mention that I've more or less successfully completed\nports of the V&R library `class' (I hope I can also have lda and qda in\nthere soon) and the library `clus' by Anja Struyf, Mia Hubert, and Peter\nJ. Rousseeuw provided via the Journal of Statistical Software, volume 1.\nFor `clus', the plots needed to be rotated because R barplot does not\nsupport the `horiz' argument yet (and having `scale' work as in S would\nalso be nice)\n\nI've added the current versions into my r-contrib Debian package, and\nwill officially release them after 0.50 is out.\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
+      "body_snippet": "Just wanted to mention that I've more or less successfully completed\nports of the V&R library `class' (I hope I can also have lda and qda in\nthere soon) and the library `clus' by Anja Struyf, Mia Hube",
+      "thread_id": "thread-fc937d85eb47",
+      "thread_depth": 0,
+      "month": "1997-08"
+    },
+    {
+      "id": "msg-81d38a09c9cc",
+      "message_id": "<199708041115.NAA21211@aragorn.ci.tuwien.ac.at>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
+      "date": "1997-08-04T11:15:54Z",
+      "subject": "R-alpha: scale()",
+      "subject_clean": "R-alpha: scale()",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Here is a version of the function scale() which may be worth adding to\nthe distribution.  No NA's yet, though.  And yes, I could also write\ndocumentation if necessary ...\n\n-k\n\n***********************************************************************\nscale <- function(x, center = TRUE, scale = TRUE) {\n  x <- as.matrix(x)\n  nc <- ncol(x)\n  if (is.logical(center)) {\n    if (center)\n      x <- sweep(x, 2, apply(x, 2, mean))\n  }\n  else if (is.numeric(center) && (length(center) == nc))\n    x <- sweep(x, 2, center)\n  else\n    stop(\"Length of center must equal the number of columns of x\")\n  if (is.logical(scale)) {\n    if (scale)\n      x <- sweep(x, 2, apply(x, 2, function (v)\n\t\t\t     sum(v^2) / max(1, length(v) - 1)), \"/\")\n  }\n  else if (is.numeric(scale) && length(scale) == nc)\n    x <- sweep(x, 2, scale, \"/\")\n  else\n    stop(\"Length of scale must equal the number of columns of x\")\n  x\n}\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
+      "body_snippet": "Here is a version of the function scale() which may be worth adding to\nthe distribution.  No NA's yet, though.  And yes, I could also write\ndocumentation if necessary ...\n\n-k\n\n************************",
+      "thread_id": "thread-81d38a09c9cc",
       "thread_depth": 0,
       "month": "1997-08"
     },
@@ -590,22 +590,6 @@
       "month": "1997-08"
     },
     {
-      "id": "msg-cf5749f91964",
-      "message_id": "<199708061106.NAA22855@aragorn.ci.tuwien.ac.at>",
-      "from_name": "Kurt Hornik",
-      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
-      "date": "1997-08-06T11:06:39Z",
-      "subject": "R-alpha: R color problem",
-      "subject_clean": "R-alpha: R color problem",
-      "in_reply_to": null,
-      "references": [],
-      "body_plain": "There seems to be a small problem with the S-compatible small numbers\ncolor specification, colors 0 and 2 are the same.\n\nHave a look at e.g.\n\tbarplot(rbind(1:3, 1), col = c(0,2))\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
-      "body_snippet": "There seems to be a small problem with the S-compatible small numbers\ncolor specification, colors 0 and 2 are the same.\n\nHave a look at e.g.\n\tbarplot(rbind(1:3, 1), col = c(0,2))\n\n-k\n=-=-=-=-=-=-=-=-=",
-      "thread_id": "thread-cf5749f91964",
-      "thread_depth": 0,
-      "month": "1997-08"
-    },
-    {
       "id": "msg-8cf7c5f64b8c",
       "message_id": "<199708061106.NAA22856@aragorn.ci.tuwien.ac.at>",
       "from_name": "Kurt Hornik",
@@ -621,6 +605,22 @@
       "body_snippet": ">>>>> Ross Ihaka writes:\n\n> A set of patches for R-0.50-a1 is now available as\n> \tftp://stat.auckland.ac.nz/pub/R/R-0.50-a1.patch1.gz\n> The patches mainly fix problems reported since R-0.50-a1 but som",
       "thread_id": "thread-49628dba0c4b",
       "thread_depth": 1,
+      "month": "1997-08"
+    },
+    {
+      "id": "msg-cf5749f91964",
+      "message_id": "<199708061106.NAA22855@aragorn.ci.tuwien.ac.at>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
+      "date": "1997-08-06T11:06:39Z",
+      "subject": "R-alpha: R color problem",
+      "subject_clean": "R-alpha: R color problem",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "There seems to be a small problem with the S-compatible small numbers\ncolor specification, colors 0 and 2 are the same.\n\nHave a look at e.g.\n\tbarplot(rbind(1:3, 1), col = c(0,2))\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
+      "body_snippet": "There seems to be a small problem with the S-compatible small numbers\ncolor specification, colors 0 and 2 are the same.\n\nHave a look at e.g.\n\tbarplot(rbind(1:3, 1), col = c(0,2))\n\n-k\n=-=-=-=-=-=-=-=-=",
+      "thread_id": "thread-cf5749f91964",
+      "thread_depth": 0,
       "month": "1997-08"
     },
     {
@@ -886,22 +886,6 @@
       "month": "1997-08"
     },
     {
-      "id": "msg-6aec7e1562c7",
-      "message_id": "<199708111336.PAA00438@aragorn.ci.tuwien.ac.at>",
-      "from_name": "Kurt Hornik",
-      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
-      "date": "1997-08-11T13:36:07Z",
-      "subject": "R-alpha: R 0.50.a3:  adj?",
-      "subject_clean": "R-alpha: R 0.50.a3:  adj?",
-      "in_reply_to": null,
-      "references": [],
-      "body_plain": "Not sure if I already reported this ... it seems that as of 0.50.a2, the\nadj graphics parameter is completely ignored.  Try e.g.\n\n\tplot(1:10)\n\ttitle(main = \"This is a title\", adj = 0)\n\ttitle(main = \"This is a title\", adj = 1)\n\nNo difference ...\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
-      "body_snippet": "Not sure if I already reported this ... it seems that as of 0.50.a2, the\nadj graphics parameter is completely ignored.  Try e.g.\n\n\tplot(1:10)\n\ttitle(main = \"This is a title\", adj = 0)\n\ttitle(main = \"T",
-      "thread_id": "thread-6aec7e1562c7",
-      "thread_depth": 0,
-      "month": "1997-08"
-    },
-    {
       "id": "msg-3c261f8cfc4e",
       "message_id": "<199708111336.PAA00442@aragorn.ci.tuwien.ac.at>",
       "from_name": "Kurt Hornik",
@@ -930,6 +914,38 @@
       "body_plain": "The following patch adds a trivial family method for linear models.\n-k\n\n--- src/library/base/funs/lm.orig\tTue May 27 02:53:58 1997\n+++ src/library/base/funs/lm\tSun Aug 10 22:00:46 1997\n@@ -412,3 +412,5 @@\n }\n \n formula.lm<-function(x)formula(x$terms)\n+\n+family.lm <- function(x) { gaussian() }\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
       "body_snippet": "The following patch adds a trivial family method for linear models.\n-k\n\n--- src/library/base/funs/lm.orig\tTue May 27 02:53:58 1997\n+++ src/library/base/funs/lm\tSun Aug 10 22:00:46 1997\n@@ -412,3 +412,",
       "thread_id": "thread-e5156f72c84f",
+      "thread_depth": 0,
+      "month": "1997-08"
+    },
+    {
+      "id": "msg-6aec7e1562c7",
+      "message_id": "<199708111336.PAA00438@aragorn.ci.tuwien.ac.at>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
+      "date": "1997-08-11T13:36:07Z",
+      "subject": "R-alpha: R 0.50.a3:  adj?",
+      "subject_clean": "R-alpha: R 0.50.a3:  adj?",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Not sure if I already reported this ... it seems that as of 0.50.a2, the\nadj graphics parameter is completely ignored.  Try e.g.\n\n\tplot(1:10)\n\ttitle(main = \"This is a title\", adj = 0)\n\ttitle(main = \"This is a title\", adj = 1)\n\nNo difference ...\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
+      "body_snippet": "Not sure if I already reported this ... it seems that as of 0.50.a2, the\nadj graphics parameter is completely ignored.  Try e.g.\n\n\tplot(1:10)\n\ttitle(main = \"This is a title\", adj = 0)\n\ttitle(main = \"T",
+      "thread_id": "thread-6aec7e1562c7",
+      "thread_depth": 0,
+      "month": "1997-08"
+    },
+    {
+      "id": "msg-26fa2e0fd986",
+      "message_id": "<199708111336.PAA00456@aragorn.ci.tuwien.ac.at>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
+      "date": "1997-08-11T13:36:08Z",
+      "subject": "R-alpha: R 0.50.a3:  patch for man/palette",
+      "subject_clean": "R-alpha: R 0.50.a3:  patch for man/palette",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "The following patch fixes an obvious problem with the man source for\npalette().\n-k\n\n--- src/library/base/man/palette.orig\tSun Aug 10 17:50:11 1997\n+++ src/library/base/man/palette\tSun Aug 10 18:49:14 1997\n@@ -14,7 +14,7 @@\n a built in color palette.  If LANG(value) has length greater\n than 1 it is assumed to contain a description of the colors\n which are to make up the new palette (either by name or\n-by RGB levels.\n+by RGB levels).\n PARA\n If LANG(value) is omitted or has length 0, no change is made\n the current palette.\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
+      "body_snippet": "The following patch fixes an obvious problem with the man source for\npalette().\n-k\n\n--- src/library/base/man/palette.orig\tSun Aug 10 17:50:11 1997\n+++ src/library/base/man/palette\tSun Aug 10 18:49:14 ",
+      "thread_id": "thread-26fa2e0fd986",
       "thread_depth": 0,
       "month": "1997-08"
     },
@@ -978,22 +994,6 @@
       "body_plain": "Not really important, but ... `make tests' fails if a user's .Rprofile\nasks for libraries which are not found by the binary in the compilation\ntree (yes I know, we're here perhaps the only ones who use private\nlibraries ...).\n\nPerhaps we should have options\n\t--no-site-file\n\t--no-init-file\nwhich inhibit the loading of a global and a user's init file?\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
       "body_snippet": "Not really important, but ... `make tests' fails if a user's .Rprofile\nasks for libraries which are not found by the binary in the compilation\ntree (yes I know, we're here perhaps the only ones who us",
       "thread_id": "thread-2c32c150e7f3",
-      "thread_depth": 0,
-      "month": "1997-08"
-    },
-    {
-      "id": "msg-26fa2e0fd986",
-      "message_id": "<199708111336.PAA00456@aragorn.ci.tuwien.ac.at>",
-      "from_name": "Kurt Hornik",
-      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
-      "date": "1997-08-11T13:36:08Z",
-      "subject": "R-alpha: R 0.50.a3:  patch for man/palette",
-      "subject_clean": "R-alpha: R 0.50.a3:  patch for man/palette",
-      "in_reply_to": null,
-      "references": [],
-      "body_plain": "The following patch fixes an obvious problem with the man source for\npalette().\n-k\n\n--- src/library/base/man/palette.orig\tSun Aug 10 17:50:11 1997\n+++ src/library/base/man/palette\tSun Aug 10 18:49:14 1997\n@@ -14,7 +14,7 @@\n a built in color palette.  If LANG(value) has length greater\n than 1 it is assumed to contain a description of the colors\n which are to make up the new palette (either by name or\n-by RGB levels.\n+by RGB levels).\n PARA\n If LANG(value) is omitted or has length 0, no change is made\n the current palette.\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
-      "body_snippet": "The following patch fixes an obvious problem with the man source for\npalette().\n-k\n\n--- src/library/base/man/palette.orig\tSun Aug 10 17:50:11 1997\n+++ src/library/base/man/palette\tSun Aug 10 18:49:14 ",
-      "thread_id": "thread-26fa2e0fd986",
       "thread_depth": 0,
       "month": "1997-08"
     },
@@ -2134,6 +2134,25 @@
       "month": "1997-08"
     },
     {
+      "id": "msg-e20104a2ed9d",
+      "message_id": "<199708212102.XAA03945@aragorn.ci.tuwien.ac.at>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
+      "date": "1997-08-21T21:02:06Z",
+      "subject": "R-alpha: ECDFs",
+      "subject_clean": "R-alpha: ECDFs",
+      "in_reply_to": "<Pine.SUN.3.95.970819115251.28406C-100000@chekov>",
+      "references": [
+        "<199708191851.UAA02770@aragorn.ci.tuwien.ac.at>",
+        "<Pine.SUN.3.95.970819115251.28406C-100000@chekov>"
+      ],
+      "body_plain": ">>>>> Thomas Lumley writes:\n\n> On Tue, 19 Aug 1997, Kurt Hornik wrote:\n>> \n>> Here's something what is needed for teaching elementary statistics:\n>> Given a sample vector x, compute the corresponding ECDF, plot it, and\n>> perhaps evaluate it at points other than the data points.\n\n> The approx() function is supposed to do this (it currently only does\n> linear interpolation).  If the right and left continuous step\n> functions were added to approx then we could easily use approxfun to\n> define the ECDF as a function closure, making it automatically\n> available at any point you want. After all, the ECDF *is* a function.\n\nAh, very nice idea!\n\nSo, we'd have\n\n\tecdf(x)\n\nreturn a FUNCTION of class (e.g.) \"step\" which would on the one hand\nhave the right methods for it and on the other hand would allow us to\nevaluate it at new points right away?\n\nMartin, Peter?\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
+      "body_snippet": ">>>>> Thomas Lumley writes:\n\n> On Tue, 19 Aug 1997, Kurt Hornik wrote:\n>> \n>> Here's something what is needed for teaching elementary statistics:\n>> Given a sample vector x, compute the corresponding ",
+      "thread_id": "thread-24534efb8de6",
+      "thread_depth": 3,
+      "month": "1997-08"
+    },
+    {
       "id": "msg-928534640156",
       "message_id": "<199708212102.XAA03947@aragorn.ci.tuwien.ac.at>",
       "from_name": "Kurt Hornik",
@@ -2171,25 +2190,6 @@
       "month": "1997-08"
     },
     {
-      "id": "msg-e20104a2ed9d",
-      "message_id": "<199708212102.XAA03945@aragorn.ci.tuwien.ac.at>",
-      "from_name": "Kurt Hornik",
-      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
-      "date": "1997-08-21T21:02:06Z",
-      "subject": "R-alpha: ECDFs",
-      "subject_clean": "R-alpha: ECDFs",
-      "in_reply_to": "<Pine.SUN.3.95.970819115251.28406C-100000@chekov>",
-      "references": [
-        "<199708191851.UAA02770@aragorn.ci.tuwien.ac.at>",
-        "<Pine.SUN.3.95.970819115251.28406C-100000@chekov>"
-      ],
-      "body_plain": ">>>>> Thomas Lumley writes:\n\n> On Tue, 19 Aug 1997, Kurt Hornik wrote:\n>> \n>> Here's something what is needed for teaching elementary statistics:\n>> Given a sample vector x, compute the corresponding ECDF, plot it, and\n>> perhaps evaluate it at points other than the data points.\n\n> The approx() function is supposed to do this (it currently only does\n> linear interpolation).  If the right and left continuous step\n> functions were added to approx then we could easily use approxfun to\n> define the ECDF as a function closure, making it automatically\n> available at any point you want. After all, the ECDF *is* a function.\n\nAh, very nice idea!\n\nSo, we'd have\n\n\tecdf(x)\n\nreturn a FUNCTION of class (e.g.) \"step\" which would on the one hand\nhave the right methods for it and on the other hand would allow us to\nevaluate it at new points right away?\n\nMartin, Peter?\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
-      "body_snippet": ">>>>> Thomas Lumley writes:\n\n> On Tue, 19 Aug 1997, Kurt Hornik wrote:\n>> \n>> Here's something what is needed for teaching elementary statistics:\n>> Given a sample vector x, compute the corresponding ",
-      "thread_id": "thread-24534efb8de6",
-      "thread_depth": 3,
-      "month": "1997-08"
-    },
-    {
       "id": "msg-349c678c4614",
       "message_id": "<199708212102.XAA03943@aragorn.ci.tuwien.ac.at>",
       "from_name": "Kurt Hornik",
@@ -2206,22 +2206,6 @@
       "month": "1997-08"
     },
     {
-      "id": "msg-4f38c5390057",
-      "message_id": "<199708212102.XAA03949@aragorn.ci.tuwien.ac.at>",
-      "from_name": "Kurt Hornik",
-      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
-      "date": "1997-08-21T21:02:07Z",
-      "subject": "R-alpha: another ctest question",
-      "subject_clean": "R-alpha: another ctest question",
-      "in_reply_to": null,
-      "references": [],
-      "body_plain": "I have the following problem.  Consider a `classical' test which works\nfor k .ge. 2 samples.  Possible interfaces are e.g.\n\n\txxx.test(x, g)\t    x ... all data, g ... corresponding groups\n\txxx.test(x1, ..., xk)\n\txxx.test(list(x1, ..., xk))\n\netc etc.\n\nClearly, the first and the second one are nice, but cannot be combined\nwithout making `g' (i.e., `group') a named argument.\n\nHence, in e.g. my current version of kruskal.test() I've combined the\nfirst (by compatibility with S-PLUS) and third interfaces.  Perhaps this\nis not optimal, though ...\n\nWhat I'd like to do now is to extend var.test() as follows.\n\n* With one data arg, perform a chisq-based test for a certain value of\nthe variance, as specified by an optional var argument\n* With two data args, do the usual F test\n* With more than two data args, perform some test for the homogeneity of\nvariances, as specified by an optional method (default \"Bartlett\") arg.\n\nWhat is the right interface then?  Should we have\n\n  var.test(x, y = NULL, ..., group = NULL, alternative = \"two.sided\",\n\t   conf.level = 0.95, var = 1, ratio = 1, method = \"Bartlett\")\n\n???\n\nIf so, should the interface to kruskal.test be changed accordingly?\n\nPlease advise me here.\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
-      "body_snippet": "I have the following problem.  Consider a `classical' test which works\nfor k .ge. 2 samples.  Possible interfaces are e.g.\n\n\txxx.test(x, g)\t    x ... all data, g ... corresponding groups\n\txxx.test(x1,",
-      "thread_id": "thread-4f38c5390057",
-      "thread_depth": 0,
-      "month": "1997-08"
-    },
-    {
       "id": "msg-bfb454e8495b",
       "message_id": "<199708212102.XAA03948@aragorn.ci.tuwien.ac.at>",
       "from_name": "Kurt Hornik",
@@ -2234,6 +2218,22 @@
       "body_plain": "Whereas we typically refer to the add-on `modules' as `libraries' (viz\nalso the way these are represented in the search list, and the variable\n.Libraries), S speaks about `sections'.\n\nShall we stay with our terminology?  Or instead, speak of `sections',\n`packages', `modules', ...?\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
       "body_snippet": "Whereas we typically refer to the add-on `modules' as `libraries' (viz\nalso the way these are represented in the search list, and the variable\n.Libraries), S speaks about `sections'.\n\nShall we stay wi",
       "thread_id": "thread-bfb454e8495b",
+      "thread_depth": 0,
+      "month": "1997-08"
+    },
+    {
+      "id": "msg-4f38c5390057",
+      "message_id": "<199708212102.XAA03949@aragorn.ci.tuwien.ac.at>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
+      "date": "1997-08-21T21:02:07Z",
+      "subject": "R-alpha: another ctest question",
+      "subject_clean": "R-alpha: another ctest question",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I have the following problem.  Consider a `classical' test which works\nfor k .ge. 2 samples.  Possible interfaces are e.g.\n\n\txxx.test(x, g)\t    x ... all data, g ... corresponding groups\n\txxx.test(x1, ..., xk)\n\txxx.test(list(x1, ..., xk))\n\netc etc.\n\nClearly, the first and the second one are nice, but cannot be combined\nwithout making `g' (i.e., `group') a named argument.\n\nHence, in e.g. my current version of kruskal.test() I've combined the\nfirst (by compatibility with S-PLUS) and third interfaces.  Perhaps this\nis not optimal, though ...\n\nWhat I'd like to do now is to extend var.test() as follows.\n\n* With one data arg, perform a chisq-based test for a certain value of\nthe variance, as specified by an optional var argument\n* With two data args, do the usual F test\n* With more than two data args, perform some test for the homogeneity of\nvariances, as specified by an optional method (default \"Bartlett\") arg.\n\nWhat is the right interface then?  Should we have\n\n  var.test(x, y = NULL, ..., group = NULL, alternative = \"two.sided\",\n\t   conf.level = 0.95, var = 1, ratio = 1, method = \"Bartlett\")\n\n???\n\nIf so, should the interface to kruskal.test be changed accordingly?\n\nPlease advise me here.\n\n-k\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
+      "body_snippet": "I have the following problem.  Consider a `classical' test which works\nfor k .ge. 2 samples.  Possible interfaces are e.g.\n\n\txxx.test(x, g)\t    x ... all data, g ... corresponding groups\n\txxx.test(x1,",
+      "thread_id": "thread-4f38c5390057",
       "thread_depth": 0,
       "month": "1997-08"
     },
@@ -2427,24 +2427,6 @@
       "month": "1997-08"
     },
     {
-      "id": "msg-2c1cc5069da0",
-      "message_id": "<199708220952.LAA04280@aragorn.ci.tuwien.ac.at>",
-      "from_name": "Kurt Hornik",
-      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
-      "date": "1997-08-22T09:52:21Z",
-      "subject": "R-alpha: libf2c as a shared library",
-      "subject_clean": "R-alpha: libf2c as a shared library",
-      "in_reply_to": "<3.0.1.16.19970821160028.29a77162@droopy.iarc.fr>",
-      "references": [
-        "<3.0.1.16.19970821160028.29a77162@droopy.iarc.fr>"
-      ],
-      "body_plain": ">>>>> Martyn Plummer writes:\n\n> At 15:15 21/08/97, p.dalgaard@kubism.ku.dk wrote:\n>> Ross Ihaka <ihaka@stat.auckland.ac.nz> writes:\n>> \n>>> It should be easy to package the libf2c sources as an R library.\n>>> I'm hesitant to put it into the core R distribution, because it\n>>> adds a lot of source, although this would ensure that it was always\n>>> available.\n>>> \n>>> So, should it go in the R core, or to CRAN?\n>>> Ross\n>> \n>> CRAN. Linuxites have in their distributions already, for instance.\n>> Nothing good will come from having it twice. Possibly in different\n>> versions... \n\n> I agree. The require function is designed to take care of this situation\n> surely? Indeed, there is already a contributed library (survival) which\n> depends on another contributed library (splines).\n\nHmm ... not so fast ...\n\nDoes this also affect the parts of f2c that are already come with R?\nI.e., if compiled without a Fortran compiler and a shared libf2c is\nfound, would R be linked dynamically against that and a corresponding\nstatement added to the site-wide init file?\n\n-k\n\n\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
-      "body_snippet": ">>>>> Martyn Plummer writes:\n\n> At 15:15 21/08/97, p.dalgaard@kubism.ku.dk wrote:\n>> Ross Ihaka <ihaka@stat.auckland.ac.nz> writes:\n>> \n>>> It should be easy to package the libf2c sources as an R libr",
-      "thread_id": "thread-49b793ee4dbf",
-      "thread_depth": 1,
-      "month": "1997-08"
-    },
-    {
       "id": "msg-62d0879cd40e",
       "message_id": "<199708220952.LAA04284@aragorn.ci.tuwien.ac.at>",
       "from_name": "Kurt Hornik",
@@ -2461,6 +2443,24 @@
       "body_snippet": ">>>>> Thomas Lumley writes:\n\n> It would be nice for the save file name .RData to be a variable in\n> config.site (unless the machine-independent files are coming very\n> soon).  We are currently running",
       "thread_id": "thread-fbcbdad6098c",
       "thread_depth": 2,
+      "month": "1997-08"
+    },
+    {
+      "id": "msg-2c1cc5069da0",
+      "message_id": "<199708220952.LAA04280@aragorn.ci.tuwien.ac.at>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "2a5a7d280c83fdcfc4cc996735c6775e73ecd079b98b2563c07471e894f29a84",
+      "date": "1997-08-22T09:52:21Z",
+      "subject": "R-alpha: libf2c as a shared library",
+      "subject_clean": "R-alpha: libf2c as a shared library",
+      "in_reply_to": "<3.0.1.16.19970821160028.29a77162@droopy.iarc.fr>",
+      "references": [
+        "<3.0.1.16.19970821160028.29a77162@droopy.iarc.fr>"
+      ],
+      "body_plain": ">>>>> Martyn Plummer writes:\n\n> At 15:15 21/08/97, p.dalgaard@kubism.ku.dk wrote:\n>> Ross Ihaka <ihaka@stat.auckland.ac.nz> writes:\n>> \n>>> It should be easy to package the libf2c sources as an R library.\n>>> I'm hesitant to put it into the core R distribution, because it\n>>> adds a lot of source, although this would ensure that it was always\n>>> available.\n>>> \n>>> So, should it go in the R core, or to CRAN?\n>>> Ross\n>> \n>> CRAN. Linuxites have in their distributions already, for instance.\n>> Nothing good will come from having it twice. Possibly in different\n>> versions... \n\n> I agree. The require function is designed to take care of this situation\n> surely? Indeed, there is already a contributed library (survival) which\n> depends on another contributed library (splines).\n\nHmm ... not so fast ...\n\nDoes this also affect the parts of f2c that are already come with R?\nI.e., if compiled without a Fortran compiler and a shared libf2c is\nfound, would R be linked dynamically against that and a corresponding\nstatement added to the site-wide init file?\n\n-k\n\n\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\nr-devel mailing list -- Read http://www.ci.tuwien.ac.at/~hornik/R/R-FAQ.html\nSend \"info\", \"help\", or \"[un]subscribe\"\n(in the \"body\", not the subject !)  To: r-devel-request@stat.math.ethz.ch\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-",
+      "body_snippet": ">>>>> Martyn Plummer writes:\n\n> At 15:15 21/08/97, p.dalgaard@kubism.ku.dk wrote:\n>> Ross Ihaka <ihaka@stat.auckland.ac.nz> writes:\n>> \n>>> It should be easy to package the libf2c sources as an R libr",
+      "thread_id": "thread-49b793ee4dbf",
+      "thread_depth": 1,
       "month": "1997-08"
     },
     {
@@ -3265,15 +3265,15 @@
       "root_message_id": "msg-135ca1a84a92"
     },
     {
-      "id": "thread-9641741ffb1a",
-      "subject": "R-alpha: R 0.50.a1 graphics",
+      "id": "thread-aa4ea0cf731a",
+      "subject": "R-alpha: R 0.50.a1 bug in do_title()",
       "message_count": 1,
       "participants": [
         "Kurt Hornik"
       ],
       "started": "1997-08-01T11:54:36Z",
       "last_reply": "1997-08-01T11:54:36Z",
-      "root_message_id": "msg-9641741ffb1a"
+      "root_message_id": "msg-aa4ea0cf731a"
     },
     {
       "id": "thread-f8c08fe0b314",
@@ -3287,15 +3287,15 @@
       "root_message_id": "msg-f8c08fe0b314"
     },
     {
-      "id": "thread-aa4ea0cf731a",
-      "subject": "R-alpha: R 0.50.a1 bug in do_title()",
+      "id": "thread-9641741ffb1a",
+      "subject": "R-alpha: R 0.50.a1 graphics",
       "message_count": 1,
       "participants": [
         "Kurt Hornik"
       ],
       "started": "1997-08-01T11:54:36Z",
       "last_reply": "1997-08-01T11:54:36Z",
-      "root_message_id": "msg-aa4ea0cf731a"
+      "root_message_id": "msg-9641741ffb1a"
     },
     {
       "id": "thread-c280b2f3b669",
@@ -3353,28 +3353,6 @@
       "root_message_id": "msg-6f50bb708916"
     },
     {
-      "id": "thread-fc937d85eb47",
-      "subject": "R-alpha: ports ...",
-      "message_count": 1,
-      "participants": [
-        "Kurt Hornik"
-      ],
-      "started": "1997-08-04T11:15:54Z",
-      "last_reply": "1997-08-04T11:15:54Z",
-      "root_message_id": "msg-fc937d85eb47"
-    },
-    {
-      "id": "thread-81d38a09c9cc",
-      "subject": "R-alpha: scale()",
-      "message_count": 1,
-      "participants": [
-        "Kurt Hornik"
-      ],
-      "started": "1997-08-04T11:15:54Z",
-      "last_reply": "1997-08-04T11:15:54Z",
-      "root_message_id": "msg-81d38a09c9cc"
-    },
-    {
       "id": "thread-ace064b2bd3f",
       "subject": "R-alpha: `axes' argument for barplot()",
       "message_count": 1,
@@ -3384,6 +3362,17 @@
       "started": "1997-08-04T11:15:54Z",
       "last_reply": "1997-08-04T11:15:54Z",
       "root_message_id": "msg-ace064b2bd3f"
+    },
+    {
+      "id": "thread-e03ad1975bd5",
+      "subject": "R-alpha: ???",
+      "message_count": 1,
+      "participants": [
+        "Kurt Hornik"
+      ],
+      "started": "1997-08-04T11:15:54Z",
+      "last_reply": "1997-08-04T11:15:54Z",
+      "root_message_id": "msg-e03ad1975bd5"
     },
     {
       "id": "thread-cd83e72bda2e",
@@ -3397,6 +3386,28 @@
       "root_message_id": "msg-cd83e72bda2e"
     },
     {
+      "id": "thread-81d38a09c9cc",
+      "subject": "R-alpha: scale()",
+      "message_count": 1,
+      "participants": [
+        "Kurt Hornik"
+      ],
+      "started": "1997-08-04T11:15:54Z",
+      "last_reply": "1997-08-04T11:15:54Z",
+      "root_message_id": "msg-81d38a09c9cc"
+    },
+    {
+      "id": "thread-fc937d85eb47",
+      "subject": "R-alpha: ports ...",
+      "message_count": 1,
+      "participants": [
+        "Kurt Hornik"
+      ],
+      "started": "1997-08-04T11:15:54Z",
+      "last_reply": "1997-08-04T11:15:54Z",
+      "root_message_id": "msg-fc937d85eb47"
+    },
+    {
       "id": "thread-d778947d85fb",
       "subject": "R-alpha: pow_dd",
       "message_count": 2,
@@ -3407,17 +3418,6 @@
       "started": "1997-08-04T11:15:54Z",
       "last_reply": "1997-08-04T22:12:38Z",
       "root_message_id": "msg-d778947d85fb"
-    },
-    {
-      "id": "thread-e03ad1975bd5",
-      "subject": "R-alpha: ???",
-      "message_count": 1,
-      "participants": [
-        "Kurt Hornik"
-      ],
-      "started": "1997-08-04T11:15:54Z",
-      "last_reply": "1997-08-04T11:15:54Z",
-      "root_message_id": "msg-e03ad1975bd5"
     },
     {
       "id": "thread-004a95febb90",
@@ -3729,28 +3729,6 @@
       "root_message_id": "msg-60c63883bb03"
     },
     {
-      "id": "thread-3c261f8cfc4e",
-      "subject": "R-alpha: CFLAGS in config.site",
-      "message_count": 1,
-      "participants": [
-        "Kurt Hornik"
-      ],
-      "started": "1997-08-11T13:36:07Z",
-      "last_reply": "1997-08-11T13:36:07Z",
-      "root_message_id": "msg-3c261f8cfc4e"
-    },
-    {
-      "id": "thread-6aec7e1562c7",
-      "subject": "R-alpha: R 0.50.a3:  adj?",
-      "message_count": 1,
-      "participants": [
-        "Kurt Hornik"
-      ],
-      "started": "1997-08-11T13:36:07Z",
-      "last_reply": "1997-08-11T13:36:07Z",
-      "root_message_id": "msg-6aec7e1562c7"
-    },
-    {
       "id": "thread-e5156f72c84f",
       "subject": "R-alpha: R 0.50.a3 family.lm()",
       "message_count": 3,
@@ -3764,15 +3742,38 @@
       "root_message_id": "msg-e5156f72c84f"
     },
     {
-      "id": "thread-2c32c150e7f3",
-      "subject": "R-alpha: R 0.50.a3 problem with `make tests'",
+      "id": "thread-6aec7e1562c7",
+      "subject": "R-alpha: R 0.50.a3:  adj?",
       "message_count": 1,
       "participants": [
         "Kurt Hornik"
       ],
+      "started": "1997-08-11T13:36:07Z",
+      "last_reply": "1997-08-11T13:36:07Z",
+      "root_message_id": "msg-6aec7e1562c7"
+    },
+    {
+      "id": "thread-3c261f8cfc4e",
+      "subject": "R-alpha: CFLAGS in config.site",
+      "message_count": 1,
+      "participants": [
+        "Kurt Hornik"
+      ],
+      "started": "1997-08-11T13:36:07Z",
+      "last_reply": "1997-08-11T13:36:07Z",
+      "root_message_id": "msg-3c261f8cfc4e"
+    },
+    {
+      "id": "thread-06b9d87dac01",
+      "subject": "R-alpha: frame tools",
+      "message_count": 3,
+      "participants": [
+        "Kurt Hornik",
+        "Peter Dalgaard BSA"
+      ],
       "started": "1997-08-11T13:36:08Z",
-      "last_reply": "1997-08-11T13:36:08Z",
-      "root_message_id": "msg-2c32c150e7f3"
+      "last_reply": "1997-08-13T07:54:31Z",
+      "root_message_id": "msg-06b9d87dac01"
     },
     {
       "id": "thread-cd00148a28da",
@@ -3786,16 +3787,15 @@
       "root_message_id": "msg-cd00148a28da"
     },
     {
-      "id": "thread-06b9d87dac01",
-      "subject": "R-alpha: frame tools",
-      "message_count": 3,
+      "id": "thread-2c32c150e7f3",
+      "subject": "R-alpha: R 0.50.a3 problem with `make tests'",
+      "message_count": 1,
       "participants": [
-        "Kurt Hornik",
-        "Peter Dalgaard BSA"
+        "Kurt Hornik"
       ],
       "started": "1997-08-11T13:36:08Z",
-      "last_reply": "1997-08-13T07:54:31Z",
-      "root_message_id": "msg-06b9d87dac01"
+      "last_reply": "1997-08-11T13:36:08Z",
+      "root_message_id": "msg-2c32c150e7f3"
     },
     {
       "id": "thread-26fa2e0fd986",
@@ -4274,17 +4274,6 @@
       "root_message_id": "msg-349c678c4614"
     },
     {
-      "id": "thread-bfb454e8495b",
-      "subject": "R-alpha: a question on terminology",
-      "message_count": 1,
-      "participants": [
-        "Kurt Hornik"
-      ],
-      "started": "1997-08-21T21:02:07Z",
-      "last_reply": "1997-08-21T21:02:07Z",
-      "root_message_id": "msg-bfb454e8495b"
-    },
-    {
       "id": "thread-4f38c5390057",
       "subject": "R-alpha: another ctest question",
       "message_count": 2,
@@ -4295,6 +4284,17 @@
       "started": "1997-08-21T21:02:07Z",
       "last_reply": "1997-08-21T23:11:18Z",
       "root_message_id": "msg-4f38c5390057"
+    },
+    {
+      "id": "thread-bfb454e8495b",
+      "subject": "R-alpha: a question on terminology",
+      "message_count": 1,
+      "participants": [
+        "Kurt Hornik"
+      ],
+      "started": "1997-08-21T21:02:07Z",
+      "last_reply": "1997-08-21T21:02:07Z",
+      "root_message_id": "msg-bfb454e8495b"
     },
     {
       "id": "thread-432072a7a332",
