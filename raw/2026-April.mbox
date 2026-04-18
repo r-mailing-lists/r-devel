@@ -1905,3 +1905,1149 @@ Department of Statistics and        Fax:               319-335-3017
 Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
 
 
+From hp@ge@@on@g|thub @end|ng |rom gm@||@com  Fri Apr 17 07:52:15 2026
+From: hp@ge@@on@g|thub @end|ng |rom gm@||@com (=?UTF-8?B?SGVydsOpIFBhZ8Oocw==?=)
+Date: Thu, 16 Apr 2026 22:52:15 -0700
+Subject: [Rd] unsafe parsing of DESCRIPTION Authors@R
+In-Reply-To: <27098.9045.637893.621464@hornik.net>
+References: <CAOUXvx4-MATh8LN_jikbDHksjCFjkmJjZs9OBChthirCU2HHFA@mail.gmail.com>
+ <817090B2-0F02-479D-A6CA-168609FA9A82@R-project.org>
+ <CAOUXvx4zs_wTB25F1_n_p7bjYRCu5Q5wWqfEnX32ucruGopv-w@mail.gmail.com>
+ <173139A0-46EC-4D65-BD3D-10682E21E522@R-project.org>
+ <27098.9045.637893.621464@hornik.net>
+Message-ID: <4070581c-1c12-4f32-ae39-c6a142e95d2a@gmail.com>
+
+Thank Kurt.
+
+Can we whitelist as.person?
+
+See https://github.com/StoreyLab/qvalue/issues/41
+
+Thanks again,
+
+H.
+
+On 11/04/2026 03:32, Kurt Hornik wrote:
+>>>>>> Simon Urbanek writes:
+> Indeed, you/Simon and I had discussed this some time ago and put on our
+> TODO lists, but with low priority :-)
+>
+> So I changed priorities.  The current situation on CRAN Authors at R uses
+> is quite manageable: about 20 packages use "strange" calls in these, in
+> most cases from mis-specifying the ORCID comment like
+>
+>    comment(ORCID = ...)
+>    ORCID =
+>
+> instead of
+>
+>    comment = c(ORCID = ...)
+>
+> Yesterday I committed
+>
+> r89866 | hornik | 2026-04-10 21:31:32 +0200 (Fri, 10 Apr 2026) | 1 line
+> Complain about possibly unsafe calls in Authors at R.
+>
+> so these calls now get speeding tickets which also give check NOTEs,
+> like
+>
+> * checking DESCRIPTION meta-information ... NOTE
+> Malformed Authors at R field:
+>    Found the following possibly unsafe calls:
+>      comment("SwissMarbledWhite")
+>    Please only use calls to ?person?, ?c?, ?list?, ?paste?, ?paste0?.
+>
+> I will "eventually" change the reader code to no longer eval when seeing
+> calls not in the whitelist.
+>
+> The harder part will be narrowing down the calls allowed in CITATION
+> files, where the original design was to be permissive.
+>
+> Best
+> -k
+>
+>> Levi,
+>> thanks, I understand what you are saying in that compared to other eval'ed things Authors at R may possibly have an increased chance of being used in contexts other than package building/installation. As I said, that particular instance is something that is on our TODO list (so you just successfully bumped its priority :)), but I'm just cautioning that it's not the only way, so, generally, dealing with packages should be considered "dirty" in that you should assume it involves executing code from the package, so corresponding precautions should be taken when handling packages from untrusted sources.
+>> Thanks,
+>> Simon
+>
+>>> On 8/04/2026, at 05:35, Levi Waldron <lwaldron.research at gmail.com> wrote:
+>>>
+>>> Thanks, Simon. Just to clarify:
+>>>
+>>>> there are numerous ways that R code can be evaluated (Authors at R is just one of several examples), this is well known and not unexpected. After all, you can simply call source() or eval() at any point, so it is not clear what threat model you have in mind. (BTW: your GitHub page requires 3rd party package so I fail to see the point as you can always install a package that does anything).
+>>> A scenario I had in mind was that the CRAN incoming package server sends an immediate email containing a confirmation link and an interpreted version of DESCRIPTION, prior to any build/check. If that server is using desc::description or utils:::.read_authors_at_R_field, then this might provide an attacker an efficient way to modify trusted packages in the queue before they're sent to build servers.
+>>>
+>>> BTW the example demonstrated arbitrary code execution when 1) installing a package with no dependencies and no R/, src/, tests/, or other code outside of its DESCRIPTION, and 2) parsing its DESCRIPTION file using desc::description without installing it, but it would apply to anything else that results in utils:::.read_authors_at_R_field(). I was surprised that arbitrary code execution can happen when installing but before loading a package, or when parsing its DESCRIPTION without ever installing it, but if that introduces no new risks, I'm glad to hear it.
+>>>
+>>> Sincerely,
+>>> Levi
+>>>
+>>> On Tue, Apr 7, 2026 at 1:06?AM Simon Urbanek <simon.urbanek at r-project.org> wrote:
+>>> Levi,
+>>>
+>>> there are numerous ways that R code can be evaluated (Authors at R is just one of several examples), this is well known and not unexpected. After all, you can simply call source() or eval() at any point, so it is not clear what threat model you have in mind. (BTW: your GitHub page requires 3rd party package so I fail to see the point as you can always install a package that does anything). By definition, installing a package or running R code gives the user full access to R and the system - so adding a system() doesn't do anything new - if you can run R code then you could have simply written system() yourself instead.
+>>>
+>>> I understand where you are coming from, but it should be expected that anything that deals with packages is by design executing code from the package, so you can always create a malicious package - by design. That doesn't mean that we shouldn't strive to limit eval()s or to perform validity checks, but this is not practical in all instances, because R relies heavily on the ability to run R code in those instances - by design. For example, some use a canonical document in the package that is parsed when creating the authors list instead of embedding it directly in the DESCRIPTION. We could disallow that and limit the language (funnily, we discussed exactly this case last year in Vienna), but this is just one of many use-cases of this approach, there are several others in the packages toolbox. You can always find internal R functions that do various tasks using eval(), so I think the starting premise that this shouldn't happen is simply wrong. The only way you can get something "safe" is to disallow R code and only enable very specific API (like REST or OCAP), anything else is free for all by design.
+>>>
+>>> Cheers,
+>>> Simon
+>>>
+>>>
+>>>> On 7 Apr 2026, at 15:32, Levi Waldron <lwaldron.research at gmail.com> wrote:
+>>>>
+>>>> This issue arose during an AI-assisted security review of core Bioconductor
+>>>> packages, that an attacker could execute arbitrary code on any system that
+>>>> calls `utils:::.read_authors_at_R_field()` or other tools for parsing a
+>>>> DESCRIPTION file,  regardless of whether it installs, builds, or checks the
+>>>> package. I put some details and a reprex at
+>>>> https://github.com/lwaldron/nothing/tree/check-vulnerability. Let me know
+>>>> if you'd prefer I take the github page down.
+>>>>
+>>>> This seems worse than the inherent .onLoad(), tests/, etc vulnerabilities,
+>>>> because it can be exploited in environments not intended to install or
+>>>> check packages or run their code, like the CRAN incoming package queue
+>>>> which does seem to parse the DESCRIPTION file.
+>>>>
+>>>> -Levi
+>>>>
+>>>> -- 
+>>>>
+>>>> Levi Waldron
+>>>>
+>>>> Professor and Chair
+>>>>
+>>>> Department of Epidemiology and Biostatistics
+>>>>
+>>>> CUNY Graduate School of Public Health and Health Policy
+>>>>
+>>>> Institute for Implementation Science in Population Health
+>>>>
+>>>> 55 W 125th St, New York NY 10035
+>>>>
+>>>> https://waldronlab.io
+>>>>
+>>>> Join the microbiome Virtual International Forum: https://microbiome-vif.org
+>>>>
+>>>> [[alternative HTML version deleted]]
+>>>>
+>>>> ______________________________________________
+>>>> R-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>
+>>>
+>>>
+>>> -- 
+>>> Levi Waldron
+>>> Professor and Chair
+>>> Department of Epidemiology and Biostatistics
+>>> CUNY Graduate School of Public Health and Health Policy
+>>> Institute for Implementation Science in Population Health
+>>> 55 W 125th St, New York NY 10035
+>>> https://waldronlab.io
+>>> Book a meeting with me
+>>> Join the microbiome Virtual International Forum: https://microbiome-vif.org
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+-- 
+Herv? Pag?s
+
+Bioconductor Core Team
+hpages.on.github at gmail.com
+
+
+From |uc@r @end|ng |rom |edor@project@org  Fri Apr 17 09:10:24 2026
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Fri, 17 Apr 2026 09:10:24 +0200
+Subject: [Rd] API updates for R 4.6.0
+In-Reply-To: <1f875a81-c6ab-3984-b952-73248583b1ee@uiowa.edu>
+References: <1f875a81-c6ab-3984-b952-73248583b1ee@uiowa.edu>
+Message-ID: <CALEXWq39eTv-KDBcoE7FLHDhUJCk88qH4iva8G0ARBgqynKV_g@mail.gmail.com>
+
+Dear Luke,
+
+On Thu, 16 Apr 2026 at 21:43, luke-tierney--- via R-devel
+<r-devel at r-project.org> wrote:
+>
+> The installed C header files for R 4.6.0 should now correspond to the
+> C API as defined by the Writing R Extensions manual: All entry points
+> and variables declared in the headers are now part of the API.  This
+> helps clarify the interface available to package developers, and
+> provides the encapsulation needed to allow improvements to internals
+> of R without impacting packages. Many thanks to package developers who
+> helped in developing new API features to make this possible and who
+> worked on moving away from using non-API features.
+>
+> A small number of packages with significant reverse dependencies have
+> not yet completed the transition. CRAN will be hosting transitional
+> versions for these until their maintainers submit updates.
+
+Does this mean that these packages will now fail instead of generating a NOTE?
+
+Best,
+I?aki
+
+>
+> Best,
+>
+> luke
+>
+> --
+> Luke Tierney
+> Ralph E. Wareham Professor of Mathematical Sciences
+> University of Iowa                  Phone:             319-335-3386
+> Department of Statistics and        Fax:               319-335-3017
+>     Actuarial Science
+> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+
+-- 
+I?aki ?car
+
+
+From @uh@rto_@nggono @end|ng |rom y@hoo@com  Fri Apr 17 09:13:48 2026
+From: @uh@rto_@nggono @end|ng |rom y@hoo@com (Suharto Anggono Suharto Anggono)
+Date: Fri, 17 Apr 2026 07:13:48 +0000 (UTC)
+Subject: [Rd] Revisit c.POSIXlt , [<-.POSIXlt , [[<-.POSIXlt ?
+In-Reply-To: <27097.4108.50021.462875@stat.math.ethz.ch>
+References: <1804279034.1260983.1775558086062.ref@mail.yahoo.com>
+ <1804279034.1260983.1775558086062@mail.yahoo.com>
+ <fake-VM-id.b7632a73456b0be045b83615cecc8e5d@talos.iv>
+ <27097.4108.50021.462875@stat.math.ethz.ch>
+Message-ID: <512804963.196196.1776410028138@mail.yahoo.com>
+
+ One more thing.
+
+A POSIXlt object without 'tzone' attribute (attr(*, "tzone") is NULL) is valid.
+
+If 'x' is a POSIXct object,
+as.POSIXlt(x, tz = NULL)
+uses 'tzone' attribute of 'x', same as
+as.POSIXlt(x) .
+
+So, with current '[<-.POSIXlt' in R devel and R 4.6.0 RC, subassigning a POSIXct object without 'tzone' attribute to a POSIXlt object without 'tzone' attribute gives error. For example,
+x1 <- as.POSIXlt(Sys.time()); attr(x1, "tzone") <- NULL
+x1[1L] <- Sys.time()
+
+Additionally, after
+
+x1 <- as.POSIXlt(Sys.time()); attr(x1, "tzone") <- NULL; x2 <- x1
+y1 <- as.POSIXlt(.POSIXct(0, tz = "UTC"))
+y2 <- as.POSIXlt(.POSIXct(0, tz = "America/Toronto"))
+x1[1L] <- y1
+x2[1L] <- y2
+
+, either
+x1[1L] - y1
+or
+x2[1L] - y2
+(or both) is not 0.
+
+
+The script datetime3_lt_subsec.R doesn't use `c`. Also, if 'x' is a POSIXlt object,
+x[i] <- val
+or
+x[[i]] <- val
+in R devel is different from R 4.5.3 only when 'val' is not a POSIXlt object with identical 'tzone' attribute as 'x'.
+
+No, such a NEWS item should be for R 4.6.0. The porting of time zone reconciliation in '[<-.POSIXlt' and '[<-.POSIXlt' has been removed from R-4-5-branch.
+
+--------
+On Friday, 10 April 2026 at 09:58:25 pm GMT+7, Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+
+
+>>>>> Suharto Anggono Suharto Anggono via R-devel
+>>>>>? ? on Tue, 7 Apr 2026 10:34:46 +0000 (UTC) writes:
+
+? ? > As I have proposed in Bug 18989 Comment 1 (https://bugs.r-project.org/show_bug.cgi?id=18989#c1), 'c.POSIXlt' in R devel and R 4.6.0 alpha currently tries to preserve sub-second accuracy by proceeding as usual and then replacing the fractional part of the 'sec' component with the "fractional part" of the 'sec' component (x$sec - floor(x$sec), or x$sec %% 1) of the original POSIXlt object.
+? ? > However, as I have raised in Bug 18989 Comment 8 (https://bugs.r-project.org/show_bug.cgi?id=18989#c8), there are boundary cases, like
+? ? > c(as.POSIXlt("9999-12-31 23:59:59.99999", tz="UTC")) ,
+? ? > where the result is a full second ahead of the correct time, worse than not correcting the 'sec' component.
+
+I have not seen a case where R-devel (and 4.6.0 beta)? differ
+from R 4.5.x -- see below for my test code
+
+? ? > Because of the issue and with '[<-.POSIXlt' and '[[<-.POSIXlt' still using as.POSIXlt(as.POSIXct(*), tz = *) without correction, reverting to the original code is an option for 'c.POSIXlt' for R 4.6.0.
+
+R 4.6.0 will not be changed for this.? It is? R 4.6.0 beta for
+almost a day now which means "code freeze" it will not receive
+not very important and in this case untested code changes.
+
+
+? ? > Alternatively, if the 'c.POSIXlt' feature is to be kept, I think the fixed I have proposed in Bug 18989 Comment 9 (https://bugs.r-project.org/show_bug.cgi?id=18989#c9), applying 'floor' to the 'sec' component before converting to POSIXct, is good enough. It can be wrong only in range where not all whole seconds can be represented by POSIXct ("double" type). Or fixing the issue should wait for a future release?
+
+My problem is that I have (locally) implemented some of your
+proposals you mention above and below __but__ I have not been
+able to find _any_ difference in behaviour of my local R-devel
+version and the current "R-devel" ... even R 4.5.3? not showing
+any different behavior.
+
+My test script file, `datetime3_lt_subsec.R`, is attached here
+
+? ??? https://bugs.r-project.org/show_bug.cgi?id=18989#c13
+
+I may have been "unlucky" somehow, but that script runs two
+nested for loops on POSIXlt vector length 11, with increasing
+number of relevant digits in the <POSIXlt> x$sec,
+inspired by your
+??? as.POSIXlt("9999-12-31 23:59:59.99999", tz="UTC")
+above; it uses all of
+`[`, `[[`, `$`,
+`[<-`, `[[<-`, `$<-`,
+(I think) and looks at "balanced" and "tzone" attributes, but I
+don't see any problem.
+
+I'd be really glad if you could modify (part of) it, or extend
+it with examples were your proposed changes make a difference.
+
+? ? > As I have raised in Bug 18919 Comment 9 (https://bugs.r-project.org/show_bug.cgi?id=18919#c9), an intriguing case for me with current '[<-.POSIXlt' in R devel and R 4.6.0 alpha is that subassigning a POSIXlt object with the same time zone can have different result to subassigning a POSIXlt object with the exact same time with different, but equivalent, time zone. For example,
+
+? ? > x1 <- as.POSIXlt(.POSIXct(0, tz = "UTC"))
+? ? > x1[1L] <- as.POSIXlt("2006-02-20 11:16:16.683", tz = "UTC")
+
+? ? > versus
+
+? ? > x1 <- as.POSIXlt(.POSIXct(0, tz = "UTC"))
+? ? > x1[1L] <- as.POSIXlt("2006-02-20 11:16:16.683", tz = "GMT")
+
+? ? > .
+
+? ? > Because the branching condition in '[<-.POSIXlt' uses 'identical' on 'tzone' attributes, the case is not only like "UTC" versus "GMT" or "Etc/UTC". "Non-deterministic POSIXlt tzone in Europe/London around UTC 0" was a case (has been fixed). It can also be 3-element versus 1-element 'tzone' attribute.
+
+Indeed, (3-element vs 1-element "tzone" in <POSIXlt>):? That is
+sometimes kind of ugly / inconsistent currently, but probably
+not relevant in much R code around and would be a different topic.
+
+
+> As noted in Description of Bug 19005 (https://bugs.r-project.org/show_bug.cgi?id=19005#c0), 'as.POSIXlt.character' produces 1-element 'tzone' attribute. Example:
+
+? ? > x1 <- as.POSIXlt(.POSIXct(1e9, tz = "Europe/London"))
+? ? > x1[1L] <- strptime("2006-02-20 11:16:16.683", "%Y-%m-%d %H:%M:%OS", tz = "Europe/London")
+
+? ? > versus
+
+? ? > x1 <- as.POSIXlt(.POSIXct(1e9, tz = "Europe/London"))
+? ? > x1[1L] <- as.POSIXlt("2006-02-20 11:16:16.683", tz = "Europe/London")
+
+? ? > The difference can be eliminated by removing branching and using as.POSIXlt(as.POSIXct(*), tz = *) in all cases. However, I expect subassignment to be precise. Using the subassigned object as is is more expected for me. Will the issue be tackled, maybe in a future release of R?
+
+? ? > In '[<-.POSIXlt',
+? ? >? ? as.POSIXlt(as.POSIXct(*), tz = *)
+? ? > is also applied when 'value' is not a POSIXlt object. I think
+? ? >? ? as.POSIXlt(*, tz = *)
+? ? > could be used instead. Bug 18919 Comment 10 says that the behaviour was chosen to be consistent with 'c.POSIXlt', which seemed desirable. Does R Core agree?
+
+? ? > For character string, yes, 'Ops.POSIXt' also uses as.POSIXct(*),
+? ? > which interprets it as being in the current time zone.
+
+Indeed; Ops.POSIXt working via as.POSIXct() in all cases is
+something I'd like to change, notably for what in S4 is the "Compare" subgroup
+of the "Ops".
+Here (with S3), we'd need to "dispatch" inside Ops.POSIXt();
+__however__ that is yet another topic, in my view not part of
+any of the open Bugzilla PRs you've been mentioning here.
+
+
+? ? > Finally, I think the change of
+
+? ? > ??? ? ? ? as.POSIXlt(value)
+
+? ? > to
+
+? ? >? ? if(inherits(value, "POSIXlt") && identical(tz, attr(value, "tzone")))
+? ? >? ? ? ? value
+? ? >? ? else as.POSIXlt(as.POSIXct(value), tz = tz[1L]))
+
+? ? > in '[<-.POSIXlt' and '[[<-.POSIXlt', which is the core of PR#18919, deserves a NEWS item mentioning time zone. For example,
+? ? > In subassigning 'val' to a POSIXlt object 'x', x[i] <- val and x[[i]] <- val, now 'val' is converted to the time zone of 'x'.
+
+Yes, you are right; I will add this to the (relatively old) NEWS of R 4.5.2 ..
+
+Thank you for trying to help with the Wishlist in
+https://bugs.r-project.org/show_bug.cgi?id=18989
+
+Best regards,
+Martin  
+	[[alternative HTML version deleted]]
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Fri Apr 17 10:27:21 2026
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Fri, 17 Apr 2026 10:27:21 +0200
+Subject: [Rd] unsafe parsing of DESCRIPTION Authors@R
+In-Reply-To: <4070581c-1c12-4f32-ae39-c6a142e95d2a@gmail.com>
+References: <CAOUXvx4-MATh8LN_jikbDHksjCFjkmJjZs9OBChthirCU2HHFA@mail.gmail.com>
+ <817090B2-0F02-479D-A6CA-168609FA9A82@R-project.org>
+ <CAOUXvx4zs_wTB25F1_n_p7bjYRCu5Q5wWqfEnX32ucruGopv-w@mail.gmail.com>
+ <173139A0-46EC-4D65-BD3D-10682E21E522@R-project.org>
+ <27098.9045.637893.621464@hornik.net>
+ <4070581c-1c12-4f32-ae39-c6a142e95d2a@gmail.com>
+Message-ID: <27105.61161.870174.825146@hornik.net>
+
+>>>>> Herv? Pag?s writes:
+
+Sure, done, and even merged into R-4-6-branch.
+
+However, the code is really only intended to complain but not throw
+check errors---how can one get the error?  For me with qvalue from BioC
+devel (before whitelisting as.person) R CMD check only gives
+
+* checking DESCRIPTION meta-information ... NOTE
+Malformed Authors at R field:
+  Found the following possibly unsafe calls:
+    as.person(c("John D. Storey <jdstorey at princeton.edu> [aut, cre]", "Andrew J. Bass <ajbass at emory.edu> [aut]", "Alan Dabney [aut]", "David Robinson [aut]", "Gregory Warnes [ctb]"))
+  Please only use calls to ?person?, ?c?, ?list?, ?paste?, ?paste0?.
+
+Best
+-k
+
+
+
+> Thank Kurt.
+> Can we whitelist as.person?
+
+> See https://github.com/StoreyLab/qvalue/issues/41
+
+> Thanks again,
+
+> H.
+
+> On 11/04/2026 03:32, Kurt Hornik wrote:
+>>>>>>> Simon Urbanek writes:
+>> Indeed, you/Simon and I had discussed this some time ago and put on our
+>> TODO lists, but with low priority :-)
+>> 
+>> So I changed priorities.  The current situation on CRAN Authors at R uses
+>> is quite manageable: about 20 packages use "strange" calls in these, in
+>> most cases from mis-specifying the ORCID comment like
+>> 
+>> comment(ORCID = ...)
+>> ORCID =
+>> 
+>> instead of
+>> 
+>> comment = c(ORCID = ...)
+>> 
+>> Yesterday I committed
+>> 
+>> r89866 | hornik | 2026-04-10 21:31:32 +0200 (Fri, 10 Apr 2026) | 1 line
+>> Complain about possibly unsafe calls in Authors at R.
+>> 
+>> so these calls now get speeding tickets which also give check NOTEs,
+>> like
+>> 
+>> * checking DESCRIPTION meta-information ... NOTE
+>> Malformed Authors at R field:
+>> Found the following possibly unsafe calls:
+>> comment("SwissMarbledWhite")
+>> Please only use calls to ?person?, ?c?, ?list?, ?paste?, ?paste0?.
+>> 
+>> I will "eventually" change the reader code to no longer eval when seeing
+>> calls not in the whitelist.
+>> 
+>> The harder part will be narrowing down the calls allowed in CITATION
+>> files, where the original design was to be permissive.
+>> 
+>> Best
+>> -k
+>> 
+>>> Levi,
+>>> thanks, I understand what you are saying in that compared to other eval'ed things Authors at R may possibly have an increased chance of being used in contexts other than package building/installation. As I said, that particular instance is something that is on our TODO list (so you just successfully bumped its priority :)), but I'm just cautioning that it's not the only way, so, generally, dealing with packages should be considered "dirty" in that you should assume it involves executing code from the package, so corresponding precautions should be taken when handling packages from untrusted sources.
+>>> Thanks,
+>>> Simon
+>> 
+>>>> On 8/04/2026, at 05:35, Levi Waldron <lwaldron.research at gmail.com> wrote:
+>>>> 
+>>>> Thanks, Simon. Just to clarify:
+>>>> 
+>>>>> there are numerous ways that R code can be evaluated (Authors at R is just one of several examples), this is well known and not unexpected. After all, you can simply call source() or eval() at any point, so it is not clear what threat model you have in mind. (BTW: your GitHub page requires 3rd party package so I fail to see the point as you can always install a package that does anything).
+>>>> A scenario I had in mind was that the CRAN incoming package server sends an immediate email containing a confirmation link and an interpreted version of DESCRIPTION, prior to any build/check. If that server is using desc::description or utils:::.read_authors_at_R_field, then this might provide an attacker an efficient way to modify trusted packages in the queue before they're sent to build servers.
+>>>> 
+>>>> BTW the example demonstrated arbitrary code execution when 1) installing a package with no dependencies and no R/, src/, tests/, or other code outside of its DESCRIPTION, and 2) parsing its DESCRIPTION file using desc::description without installing it, but it would apply to anything else that results in utils:::.read_authors_at_R_field(). I was surprised that arbitrary code execution can happen when installing but before loading a package, or when parsing its DESCRIPTION without ever installing it, but if that introduces no new risks, I'm glad to hear it.
+>>>> 
+>>>> Sincerely,
+>>>> Levi
+>>>> 
+>>>> On Tue, Apr 7, 2026 at 1:06?AM Simon Urbanek <simon.urbanek at r-project.org> wrote:
+>>>> Levi,
+>>>> 
+>>>> there are numerous ways that R code can be evaluated (Authors at R is just one of several examples), this is well known and not unexpected. After all, you can simply call source() or eval() at any point, so it is not clear what threat model you have in mind. (BTW: your GitHub page requires 3rd party package so I fail to see the point as you can always install a package that does anything). By definition, installing a package or running R code gives the user full access to R and the system - so adding a system() doesn't do anything new - if you can run R code then you could have simply written system() yourself instead.
+>>>> 
+>>>> I understand where you are coming from, but it should be expected that anything that deals with packages is by design executing code from the package, so you can always create a malicious package - by design. That doesn't mean that we shouldn't strive to limit eval()s or to perform validity checks, but this is not practical in all instances, because R relies heavily on the ability to run R code in those instances - by design. For example, some use a canonical document in the package that is parsed when creating the authors list instead of embedding it directly in the DESCRIPTION. We could disallow that and limit the language (funnily, we discussed exactly this case last year in Vienna), but this is just one of many use-cases of this approach, there are several others in the packages toolbox. You can always find internal R functions that do various tasks using eval(), so I think the starting premise that this shouldn't happen is simply wrong. The only way you can get something "safe" is to disallow R code and only enable very specific API (like REST or OCAP), anything else is free for all by design.
+>>>> 
+>>>> Cheers,
+>>>> Simon
+>>>> 
+>>>> 
+>>>>> On 7 Apr 2026, at 15:32, Levi Waldron <lwaldron.research at gmail.com> wrote:
+>>>>> 
+>>>>> This issue arose during an AI-assisted security review of core Bioconductor
+>>>>> packages, that an attacker could execute arbitrary code on any system that
+>>>>> calls `utils:::.read_authors_at_R_field()` or other tools for parsing a
+>>>>> DESCRIPTION file,  regardless of whether it installs, builds, or checks the
+>>>>> package. I put some details and a reprex at
+>>>>> https://github.com/lwaldron/nothing/tree/check-vulnerability. Let me know
+>>>>> if you'd prefer I take the github page down.
+>>>>> 
+>>>>> This seems worse than the inherent .onLoad(), tests/, etc vulnerabilities,
+>>>>> because it can be exploited in environments not intended to install or
+>>>>> check packages or run their code, like the CRAN incoming package queue
+>>>>> which does seem to parse the DESCRIPTION file.
+>>>>> 
+>>>>> -Levi
+>>>>> 
+>>>>> -- 
+>>>>> 
+>>>>> Levi Waldron
+>>>>> 
+>>>>> Professor and Chair
+>>>>> 
+>>>>> Department of Epidemiology and Biostatistics
+>>>>> 
+>>>>> CUNY Graduate School of Public Health and Health Policy
+>>>>> 
+>>>>> Institute for Implementation Science in Population Health
+>>>>> 
+>>>>> 55 W 125th St, New York NY 10035
+>>>>> 
+>>>>> https://waldronlab.io
+>>>>> 
+>>>>> Join the microbiome Virtual International Forum: https://microbiome-vif.org
+>>>>> 
+>>>>> [[alternative HTML version deleted]]
+>>>>> 
+>>>>> ______________________________________________
+>>>>> R-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>> 
+>>>> 
+>>>> 
+>>>> -- 
+>>>> Levi Waldron
+>>>> Professor and Chair
+>>>> Department of Epidemiology and Biostatistics
+>>>> CUNY Graduate School of Public Health and Health Policy
+>>>> Institute for Implementation Science in Population Health
+>>>> 55 W 125th St, New York NY 10035
+>>>> https://waldronlab.io
+>>>> Book a meeting with me
+>>>> Join the microbiome Virtual International Forum: https://microbiome-vif.org
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+> -- 
+> Herv? Pag?s
+
+> Bioconductor Core Team
+> hpages.on.github at gmail.com
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Apr 17 10:57:12 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 17 Apr 2026 11:57:12 +0300
+Subject: [Rd] unsafe parsing of DESCRIPTION Authors@R
+In-Reply-To: <27105.61161.870174.825146@hornik.net>
+References: <CAOUXvx4-MATh8LN_jikbDHksjCFjkmJjZs9OBChthirCU2HHFA@mail.gmail.com>
+ <817090B2-0F02-479D-A6CA-168609FA9A82@R-project.org>
+ <CAOUXvx4zs_wTB25F1_n_p7bjYRCu5Q5wWqfEnX32ucruGopv-w@mail.gmail.com>
+ <173139A0-46EC-4D65-BD3D-10682E21E522@R-project.org>
+ <27098.9045.637893.621464@hornik.net>
+ <4070581c-1c12-4f32-ae39-c6a142e95d2a@gmail.com>
+ <27105.61161.870174.825146@hornik.net>
+Message-ID: <20260417115712.66d904d7@Tarkus>
+
+On Fri, 17 Apr 2026 10:27:21 +0200
+Kurt Hornik <Kurt.Hornik at wu.ac.at> wrote:
+
+> However, the code is really only intended to complain but not throw
+> check errors---how can one get the error?
+
+Interesting. R CMD check works on an already-built tarball, because
+.check_package_description() skips the 'Authors at R:' check when 'Author:'
+and 'Maintainer:' are already present in the DESCRIPTION file. (Later
+is why check_meta() calls
+check_package_description_authors_at_R_field() by itself and produces
+the NOTE.)
+
+For a not-yet-built package, R CMD build calls
+.check_package_description(), which now checks 'Authors at R:' by calling
+.check_package_description_authors_at_R_field(), which fails the build.
+Similarly, R CMD INSTALL on a not-yet-built package directory calls
+.install_package_description, which also performs the check.
+
+-- 
+Best regards,
+Ivan
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Fri Apr 17 12:56:32 2026
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Fri, 17 Apr 2026 05:56:32 -0500 (CDT)
+Subject: [Rd] [External] Re:  API updates for R 4.6.0
+In-Reply-To: <CALEXWq39eTv-KDBcoE7FLHDhUJCk88qH4iva8G0ARBgqynKV_g@mail.gmail.com>
+References: <1f875a81-c6ab-3984-b952-73248583b1ee@uiowa.edu>
+ <CALEXWq39eTv-KDBcoE7FLHDhUJCk88qH4iva8G0ARBgqynKV_g@mail.gmail.com>
+Message-ID: <70a209ca-f892-58d9-e38a-67f81ce71e09@uiowa.edu>
+
+On Fri, 17 Apr 2026, I?aki Ucar wrote:
+
+> Dear Luke,
+>
+> On Thu, 16 Apr 2026 at 21:43, luke-tierney--- via R-devel
+> <r-devel at r-project.org> wrote:
+>>
+>> The installed C header files for R 4.6.0 should now correspond to the
+>> C API as defined by the Writing R Extensions manual: All entry points
+>> and variables declared in the headers are now part of the API.  This
+>> helps clarify the interface available to package developers, and
+>> provides the encapsulation needed to allow improvements to internals
+>> of R without impacting packages. Many thanks to package developers who
+>> helped in developing new API features to make this possible and who
+>> worked on moving away from using non-API features.
+>>
+>> A small number of packages with significant reverse dependencies have
+>> not yet completed the transition. CRAN will be hosting transitional
+>> versions for these until their maintainers submit updates.
+>
+> Does this mean that these packages will now fail instead of generating a NOTE?
+
+The unmodified versions will now fail to install and that would
+prevent other packages from installing. That is why transitional
+versions are needed. About a third of those have already been updated
+by their maintainers; updates for mot others have been promised soon.
+
+Best,
+
+luke
+
+>
+> Best,
+> I?aki
+>
+>>
+>> Best,
+>>
+>> luke
+>>
+>> --
+>> Luke Tierney
+>> Ralph E. Wareham Professor of Mathematical Sciences
+>> University of Iowa                  Phone:             319-335-3386
+>> Department of Statistics and        Fax:               319-335-3017
+>>     Actuarial Science
+>> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+>> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+>>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+>
+>
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+From |uc@r @end|ng |rom |edor@project@org  Fri Apr 17 14:27:38 2026
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Fri, 17 Apr 2026 14:27:38 +0200
+Subject: [Rd] [External] Re:  API updates for R 4.6.0
+In-Reply-To: <70a209ca-f892-58d9-e38a-67f81ce71e09@uiowa.edu>
+References: <1f875a81-c6ab-3984-b952-73248583b1ee@uiowa.edu>
+ <CALEXWq39eTv-KDBcoE7FLHDhUJCk88qH4iva8G0ARBgqynKV_g@mail.gmail.com>
+ <70a209ca-f892-58d9-e38a-67f81ce71e09@uiowa.edu>
+Message-ID: <CALEXWq0j0zKu7Lq0KjV=mXPhnq-Hn-RxGPGw3W+azYi89tMQ-w@mail.gmail.com>
+
+On Fri, 17 Apr 2026 at 12:56, <luke-tierney at uiowa.edu> wrote:
+>
+> On Fri, 17 Apr 2026, I?aki Ucar wrote:
+>
+> > Dear Luke,
+> >
+> > On Thu, 16 Apr 2026 at 21:43, luke-tierney--- via R-devel
+> > <r-devel at r-project.org> wrote:
+> >>
+> >> The installed C header files for R 4.6.0 should now correspond to the
+> >> C API as defined by the Writing R Extensions manual: All entry points
+> >> and variables declared in the headers are now part of the API.  This
+> >> helps clarify the interface available to package developers, and
+> >> provides the encapsulation needed to allow improvements to internals
+> >> of R without impacting packages. Many thanks to package developers who
+> >> helped in developing new API features to make this possible and who
+> >> worked on moving away from using non-API features.
+> >>
+> >> A small number of packages with significant reverse dependencies have
+> >> not yet completed the transition. CRAN will be hosting transitional
+> >> versions for these until their maintainers submit updates.
+> >
+> > Does this mean that these packages will now fail instead of generating a NOTE?
+>
+> The unmodified versions will now fail to install and that would
+> prevent other packages from installing. That is why transitional
+> versions are needed. About a third of those have already been updated
+> by their maintainers; updates for mot others have been promised soon.
+
+I'm thinking here about updating the R rpm package in Fedora. This
+means that I would need to update R-Rcpp too to the transitional
+version. Which I don't particularly like on the one hand, and it's a
+bit of a pain, because it would need special treatment of the spec, as
+it breaks the automation we have to retrieve the sources.
+
+Is there any compilation flag I could activate in R's config that
+makes it compatible with current package versions without the
+transitional ones? (I.e. that still enables the deprecated API symbols
+until everything is up-to-date)
+
+Best,
+I?aki
+
+>
+> Best,
+>
+> luke
+>
+> >
+> > Best,
+> > I?aki
+> >
+> >>
+> >> Best,
+> >>
+> >> luke
+> >>
+> >> --
+> >> Luke Tierney
+> >> Ralph E. Wareham Professor of Mathematical Sciences
+> >> University of Iowa                  Phone:             319-335-3386
+> >> Department of Statistics and        Fax:               319-335-3017
+> >>     Actuarial Science
+> >> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+> >> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+> >>
+> >> ______________________________________________
+> >> R-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-devel
+> >>
+> >
+> >
+> >
+>
+> --
+> Luke Tierney
+> Ralph E. Wareham Professor of Mathematical Sciences
+> University of Iowa                  Phone:             319-335-3386
+> Department of Statistics and        Fax:               319-335-3017
+>     Actuarial Science
+> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+
+
+-- 
+I?aki ?car
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Fri Apr 17 14:48:32 2026
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Fri, 17 Apr 2026 07:48:32 -0500 (CDT)
+Subject: [Rd] [External] Re:  API updates for R 4.6.0
+In-Reply-To: <CALEXWq0j0zKu7Lq0KjV=mXPhnq-Hn-RxGPGw3W+azYi89tMQ-w@mail.gmail.com>
+References: <1f875a81-c6ab-3984-b952-73248583b1ee@uiowa.edu>
+ <CALEXWq39eTv-KDBcoE7FLHDhUJCk88qH4iva8G0ARBgqynKV_g@mail.gmail.com>
+ <70a209ca-f892-58d9-e38a-67f81ce71e09@uiowa.edu>
+ <CALEXWq0j0zKu7Lq0KjV=mXPhnq-Hn-RxGPGw3W+azYi89tMQ-w@mail.gmail.com>
+Message-ID: <5f10cf23-f9b4-9b5b-4c27-e4626dbf73f1@uiowa.edu>
+
+On Fri, 17 Apr 2026, I?aki Ucar wrote:
+
+> On Fri, 17 Apr 2026 at 12:56, <luke-tierney at uiowa.edu> wrote:
+>>
+>> On Fri, 17 Apr 2026, I?aki Ucar wrote:
+>>
+>>> Dear Luke,
+>>>
+>>> On Thu, 16 Apr 2026 at 21:43, luke-tierney--- via R-devel
+>>> <r-devel at r-project.org> wrote:
+>>>>
+>>>> The installed C header files for R 4.6.0 should now correspond to the
+>>>> C API as defined by the Writing R Extensions manual: All entry points
+>>>> and variables declared in the headers are now part of the API.  This
+>>>> helps clarify the interface available to package developers, and
+>>>> provides the encapsulation needed to allow improvements to internals
+>>>> of R without impacting packages. Many thanks to package developers who
+>>>> helped in developing new API features to make this possible and who
+>>>> worked on moving away from using non-API features.
+>>>>
+>>>> A small number of packages with significant reverse dependencies have
+>>>> not yet completed the transition. CRAN will be hosting transitional
+>>>> versions for these until their maintainers submit updates.
+>>>
+>>> Does this mean that these packages will now fail instead of generating a NOTE?
+>>
+>> The unmodified versions will now fail to install and that would
+>> prevent other packages from installing. That is why transitional
+>> versions are needed. About a third of those have already been updated
+>> by their maintainers; updates for mot others have been promised soon.
+>
+> I'm thinking here about updating the R rpm package in Fedora. This
+> means that I would need to update R-Rcpp too to the transitional
+> version. Which I don't particularly like on the one hand, and it's a
+> bit of a pain, because it would need special treatment of the spec, as
+> it breaks the automation we have to retrieve the sources.
+>
+> Is there any compilation flag I could activate in R's config that
+> makes it compatible with current package versions without the
+> transitional ones? (I.e. that still enables the deprecated API symbols
+> until everything is up-to-date)
+
+My recommendation is to hold off on a Fedora update until a compatible
+Rcpp is available.
+
+Best,
+
+luke
+
+>
+> Best,
+> I?aki
+>
+>>
+>> Best,
+>>
+>> luke
+>>
+>>>
+>>> Best,
+>>> I?aki
+>>>
+>>>>
+>>>> Best,
+>>>>
+>>>> luke
+>>>>
+>>>> --
+>>>> Luke Tierney
+>>>> Ralph E. Wareham Professor of Mathematical Sciences
+>>>> University of Iowa                  Phone:             319-335-3386
+>>>> Department of Statistics and        Fax:               319-335-3017
+>>>>     Actuarial Science
+>>>> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+>>>> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+>>>>
+>>>> ______________________________________________
+>>>> R-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>
+>>>
+>>>
+>>>
+>>
+>> --
+>> Luke Tierney
+>> Ralph E. Wareham Professor of Mathematical Sciences
+>> University of Iowa                  Phone:             319-335-3386
+>> Department of Statistics and        Fax:               319-335-3017
+>>     Actuarial Science
+>> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+>> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+>
+>
+>
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+From edd @end|ng |rom deb|@n@org  Fri Apr 17 15:13:20 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 17 Apr 2026 08:13:20 -0500
+Subject: [Rd] [External] Re:  API updates for R 4.6.0
+In-Reply-To: <5f10cf23-f9b4-9b5b-4c27-e4626dbf73f1@uiowa.edu>
+References: <1f875a81-c6ab-3984-b952-73248583b1ee@uiowa.edu>
+ <CALEXWq39eTv-KDBcoE7FLHDhUJCk88qH4iva8G0ARBgqynKV_g@mail.gmail.com>
+ <70a209ca-f892-58d9-e38a-67f81ce71e09@uiowa.edu>
+ <CALEXWq0j0zKu7Lq0KjV=mXPhnq-Hn-RxGPGw3W+azYi89tMQ-w@mail.gmail.com>
+ <5f10cf23-f9b4-9b5b-4c27-e4626dbf73f1@uiowa.edu>
+Message-ID: <27106.12784.133164.131642@paul.eddelbuettel.com>
+
+
+On 17 April 2026 at 07:48, luke-tierney--- via R-devel wrote:
+| On Fri, 17 Apr 2026, I?aki Ucar wrote:
+| > Is there any compilation flag I could activate in R's config that
+| > makes it compatible with current package versions without the
+| > transitional ones? (I.e. that still enables the deprecated API symbols
+| > until everything is up-to-date)
+| 
+| My recommendation is to hold off on a Fedora update until a compatible
+| Rcpp is available.
+
+We could also decide to patch R as needed inside the respective distro.
+
+Dirk
+
+-- 
+Dirk Eddelbuettel | edd at debian.org | http://dirk.eddelbuettel.com
+
+
+From hp@ge@@on@g|thub @end|ng |rom gm@||@com  Fri Apr 17 17:45:27 2026
+From: hp@ge@@on@g|thub @end|ng |rom gm@||@com (=?UTF-8?B?SGVydsOpIFBhZ8Oocw==?=)
+Date: Fri, 17 Apr 2026 08:45:27 -0700
+Subject: [Rd] unsafe parsing of DESCRIPTION Authors@R
+In-Reply-To: <27105.61161.870174.825146@hornik.net>
+References: <CAOUXvx4-MATh8LN_jikbDHksjCFjkmJjZs9OBChthirCU2HHFA@mail.gmail.com>
+ <817090B2-0F02-479D-A6CA-168609FA9A82@R-project.org>
+ <CAOUXvx4zs_wTB25F1_n_p7bjYRCu5Q5wWqfEnX32ucruGopv-w@mail.gmail.com>
+ <173139A0-46EC-4D65-BD3D-10682E21E522@R-project.org>
+ <27098.9045.637893.621464@hornik.net>
+ <4070581c-1c12-4f32-ae39-c6a142e95d2a@gmail.com>
+ <27105.61161.870174.825146@hornik.net>
+Message-ID: <c7a53181-8cd8-4adf-9b50-0bf8aac32377@gmail.com>
+
+Thanks Kurt.
+
+Can we also add personList please? See 
+https://bioconductor.org/checkResults/3.23/bioc-rapid-LATEST/flowCore/teran2-install.html
+
+Thanks again,
+
+Cheers,
+
+H.
+
+
+On 17/04/2026 01:27, Kurt Hornik wrote:
+>>>>>> Herv? Pag?s writes:
+> Sure, done, and even merged into R-4-6-branch.
+>
+> However, the code is really only intended to complain but not throw
+> check errors---how can one get the error?  For me with qvalue from BioC
+> devel (before whitelisting as.person) R CMD check only gives
+>
+> * checking DESCRIPTION meta-information ... NOTE
+> Malformed Authors at R field:
+>    Found the following possibly unsafe calls:
+>      as.person(c("John D. Storey <jdstorey at princeton.edu> [aut, cre]", "Andrew J. Bass <ajbass at emory.edu> [aut]", "Alan Dabney [aut]", "David Robinson [aut]", "Gregory Warnes [ctb]"))
+>    Please only use calls to ?person?, ?c?, ?list?, ?paste?, ?paste0?.
+>
+> Best
+> -k
+>
+>
+>
+>> Thank Kurt.
+>> Can we whitelist as.person?
+>> See https://github.com/StoreyLab/qvalue/issues/41
+>> Thanks again,
+>> H.
+>> On 11/04/2026 03:32, Kurt Hornik wrote:
+>>>>>>>> Simon Urbanek writes:
+>>> Indeed, you/Simon and I had discussed this some time ago and put on our
+>>> TODO lists, but with low priority :-)
+>>>
+>>> So I changed priorities.  The current situation on CRAN Authors at R uses
+>>> is quite manageable: about 20 packages use "strange" calls in these, in
+>>> most cases from mis-specifying the ORCID comment like
+>>>
+>>> comment(ORCID = ...)
+>>> ORCID =
+>>>
+>>> instead of
+>>>
+>>> comment = c(ORCID = ...)
+>>>
+>>> Yesterday I committed
+>>>
+>>> r89866 | hornik | 2026-04-10 21:31:32 +0200 (Fri, 10 Apr 2026) | 1 line
+>>> Complain about possibly unsafe calls in Authors at R.
+>>>
+>>> so these calls now get speeding tickets which also give check NOTEs,
+>>> like
+>>>
+>>> * checking DESCRIPTION meta-information ... NOTE
+>>> Malformed Authors at R field:
+>>> Found the following possibly unsafe calls:
+>>> comment("SwissMarbledWhite")
+>>> Please only use calls to ?person?, ?c?, ?list?, ?paste?, ?paste0?.
+>>>
+>>> I will "eventually" change the reader code to no longer eval when seeing
+>>> calls not in the whitelist.
+>>>
+>>> The harder part will be narrowing down the calls allowed in CITATION
+>>> files, where the original design was to be permissive.
+>>>
+>>> Best
+>>> -k
+>>>
+>>>> Levi,
+>>>> thanks, I understand what you are saying in that compared to other eval'ed things Authors at R may possibly have an increased chance of being used in contexts other than package building/installation. As I said, that particular instance is something that is on our TODO list (so you just successfully bumped its priority :)), but I'm just cautioning that it's not the only way, so, generally, dealing with packages should be considered "dirty" in that you should assume it involves executing code from the package, so corresponding precautions should be taken when handling packages from untrusted sources.
+>>>> Thanks,
+>>>> Simon
+>>>>> On 8/04/2026, at 05:35, Levi Waldron <lwaldron.research at gmail.com> wrote:
+>>>>>
+>>>>> Thanks, Simon. Just to clarify:
+>>>>>
+>>>>>> there are numerous ways that R code can be evaluated (Authors at R is just one of several examples), this is well known and not unexpected. After all, you can simply call source() or eval() at any point, so it is not clear what threat model you have in mind. (BTW: your GitHub page requires 3rd party package so I fail to see the point as you can always install a package that does anything).
+>>>>> A scenario I had in mind was that the CRAN incoming package server sends an immediate email containing a confirmation link and an interpreted version of DESCRIPTION, prior to any build/check. If that server is using desc::description or utils:::.read_authors_at_R_field, then this might provide an attacker an efficient way to modify trusted packages in the queue before they're sent to build servers.
+>>>>>
+>>>>> BTW the example demonstrated arbitrary code execution when 1) installing a package with no dependencies and no R/, src/, tests/, or other code outside of its DESCRIPTION, and 2) parsing its DESCRIPTION file using desc::description without installing it, but it would apply to anything else that results in utils:::.read_authors_at_R_field(). I was surprised that arbitrary code execution can happen when installing but before loading a package, or when parsing its DESCRIPTION without ever installing it, but if that introduces no new risks, I'm glad to hear it.
+>>>>>
+>>>>> Sincerely,
+>>>>> Levi
+>>>>>
+>>>>> On Tue, Apr 7, 2026 at 1:06?AM Simon Urbanek <simon.urbanek at r-project.org> wrote:
+>>>>> Levi,
+>>>>>
+>>>>> there are numerous ways that R code can be evaluated (Authors at R is just one of several examples), this is well known and not unexpected. After all, you can simply call source() or eval() at any point, so it is not clear what threat model you have in mind. (BTW: your GitHub page requires 3rd party package so I fail to see the point as you can always install a package that does anything). By definition, installing a package or running R code gives the user full access to R and the system - so adding a system() doesn't do anything new - if you can run R code then you could have simply written system() yourself instead.
+>>>>>
+>>>>> I understand where you are coming from, but it should be expected that anything that deals with packages is by design executing code from the package, so you can always create a malicious package - by design. That doesn't mean that we shouldn't strive to limit eval()s or to perform validity checks, but this is not practical in all instances, because R relies heavily on the ability to run R code in those instances - by design. For example, some use a canonical document in the package that is parsed when creating the authors list instead of embedding it directly in the DESCRIPTION. We could disallow that and limit the language (funnily, we discussed exactly this case last year in Vienna), but this is just one of many use-cases of this approach, there are several others in the packages toolbox. You can always find internal R functions that do various tasks using eval(), so I think the starting premise that this shouldn't happen is simply wrong. The only way you can get something "safe" is to disallow R code and only enable very specific API (like REST or OCAP), anything else is free for all by design.
+>>>>>
+>>>>> Cheers,
+>>>>> Simon
+>>>>>
+>>>>>
+>>>>>> On 7 Apr 2026, at 15:32, Levi Waldron <lwaldron.research at gmail.com> wrote:
+>>>>>>
+>>>>>> This issue arose during an AI-assisted security review of core Bioconductor
+>>>>>> packages, that an attacker could execute arbitrary code on any system that
+>>>>>> calls `utils:::.read_authors_at_R_field()` or other tools for parsing a
+>>>>>> DESCRIPTION file,  regardless of whether it installs, builds, or checks the
+>>>>>> package. I put some details and a reprex at
+>>>>>> https://github.com/lwaldron/nothing/tree/check-vulnerability. Let me know
+>>>>>> if you'd prefer I take the github page down.
+>>>>>>
+>>>>>> This seems worse than the inherent .onLoad(), tests/, etc vulnerabilities,
+>>>>>> because it can be exploited in environments not intended to install or
+>>>>>> check packages or run their code, like the CRAN incoming package queue
+>>>>>> which does seem to parse the DESCRIPTION file.
+>>>>>>
+>>>>>> -Levi
+>>>>>>
+>>>>>> -- 
+>>>>>>
+>>>>>> Levi Waldron
+>>>>>>
+>>>>>> Professor and Chair
+>>>>>>
+>>>>>> Department of Epidemiology and Biostatistics
+>>>>>>
+>>>>>> CUNY Graduate School of Public Health and Health Policy
+>>>>>>
+>>>>>> Institute for Implementation Science in Population Health
+>>>>>>
+>>>>>> 55 W 125th St, New York NY 10035
+>>>>>>
+>>>>>> https://waldronlab.io
+>>>>>>
+>>>>>> Join the microbiome Virtual International Forum: https://microbiome-vif.org
+>>>>>>
+>>>>>> [[alternative HTML version deleted]]
+>>>>>>
+>>>>>> ______________________________________________
+>>>>>> R-devel at r-project.org mailing list
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>>>
+>>>>>
+>>>>> -- 
+>>>>> Levi Waldron
+>>>>> Professor and Chair
+>>>>> Department of Epidemiology and Biostatistics
+>>>>> CUNY Graduate School of Public Health and Health Policy
+>>>>> Institute for Implementation Science in Population Health
+>>>>> 55 W 125th St, New York NY 10035
+>>>>> https://waldronlab.io
+>>>>> Book a meeting with me
+>>>>> Join the microbiome Virtual International Forum: https://microbiome-vif.org
+>>>> ______________________________________________
+>>>> R-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>> -- 
+>> Herv? Pag?s
+>> Bioconductor Core Team
+>> hpages.on.github at gmail.com
+
+-- 
+Herv? Pag?s
+
+Bioconductor Core Team
+hpages.on.github at gmail.com
+
+
+From hp@ge@@on@g|thub @end|ng |rom gm@||@com  Fri Apr 17 17:46:44 2026
+From: hp@ge@@on@g|thub @end|ng |rom gm@||@com (=?UTF-8?B?SGVydsOpIFBhZ8Oocw==?=)
+Date: Fri, 17 Apr 2026 08:46:44 -0700
+Subject: [Rd] unsafe parsing of DESCRIPTION Authors@R
+In-Reply-To: <20260417115712.66d904d7@Tarkus>
+References: <CAOUXvx4-MATh8LN_jikbDHksjCFjkmJjZs9OBChthirCU2HHFA@mail.gmail.com>
+ <817090B2-0F02-479D-A6CA-168609FA9A82@R-project.org>
+ <CAOUXvx4zs_wTB25F1_n_p7bjYRCu5Q5wWqfEnX32ucruGopv-w@mail.gmail.com>
+ <173139A0-46EC-4D65-BD3D-10682E21E522@R-project.org>
+ <27098.9045.637893.621464@hornik.net>
+ <4070581c-1c12-4f32-ae39-c6a142e95d2a@gmail.com>
+ <27105.61161.870174.825146@hornik.net> <20260417115712.66d904d7@Tarkus>
+Message-ID: <40f19347-99f4-418d-aa18-ada6064ac0bf@gmail.com>
+
+On 17/04/2026 01:57, Ivan Krylov wrote:
+> On Fri, 17 Apr 2026 10:27:21 +0200
+> Kurt Hornik <Kurt.Hornik at wu.ac.at> wrote:
+>
+>> However, the code is really only intended to complain but not throw
+>> check errors---how can one get the error?
+> Interesting. R CMD check works on an already-built tarball, because
+> .check_package_description() skips the 'Authors at R:' check when 'Author:'
+> and 'Maintainer:' are already present in the DESCRIPTION file. (Later
+> is why check_meta() calls
+> check_package_description_authors_at_R_field() by itself and produces
+> the NOTE.)
+>
+> For a not-yet-built package, R CMD build calls
+> .check_package_description(), which now checks 'Authors at R:' by calling
+> .check_package_description_authors_at_R_field(), which fails the build.
+> Similarly, R CMD INSTALL on a not-yet-built package directory calls
+> .install_package_description, which also performs the check.
+
+Indeed. I suppose the CRAN checks do not catch these errors because they 
+take already-built tarballs.
+
+Best,
+
+H.
+
+
+>
+-- 
+Herv? Pag?s
+
+Bioconductor Core Team
+hpages.on.github at gmail.com
+
+
