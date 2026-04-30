@@ -4577,3 +4577,501 @@ Cheers,
 	Berwin
 
 
+From @uh@rto_@nggono @end|ng |rom y@hoo@com  Wed Apr 29 11:59:40 2026
+From: @uh@rto_@nggono @end|ng |rom y@hoo@com (Suharto Anggono Suharto Anggono)
+Date: Wed, 29 Apr 2026 09:59:40 +0000 (UTC)
+Subject: [Rd] Use d0 instead of _8 in ppr.f ?
+References: <856632752.3883862.1777456780743.ref@mail.yahoo.com>
+Message-ID: <856632752.3883862.1777456780743@mail.yahoo.com>
+
+SVN revision 89917 adds "_8" to some numbers in src/library/stats/src/ppr.f , with message
+flang-22 wants explicit "double" / "8-bit float" constants
+
+How about using "d0" instead? It is more consistent within the file and a little more portable. The number doesn't have to be equal to the number of bytes, 8.
+
+Here is a patch that replaces "_8" with "d0".
+
+--- ppr.f	2026-04-29 09:39:32.145702763 +0000
++++ ppr_d0.f	2026-04-29 09:39:32.268715531 +0000
+@@ -842,9 +842,9 @@
+ 
+       data df, gcvpen, ismethod, trace /4d0, 1d0, 0, .false./
+       data ifl,maxit, conv, mitone, cutmin, fdel
+-     &    / 6,  20,  .005_8,   20,   0.1_8, 0.02_8 /
++     &    / 6,  20,  .005d0,   20,   0.1d0, 0.02d0 /
+       data span,alpha, big,   cjeps,  mitcj, lf
+-     &    / 0.0, 0.0, 1.0e20, 0.001_8,   1,   2 /
++     &    / 0.0, 0.0, 1.0e20, 0.001d0,   1,   2 /
+       end
+ 
+       subroutine setppr(span1, alpha1, optlevel, ism, df1, gcvpen1)
+@@ -1259,7 +1259,7 @@
+       common /spans/ spans /consts/ big,sml,eps
+ 
+       data spans,               big,  sml,  eps
+-     &  /0.05_8, 0.2_8, 0.5, 1.0e20,1.0e-7,1.0e-3/
++     &  /0.05d0, 0.2d0, 0.5, 1.0e20,1.0e-7,1.0e-3/
+       end
+ c---------------------------------------------------------------
+ c
+@@ -1384,7 +1384,7 @@
+ c     tol for 'spar' estimation:
+       param(3) = 1d-2
+ c     'eps' (~= 2^-12 = sqrt(2^-24) ?= sqrt(machine eps)) in ./sbart.c :
+-      param(4) = .000244_8
++      param(4) = .000244d0
+ 
+       ier = 1
+       call rbart(gcvpen,df1,dx,dy,dw,0.0d0,n,knot,nk,coef,dsmo,lev,
+
+
+This is an alternative that uses "d" for all "double precision".
+
+--- ppr.f	2026-04-29 09:39:32.145702763 +0000
++++ ppr_d0_all.f	2026-04-29 09:39:32.291717918 +0000
+@@ -842,9 +842,9 @@
+ 
+       data df, gcvpen, ismethod, trace /4d0, 1d0, 0, .false./
+       data ifl,maxit, conv, mitone, cutmin, fdel
+-     &    / 6,  20,  .005_8,   20,   0.1_8, 0.02_8 /
++     &    / 6,  20,  .005d0,   20,   0.1d0, 0.02d0 /
+       data span,alpha, big,   cjeps,  mitcj, lf
+-     &    / 0.0, 0.0, 1.0e20, 0.001_8,   1,   2 /
++     &    / 0d0, 0d0, 1.0d20, 0.001d0,   1,   2 /
+       end
+ 
+       subroutine setppr(span1, alpha1, optlevel, ism, df1, gcvpen1)
+@@ -1258,8 +1258,8 @@
+       double precision spans(3),    big,sml,eps
+       common /spans/ spans /consts/ big,sml,eps
+ 
+-      data spans,               big,  sml,  eps
+-     &  /0.05_8, 0.2_8, 0.5, 1.0e20,1.0e-7,1.0e-3/
++      data spans,                 big,  sml,  eps
++     &  /0.05d0, 0.2d0, 0.5d0, 1.0d20,1.0d-7,1.0d-3/
+       end
+ c---------------------------------------------------------------
+ c
+@@ -1384,7 +1384,7 @@
+ c     tol for 'spar' estimation:
+       param(3) = 1d-2
+ c     'eps' (~= 2^-12 = sqrt(2^-24) ?= sqrt(machine eps)) in ./sbart.c :
+-      param(4) = .000244_8
++      param(4) = .000244d0
+ 
+       ier = 1
+       call rbart(gcvpen,df1,dx,dy,dw,0.0d0,n,knot,nk,coef,dsmo,lev,
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Apr 29 18:47:17 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 29 Apr 2026 18:47:17 +0200
+Subject: [Rd] Use d0 instead of _8 in ppr.f ?
+In-Reply-To: <fake-VM-id.ad6807c996d9c2db119f73774442fc8e@talos.iv>
+References: <856632752.3883862.1777456780743.ref@mail.yahoo.com>
+ <856632752.3883862.1777456780743@mail.yahoo.com>
+Message-ID: <27122.13845.53166.212666@stat.math.ethz.ch>
+
+I had chosen _8  consciously,  after reading a bit up at
+constants in Fortran (in the year 2026, more than 50 years after
+the 77 of 'Fortran 77') ... notably after
+getting Fortran compiler warnings from flang 22.
+
+I do think once you get very slightly used to this, using *_8 is
+*faster* to parse for a human than d0  (to which many of course
+has been getting used to ...).
+
+I'm a bit sorry that this really seems to "need" an R-devel post
+..., really?
+
+Martin Maechler
+
+>>>>> Suharto Anggono Suharto Anggono via R-devel 
+>>>>>     on Wed, 29 Apr 2026 09:59:40 +0000 (UTC) writes:
+
+    > SVN revision 89917 adds "_8" to some numbers in src/library/stats/src/ppr.f , with message
+    > flang-22 wants explicit "double" / "8-bit float" constants
+
+    > How about using "d0" instead? It is more consistent within the file and a little more portable. The number doesn't have to be equal to the number of bytes, 8.
+
+    > Here is a patch that replaces "_8" with "d0".
+
+    > --- ppr.f	2026-04-29 09:39:32.145702763 +0000
+    > +++ ppr_d0.f	2026-04-29 09:39:32.268715531 +0000
+    > @@ -842,9 +842,9 @@
+ 
+    > data df, gcvpen, ismethod, trace /4d0, 1d0, 0, .false./
+    > data ifl,maxit, conv, mitone, cutmin, fdel
+    > -     &    / 6,  20,  .005_8,   20,   0.1_8, 0.02_8 /
+    > +     &    / 6,  20,  .005d0,   20,   0.1d0, 0.02d0 /
+    > data span,alpha, big,   cjeps,  mitcj, lf
+    > -     &    / 0.0, 0.0, 1.0e20, 0.001_8,   1,   2 /
+    > +     &    / 0.0, 0.0, 1.0e20, 0.001d0,   1,   2 /
+    > end
+ 
+    > subroutine setppr(span1, alpha1, optlevel, ism, df1, gcvpen1)
+    > @@ -1259,7 +1259,7 @@
+    > common /spans/ spans /consts/ big,sml,eps
+ 
+    > data spans,               big,  sml,  eps
+    > -     &  /0.05_8, 0.2_8, 0.5, 1.0e20,1.0e-7,1.0e-3/
+    > +     &  /0.05d0, 0.2d0, 0.5, 1.0e20,1.0e-7,1.0e-3/
+    > end
+    > c---------------------------------------------------------------
+    > c
+    > @@ -1384,7 +1384,7 @@
+    > c     tol for 'spar' estimation:
+    > param(3) = 1d-2
+    > c     'eps' (~= 2^-12 = sqrt(2^-24) ?= sqrt(machine eps)) in ./sbart.c :
+    > -      param(4) = .000244_8
+    > +      param(4) = .000244d0
+ 
+    > ier = 1
+    > call rbart(gcvpen,df1,dx,dy,dw,0.0d0,n,knot,nk,coef,dsmo,lev,
+
+
+    > This is an alternative that uses "d" for all "double precision".
+
+    > --- ppr.f	2026-04-29 09:39:32.145702763 +0000
+    > +++ ppr_d0_all.f	2026-04-29 09:39:32.291717918 +0000
+    > @@ -842,9 +842,9 @@
+ 
+    > data df, gcvpen, ismethod, trace /4d0, 1d0, 0, .false./
+    > data ifl,maxit, conv, mitone, cutmin, fdel
+    > -     &    / 6,  20,  .005_8,   20,   0.1_8, 0.02_8 /
+    > +     &    / 6,  20,  .005d0,   20,   0.1d0, 0.02d0 /
+    > data span,alpha, big,   cjeps,  mitcj, lf
+    > -     &    / 0.0, 0.0, 1.0e20, 0.001_8,   1,   2 /
+    > +     &    / 0d0, 0d0, 1.0d20, 0.001d0,   1,   2 /
+    > end
+ 
+    > subroutine setppr(span1, alpha1, optlevel, ism, df1, gcvpen1)
+    > @@ -1258,8 +1258,8 @@
+    > double precision spans(3),    big,sml,eps
+    > common /spans/ spans /consts/ big,sml,eps
+ 
+    > -      data spans,               big,  sml,  eps
+    > -     &  /0.05_8, 0.2_8, 0.5, 1.0e20,1.0e-7,1.0e-3/
+    > +      data spans,                 big,  sml,  eps
+    > +     &  /0.05d0, 0.2d0, 0.5d0, 1.0d20,1.0d-7,1.0d-3/
+    > end
+    > c---------------------------------------------------------------
+    > c
+    > @@ -1384,7 +1384,7 @@
+    > c     tol for 'spar' estimation:
+    > param(3) = 1d-2
+    > c     'eps' (~= 2^-12 = sqrt(2^-24) ?= sqrt(machine eps)) in ./sbart.c :
+    > -      param(4) = .000244_8
+    > +      param(4) = .000244d0
+ 
+    > ier = 1
+    > call rbart(gcvpen,df1,dx,dy,dw,0.0d0,n,knot,nk,coef,dsmo,lev,
+
+    > ______________________________________________
+    > R-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Wed Apr 29 20:43:03 2026
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Wed, 29 Apr 2026 14:43:03 -0400
+Subject: [Rd] Who will be assuming the lead for Rtools and other
+ Windows-related development?
+Message-ID: <CAL6gwn+a5SuL9Rr=U-7-G68V8xMbsS6QoR0YFmAkACkZnsWuhA@mail.gmail.com>
+
+Hello.
+
+Tomas Kalibera's passing is tragic on many levels. He was
+young?younger than most of us long-time members of this list, I
+fear?leaving a family and children bereft. He leaves many friends;
+some personal, some virtual. And practically, he leaves a hole in
+R-core, especially when it comes to Windows-related development,
+maintenance, and debugging.
+
+I apologize if this is too soon, but with his tragic passing, has
+R-core decided on who will be the point-person/lead maintainer for
+Rtools and other Windows-related issues?
+
+Thank you,
+
+Avi
+
+
+From tpb398 @end|ng |rom @|umn|@ku@dk  Wed Apr 29 22:22:29 2026
+From: tpb398 @end|ng |rom @|umn|@ku@dk (Mossa Merhi Reimert)
+Date: Wed, 29 Apr 2026 20:22:29 +0000
+Subject: [Rd] Who will be assuming the lead for Rtools and other
+ Windows-related development?
+In-Reply-To: <CAL6gwn+a5SuL9Rr=U-7-G68V8xMbsS6QoR0YFmAkACkZnsWuhA@mail.gmail.com>
+References: <CAL6gwn+a5SuL9Rr=U-7-G68V8xMbsS6QoR0YFmAkACkZnsWuhA@mail.gmail.com>
+Message-ID: <2cae8bb5e44d4d079e5a7dab9645ac3b@alumni.ku.dk>
+
+The passing of Tomas Kalibera is indeed a shock and a loss to all of us, and the entirety of the R community, even further.  I used to read his blogposts on (now) https://blog.r-project.org/ and they were a gift.
+
+On the concern you bring up, I do remember Jeroen Ooms being the maintainer of Rtools.
+And from one day to another, this changed. I never saw an explanation of this decision,
+or anything. Maybe R-Core could ask Jeroen Ooms to do this again?
+
+Sent from Outlook for Mac
+From: R-devel <r-devel-bounces at r-project.org> on behalf of Avraham Adler <avraham.adler at gmail.com>
+Date: Wednesday, 29 April 2026 at 20.45
+To: R-devel <r-devel at r-project.org>
+Cc: r-sig-windows at r-project.org <r-sig-windows at r-project.org>
+Subject: [Rd] Who will be assuming the lead for Rtools and other Windows-related development?
+
+Hello.
+
+Tomas Kalibera's passing is tragic on many levels. He was
+young?younger than most of us long-time members of this list, I
+fear?leaving a family and children bereft. He leaves many friends;
+some personal, some virtual. And practically, he leaves a hole in
+R-core, especially when it comes to Windows-related development,
+maintenance, and debugging.
+
+I apologize if this is too soon, but with his tragic passing, has
+R-core decided on who will be the point-person/lead maintainer for
+Rtools and other Windows-related issues?
+
+Thank you,
+
+Avi
+
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel
+
+	[[alternative HTML version deleted]]
+
+
+From @@drew m@iii@g oii robbi@s@@me  Thu Apr 30 02:40:03 2026
+From: @@drew m@iii@g oii robbi@s@@me (@@drew m@iii@g oii robbi@s@@me)
+Date: Thu, 30 Apr 2026 00:40:03 +0000
+Subject: [Rd] Who will be assuming the lead for Rtools and other
+ Windows-related development?
+In-Reply-To: <2cae8bb5e44d4d079e5a7dab9645ac3b@alumni.ku.dk>
+References: <CAL6gwn+a5SuL9Rr=U-7-G68V8xMbsS6QoR0YFmAkACkZnsWuhA@mail.gmail.com>
+ <2cae8bb5e44d4d079e5a7dab9645ac3b@alumni.ku.dk>
+Message-ID: <DS2PR17MB78497B6543F6D0B6E40CCE48FA342@DS2PR17MB7849.namprd17.prod.outlook.com>
+
+Hi all,
+
+I'm somewhat familiar with the MXE/rtools codebase myself (and submitted a few patches a year or two back) and am happy to help out with maintenance if desired. I've also been messing around with the extremely-early-beta gcc WoA patches that are (allegedly) supposed to hit with gcc 17 and am looking forward to being able to get aarch64-win out of the perpetual-beta stage!
+
+Feel free to reach out at any time.
+
+-Andrew
+
+
+
+
+________________________________________
+From:?R-devel <r-devel-bounces at r-project.org> on behalf of Mossa Merhi Reimert via R-devel <r-devel at r-project.org>
+Sent:?Wednesday, April 29, 2026 4:22 PM
+To:?Avraham Adler <avraham.adler at gmail.com>; R-devel <r-devel at r-project.org>
+Cc:?r-sig-windows at r-project.org <r-sig-windows at r-project.org>
+Subject:?Re: [Rd] Who will be assuming the lead for Rtools and other Windows-related development?
+
+
+The passing of Tomas Kalibera is indeed a shock and a loss to all of us, and the entirety of the R community, even further.? I used to read his blogposts on (now) https://blog.r-project.org/?and they were a gift.
+
+
+
+On the concern you bring up, I do remember Jeroen Ooms being the maintainer of Rtools.
+
+And from one day to another, this changed. I never saw an explanation of this decision,
+
+or anything. Maybe R-Core could ask Jeroen Ooms to do this again?
+
+
+
+Sent from Outlook for Mac
+
+From: R-devel <r-devel-bounces at r-project.org> on behalf of Avraham Adler <avraham.adler at gmail.com>
+
+Date: Wednesday, 29 April 2026 at 20.45
+
+To: R-devel <r-devel at r-project.org>
+
+Cc: r-sig-windows at r-project.org <r-sig-windows at r-project.org>
+
+Subject: [Rd] Who will be assuming the lead for Rtools and other Windows-related development?
+
+
+
+Hello.
+
+
+
+Tomas Kalibera's passing is tragic on many levels. He was
+
+young?younger than most of us long-time members of this list, I
+
+fear?leaving a family and children bereft. He leaves many friends;
+
+some personal, some virtual. And practically, he leaves a hole in
+
+R-core, especially when it comes to Windows-related development,
+
+maintenance, and debugging.
+
+
+
+I apologize if this is too soon, but with his tragic passing, has
+
+R-core decided on who will be the point-person/lead maintainer for
+
+Rtools and other Windows-related issues?
+
+
+
+Thank you,
+
+
+
+Avi
+
+
+
+______________________________________________
+
+R-devel at r-project.org mailing list
+
+https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+
+??????? [[alternative HTML version deleted]]
+
+
+
+
+From @ndrew @end|ng |rom robb|n@@@me  Thu Apr 30 03:08:09 2026
+From: @ndrew @end|ng |rom robb|n@@@me (Andrew Robbins)
+Date: Wed, 29 Apr 2026 21:08:09 -0400
+Subject: [Rd] Who will be assuming the lead for Rtools and other
+ Windows-related development?
+In-Reply-To: <DS2PR17MB78497B6543F6D0B6E40CCE48FA342@DS2PR17MB7849.namprd17.prod.outlook.com>
+References: <CAL6gwn+a5SuL9Rr=U-7-G68V8xMbsS6QoR0YFmAkACkZnsWuhA@mail.gmail.com>
+ <2cae8bb5e44d4d079e5a7dab9645ac3b@alumni.ku.dk>
+ <DS2PR17MB78497B6543F6D0B6E40CCE48FA342@DS2PR17MB7849.namprd17.prod.outlook.com>
+Message-ID: <49f40dda0366b5d6acb49c3552851813@purelymail.com>
+
+Just to clarify because it appears that Microsoft Outlook mangled my 
+outbound email address (yes, I know, I know), I can be reached at andrew 
+at robbinsa dot me
+
+Apologies for the double post,
+-Andrew
+
+On 2026-04-29 20:40, andrew--- via R-devel wrote:
+> Hi all,
+> 
+> I'm somewhat familiar with the MXE/rtools codebase myself (and 
+> submitted a few patches a year or two back) and am happy to help out 
+> with maintenance if desired. I've also been messing around with the 
+> extremely-early-beta gcc WoA patches that are (allegedly) supposed to 
+> hit with gcc 17 and am looking forward to being able to get aarch64-win 
+> out of the perpetual-beta stage!
+> 
+> Feel free to reach out at any time.
+> 
+> -Andrew
+> 
+> 
+> 
+> 
+> ________________________________________
+> From:?R-devel <r-devel-bounces at r-project.org> on behalf of Mossa Merhi 
+> Reimert via R-devel <r-devel at r-project.org>
+> Sent:?Wednesday, April 29, 2026 4:22 PM
+> To:?Avraham Adler <avraham.adler at gmail.com>; R-devel 
+> <r-devel at r-project.org>
+> Cc:?r-sig-windows at r-project.org <r-sig-windows at r-project.org>
+> Subject:?Re: [Rd] Who will be assuming the lead for Rtools and other 
+> Windows-related development?
+> 
+> 
+> The passing of Tomas Kalibera is indeed a shock and a loss to all of 
+> us, and the entirety of the R community, even further.? I used to read 
+> his blogposts on (now) https://blog.r-project.org/?and they were a 
+> gift.
+> 
+> 
+> 
+> On the concern you bring up, I do remember Jeroen Ooms being the 
+> maintainer of Rtools.
+> 
+> And from one day to another, this changed. I never saw an explanation 
+> of this decision,
+> 
+> or anything. Maybe R-Core could ask Jeroen Ooms to do this again?
+> 
+> 
+> 
+> Sent from Outlook for Mac
+> 
+> From: R-devel <r-devel-bounces at r-project.org> on behalf of Avraham 
+> Adler <avraham.adler at gmail.com>
+> 
+> Date: Wednesday, 29 April 2026 at 20.45
+> 
+> To: R-devel <r-devel at r-project.org>
+> 
+> Cc: r-sig-windows at r-project.org <r-sig-windows at r-project.org>
+> 
+> Subject: [Rd] Who will be assuming the lead for Rtools and other 
+> Windows-related development?
+> 
+> 
+> 
+> Hello.
+> 
+> 
+> 
+> Tomas Kalibera's passing is tragic on many levels. He was
+> 
+> young?younger than most of us long-time members of this list, I
+> 
+> fear?leaving a family and children bereft. He leaves many friends;
+> 
+> some personal, some virtual. And practically, he leaves a hole in
+> 
+> R-core, especially when it comes to Windows-related development,
+> 
+> maintenance, and debugging.
+> 
+> 
+> 
+> I apologize if this is too soon, but with his tragic passing, has
+> 
+> R-core decided on who will be the point-person/lead maintainer for
+> 
+> Rtools and other Windows-related issues?
+> 
+> 
+> 
+> Thank you,
+> 
+> 
+> 
+> Avi
+> 
+> 
+> 
+> ______________________________________________
+> 
+> R-devel at r-project.org mailing list
+> 
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+> 
+> 
+> ??????? [[alternative HTML version deleted]]
+> 
+> 
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
