@@ -3050,3 +3050,1866 @@ r-devel at r-project.org> wrote:
 	[[alternative HTML version deleted]]
 
 
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat May  2 03:39:02 2026
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Fri, 1 May 2026 21:39:02 -0400
+Subject: [Rd] Feature request: Allow comma after last element in a list
+In-Reply-To: <48351685-CFDC-4041-97E5-9101E81213D8@northeastern.edu>
+References: <29231881-3A6B-449D-A31A-686FDBAF8782@gmail.com>
+ <CAFGdzpof=ywrQLcUi5YhX01FPTjy1Rf9+CUcriVS5JCfi2vtnw@mail.gmail.com>
+ <53eb96a2-45ea-4f20-8444-914aa9d8b2ec@gmail.com>
+ <CAFGdzprE-WOGr4ogUytysjAhXZxh0SVsLW1bLq+QBAB_uyYHSA@mail.gmail.com>
+ <e457a7ecd9de4aadbd91588fc0273680@alumni.ku.dk>
+ <004f01dcd968$bc8f0cf0$35ad26d0$@gmail.com>
+ <8260a5e4d7cb406eb7cb1b2bfa388b5b@alumni.ku.dk>
+ <016101dcd991$7baf8ce0$730ea6a0$@gmail.com>
+ <d9aa9d3f69494e05aae951903c8c4005@alumni.ku.dk>
+ <01b301dcd99f$52d80af0$f88820d0$@gmail.com>
+ <48351685-CFDC-4041-97E5-9101E81213D8@northeastern.edu>
+Message-ID: <005601dcd9d4$74d59200$5e80b600$@gmail.com>
+
+Kylie,
+ 
+I appreciate your example and enlarged on it a bit. For anyone else, we are using the notation of a terminal 0 in a function name that is not a necessary part of any proposal.
+ 
+Your code works well even for cases with dangling comments in front or behind as in this monstrosity:
+ 
+> list0(,,1,,,,2,,,,3,)
+[[1]]
+[1] 1
+ 
+[[2]]
+[1] 2
+ 
+[[3]]
+[1] 3
+ 
+A similar approach also works to make a c(0) for vectors:
+ 
+  c0 <- function(...)
+  {
+    dots <- match.call(expand.dots=FALSE)$...
+    valid <- which(vapply(dots, nzchar, logical(1L)))
+    ans <- vector(length=length(valid))
+    for ( i in seq_along(valid) )
+      ans[[i]] <- ...elt(valid[i])
+    ans
+  }
+ 
+> c0(,,1,,,,2,,,,3,)
+[1] 1 2 3
+ 
+Just to test it a bit, it does preserve NA and Nan as well as Inf.
+ 
+> c0(,Inf,1,,NA,,2,,NaN,,3,)
+[1] Inf   1  NA   2 NaN   3
+ 
+Of course, there is a nontrivial cost in the approach.  The ?for? loop in particular used to be a fairly costly way for longer data. I looked to see if it can be done another way in a more vectorized approach. The following works for me albeit it first returns a nested list that needs flattening into a vector using one method or another:
+ 
+  
+  c0 <- function(...)
+  {
+    dots <- match.call(expand.dots=FALSE)$...
+    valid <- which(vapply(dots, nzchar, logical(1L)))
+    unlist(dots[valid])
+  }
+ 
+Or a bit briefer:
+ 
+  c0 <- function(...)
+  {
+    dots <- match.call(expand.dots=FALSE)$...
+    unlist(dots[which(vapply(dots, nzchar, logical(1L)))])
+  }
+ 
+As I suggested earlier, some programmers do not need this feature once their program is ready and will not be changing in this regard. You could at that point simply add a line to your code so your new function is now the old function. Before the first use of c0() in your program, reset it to be the same as c() as in this example:
+ 
+> c0(1,2,3)
+[1] 1 2 3
+> c0 <- c
+> c0(1,2,3)
+[1] 1 2 3
+> c0(1,2,3,,,)
+Error in c0(1, 2, 3, , , ) : argument 4 is empty
+
+Now c0() will fail if you use extra commas and there is no overhead as c0 is now just a second way to call c() with no cost.
+ 
+Those who want to leave the extra functionality in place, can, of course continue to allow it to be a tad slower.
+ 
+ 
+From: Bemis, Kylie <k.bemis at northeastern.edu> 
+Sent: Friday, May 1, 2026 4:19 PM
+To: avi.e.gross at gmail.com
+Cc: Mossa Merhi Reimert <tpb398 at alumni.ku.dk>; Tomek Gieorgijewski <cybergeorge2020 at gmail.com>; Duncan Murdoch <murdoch.duncan at gmail.com>; r-devel at r-project.org
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+ 
+I don?t know if this is the best way to do this, but if anyone really wants, here you go. 
+ 
+list0 <- function(...)
+{
+dots <- match.call(expand.dots=FALSE)$...
+valid <- which(vapply(dots, nzchar, logical(1L)))
+ans <- vector("list", length=length(valid))
+for ( i in seq_along(valid) )
+ans[[i]] <- ...elt(valid[i])
+ans
+}
+ 
+# > list0(1,2,)
+# [[1]]
+# [1] 1
+ 
+# [[2]]
+# [1] 2
+ 
+~~~
+Kylie Ariel Bemis (she/her)
+Assistant Teaching Professor
+Khoury College of Computer Sciences
+Northeastern University
+kuwisdelu.github.io <https://kuwisdelu.github.io/> 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+
+On May 1, 2026, at 3:18?PM, avi.e.gross at gmail.com <mailto:avi.e.gross at gmail.com>  wrote:
+ 
+Mossa,
+
+I was expressing my reaction to the way you are saying what others should do, including thousands of packages that are not even well maintained. Not being one of the people who would be doing the work, I wondered how you get the request to those who might.
+
+Others have pointed out the anomalies that may happen. I have used many programming languages over the years and some are designed in ways I do not like as much as other ways. Some end up being cautious and not making much have defaults and forcing users to specify clearly what they want. Others choose defaults and later get complaints. I can even imagine someone releasing a new function name simply to over-ride a default while not having to type it explicitly, Look carefully at something like the read.table() set of functions as examples of front-ends that reset defaults for specific kinds of files.
+
+There is no right or wrong answer that pleases everybody but it generally is bad form to change something after years of use by flipping the default.
+
+I can see merit in something a bit different such as when you have  slimmer paste0() function added alongside paste(). I can imagine creating a c0() alongside c that tolerates dangling commas. But then you may need a list0() and  perhaps quite a few more to be used when you want commas evaluated differently. It could be better to create one function, a bit like I() with some name like comma_safe() so you could wrap anything you want like this:
+
+Myvec <- c(comma_safe(1,2,3,))
+
+Only people who really feel a need would opt to use it. Even then, such a feature might mostly be useful while prototyping your code when you may be adjusting things by adding, deleting and re-arranging. 
+
+I do suggest that a valid case has been made why allowing dangling comments is a reasonable feature of a language and that it takes more than a one-liner request to specify what a change would look like.
+
+Specifically, is the request limited to one trailing comma? What if it ends in three? What if the first or some middle spot has an extra comma? Where would this be applied? I mean there are many places comma separated lists are used. Function argument lists are a crucial example where every comma currently has meaning, especially for positional arguments. You cannot make a fifth argument became a third argument.
+
+And note uses of commas in other places outside R like a CSV file. Over there, when you read the file in, generally a missing item between adjacent commas or at the beginning or end, becomes some form of NA. 
+
+And, how do you address the suggestion that some people depend on current behavior to detect their errors? If you allow some form of trailing comma, do you issue at least a warning? 
+
+Many languages end up at points like this by adding some form of flag you can place in your environment that allows some control over some features. Would you suggest a designated way to either turn on the new feature or suppress it, such as:
+
+options(allow_trailing_commas = FALSE)
+
+Do note that some current features may need to be examined, such as what happens near a ??? and also that R often allows delayed evaluation so a function often passes on some of what it received, unchanged, to the surprise of the other function.
+
+There may be more and nuanced ideas people can supply that can produce more such requirements and of course lots of changes that may have to be made to countless kinds of documentation such as man pages of functions, including manual pages.
+
+So, even assuming there is a consensus to make a change that might satisfy your needs, I suggest it might take a long time to plan it fully and implement it to a full extent ? especially as many package maintainers do not want to put a new release out too often and when they have not made any real changes.
+
+Almost in amusement, I have a thought. I have written code that allows you to write programs in both R and python that sort of operate on a shared set of data. You could define some of your data structures where you want commas ignored, on the python side while the R side manipulates the data structures already properly read in using your rules, ?.
+
+It does not seem worth it to me.
+
+
+From: Mossa Merhi Reimert < <mailto:tpb398 at alumni.ku.dk> tpb398 at alumni.ku.dk> 
+Sent: Friday, May 1, 2026 2:01 PM
+To:  <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com; 'Tomek Gieorgijewski' < <mailto:cybergeorge2020 at gmail.com> cybergeorge2020 at gmail.com>; 'Duncan Murdoch' < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com>
+Cc:  <mailto:r-devel at r-project.org> r-devel at r-project.org
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Thank you Ivan for your comments. I am going to think about it.
+Also Duncan Murdoch, thank you very much for your comments. 
+
+I didn't know about nargs. here's what I learned:
+
+
+(function(...) {nargs()})()
+[1] 0
+
+
+(function(...) {nargs()})(,)
+[1] 2
+
+
+(function(...) {nargs()})(,,)
+[1] 3
+
+
+(function(...) {nargs()})(,,,)
+[1] 4
+
+
+(function(...) {nargs()})(,,,,)
+[1] 5
+
+
+(function(...) {nargs()})(,,,,,)
+[1] 6
+
+
+Let me think about that. 
+
+And avi.e.gross: I am sorry man, I didn't finish my reply properly, and I still don't get what you're saying. If you see me in the real world, let's talk, in a slow way, so that we can understand
+and empathize with each other. I just don't get it on text, it seems.
+
+
+
+
+
+Sent from Outlook for Mac 
+From:  <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com < <mailto:avi.e.gross at gmail.com> mailto:avi.e.gross at gmail.com>  < <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com < <mailto:avi.e.gross at gmail.com> mailto:avi.e.gross at gmail.com> >
+Date: Friday, 1 May 2026 at 19.40
+To: Mossa Merhi Reimert < <mailto:tpb398 at alumni.ku.dk> tpb398 at alumni.ku.dk < <mailto:tpb398 at alumni.ku.dk> mailto:tpb398 at alumni.ku.dk> >; 'Tomek Gieorgijewski' < <mailto:cybergeorge2020 at gmail.com> cybergeorge2020 at gmail.com< <mailto:cybergeorge2020 at gmail.com> mailto:cybergeorge2020 at gmail.com> >; 'Duncan Murdoch' < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com < <mailto:murdoch.duncan at gmail.com> mailto:murdoch.duncan at gmail.com> >
+Cc:  <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org>  < <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org> >
+Subject: RE: [Rd] Feature request: Allow comma after last element in a list
+Whether a change is easy or hard to make is an issue that can allow YOU to download the source code and make your own modified copy of R for your own use, Mossa. And, any code you then run under your version of R, will not necessarily be something you can share with others who want to run it under a more standard shared version in which it will not cause errors.
+
+There is an implicit contract that people have with whoever works on the public version of R. That contract requires discussions and feedback on bug fixes, new features or changes in how a feature works. It requires careful documentation and often some level of testing to see who might be impacted and time to update their code so it keeps working. For truly optional features, it is often done over time. And, some old features are merely deprecated for a while before being removed.
+
+Another language, called Python, decide to make some incompatible changes while people were using a version I will call 2.X and named the new version 3.0 and people who did not change their code were left with partial support in 2.X that was slated to end after a while. You could argue that this was a good choice in the long run.
+
+R has tried to remain with one unified set of users and not ruin things, ot at least provide another easy migration route.
+
+The fact that so many packages are created is not a negative but a feature of a language that allows and supports extensions while leaving the main body of common code reasonable.
+
+And, as noted, not everyone sees allowing a dangling comma as a positive. The workarounds here are s simple as using NULL as a placeholder or using some package to create vectors and so on.
+
+But, if R is not to your taste, fine. There are many other languages available and many of us here also use other languages depending on needs and circumstances.
+
+And, do note, R has some serious features that are quite different than something like Python that make it possible to do some things easier, and vice versa. This means that blindly copying a feature from another language is not always something trivial or even welcomed. 
+
+
+From: Mossa Merhi Reimert < <mailto:tpb398 at alumni.ku.dk> tpb398 at alumni.ku.dk < <mailto:tpb398 at alumni.ku.dk> mailto:tpb398 at alumni.ku.dk> > 
+Sent: Friday, May 1, 2026 12:35 PM
+To:  <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com < <mailto:avi.e.gross at gmail.com> mailto:avi.e.gross at gmail.com> ; 'Tomek Gieorgijewski' < <mailto:cybergeorge2020 at gmail.com> cybergeorge2020 at gmail.com< <mailto:cybergeorge2020 at gmail.com> mailto:cybergeorge2020 at gmail.com> >; 'Duncan Murdoch' < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com < <mailto:murdoch.duncan at gmail.com> mailto:murdoch.duncan at gmail.com> >
+Cc:  <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org> 
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Respectfully, this is really one of the strangest responses I've seen in my life.
+
+rlang literally re-invents R in 25k LOC of R code.. what other language has dialects written in its own language, and quite popular at that? It is getting to a level of absurdity, that I am not sure
+how anyone can defend at this point. 
+
+If adding dangling commas is a hard, demanding, engineering problem, then I guess someone has to take a serious look at the code base. I might want to interject myself here, and say, it's not hard.
+
+There are important things that need to be done. A GC lock available through C-API.
+Making the r runtime reentrant, instead this process wide mayhem that exists. `[`(,,drop=FALSE). Dropping libtool from the configure scripts, so things can build,
+without checks that don't are not important anymore. Some sort of tracking of heap-allocation
+so R instrumentation tools are not seeing half the situation. I don't know.. there's just much more that actually needs scoping, planning and evaluation.
+
+
+
+
+
+Sent from Outlook for Mac
+From:  <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com < <mailto:avi.e.gross at gmail.com> mailto:avi.e.gross at gmail.com>  < <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com < <mailto:avi.e.gross at gmail.com> mailto:avi.e.gross at gmail.com> >
+Date: Friday, 1 May 2026 at 14.48
+To: Mossa Merhi Reimert < <mailto:tpb398 at alumni.ku.dk> tpb398 at alumni.ku.dk < <mailto:tpb398 at alumni.ku.dk> mailto:tpb398 at alumni.ku.dk> >; 'Tomek Gieorgijewski' < <mailto:cybergeorge2020 at gmail.com> cybergeorge2020 at gmail.com< <mailto:cybergeorge2020 at gmail.com> mailto:cybergeorge2020 at gmail.com> >; 'Duncan Murdoch' < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com < <mailto:murdoch.duncan at gmail.com> mailto:murdoch.duncan at gmail.com> >
+Cc:  <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org>  < <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org> >
+Subject: RE: [Rd] Feature request: Allow comma after last element in a list
+I find the attitude a bit disturbing that a carefully designed and altered language be changed just because and without serious consideration. Who will fund it if volunteers do not step forward is one example of a serious consideration. What other changes should be put off to make room?
+
+The default for many years in computing in general, IMO, was that a dangling comma probably represented an error where a programmer had forgotten to add another item. Dangling commas were not only allowed but required in some cases like argument lists to a function with 5 required positional arguments in some cases given how things were done and adding yet another dangling comma would have represented a problem as it now would have six arguments.
+
+Things have changed and perhaps many or all languages will eventually allow dangling commas in some situations. But on the hierarchy of needs, some may see other updates for R as a bit more needed and compelling. Look how long it took to reach adding a pipe feature that includes an aspect few enjoy using versus the other pipes that persist.
+
+As for packages adjusting, I have no idea if many would have to, but you can be sure that if there is a problem, many won't adjust for some time and users might be left out in the cold or simply not be able to upgrade to the latest versions.
+
+It is not a good idea to just do things.
+
+Having said that, of course, it might be a nice thing to do once it has been properly evaluated. But it would not particularly improve my life as I am quite used to what it takes to edit a comma separated list without leaving dangling commas.
+
+-----Original Message-----
+From: R-devel < <mailto:r-devel-bounces at r-project.org> r-devel-bounces at r-project.org < <mailto:r-devel-bounces at r-project.org> mailto:r-devel-bounces at r-project.org> > On Behalf Of Mossa Merhi Reimert via R-devel
+Sent: Friday, May 1, 2026 2:52 AM
+To: Tomek Gieorgijewski < <mailto:cybergeorge2020 at gmail.com> cybergeorge2020 at gmail.com < <mailto:cybergeorge2020 at gmail.com> mailto:cybergeorge2020 at gmail.com> >; Duncan Murdoch < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com < <mailto:murdoch.duncan at gmail.com> mailto:murdoch.duncan at gmail.com> >
+Cc:  <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org> 
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Honestly, I think R just needs to add these things. I don't know what the hold out is.
+It seems so odd, not to just move on from this lack of last-element-comma.
+
+`[`(drop=FALSE) should also be adopted.
+
+Why can't R have these things? CRAN has no package versioning at all. All CRAN packages
+can be adjusted to the change, and it would be all good.
+
+
+
+Sent from Outlook for Mac
+From: R-devel < <mailto:r-devel-bounces at r-project.org> r-devel-bounces at r-project.org < <mailto:r-devel-bounces at r-project.org> mailto:r-devel-bounces at r-project.org> > on behalf of Tomek Gieorgijewski < <mailto:cybergeorge2020 at gmail.com> cybergeorge2020 at gmail.com < <mailto:cybergeorge2020 at gmail.com> mailto:cybergeorge2020 at gmail.com> >
+Date: Thursday, 30 April 2026 at 21.36
+To: Duncan Murdoch < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com < <mailto:murdoch.duncan at gmail.com> mailto:murdoch.duncan at gmail.com> >
+Cc: Manfred Kooistra < <mailto:manfred.kooistra at gmail.com> manfred.kooistra at gmail.com < <mailto:manfred.kooistra at gmail.com> mailto:manfred.kooistra at gmail.com> >;  <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org>  < <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org> >
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Thank you for the link - definitely worth trying!
+
+T.
+
+czw., 30 kwi 2026 o 21:24 Duncan Murdoch < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com < <mailto:murdoch.duncan at gmail.com> mailto:murdoch.duncan at gmail.com> >
+napisa?(a):
+
+
+
+
+This is a great suggestion.  BTW, I think it would be possible to do
+this in RStudio as well.  See their Addins page here:
+https://rstudio.github.io/rstudioaddins/ <https://rstudio.github.io/rstudioaddins/> &data=05%7C02%7Ck.bemis%40northeastern.edu%7C0bfce03f3b4f4ec2983508dea7b67d2d%7Ca8eec281aaa34daeac9b9a398b9215e7%7C0%7C0%7C639132599460482814%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=nLn7GzTnx986VVXnwpJy%2BJqz4O68X9zgEbBhK3MzbgU%3D&reserved=0 <https://rstudio.github.io/rstudioaddins/ <https://rstudio.github.io/rstudioaddins/> &data=05%7C02%7Ck.bemis%40northeastern.edu%7C0bfce03f3b4f4ec2983508dea7b67d2d%7Ca8eec281aaa34daeac9b9a398b9215e7%7C0%7C0%7C639132599460520743%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=XLaLTySAfppTLGAUv79RDe%2Fv7G74tzzGBTfn6pjFjdk%3D&reserved=0> &data=05%7C02%7Ctpb398%40alumni.ku.dk <http://40alumni.ku.dk/> %7Cae85de2ff156426ad76908dea77fdfb9%7Ca3927f91cda14696af898c9f1ceffa91%7C0%7C0%7C639132364817869564%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=ojTec59KVitsio9CF5Rdt12f6NGoi8UDtbH2gpRxynY%3D&reserved=0 .
+
+Duncan Murdoch
+
+On 2026-04-30 1:44 p.m., Tomek Gieorgijewski wrote:
+
+
+Hi Manfred!
+
+As I can see that you already maintain the habit to have one element per
+line,
+I would like to propose that you incorporate some editing scripts in your
+editor
+to help ease your frustration.
+I believe trying to change R parser will only add more of that feeling :)
+I don't know your editor but if it's vim, I can propose this edit to
+.vimrc
+
+
+file:
+" ----
+function! ListCommas() range
+       if a:firstline < a:lastline
+           " Add commas at the end from first to second to last line if
+there's no comma yet
+           execute a:firstline . "," . (a:lastline - 1) . 's/[^,]$/&,/e'
+       endif
+        " Delete comma from last line (if matched)
+       execute a:lastline . 's/,$//e'
+   endfunction
+
+   vnoremap <leader>, :call ListCommas()<CR>
+" ---
+
+So, now if you rerun vim on your file you can swap, add, delete lines
+from
+
+
+the list as you wish,
+and at the end you can highlight all elements lines of your list in
+visual
+
+
+mode and execute ListCommas
+function on those lines with <leader>, shortcut.
+
+Of course only if you maintain your structure of element per line and
+trailing parenthesis at a seperate line.
+
+I'm sure VS Code, Emacs and some other editors have similar abilities to
+help you.
+Unfortunately I don't know of any such possibility in RStudio.
+
+regards,
+Tomek.
+
+pt., 24 kwi 2026 o 13:35 Manfred Kooistra <manfred.kooistra at gmail.com <mailto:manfred.kooistra at gmail.com>  <mailto:manfred.kooistra at gmail.com> >
+napisa?(a):
+
+
+
+I've always been irritated that R doesn't allow a comma after the last
+element in a "list":
+
+
+
+a <- c(
++     1,
++     2,
++     3
++ )
+
+
+a
+[1] 1 2 3
+
+
+b <- c(
++     1,
++     2,
++     3,
++ )
+Error in c(1, 2, 3, ) : argument 4 is empty
+
+This makes updating lists unnecessarily cumbersome, which I find I
+frequently do, either when I test code and want to run it with lists of
+varying elements or varying orders of elements or when I maintain lists
+manually over time and have to add or delete elements from them.
+
+Is there a reason for this behavior in R and might it not be a good idea
+to change it?
+______________________________________________
+R-devel at r-project.org <mailto:R-devel at r-project.org>  <mailto:R-devel at r-project.org>  mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel <https://stat.ethz.ch/mailman/listinfo/r-devel> &data=05%7C02%7Ck.bemis%40northeastern.edu%7C0bfce03f3b4f4ec2983508dea7b67d2d%7Ca8eec281aaa34daeac9b9a398b9215e7%7C0%7C0%7C639132599460538746%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=T6vbmNHHfXGqhj8u3plugwTROqEVMyBxAL%2F75nYl06w%3D&reserved=0 <https://stat.ethz.ch/mailman/listinfo/r-devel <https://stat.ethz.ch/mailman/listinfo/r-devel> &data=05%7C02%7Ck.bemis%40northeastern.edu%7C0bfce03f3b4f4ec2983508dea7b67d2d%7Ca8eec281aaa34daeac9b9a398b9215e7%7C0%7C0%7C639132599460561025%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=V6tddMXvpuEtkGm%2BfY5r3zsLHAfk%2BKcXj4shJouw8qE%3D&reserved=0> &data=05%7C02%7Ctpb398%40alumni.ku.dk <http://40alumni.ku.dk/> %7Cae85de2ff156426ad76908dea77fdfb9%7Ca3927f91cda14696af898c9f1ceffa91%7C0%7C0%7C639132364817892997%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=cl8Rb5YnKdIr0N6fptlbm9nEWqn9orcdzCaAnckSma0%3D&reserved=0
+
+     [[alternative HTML version deleted]]
+
+______________________________________________
+R-devel at r-project.org <mailto:R-devel at r-project.org>  <mailto:R-devel at r-project.org>  mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel <https://stat.ethz.ch/mailman/listinfo/r-devel> &data=05%7C02%7Ck.bemis%40northeastern.edu%7C0bfce03f3b4f4ec2983508dea7b67d2d%7Ca8eec281aaa34daeac9b9a398b9215e7%7C0%7C0%7C639132599460587216%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=C1G6F5QvC7F0f%2FQdvQJxECGcXktfLpF1syJYsRCLC2g%3D&reserved=0 <https://stat.ethz.ch/mailman/listinfo/r-devel <https://stat.ethz.ch/mailman/listinfo/r-devel> &data=05%7C02%7Ck.bemis%40northeastern.edu%7C0bfce03f3b4f4ec2983508dea7b67d2d%7Ca8eec281aaa34daeac9b9a398b9215e7%7C0%7C0%7C639132599460618488%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=sKwlfj88jiSOCTQ0COTUTW0F6bw%2B03Ct4jYmRfe0zwA%3D&reserved=0> &data=05%7C02%7Ctpb398%40alumni.ku.dk <http://40alumni.ku.dk/> %7Cae85de2ff156426ad76908dea77fdfb9%7Ca3927f91cda14696af898c9f1ceffa91%7C0%7C0%7C639132364817907466%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=SW9ZtK6DaWGOaAifCCRti7ApVSyREXTB3DgeDwG5tA0%3D&reserved=0
+
+
+       [[alternative HTML version deleted]]
+
+______________________________________________
+ <mailto:R-devel at r-project.org> R-devel at r-project.org < <mailto:R-devel at r-project.org> mailto:R-devel at r-project.org>  mailing list
+ <https://stat.ethz.ch/mailman/listinfo/r-devel> https://stat.ethz.ch/mailman/listinfo/r-devel < <https://stat.ethz.ch/mailman/listinfo/r-devel> https://stat.ethz.ch/mailman/listinfo/r-devel> &data=05%7C02%7Ctpb398% <http://40alumni.ku.dk/> 40alumni.ku.dk%7Cae85de2ff156426ad76908dea77fdfb9%7Ca3927f91cda14696af898c9f1ceffa91%7C0%7C0%7C639132364817921020%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=NGvNN9dmg1qkKlDp0rJ2q7HCcLuUKDCZxrzOea%2BvRoA%3D&reserved=0
+
+       [[alternative HTML version deleted]]
+
+[[alternative HTML version deleted]]
+
+______________________________________________
+ <mailto:R-devel at r-project.org> R-devel at r-project.org mailing list
+ <https://stat.ethz.ch/mailman/listinfo/r-devel> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+	[[alternative HTML version deleted]]
+
+
+From k@bem|@ @end|ng |rom northe@@tern@edu  Sat May  2 03:48:17 2026
+From: k@bem|@ @end|ng |rom northe@@tern@edu (Bemis, Kylie)
+Date: Sat, 2 May 2026 01:48:17 +0000
+Subject: [Rd] Feature request: Allow comma after last element in a list
+In-Reply-To: <005601dcd9d4$74d59200$5e80b600$@gmail.com>
+References: <29231881-3A6B-449D-A31A-686FDBAF8782@gmail.com>
+ <CAFGdzpof=ywrQLcUi5YhX01FPTjy1Rf9+CUcriVS5JCfi2vtnw@mail.gmail.com>
+ <53eb96a2-45ea-4f20-8444-914aa9d8b2ec@gmail.com>
+ <CAFGdzprE-WOGr4ogUytysjAhXZxh0SVsLW1bLq+QBAB_uyYHSA@mail.gmail.com>
+ <e457a7ecd9de4aadbd91588fc0273680@alumni.ku.dk>
+ <004f01dcd968$bc8f0cf0$35ad26d0$@gmail.com>
+ <8260a5e4d7cb406eb7cb1b2bfa388b5b@alumni.ku.dk>
+ <016101dcd991$7baf8ce0$730ea6a0$@gmail.com>
+ <d9aa9d3f69494e05aae951903c8c4005@alumni.ku.dk>
+ <01b301dcd99f$52d80af0$f88820d0$@gmail.com>
+ <48351685-CFDC-4041-97E5-9101E81213D8@northeastern.edu>
+ <005601dcd9d4$74d59200$5e80b600$@gmail.com>
+Message-ID: <414DDF52-99CC-4791-9029-6BB167DC39D5@northeastern.edu>
+
+My list0 prototype also doesn?t handle edge cases like empty strings.
+
+The issue with removing the ...elt() calls in the for loop is that the arguments don?t actually get evaluated:
+
+> c0 <- function(...)
+...   {
+...     dots <- match.call(expand.dots=FALSE)$...
+...     valid <- which(vapply(dots, nzchar, logical(1L)))
+...     unlist(dots[valid])
+...   }
+> foo <- function(a) c0(a,2)
+> foo(1)
+[[1]]
+a
+
+[[2]]
+[1] 2
+
+I doubt it?s worth removing the for loop just for efficiency without benchmarking more to see if it?s actually an issue. As long as they don?t do unnecessary allocation, for loops in R tend to be faster than people think.
+
+This was just a fun little exercise for me, since I doubt I?d ever use it myself. Feel free to iterate on it.
+
+The nice thing about R is that these things don?t require changes to the language to implement.
+
+~~~
+Kylie Ariel Bemis (she/her)
+Assistant Teaching Professor
+Khoury College of Computer Sciences
+Northeastern University
+kuwisdelu.github.io<https://kuwisdelu.github.io/>
+
+
+
+
+
+
+
+
+
+
+On May 1, 2026, at 9:39?PM, avi.e.gross at gmail.com wrote:
+
+Kylie,
+
+I appreciate your example and enlarged on it a bit. For anyone else, we are using the notation of a terminal 0 in a function name that is not a necessary part of any proposal.
+
+Your code works well even for cases with dangling comments in front or behind as in this monstrosity:
+
+> list0(,,1,,,,2,,,,3,)
+[[1]]
+[1] 1
+
+[[2]]
+[1] 2
+
+[[3]]
+[1] 3
+
+A similar approach also works to make a c(0) for vectors:
+
+  c0 <- function(...)
+  {
+    dots <- match.call(expand.dots=FALSE)$...
+    valid <- which(vapply(dots, nzchar, logical(1L)))
+    ans <- vector(length=length(valid))
+    for ( i in seq_along(valid) )
+      ans[[i]] <- ...elt(valid[i])
+    ans
+  }
+
+> c0(,,1,,,,2,,,,3,)
+[1] 1 2 3
+
+Just to test it a bit, it does preserve NA and Nan as well as Inf.
+
+> c0(,Inf,1,,NA,,2,,NaN,,3,)
+[1] Inf   1  NA   2 NaN   3
+
+Of course, there is a nontrivial cost in the approach.  The ?for? loop in particular used to be a fairly costly way for longer data. I looked to see if it can be done another way in a more vectorized approach. The following works for me albeit it first returns a nested list that needs flattening into a vector using one method or another:
+
+
+  c0 <- function(...)
+  {
+    dots <- match.call(expand.dots=FALSE)$...
+    valid <- which(vapply(dots, nzchar, logical(1L)))
+    unlist(dots[valid])
+  }
+
+Or a bit briefer:
+
+  c0 <- function(...)
+  {
+    dots <- match.call(expand.dots=FALSE)$...
+    unlist(dots[which(vapply(dots, nzchar, logical(1L)))])
+  }
+
+As I suggested earlier, some programmers do not need this feature once their program is ready and will not be changing in this regard. You could at that point simply add a line to your code so your new function is now the old function. Before the first use of c0() in your program, reset it to be the same as c() as in this example:
+
+> c0(1,2,3)
+[1] 1 2 3
+> c0 <- c
+> c0(1,2,3)
+[1] 1 2 3
+> c0(1,2,3,,,)
+Error in c0(1, 2, 3, , , ) : argument 4 is empty
+
+Now c0() will fail if you use extra commas and there is no overhead as c0 is now just a second way to call c() with no cost.
+
+Those who want to leave the extra functionality in place, can, of course continue to allow it to be a tad slower.
+
+
+From: Bemis, Kylie <k.bemis at northeastern.edu>
+Sent: Friday, May 1, 2026 4:19 PM
+To: avi.e.gross at gmail.com
+Cc: Mossa Merhi Reimert <tpb398 at alumni.ku.dk>; Tomek Gieorgijewski <cybergeorge2020 at gmail.com>; Duncan Murdoch <murdoch.duncan at gmail.com>; r-devel at r-project.org
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+I don?t know if this is the best way to do this, but if anyone really wants, here you go.
+
+list0 <- function(...)
+{
+dots <- match.call(expand.dots=FALSE)$...
+valid <- which(vapply(dots, nzchar, logical(1L)))
+ans <- vector("list", length=length(valid))
+for ( i in seq_along(valid) )
+ans[[i]] <- ...elt(valid[i])
+ans
+}
+
+# > list0(1,2,)
+# [[1]]
+# [1] 1
+
+# [[2]]
+# [1] 2
+
+~~~
+Kylie Ariel Bemis (she/her)
+Assistant Teaching Professor
+Khoury College of Computer Sciences
+Northeastern University
+kuwisdelu.github.io<https://kuwisdelu.github.io/>
+
+
+
+
+
+
+
+
+
+
+On May 1, 2026, at 3:18?PM, avi.e.gross at gmail.com<mailto:avi.e.gross at gmail.com> wrote:
+
+Mossa,
+
+I was expressing my reaction to the way you are saying what others should do, including thousands of packages that are not even well maintained. Not being one of the people who would be doing the work, I wondered how you get the request to those who might.
+
+Others have pointed out the anomalies that may happen. I have used many programming languages over the years and some are designed in ways I do not like as much as other ways. Some end up being cautious and not making much have defaults and forcing users to specify clearly what they want. Others choose defaults and later get complaints. I can even imagine someone releasing a new function name simply to over-ride a default while not having to type it explicitly, Look carefully at something like the read.table() set of functions as examples of front-ends that reset defaults for specific kinds of files.
+
+There is no right or wrong answer that pleases everybody but it generally is bad form to change something after years of use by flipping the default.
+
+I can see merit in something a bit different such as when you have  slimmer paste0() function added alongside paste(). I can imagine creating a c0() alongside c that tolerates dangling commas. But then you may need a list0() and  perhaps quite a few more to be used when you want commas evaluated differently. It could be better to create one function, a bit like I() with some name like comma_safe() so you could wrap anything you want like this:
+
+Myvec <- c(comma_safe(1,2,3,))
+
+Only people who really feel a need would opt to use it. Even then, such a feature might mostly be useful while prototyping your code when you may be adjusting things by adding, deleting and re-arranging.
+
+I do suggest that a valid case has been made why allowing dangling comments is a reasonable feature of a language and that it takes more than a one-liner request to specify what a change would look like.
+
+Specifically, is the request limited to one trailing comma? What if it ends in three? What if the first or some middle spot has an extra comma? Where would this be applied? I mean there are many places comma separated lists are used. Function argument lists are a crucial example where every comma currently has meaning, especially for positional arguments. You cannot make a fifth argument became a third argument.
+
+And note uses of commas in other places outside R like a CSV file. Over there, when you read the file in, generally a missing item between adjacent commas or at the beginning or end, becomes some form of NA.
+
+And, how do you address the suggestion that some people depend on current behavior to detect their errors? If you allow some form of trailing comma, do you issue at least a warning?
+
+Many languages end up at points like this by adding some form of flag you can place in your environment that allows some control over some features. Would you suggest a designated way to either turn on the new feature or suppress it, such as:
+
+options(allow_trailing_commas = FALSE)
+
+Do note that some current features may need to be examined, such as what happens near a ??? and also that R often allows delayed evaluation so a function often passes on some of what it received, unchanged, to the surprise of the other function.
+
+There may be more and nuanced ideas people can supply that can produce more such requirements and of course lots of changes that may have to be made to countless kinds of documentation such as man pages of functions, including manual pages.
+
+So, even assuming there is a consensus to make a change that might satisfy your needs, I suggest it might take a long time to plan it fully and implement it to a full extent ? especially as many package maintainers do not want to put a new release out too often and when they have not made any real changes.
+
+Almost in amusement, I have a thought. I have written code that allows you to write programs in both R and python that sort of operate on a shared set of data. You could define some of your data structures where you want commas ignored, on the python side while the R side manipulates the data structures already properly read in using your rules, ?.
+
+It does not seem worth it to me.
+
+
+From: Mossa Merhi Reimert <tpb398 at alumni.ku.dk<mailto:tpb398 at alumni.ku.dk>>
+Sent: Friday, May 1, 2026 2:01 PM
+To: avi.e.gross at gmail.com<mailto:avi.e.gross at gmail.com>; 'Tomek Gieorgijewski' <cybergeorge2020 at gmail.com<mailto:cybergeorge2020 at gmail.com>>; 'Duncan Murdoch' <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com>>
+Cc: r-devel at r-project.org<mailto:r-devel at r-project.org>
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Thank you Ivan for your comments. I am going to think about it.
+Also Duncan Murdoch, thank you very much for your comments.
+
+I didn't know about nargs. here's what I learned:
+
+(function(...) {nargs()})()
+[1] 0
+
+(function(...) {nargs()})(,)
+[1] 2
+
+(function(...) {nargs()})(,,)
+[1] 3
+
+(function(...) {nargs()})(,,,)
+[1] 4
+
+(function(...) {nargs()})(,,,,)
+[1] 5
+
+(function(...) {nargs()})(,,,,,)
+[1] 6
+
+
+Let me think about that.
+
+And avi.e.gross: I am sorry man, I didn't finish my reply properly, and I still don't get what you're saying. If you see me in the real world, let's talk, in a slow way, so that we can understand
+and empathize with each other. I just don't get it on text, it seems.
+
+
+
+
+
+Sent from Outlook for Mac
+From: avi.e.gross at gmail.com<mailto:avi.e.gross at gmail.com> <mailto:avi.e.gross at gmail.com>  <avi.e.gross at gmail.com<mailto:avi.e.gross at gmail.com> <mailto:avi.e.gross at gmail.com> >
+Date: Friday, 1 May 2026 at 19.40
+To: Mossa Merhi Reimert <tpb398 at alumni.ku.dk<mailto:tpb398 at alumni.ku.dk> <mailto:tpb398 at alumni.ku.dk> >; 'Tomek Gieorgijewski' <cybergeorge2020 at gmail.com<mailto:cybergeorge2020 at gmail.com><mailto:cybergeorge2020 at gmail.com> >; 'Duncan Murdoch' <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com> <mailto:murdoch.duncan at gmail.com> >
+Cc: r-devel at r-project.org<mailto:r-devel at r-project.org> <mailto:r-devel at r-project.org>  <r-devel at r-project.org<mailto:r-devel at r-project.org> <mailto:r-devel at r-project.org> >
+Subject: RE: [Rd] Feature request: Allow comma after last element in a list
+Whether a change is easy or hard to make is an issue that can allow YOU to download the source code and make your own modified copy of R for your own use, Mossa. And, any code you then run under your version of R, will not necessarily be something you can share with others who want to run it under a more standard shared version in which it will not cause errors.
+
+There is an implicit contract that people have with whoever works on the public version of R. That contract requires discussions and feedback on bug fixes, new features or changes in how a feature works. It requires careful documentation and often some level of testing to see who might be impacted and time to update their code so it keeps working. For truly optional features, it is often done over time. And, some old features are merely deprecated for a while before being removed.
+
+Another language, called Python, decide to make some incompatible changes while people were using a version I will call 2.X and named the new version 3.0 and people who did not change their code were left with partial support in 2.X that was slated to end after a while. You could argue that this was a good choice in the long run.
+
+R has tried to remain with one unified set of users and not ruin things, ot at least provide another easy migration route.
+
+The fact that so many packages are created is not a negative but a feature of a language that allows and supports extensions while leaving the main body of common code reasonable.
+
+And, as noted, not everyone sees allowing a dangling comma as a positive. The workarounds here are s simple as using NULL as a placeholder or using some package to create vectors and so on.
+
+But, if R is not to your taste, fine. There are many other languages available and many of us here also use other languages depending on needs and circumstances.
+
+And, do note, R has some serious features that are quite different than something like Python that make it possible to do some things easier, and vice versa. This means that blindly copying a feature from another language is not always something trivial or even welcomed.
+
+
+From: Mossa Merhi Reimert <tpb398 at alumni.ku.dk<mailto:tpb398 at alumni.ku.dk> <mailto:tpb398 at alumni.ku.dk> >
+Sent: Friday, May 1, 2026 12:35 PM
+To: avi.e.gross at gmail.com<mailto:avi.e.gross at gmail.com> <mailto:avi.e.gross at gmail.com> ; 'Tomek Gieorgijewski' <cybergeorge2020 at gmail.com<mailto:cybergeorge2020 at gmail.com><mailto:cybergeorge2020 at gmail.com> >; 'Duncan Murdoch' <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com> <mailto:murdoch.duncan at gmail.com> >
+Cc: r-devel at r-project.org<mailto:r-devel at r-project.org> <mailto:r-devel at r-project.org>
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Respectfully, this is really one of the strangest responses I've seen in my life.
+
+rlang literally re-invents R in 25k LOC of R code.. what other language has dialects written in its own language, and quite popular at that? It is getting to a level of absurdity, that I am not sure
+how anyone can defend at this point.
+
+If adding dangling commas is a hard, demanding, engineering problem, then I guess someone has to take a serious look at the code base. I might want to interject myself here, and say, it's not hard.
+
+There are important things that need to be done. A GC lock available through C-API.
+Making the r runtime reentrant, instead this process wide mayhem that exists. `[`(,,drop=FALSE). Dropping libtool from the configure scripts, so things can build,
+without checks that don't are not important anymore. Some sort of tracking of heap-allocation
+so R instrumentation tools are not seeing half the situation. I don't know.. there's just much more that actually needs scoping, planning and evaluation.
+
+
+
+
+
+Sent from Outlook for Mac
+From: avi.e.gross at gmail.com<mailto:avi.e.gross at gmail.com> <mailto:avi.e.gross at gmail.com>  <avi.e.gross at gmail.com<mailto:avi.e.gross at gmail.com> <mailto:avi.e.gross at gmail.com> >
+Date: Friday, 1 May 2026 at 14.48
+To: Mossa Merhi Reimert <tpb398 at alumni.ku.dk<mailto:tpb398 at alumni.ku.dk> <mailto:tpb398 at alumni.ku.dk> >; 'Tomek Gieorgijewski' <cybergeorge2020 at gmail.com<mailto:cybergeorge2020 at gmail.com><mailto:cybergeorge2020 at gmail.com> >; 'Duncan Murdoch' <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com> <mailto:murdoch.duncan at gmail.com> >
+Cc: r-devel at r-project.org<mailto:r-devel at r-project.org> <mailto:r-devel at r-project.org>  <r-devel at r-project.org<mailto:r-devel at r-project.org> <mailto:r-devel at r-project.org> >
+Subject: RE: [Rd] Feature request: Allow comma after last element in a list
+I find the attitude a bit disturbing that a carefully designed and altered language be changed just because and without serious consideration. Who will fund it if volunteers do not step forward is one example of a serious consideration. What other changes should be put off to make room?
+
+The default for many years in computing in general, IMO, was that a dangling comma probably represented an error where a programmer had forgotten to add another item. Dangling commas were not only allowed but required in some cases like argument lists to a function with 5 required positional arguments in some cases given how things were done and adding yet another dangling comma would have represented a problem as it now would have six arguments.
+
+Things have changed and perhaps many or all languages will eventually allow dangling commas in some situations. But on the hierarchy of needs, some may see other updates for R as a bit more needed and compelling. Look how long it took to reach adding a pipe feature that includes an aspect few enjoy using versus the other pipes that persist.
+
+As for packages adjusting, I have no idea if many would have to, but you can be sure that if there is a problem, many won't adjust for some time and users might be left out in the cold or simply not be able to upgrade to the latest versions.
+
+It is not a good idea to just do things.
+
+Having said that, of course, it might be a nice thing to do once it has been properly evaluated. But it would not particularly improve my life as I am quite used to what it takes to edit a comma separated list without leaving dangling commas.
+
+-----Original Message-----
+From: R-devel <r-devel-bounces at r-project.org<mailto:r-devel-bounces at r-project.org> <mailto:r-devel-bounces at r-project.org> > On Behalf Of Mossa Merhi Reimert via R-devel
+Sent: Friday, May 1, 2026 2:52 AM
+To: Tomek Gieorgijewski <cybergeorge2020 at gmail.com<mailto:cybergeorge2020 at gmail.com> <mailto:cybergeorge2020 at gmail.com> >; Duncan Murdoch <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com> <mailto:murdoch.duncan at gmail.com> >
+Cc: r-devel at r-project.org<mailto:r-devel at r-project.org> <mailto:r-devel at r-project.org>
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Honestly, I think R just needs to add these things. I don't know what the hold out is.
+It seems so odd, not to just move on from this lack of last-element-comma.
+
+`[`(drop=FALSE) should also be adopted.
+
+Why can't R have these things? CRAN has no package versioning at all. All CRAN packages
+can be adjusted to the change, and it would be all good.
+
+
+
+Sent from Outlook for Mac
+From: R-devel <r-devel-bounces at r-project.org<mailto:r-devel-bounces at r-project.org> <mailto:r-devel-bounces at r-project.org> > on behalf of Tomek Gieorgijewski <cybergeorge2020 at gmail.com<mailto:cybergeorge2020 at gmail.com> <mailto:cybergeorge2020 at gmail.com> >
+Date: Thursday, 30 April 2026 at 21.36
+To: Duncan Murdoch <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com> <mailto:murdoch.duncan at gmail.com> >
+Cc: Manfred Kooistra <manfred.kooistra at gmail.com<mailto:manfred.kooistra at gmail.com> <mailto:manfred.kooistra at gmail.com> >; r-devel at r-project.org<mailto:r-devel at r-project.org> <mailto:r-devel at r-project.org>  <r-devel at r-project.org<mailto:r-devel at r-project.org> <mailto:r-devel at r-project.org> >
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Thank you for the link - definitely worth trying!
+
+T.
+
+czw., 30 kwi 2026 o 21:24 Duncan Murdoch <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com> <mailto:murdoch.duncan at gmail.com> >
+napisa?(a):
+
+
+
+This is a great suggestion.  BTW, I think it would be possible to do
+this in RStudio as well.  See their Addins page here:
+https://rstudio.github.io/rstudioaddins/<https://rstudio.github.io/rstudioaddins/> <https://rstudio.github.io/rstudioaddins/<https://rstudio.github.io/rstudioaddins/>> &data=05%7C02%7Ctpb398%40alumni.ku.dk<http://40alumni.ku.dk/>%7Cae85de2ff156426ad76908dea77fdfb9%7Ca3927f91cda14696af898c9f1ceffa91%7C0%7C0%7C639132364817869564%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=ojTec59KVitsio9CF5Rdt12f6NGoi8UDtbH2gpRxynY%3D&reserved=0 .
+
+Duncan Murdoch
+
+On 2026-04-30 1:44 p.m., Tomek Gieorgijewski wrote:
+
+Hi Manfred!
+
+As I can see that you already maintain the habit to have one element per
+line,
+I would like to propose that you incorporate some editing scripts in your
+editor
+to help ease your frustration.
+I believe trying to change R parser will only add more of that feeling :)
+I don't know your editor but if it's vim, I can propose this edit to
+.vimrc
+
+file:
+" ----
+function! ListCommas() range
+       if a:firstline < a:lastline
+           " Add commas at the end from first to second to last line if
+there's no comma yet
+           execute a:firstline . "," . (a:lastline - 1) . 's/[^,]$/&,/e'
+       endif
+        " Delete comma from last line (if matched)
+       execute a:lastline . 's/,$//e'
+   endfunction
+
+   vnoremap <leader>, :call ListCommas()<CR>
+" ---
+
+So, now if you rerun vim on your file you can swap, add, delete lines
+from
+
+the list as you wish,
+and at the end you can highlight all elements lines of your list in
+visual
+
+mode and execute ListCommas
+function on those lines with <leader>, shortcut.
+
+Of course only if you maintain your structure of element per line and
+trailing parenthesis at a seperate line.
+
+I'm sure VS Code, Emacs and some other editors have similar abilities to
+help you.
+Unfortunately I don't know of any such possibility in RStudio.
+
+regards,
+Tomek.
+
+pt., 24 kwi 2026 o 13:35 Manfred Kooistra <manfred.kooistra at gmail.com<mailto:manfred.kooistra at gmail.com> <mailto:manfred.kooistra at gmail.com> >
+napisa?(a):
+
+
+I've always been irritated that R doesn't allow a comma after the last
+element in a "list":
+
+
+a <- c(
++     1,
++     2,
++     3
++ )
+
+a
+[1] 1 2 3
+
+b <- c(
++     1,
++     2,
++     3,
++ )
+Error in c(1, 2, 3, ) : argument 4 is empty
+
+This makes updating lists unnecessarily cumbersome, which I find I
+frequently do, either when I test code and want to run it with lists of
+varying elements or varying orders of elements or when I maintain lists
+manually over time and have to add or delete elements from them.
+
+Is there a reason for this behavior in R and might it not be a good idea
+to change it?
+______________________________________________
+R-devel at r-project.org<mailto:R-devel at r-project.org> <mailto:R-devel at r-project.org>  mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel> <https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>> &data=05%7C02%7Ctpb398%40alumni.ku.dk<http://40alumni.ku.dk/>%7Cae85de2ff156426ad76908dea77fdfb9%7Ca3927f91cda14696af898c9f1ceffa91%7C0%7C0%7C639132364817892997%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=cl8Rb5YnKdIr0N6fptlbm9nEWqn9orcdzCaAnckSma0%3D&reserved=0
+
+     [[alternative HTML version deleted]]
+
+______________________________________________
+R-devel at r-project.org<mailto:R-devel at r-project.org> <mailto:R-devel at r-project.org>  mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel> <https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>> &data=05%7C02%7Ctpb398%40alumni.ku.dk<http://40alumni.ku.dk/>%7Cae85de2ff156426ad76908dea77fdfb9%7Ca3927f91cda14696af898c9f1ceffa91%7C0%7C0%7C639132364817907466%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=SW9ZtK6DaWGOaAifCCRti7ApVSyREXTB3DgeDwG5tA0%3D&reserved=0
+
+
+       [[alternative HTML version deleted]]
+
+______________________________________________
+R-devel at r-project.org<mailto:R-devel at r-project.org> <mailto:R-devel at r-project.org>  mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel> <https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>> &data=05%7C02%7Ctpb398%40alumni.ku.dk<http://40alumni.ku.dk/>%7Cae85de2ff156426ad76908dea77fdfb9%7Ca3927f91cda14696af898c9f1ceffa91%7C0%7C0%7C639132364817921020%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=NGvNN9dmg1qkKlDp0rJ2q7HCcLuUKDCZxrzOea%2BvRoA%3D&reserved=0
+
+       [[alternative HTML version deleted]]
+
+[[alternative HTML version deleted]]
+
+______________________________________________
+R-devel at r-project.org<mailto:R-devel at r-project.org> mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>
+
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat May  2 06:20:02 2026
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 2 May 2026 00:20:02 -0400
+Subject: [Rd] Feature request: Allow comma after last element in a list
+In-Reply-To: <414DDF52-99CC-4791-9029-6BB167DC39D5@northeastern.edu>
+References: <29231881-3A6B-449D-A31A-686FDBAF8782@gmail.com>
+ <CAFGdzpof=ywrQLcUi5YhX01FPTjy1Rf9+CUcriVS5JCfi2vtnw@mail.gmail.com>
+ <53eb96a2-45ea-4f20-8444-914aa9d8b2ec@gmail.com>
+ <CAFGdzprE-WOGr4ogUytysjAhXZxh0SVsLW1bLq+QBAB_uyYHSA@mail.gmail.com>
+ <e457a7ecd9de4aadbd91588fc0273680@alumni.ku.dk>
+ <004f01dcd968$bc8f0cf0$35ad26d0$@gmail.com>
+ <8260a5e4d7cb406eb7cb1b2bfa388b5b@alumni.ku.dk>
+ <016101dcd991$7baf8ce0$730ea6a0$@gmail.com>
+ <d9aa9d3f69494e05aae951903c8c4005@alumni.ku.dk>
+ <01b301dcd99f$52d80af0$f88820d0$@gmail.com>
+ <48351685-CFDC-4041-97E5-9101E81213D8@northeastern.edu>
+ <005601dcd9d4$74d59200$5e80b600$@gmail.com>
+ <414DDF52-99CC-4791-9029-6BB167DC39D5@northeastern.edu>
+Message-ID: <011101dcd9ea$f2c45500$d84cff00$@gmail.com>
+
+Thank you Kylie. Your argument is interesting and informative. Yes, you do seem to want the arguments evaluated or how can you store values of the same kind in a  vector. Your solution does e valuate.
+ 
+From: Bemis, Kylie <k.bemis at northeastern.edu> 
+Sent: Friday, May 1, 2026 9:48 PM
+To: avi.e.gross at gmail.com
+Cc: Mossa Merhi Reimert <tpb398 at alumni.ku.dk>; Tomek Gieorgijewski <cybergeorge2020 at gmail.com>; Duncan Murdoch <murdoch.duncan at gmail.com>; r-devel at r-project.org
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+ 
+My list0 prototype also doesn?t handle edge cases like empty strings. 
+ 
+The issue with removing the ...elt() calls in the for loop is that the arguments don?t actually get evaluated:
+ 
+> c0 <- function(...)
+...   {
+...     dots <- match.call(expand.dots=FALSE)$...
+...     valid <- which(vapply(dots, nzchar, logical(1L)))
+...     unlist(dots[valid])
+...   }
+> foo <- function(a) c0(a,2)
+> foo(1)
+[[1]]
+a
+ 
+[[2]]
+[1] 2
+ 
+I doubt it?s worth removing the for loop just for efficiency without benchmarking more to see if it?s actually an issue. As long as they don?t do unnecessary allocation, for loops in R tend to be faster than people think.
+ 
+This was just a fun little exercise for me, since I doubt I?d ever use it myself. Feel free to iterate on it.
+ 
+The nice thing about R is that these things don?t require changes to the language to implement.
+
+~~~
+Kylie Ariel Bemis (she/her)
+Assistant Teaching Professor
+Khoury College of Computer Sciences
+Northeastern University
+kuwisdelu.github.io <https://kuwisdelu.github.io/> 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+
+On May 1, 2026, at 9:39?PM, avi.e.gross at gmail.com <mailto:avi.e.gross at gmail.com>  wrote:
+ 
+Kylie,
+ 
+I appreciate your example and enlarged on it a bit. For anyone else, we are using the notation of a terminal 0 in a function name that is not a necessary part of any proposal.
+ 
+Your code works well even for cases with dangling comments in front or behind as in this monstrosity:
+ 
+> list0(,,1,,,,2,,,,3,)
+[[1]]
+[1] 1
+ 
+[[2]]
+[1] 2
+ 
+[[3]]
+[1] 3
+ 
+A similar approach also works to make a c(0) for vectors:
+ 
+  c0 <- function(...)
+  {
+    dots <- match.call(expand.dots=FALSE)$...
+    valid <- which(vapply(dots, nzchar, logical(1L)))
+    ans <- vector(length=length(valid))
+    for ( i in seq_along(valid) )
+      ans[[i]] <- ...elt(valid[i])
+    ans
+  }
+ 
+> c0(,,1,,,,2,,,,3,)
+[1] 1 2 3
+ 
+Just to test it a bit, it does preserve NA and Nan as well as Inf.
+ 
+> c0(,Inf,1,,NA,,2,,NaN,,3,)
+[1] Inf   1  NA   2 NaN   3
+ 
+Of course, there is a nontrivial cost in the approach.  The ?for? loop in particular used to be a fairly costly way for longer data. I looked to see if it can be done another way in a more vectorized approach. The following works for me albeit it first returns a nested list that needs flattening into a vector using one method or another:
+ 
+  
+  c0 <- function(...)
+  {
+    dots <- match.call(expand.dots=FALSE)$...
+    valid <- which(vapply(dots, nzchar, logical(1L)))
+    unlist(dots[valid])
+  }
+ 
+Or a bit briefer:
+ 
+  c0 <- function(...)
+  {
+    dots <- match.call(expand.dots=FALSE)$...
+    unlist(dots[which(vapply(dots, nzchar, logical(1L)))])
+  }
+ 
+As I suggested earlier, some programmers do not need this feature once their program is ready and will not be changing in this regard. You could at that point simply add a line to your code so your new function is now the old function. Before the first use of c0() in your program, reset it to be the same as c() as in this example:
+ 
+> c0(1,2,3)
+[1] 1 2 3
+> c0 <- c
+> c0(1,2,3)
+[1] 1 2 3
+> c0(1,2,3,,,)
+Error in c0(1, 2, 3, , , ) : argument 4 is empty
+
+Now c0() will fail if you use extra commas and there is no overhead as c0 is now just a second way to call c() with no cost.
+ 
+Those who want to leave the extra functionality in place, can, of course continue to allow it to be a tad slower.
+ 
+ 
+From: Bemis, Kylie <k.bemis at northeastern.edu <mailto:k.bemis at northeastern.edu> > 
+Sent: Friday, May 1, 2026 4:19 PM
+To: avi.e.gross at gmail.com <mailto:avi.e.gross at gmail.com> 
+Cc: Mossa Merhi Reimert <tpb398 at alumni.ku.dk <mailto:tpb398 at alumni.ku.dk> >; Tomek Gieorgijewski <cybergeorge2020 at gmail.com <mailto:cybergeorge2020 at gmail.com> >; Duncan Murdoch <murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com> >; r-devel at r-project.org <mailto:r-devel at r-project.org> 
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+ 
+I don?t know if this is the best way to do this, but if anyone really wants, here you go. 
+ 
+list0 <- function(...)
+{
+dots <- match.call(expand.dots=FALSE)$...
+valid <- which(vapply(dots, nzchar, logical(1L)))
+ans <- vector("list", length=length(valid))
+for ( i in seq_along(valid) )
+ans[[i]] <- ...elt(valid[i])
+ans
+}
+ 
+# > list0(1,2,)
+# [[1]]
+# [1] 1
+ 
+# [[2]]
+# [1] 2
+ 
+~~~
+Kylie Ariel Bemis (she/her)
+Assistant Teaching Professor
+Khoury College of Computer Sciences
+Northeastern University
+ <https://kuwisdelu.github.io/> kuwisdelu.github.io
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+
+
+On May 1, 2026, at 3:18?PM,  <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com wrote:
+ 
+Mossa,
+
+I was expressing my reaction to the way you are saying what others should do, including thousands of packages that are not even well maintained. Not being one of the people who would be doing the work, I wondered how you get the request to those who might.
+
+Others have pointed out the anomalies that may happen. I have used many programming languages over the years and some are designed in ways I do not like as much as other ways. Some end up being cautious and not making much have defaults and forcing users to specify clearly what they want. Others choose defaults and later get complaints. I can even imagine someone releasing a new function name simply to over-ride a default while not having to type it explicitly, Look carefully at something like the read.table() set of functions as examples of front-ends that reset defaults for specific kinds of files.
+
+There is no right or wrong answer that pleases everybody but it generally is bad form to change something after years of use by flipping the default.
+
+I can see merit in something a bit different such as when you have  slimmer paste0() function added alongside paste(). I can imagine creating a c0() alongside c that tolerates dangling commas. But then you may need a list0() and  perhaps quite a few more to be used when you want commas evaluated differently. It could be better to create one function, a bit like I() with some name like comma_safe() so you could wrap anything you want like this:
+
+Myvec <- c(comma_safe(1,2,3,))
+
+Only people who really feel a need would opt to use it. Even then, such a feature might mostly be useful while prototyping your code when you may be adjusting things by adding, deleting and re-arranging. 
+
+I do suggest that a valid case has been made why allowing dangling comments is a reasonable feature of a language and that it takes more than a one-liner request to specify what a change would look like.
+
+Specifically, is the request limited to one trailing comma? What if it ends in three? What if the first or some middle spot has an extra comma? Where would this be applied? I mean there are many places comma separated lists are used. Function argument lists are a crucial example where every comma currently has meaning, especially for positional arguments. You cannot make a fifth argument became a third argument.
+
+And note uses of commas in other places outside R like a CSV file. Over there, when you read the file in, generally a missing item between adjacent commas or at the beginning or end, becomes some form of NA. 
+
+And, how do you address the suggestion that some people depend on current behavior to detect their errors? If you allow some form of trailing comma, do you issue at least a warning? 
+
+Many languages end up at points like this by adding some form of flag you can place in your environment that allows some control over some features. Would you suggest a designated way to either turn on the new feature or suppress it, such as:
+
+options(allow_trailing_commas = FALSE)
+
+Do note that some current features may need to be examined, such as what happens near a ??? and also that R often allows delayed evaluation so a function often passes on some of what it received, unchanged, to the surprise of the other function.
+
+There may be more and nuanced ideas people can supply that can produce more such requirements and of course lots of changes that may have to be made to countless kinds of documentation such as man pages of functions, including manual pages.
+
+So, even assuming there is a consensus to make a change that might satisfy your needs, I suggest it might take a long time to plan it fully and implement it to a full extent ? especially as many package maintainers do not want to put a new release out too often and when they have not made any real changes.
+
+Almost in amusement, I have a thought. I have written code that allows you to write programs in both R and python that sort of operate on a shared set of data. You could define some of your data structures where you want commas ignored, on the python side while the R side manipulates the data structures already properly read in using your rules, ?.
+
+It does not seem worth it to me.
+
+
+From: Mossa Merhi Reimert < <mailto:tpb398 at alumni.ku.dk> tpb398 at alumni.ku.dk> 
+Sent: Friday, May 1, 2026 2:01 PM
+To:  <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com; 'Tomek Gieorgijewski' < <mailto:cybergeorge2020 at gmail.com> cybergeorge2020 at gmail.com>; 'Duncan Murdoch' < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com>
+Cc:  <mailto:r-devel at r-project.org> r-devel at r-project.org
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Thank you Ivan for your comments. I am going to think about it.
+Also Duncan Murdoch, thank you very much for your comments. 
+
+I didn't know about nargs. here's what I learned:
+
+
+
+(function(...) {nargs()})()
+[1] 0
+
+
+
+(function(...) {nargs()})(,)
+[1] 2
+
+
+
+(function(...) {nargs()})(,,)
+[1] 3
+
+
+
+(function(...) {nargs()})(,,,)
+[1] 4
+
+
+
+(function(...) {nargs()})(,,,,)
+[1] 5
+
+
+
+(function(...) {nargs()})(,,,,,)
+[1] 6
+
+
+Let me think about that. 
+
+And avi.e.gross: I am sorry man, I didn't finish my reply properly, and I still don't get what you're saying. If you see me in the real world, let's talk, in a slow way, so that we can understand
+and empathize with each other. I just don't get it on text, it seems.
+
+
+
+
+
+Sent from Outlook for Mac 
+From:  <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com < <mailto:avi.e.gross at gmail.com> mailto:avi.e.gross at gmail.com>  < <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com < <mailto:avi.e.gross at gmail.com> mailto:avi.e.gross at gmail.com> >
+Date: Friday, 1 May 2026 at 19.40
+To: Mossa Merhi Reimert < <mailto:tpb398 at alumni.ku.dk> tpb398 at alumni.ku.dk < <mailto:tpb398 at alumni.ku.dk> mailto:tpb398 at alumni.ku.dk> >; 'Tomek Gieorgijewski' < <mailto:cybergeorge2020 at gmail.com> cybergeorge2020 at gmail.com< <mailto:cybergeorge2020 at gmail.com> mailto:cybergeorge2020 at gmail.com> >; 'Duncan Murdoch' < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com < <mailto:murdoch.duncan at gmail.com> mailto:murdoch.duncan at gmail.com> >
+Cc:  <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org>  < <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org> >
+Subject: RE: [Rd] Feature request: Allow comma after last element in a list
+Whether a change is easy or hard to make is an issue that can allow YOU to download the source code and make your own modified copy of R for your own use, Mossa. And, any code you then run under your version of R, will not necessarily be something you can share with others who want to run it under a more standard shared version in which it will not cause errors.
+
+There is an implicit contract that people have with whoever works on the public version of R. That contract requires discussions and feedback on bug fixes, new features or changes in how a feature works. It requires careful documentation and often some level of testing to see who might be impacted and time to update their code so it keeps working. For truly optional features, it is often done over time. And, some old features are merely deprecated for a while before being removed.
+
+Another language, called Python, decide to make some incompatible changes while people were using a version I will call 2.X and named the new version 3.0 and people who did not change their code were left with partial support in 2.X that was slated to end after a while. You could argue that this was a good choice in the long run.
+
+R has tried to remain with one unified set of users and not ruin things, ot at least provide another easy migration route.
+
+The fact that so many packages are created is not a negative but a feature of a language that allows and supports extensions while leaving the main body of common code reasonable.
+
+And, as noted, not everyone sees allowing a dangling comma as a positive. The workarounds here are s simple as using NULL as a placeholder or using some package to create vectors and so on.
+
+But, if R is not to your taste, fine. There are many other languages available and many of us here also use other languages depending on needs and circumstances.
+
+And, do note, R has some serious features that are quite different than something like Python that make it possible to do some things easier, and vice versa. This means that blindly copying a feature from another language is not always something trivial or even welcomed. 
+
+
+From: Mossa Merhi Reimert < <mailto:tpb398 at alumni.ku.dk> tpb398 at alumni.ku.dk < <mailto:tpb398 at alumni.ku.dk> mailto:tpb398 at alumni.ku.dk> > 
+Sent: Friday, May 1, 2026 12:35 PM
+To:  <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com < <mailto:avi.e.gross at gmail.com> mailto:avi.e.gross at gmail.com> ; 'Tomek Gieorgijewski' < <mailto:cybergeorge2020 at gmail.com> cybergeorge2020 at gmail.com< <mailto:cybergeorge2020 at gmail.com> mailto:cybergeorge2020 at gmail.com> >; 'Duncan Murdoch' < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com < <mailto:murdoch.duncan at gmail.com> mailto:murdoch.duncan at gmail.com> >
+Cc:  <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org> 
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Respectfully, this is really one of the strangest responses I've seen in my life.
+
+rlang literally re-invents R in 25k LOC of R code.. what other language has dialects written in its own language, and quite popular at that? It is getting to a level of absurdity, that I am not sure
+how anyone can defend at this point. 
+
+If adding dangling commas is a hard, demanding, engineering problem, then I guess someone has to take a serious look at the code base. I might want to interject myself here, and say, it's not hard.
+
+There are important things that need to be done. A GC lock available through C-API.
+Making the r runtime reentrant, instead this process wide mayhem that exists. `[`(,,drop=FALSE). Dropping libtool from the configure scripts, so things can build,
+without checks that don't are not important anymore. Some sort of tracking of heap-allocation
+so R instrumentation tools are not seeing half the situation. I don't know.. there's just much more that actually needs scoping, planning and evaluation.
+
+
+
+
+
+Sent from Outlook for Mac
+From:  <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com < <mailto:avi.e.gross at gmail.com> mailto:avi.e.gross at gmail.com>  < <mailto:avi.e.gross at gmail.com> avi.e.gross at gmail.com < <mailto:avi.e.gross at gmail.com> mailto:avi.e.gross at gmail.com> >
+Date: Friday, 1 May 2026 at 14.48
+To: Mossa Merhi Reimert < <mailto:tpb398 at alumni.ku.dk> tpb398 at alumni.ku.dk < <mailto:tpb398 at alumni.ku.dk> mailto:tpb398 at alumni.ku.dk> >; 'Tomek Gieorgijewski' < <mailto:cybergeorge2020 at gmail.com> cybergeorge2020 at gmail.com< <mailto:cybergeorge2020 at gmail.com> mailto:cybergeorge2020 at gmail.com> >; 'Duncan Murdoch' < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com < <mailto:murdoch.duncan at gmail.com> mailto:murdoch.duncan at gmail.com> >
+Cc:  <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org>  < <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org> >
+Subject: RE: [Rd] Feature request: Allow comma after last element in a list
+I find the attitude a bit disturbing that a carefully designed and altered language be changed just because and without serious consideration. Who will fund it if volunteers do not step forward is one example of a serious consideration. What other changes should be put off to make room?
+
+The default for many years in computing in general, IMO, was that a dangling comma probably represented an error where a programmer had forgotten to add another item. Dangling commas were not only allowed but required in some cases like argument lists to a function with 5 required positional arguments in some cases given how things were done and adding yet another dangling comma would have represented a problem as it now would have six arguments.
+
+Things have changed and perhaps many or all languages will eventually allow dangling commas in some situations. But on the hierarchy of needs, some may see other updates for R as a bit more needed and compelling. Look how long it took to reach adding a pipe feature that includes an aspect few enjoy using versus the other pipes that persist.
+
+As for packages adjusting, I have no idea if many would have to, but you can be sure that if there is a problem, many won't adjust for some time and users might be left out in the cold or simply not be able to upgrade to the latest versions.
+
+It is not a good idea to just do things.
+
+Having said that, of course, it might be a nice thing to do once it has been properly evaluated. But it would not particularly improve my life as I am quite used to what it takes to edit a comma separated list without leaving dangling commas.
+
+-----Original Message-----
+From: R-devel < <mailto:r-devel-bounces at r-project.org> r-devel-bounces at r-project.org < <mailto:r-devel-bounces at r-project.org> mailto:r-devel-bounces at r-project.org> > On Behalf Of Mossa Merhi Reimert via R-devel
+Sent: Friday, May 1, 2026 2:52 AM
+To: Tomek Gieorgijewski < <mailto:cybergeorge2020 at gmail.com> cybergeorge2020 at gmail.com < <mailto:cybergeorge2020 at gmail.com> mailto:cybergeorge2020 at gmail.com> >; Duncan Murdoch < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com < <mailto:murdoch.duncan at gmail.com> mailto:murdoch.duncan at gmail.com> >
+Cc:  <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org> 
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Honestly, I think R just needs to add these things. I don't know what the hold out is.
+It seems so odd, not to just move on from this lack of last-element-comma.
+
+`[`(drop=FALSE) should also be adopted.
+
+Why can't R have these things? CRAN has no package versioning at all. All CRAN packages
+can be adjusted to the change, and it would be all good.
+
+
+
+Sent from Outlook for Mac
+From: R-devel < <mailto:r-devel-bounces at r-project.org> r-devel-bounces at r-project.org < <mailto:r-devel-bounces at r-project.org> mailto:r-devel-bounces at r-project.org> > on behalf of Tomek Gieorgijewski < <mailto:cybergeorge2020 at gmail.com> cybergeorge2020 at gmail.com < <mailto:cybergeorge2020 at gmail.com> mailto:cybergeorge2020 at gmail.com> >
+Date: Thursday, 30 April 2026 at 21.36
+To: Duncan Murdoch < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com < <mailto:murdoch.duncan at gmail.com> mailto:murdoch.duncan at gmail.com> >
+Cc: Manfred Kooistra < <mailto:manfred.kooistra at gmail.com> manfred.kooistra at gmail.com < <mailto:manfred.kooistra at gmail.com> mailto:manfred.kooistra at gmail.com> >;  <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org>  < <mailto:r-devel at r-project.org> r-devel at r-project.org < <mailto:r-devel at r-project.org> mailto:r-devel at r-project.org> >
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Thank you for the link - definitely worth trying!
+
+T.
+
+czw., 30 kwi 2026 o 21:24 Duncan Murdoch < <mailto:murdoch.duncan at gmail.com> murdoch.duncan at gmail.com < <mailto:murdoch.duncan at gmail.com> mailto:murdoch.duncan at gmail.com> >
+napisa?(a):
+
+
+
+
+
+This is a great suggestion.  BTW, I think it would be possible to do
+this in RStudio as well.  See their Addins page here:
+ <https://rstudio.github.io/rstudioaddins/> https://rstudio.github.io/rstudioaddins/ < <https://rstudio.github.io/rstudioaddins/> https://rstudio.github.io/rstudioaddins/> &data=05%7C02%7Ctpb398% <http://40alumni.ku.dk/> 40alumni.ku.dk%7Cae85de2ff156426ad76908dea77fdfb9%7Ca3927f91cda14696af898c9f1ceffa91%7C0%7C0%7C639132364817869564%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=ojTec59KVitsio9CF5Rdt12f6NGoi8UDtbH2gpRxynY%3D&reserved=0 .
+
+Duncan Murdoch
+
+On 2026-04-30 1:44 p.m., Tomek Gieorgijewski wrote:
+
+
+
+Hi Manfred!
+
+As I can see that you already maintain the habit to have one element per
+line,
+I would like to propose that you incorporate some editing scripts in your
+editor
+to help ease your frustration.
+I believe trying to change R parser will only add more of that feeling :)
+I don't know your editor but if it's vim, I can propose this edit to
+.vimrc
+
+
+
+file:
+" ----
+function! ListCommas() range
+       if a:firstline < a:lastline
+           " Add commas at the end from first to second to last line if
+there's no comma yet
+           execute a:firstline . "," . (a:lastline - 1) . 's/[^,]$/&,/e'
+       endif
+        " Delete comma from last line (if matched)
+       execute a:lastline . 's/,$//e'
+   endfunction
+
+   vnoremap <leader>, :call ListCommas()<CR>
+" ---
+
+So, now if you rerun vim on your file you can swap, add, delete lines
+from
+
+
+
+the list as you wish,
+and at the end you can highlight all elements lines of your list in
+visual
+
+
+
+mode and execute ListCommas
+function on those lines with <leader>, shortcut.
+
+Of course only if you maintain your structure of element per line and
+trailing parenthesis at a seperate line.
+
+I'm sure VS Code, Emacs and some other editors have similar abilities to
+help you.
+Unfortunately I don't know of any such possibility in RStudio.
+
+regards,
+Tomek.
+
+pt., 24 kwi 2026 o 13:35 Manfred Kooistra < <mailto:manfred.kooistra at gmail.com> manfred.kooistra at gmail.com < <mailto:manfred.kooistra at gmail.com> mailto:manfred.kooistra at gmail.com> >
+napisa?(a):
+
+
+
+
+I've always been irritated that R doesn't allow a comma after the last
+element in a "list":
+
+
+
+
+a <- c(
++     1,
++     2,
++     3
++ )
+
+
+
+a
+[1] 1 2 3
+
+
+
+b <- c(
++     1,
++     2,
++     3,
++ )
+Error in c(1, 2, 3, ) : argument 4 is empty
+
+This makes updating lists unnecessarily cumbersome, which I find I
+frequently do, either when I test code and want to run it with lists of
+varying elements or varying orders of elements or when I maintain lists
+manually over time and have to add or delete elements from them.
+
+Is there a reason for this behavior in R and might it not be a good idea
+to change it?
+______________________________________________
+ <mailto:R-devel at r-project.org> R-devel at r-project.org < <mailto:R-devel at r-project.org> mailto:R-devel at r-project.org>  mailing list
+ <https://stat.ethz.ch/mailman/listinfo/r-devel> https://stat.ethz.ch/mailman/listinfo/r-devel < <https://stat.ethz.ch/mailman/listinfo/r-devel> https://stat.ethz.ch/mailman/listinfo/r-devel> &data=05%7C02%7Ctpb398% <http://40alumni.ku.dk/> 40alumni.ku.dk%7Cae85de2ff156426ad76908dea77fdfb9%7Ca3927f91cda14696af898c9f1ceffa91%7C0%7C0%7C639132364817892997%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=cl8Rb5YnKdIr0N6fptlbm9nEWqn9orcdzCaAnckSma0%3D&reserved=0
+
+     [[alternative HTML version deleted]]
+
+______________________________________________
+ <mailto:R-devel at r-project.org> R-devel at r-project.org < <mailto:R-devel at r-project.org> mailto:R-devel at r-project.org>  mailing list
+ <https://stat.ethz.ch/mailman/listinfo/r-devel> https://stat.ethz.ch/mailman/listinfo/r-devel < <https://stat.ethz.ch/mailman/listinfo/r-devel> https://stat.ethz.ch/mailman/listinfo/r-devel> &data=05%7C02%7Ctpb398% <http://40alumni.ku.dk/> 40alumni.ku.dk%7Cae85de2ff156426ad76908dea77fdfb9%7Ca3927f91cda14696af898c9f1ceffa91%7C0%7C0%7C639132364817907466%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=SW9ZtK6DaWGOaAifCCRti7ApVSyREXTB3DgeDwG5tA0%3D&reserved=0
+
+
+       [[alternative HTML version deleted]]
+
+______________________________________________
+ <mailto:R-devel at r-project.org> R-devel at r-project.org < <mailto:R-devel at r-project.org> mailto:R-devel at r-project.org>  mailing list
+ <https://stat.ethz.ch/mailman/listinfo/r-devel> https://stat.ethz.ch/mailman/listinfo/r-devel < <https://stat.ethz.ch/mailman/listinfo/r-devel> https://stat.ethz.ch/mailman/listinfo/r-devel> &data=05%7C02%7Ctpb398% <http://40alumni.ku.dk/> 40alumni.ku.dk%7Cae85de2ff156426ad76908dea77fdfb9%7Ca3927f91cda14696af898c9f1ceffa91%7C0%7C0%7C639132364817921020%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=NGvNN9dmg1qkKlDp0rJ2q7HCcLuUKDCZxrzOea%2BvRoA%3D&reserved=0
+
+       [[alternative HTML version deleted]]
+
+[[alternative HTML version deleted]]
+
+______________________________________________
+ <mailto:R-devel at r-project.org> R-devel at r-project.org mailing list
+ <https://stat.ethz.ch/mailman/listinfo/r-devel> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+	[[alternative HTML version deleted]]
+
+
+From tpb398 @end|ng |rom @|umn|@ku@dk  Fri May  1 20:00:56 2026
+From: tpb398 @end|ng |rom @|umn|@ku@dk (Mossa Merhi Reimert)
+Date: Fri, 1 May 2026 18:00:56 +0000
+Subject: [Rd] Feature request: Allow comma after last element in a list
+In-Reply-To: <016101dcd991$7baf8ce0$730ea6a0$@gmail.com>
+References: <29231881-3A6B-449D-A31A-686FDBAF8782@gmail.com>
+ <CAFGdzpof=ywrQLcUi5YhX01FPTjy1Rf9+CUcriVS5JCfi2vtnw@mail.gmail.com>
+ <53eb96a2-45ea-4f20-8444-914aa9d8b2ec@gmail.com>,
+ <CAFGdzprE-WOGr4ogUytysjAhXZxh0SVsLW1bLq+QBAB_uyYHSA@mail.gmail.com>
+ <e457a7ecd9de4aadbd91588fc0273680@alumni.ku.dk>,
+ <004f01dcd968$bc8f0cf0$35ad26d0$@gmail.com>
+ <8260a5e4d7cb406eb7cb1b2bfa388b5b@alumni.ku.dk>,
+ <016101dcd991$7baf8ce0$730ea6a0$@gmail.com>
+Message-ID: <d9aa9d3f69494e05aae951903c8c4005@alumni.ku.dk>
+
+Thank you Ivan for your comments. I am going to think about it.
+Also Duncan Murdoch, thank you very much for your comments.
+
+I didn't know about nargs. here's what I learned:
+> (function(...) {nargs()})()
+[1] 0
+> (function(...) {nargs()})(,)
+[1] 2
+> (function(...) {nargs()})(,,)
+[1] 3
+> (function(...) {nargs()})(,,,)
+[1] 4
+> (function(...) {nargs()})(,,,,)
+[1] 5
+> (function(...) {nargs()})(,,,,,)
+[1] 6
+
+
+Let me think about that.
+
+And avi.e.gross: I am sorry man, I didn't finish my reply properly, and I still don't get what you're saying. If you see me in the real world, let's talk, in a slow way, so that we can understand
+and empathize with each other. I just don't get it on text, it seems.
+
+
+
+
+
+Sent from Outlook for Mac
+From: avi.e.gross at gmail.com <avi.e.gross at gmail.com>
+Date: Friday, 1 May 2026 at 19.40
+To: Mossa Merhi Reimert <tpb398 at alumni.ku.dk>; 'Tomek Gieorgijewski' <cybergeorge2020 at gmail.com>; 'Duncan Murdoch' <murdoch.duncan at gmail.com>
+Cc: r-devel at r-project.org <r-devel at r-project.org>
+Subject: RE: [Rd] Feature request: Allow comma after last element in a list
+
+Whether a change is easy or hard to make is an issue that can allow YOU to download the source code and make your own modified copy of R for your own use, Mossa. And, any code you then run under your version of R, will not necessarily be something you can share with others who want to run it under a more standard shared version in which it will not cause errors.
+
+There is an implicit contract that people have with whoever works on the public version of R. That contract requires discussions and feedback on bug fixes, new features or changes in how a feature works. It requires careful documentation and often some level of testing to see who might be impacted and time to update their code so it keeps working. For truly optional features, it is often done over time. And, some old features are merely deprecated for a while before being removed.
+
+Another language, called Python, decide to make some incompatible changes while people were using a version I will call 2.X and named the new version 3.0 and people who did not change their code were left with partial support in 2.X that was slated to end after a while. You could argue that this was a good choice in the long run.
+
+R has tried to remain with one unified set of users and not ruin things, ot at least provide another easy migration route.
+
+The fact that so many packages are created is not a negative but a feature of a language that allows and supports extensions while leaving the main body of common code reasonable.
+
+And, as noted, not everyone sees allowing a dangling comma as a positive. The workarounds here are s simple as using NULL as a placeholder or using some package to create vectors and so on.
+
+But, if R is not to your taste, fine. There are many other languages available and many of us here also use other languages depending on needs and circumstances.
+
+And, do note, R has some serious features that are quite different than something like Python that make it possible to do some things easier, and vice versa. This means that blindly copying a feature from another language is not always something trivial or even welcomed.
+
+
+From: Mossa Merhi Reimert <tpb398 at alumni.ku.dk>
+Sent: Friday, May 1, 2026 12:35 PM
+To: avi.e.gross at gmail.com; 'Tomek Gieorgijewski' <cybergeorge2020 at gmail.com>; 'Duncan Murdoch' <murdoch.duncan at gmail.com>
+Cc: r-devel at r-project.org
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Respectfully, this is really one of the strangest responses I've seen in my life.
+
+rlang literally re-invents R in 25k LOC of R code.. what other language has dialects written in its own language, and quite popular at that? It is getting to a level of absurdity, that I am not sure
+how anyone can defend at this point.
+
+If adding dangling commas is a hard, demanding, engineering problem, then I guess someone has to take a serious look at the code base. I might want to interject myself here, and say, it's not hard.
+
+There are important things that need to be done. A GC lock available through C-API.
+Making the r runtime reentrant, instead this process wide mayhem that exists. `[`(,,drop=FALSE). Dropping libtool from the configure scripts, so things can build,
+without checks that don't are not important anymore. Some sort of tracking of heap-allocation
+so R instrumentation tools are not seeing half the situation. I don't know.. there's just much more that actually needs scoping, planning and evaluation.
+
+
+
+
+
+Sent from Outlook for Mac
+From: avi.e.gross at gmail.com<mailto:avi.e.gross at gmail.com> <avi.e.gross at gmail.com<mailto:avi.e.gross at gmail.com>>
+Date: Friday, 1 May 2026 at 14.48
+To: Mossa Merhi Reimert <tpb398 at alumni.ku.dk<mailto:tpb398 at alumni.ku.dk>>; 'Tomek Gieorgijewski' <cybergeorge2020 at gmail.com<mailto:cybergeorge2020 at gmail.com>>; 'Duncan Murdoch' <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com>>
+Cc: r-devel at r-project.org<mailto:r-devel at r-project.org> <r-devel at r-project.org<mailto:r-devel at r-project.org>>
+Subject: RE: [Rd] Feature request: Allow comma after last element in a list
+I find the attitude a bit disturbing that a carefully designed and altered language be changed just because and without serious consideration. Who will fund it if volunteers do not step forward is one example of a serious consideration. What other changes should be put off to make room?
+
+The default for many years in computing in general, IMO, was that a dangling comma probably represented an error where a programmer had forgotten to add another item. Dangling commas were not only allowed but required in some cases like argument lists to a function with 5 required positional arguments in some cases given how things were done and adding yet another dangling comma would have represented a problem as it now would have six arguments.
+
+Things have changed and perhaps many or all languages will eventually allow dangling commas in some situations. But on the hierarchy of needs, some may see other updates for R as a bit more needed and compelling. Look how long it took to reach adding a pipe feature that includes an aspect few enjoy using versus the other pipes that persist.
+
+As for packages adjusting, I have no idea if many would have to, but you can be sure that if there is a problem, many won't adjust for some time and users might be left out in the cold or simply not be able to upgrade to the latest versions.
+
+It is not a good idea to just do things.
+
+Having said that, of course, it might be a nice thing to do once it has been properly evaluated. But it would not particularly improve my life as I am quite used to what it takes to edit a comma separated list without leaving dangling commas.
+
+-----Original Message-----
+From: R-devel <r-devel-bounces at r-project.org<mailto:r-devel-bounces at r-project.org>> On Behalf Of Mossa Merhi Reimert via R-devel
+Sent: Friday, May 1, 2026 2:52 AM
+To: Tomek Gieorgijewski <cybergeorge2020 at gmail.com<mailto:cybergeorge2020 at gmail.com>>; Duncan Murdoch <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com>>
+Cc: r-devel at r-project.org<mailto:r-devel at r-project.org>
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Honestly, I think R just needs to add these things. I don't know what the hold out is.
+It seems so odd, not to just move on from this lack of last-element-comma.
+
+`[`(drop=FALSE) should also be adopted.
+
+Why can't R have these things? CRAN has no package versioning at all. All CRAN packages
+can be adjusted to the change, and it would be all good.
+
+
+
+Sent from Outlook for Mac
+From: R-devel <r-devel-bounces at r-project.org<mailto:r-devel-bounces at r-project.org>> on behalf of Tomek Gieorgijewski <cybergeorge2020 at gmail.com<mailto:cybergeorge2020 at gmail.com>>
+Date: Thursday, 30 April 2026 at 21.36
+To: Duncan Murdoch <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com>>
+Cc: Manfred Kooistra <manfred.kooistra at gmail.com<mailto:manfred.kooistra at gmail.com>>; r-devel at r-project.org<mailto:r-devel at r-project.org> <r-devel at r-project.org<mailto:r-devel at r-project.org>>
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Thank you for the link - definitely worth trying!
+
+T.
+
+czw., 30 kwi 2026 o 21:24 Duncan Murdoch <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com>>
+napisa?(a):
+
+>
+> This is a great suggestion.  BTW, I think it would be possible to do
+> this in RStudio as well.  See their Addins page here:
+> https://rstudio.github.io/rstudioaddins/<https://rstudio.github.io/rstudioaddins/> .
+>
+> Duncan Murdoch
+>
+> On 2026-04-30 1:44 p.m., Tomek Gieorgijewski wrote:
+> > Hi Manfred!
+> >
+> > As I can see that you already maintain the habit to have one element per
+> > line,
+> > I would like to propose that you incorporate some editing scripts in your
+> > editor
+> > to help ease your frustration.
+> > I believe trying to change R parser will only add more of that feeling :)
+> > I don't know your editor but if it's vim, I can propose this edit to
+> .vimrc
+> > file:
+> > " ----
+> > function! ListCommas() range
+> >         if a:firstline < a:lastline
+> >             " Add commas at the end from first to second to last line if
+> > there's no comma yet
+> >             execute a:firstline . "," . (a:lastline - 1) . 's/[^,]$/&,/e'
+> >         endif
+> >          " Delete comma from last line (if matched)
+> >         execute a:lastline . 's/,$//e'
+> >     endfunction
+> >
+> >     vnoremap <leader>, :call ListCommas()<CR>
+> > " ---
+> >
+> > So, now if you rerun vim on your file you can swap, add, delete lines
+> from
+> > the list as you wish,
+> > and at the end you can highlight all elements lines of your list in
+> visual
+> > mode and execute ListCommas
+> > function on those lines with <leader>, shortcut.
+> >
+> > Of course only if you maintain your structure of element per line and
+> > trailing parenthesis at a seperate line.
+> >
+> > I'm sure VS Code, Emacs and some other editors have similar abilities to
+> > help you.
+> > Unfortunately I don't know of any such possibility in RStudio.
+> >
+> > regards,
+> > Tomek.
+> >
+> > pt., 24 kwi 2026 o 13:35 Manfred Kooistra <manfred.kooistra at gmail.com<mailto:manfred.kooistra at gmail.com>>
+> > napisa?(a):
+> >
+> >> I've always been irritated that R doesn't allow a comma after the last
+> >> element in a "list":
+> >>
+> >>> a <- c(
+> >> +     1,
+> >> +     2,
+> >> +     3
+> >> + )
+> >>> a
+> >> [1] 1 2 3
+> >>> b <- c(
+> >> +     1,
+> >> +     2,
+> >> +     3,
+> >> + )
+> >> Error in c(1, 2, 3, ) : argument 4 is empty
+> >>
+> >> This makes updating lists unnecessarily cumbersome, which I find I
+> >> frequently do, either when I test code and want to run it with lists of
+> >> varying elements or varying orders of elements or when I maintain lists
+> >> manually over time and have to add or delete elements from them.
+> >>
+> >> Is there a reason for this behavior in R and might it not be a good idea
+> >> to change it?
+> >> ______________________________________________
+> >> R-devel at r-project.org<mailto:R-devel at r-project.org> mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-devel at r-project.org<mailto:R-devel at r-project.org> mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>
+>
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-devel at r-project.org<mailto:R-devel at r-project.org> mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>
+
+        [[alternative HTML version deleted]]
+
+
+	[[alternative HTML version deleted]]
+
+
+From m@n|red@koo|@tr@ @end|ng |rom gm@||@com  Sat May  2 09:24:39 2026
+From: m@n|red@koo|@tr@ @end|ng |rom gm@||@com (Manfred Kooistra)
+Date: Sat, 2 May 2026 09:24:39 +0200
+Subject: [Rd] Feature request: Allow comma after last element in a list
+In-Reply-To: <01b301dcd99f$52d80af0$f88820d0$@gmail.com>
+References: <29231881-3A6B-449D-A31A-686FDBAF8782@gmail.com>
+ <CAFGdzpof=ywrQLcUi5YhX01FPTjy1Rf9+CUcriVS5JCfi2vtnw@mail.gmail.com>
+ <53eb96a2-45ea-4f20-8444-914aa9d8b2ec@gmail.com>
+ <CAFGdzprE-WOGr4ogUytysjAhXZxh0SVsLW1bLq+QBAB_uyYHSA@mail.gmail.com>
+ <e457a7ecd9de4aadbd91588fc0273680@alumni.ku.dk>
+ <004f01dcd968$bc8f0cf0$35ad26d0$@gmail.com>
+ <8260a5e4d7cb406eb7cb1b2bfa388b5b@alumni.ku.dk>
+ <016101dcd991$7baf8ce0$730ea6a0$@gmail.com>
+ <d9aa9d3f69494e05aae951903c8c4005@alumni.ku.dk>
+ <01b301dcd99f$52d80af0$f88820d0$@gmail.com>
+Message-ID: <034D07FA-AF8D-466A-86C4-2DB09896494B@gmail.com>
+
+Thank you all for the suggested workarounds and feedback!
+
+Here is one other easy and practicable workaround:
+
+c(
+1,
+2,
+3,
+recursive = FALSE)
+
+Is is not as brief as Gabor Grothendieck's suggested workaround of c(... , NULL), which is also visually easier to parse and logically more intuitive, and which I already have adopted.
+
+For my purposes, my feature request has thus been satisfyingly answered and my problem has been solved.
+
+
+* * *
+
+
+[ Below are some additional thoughts not relevant to the discussion. ]
+
+While following the discussion, I realized that in my mind,
+
+c(1,2,3)
+
+is not the same as
+
+c(
+1,
+2,
+3
+)
+
+even though they result in the same object. As I use them, the first is a "list", the second is a "table", if with only one column.
+
+When I manually maintain tabular data, I commonly use
+
+read.table(textConnection("
+1 A 12.3
+2 B 45.6
+"), header = ..., colClasses = c(...))
+
+which easily allows me to add, delete, or rearrange rows. Here, the end of line serves to separate the individual data points, and no comma is necessary anywhere. This practice is what lead to my expectation to be able to use c() in the same way.
+
+Understanding how my expectation arose gave me the idea to use
+
+scan(textConnection("
+1
+2
+3
+"), what = numeric(), sep = "\n")
+
+ as another possible workaround for vectors in which elements need to be easily rearranged.
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat May  2 18:04:11 2026
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 2 May 2026 12:04:11 -0400
+Subject: [Rd] Feature request: Allow comma after last element in a list
+In-Reply-To: <034D07FA-AF8D-466A-86C4-2DB09896494B@gmail.com>
+References: <29231881-3A6B-449D-A31A-686FDBAF8782@gmail.com>
+ <CAFGdzpof=ywrQLcUi5YhX01FPTjy1Rf9+CUcriVS5JCfi2vtnw@mail.gmail.com>
+ <53eb96a2-45ea-4f20-8444-914aa9d8b2ec@gmail.com>
+ <CAFGdzprE-WOGr4ogUytysjAhXZxh0SVsLW1bLq+QBAB_uyYHSA@mail.gmail.com>
+ <e457a7ecd9de4aadbd91588fc0273680@alumni.ku.dk>
+ <004f01dcd968$bc8f0cf0$35ad26d0$@gmail.com>
+ <8260a5e4d7cb406eb7cb1b2bfa388b5b@alumni.ku.dk>
+ <016101dcd991$7baf8ce0$730ea6a0$@gmail.com>
+ <d9aa9d3f69494e05aae951903c8c4005@alumni.ku.dk>
+ <01b301dcd99f$52d80af0$f88820d0$@gmail.com>
+ <034D07FA-AF8D-466A-86C4-2DB09896494B@gmail.com>
+Message-ID: <004301dcda4d$50f6c9c0$f2e45d40$@gmail.com>
+
+I am glad this discussion exposed some ideas and alternatives.
+
+I did scratch my head a bit at this latest solution as it made me question
+what the original need was and how it was fulfilled, up to a point.
+
+The solution offered was to end the "list" of comma separated items not with
+a comma, but a comma followed by an optional argument like:
+
+c(
+1,
+2,
+3,
+recursive = FALSE)
+
+I looked it up and indeed the c() function has two optional arguments
+available. (The other is use.names).
+
+And this not only works with the added argument at the end, but anywhere, if
+used only once as in:
+
+c(
+1,
+recursive = FALSE,
+2,
+3)
+
+But this poses a problem in that sometimes you want it set to TRUE. After
+multiple edits where additional data is added or changed, you could end up
+with something like this that fails:
+
+  c(
+    1,
+    recursive = FALSE,
+    2,
+    alpha,
+    recursive = TRUE)
+  
+As I see it, it is not a clean solution. Having every line ending with a
+comma allows all kinds of manipulations such as cut/paste to re-arrange
+lines of code and adding a line at the end is clean if you remember to leave
+a trailing comma.
+
+Not all functions that you might normally provide a list of such arguments
+come necessarily with an extra option like this, either.
+
+As I see it, there is convenience for some at the expense of others who want
+errors caught. If you compare the situation to something like an English
+sentence where you have commas and the penultimate one often is extended
+with "and" you may see that rules are not always made just for one kind of
+convenience.
+
+"I bought milk, eggs, and SPAM."
+
+Or is it
+
+"I bought milk, eggs and SPAM."
+
+But normally not
+
+"I bought milk, eggs, SPAM."
+
+Humans adjust and I suggest programmers can too. If the rule is no terminal
+comma, then when editing, just follow the rule. The use of comma followed by
+NULL at the end (or it seems anywhere, seems perfectly fine for those who
+need it.
+
+The problem may largely be one for people who use multiple languages to
+program in that have different ways. The reality is they tend to be
+different in many other ways too and need not all march in lockstep.
+
+
+
+-----Original Message-----
+From: R-devel <r-devel-bounces at r-project.org> On Behalf Of Manfred Kooistra
+Sent: Saturday, May 2, 2026 3:25 AM
+To: r-devel at r-project.org
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Thank you all for the suggested workarounds and feedback!
+
+Here is one other easy and practicable workaround:
+
+c(
+1,
+2,
+3,
+recursive = FALSE)
+
+Is is not as brief as Gabor Grothendieck's suggested workaround of c(... ,
+NULL), which is also visually easier to parse and logically more intuitive,
+and which I already have adopted.
+
+For my purposes, my feature request has thus been satisfyingly answered and
+my problem has been solved.
+
+
+* * *
+
+
+[ Below are some additional thoughts not relevant to the discussion. ]
+
+While following the discussion, I realized that in my mind,
+
+c(1,2,3)
+
+is not the same as
+
+c(
+1,
+2,
+3
+)
+
+even though they result in the same object. As I use them, the first is a
+"list", the second is a "table", if with only one column.
+
+When I manually maintain tabular data, I commonly use
+
+read.table(textConnection("
+1 A 12.3
+2 B 45.6
+"), header = ..., colClasses = c(...))
+
+which easily allows me to add, delete, or rearrange rows. Here, the end of
+line serves to separate the individual data points, and no comma is
+necessary anywhere. This practice is what lead to my expectation to be able
+to use c() in the same way.
+
+Understanding how my expectation arose gave me the idea to use
+
+scan(textConnection("
+1
+2
+3
+"), what = numeric(), sep = "\n")
+
+ as another possible workaround for vectors in which elements need to be
+easily rearranged.
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
