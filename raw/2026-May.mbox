@@ -4913,3 +4913,198 @@ R-devel at r-project.org mailing list
 https://stat.ethz.ch/mailman/listinfo/r-devel
 
 
+From AHL27 @end|ng |rom p|tt@edu  Sun May  3 03:45:21 2026
+From: AHL27 @end|ng |rom p|tt@edu (Lakshman, Aidan H)
+Date: Sun, 3 May 2026 01:45:21 +0000
+Subject: [Rd] Feature request: Allow comma after last element in a list
+In-Reply-To: <004301dcda4d$50f6c9c0$f2e45d40$@gmail.com>
+References: <29231881-3A6B-449D-A31A-686FDBAF8782@gmail.com>
+ <CAFGdzpof=ywrQLcUi5YhX01FPTjy1Rf9+CUcriVS5JCfi2vtnw@mail.gmail.com>
+ <53eb96a2-45ea-4f20-8444-914aa9d8b2ec@gmail.com>
+ <CAFGdzprE-WOGr4ogUytysjAhXZxh0SVsLW1bLq+QBAB_uyYHSA@mail.gmail.com>
+ <e457a7ecd9de4aadbd91588fc0273680@alumni.ku.dk>
+ <004f01dcd968$bc8f0cf0$35ad26d0$@gmail.com>
+ <8260a5e4d7cb406eb7cb1b2bfa388b5b@alumni.ku.dk>
+ <016101dcd991$7baf8ce0$730ea6a0$@gmail.com>
+ <d9aa9d3f69494e05aae951903c8c4005@alumni.ku.dk>
+ <01b301dcd99f$52d80af0$f88820d0$@gmail.com>
+ <034D07FA-AF8D-466A-86C4-2DB09896494B@gmail.com>
+ <004301dcda4d$50f6c9c0$f2e45d40$@gmail.com>
+Message-ID: <BL0PR04MB4706E86CA8FCBD5113BA7050D9302@BL0PR04MB4706.namprd04.prod.outlook.com>
+
+I don?t have anything meaningful to contribute to this specific debate on trailing commas vs not (though I personally would advocate against trailing comma functionality).
+
+Just wanted to call out that this thread is a very good example of how seemingly small things can be much more challenging to implement in practice than they may initially seem, and those challenges only get larger as the user base grows. At the scale of R, things that seem like small/unimportant edge cases to individual users are going to arise somewhere? (see Hyrum's Law).
+
+If you don't care about those edge cases, the suggestions here are good ways to get the rough functionality you're looking for. When you get into wanting to make a change for all users and in all packages, then it takes more thought. That can be frustrating, but that's how you make software that users trust and depend on for a long time.
+
+Thanks to all the R contributors for insightful thoughts here, very instructive discussion :)
+
+-Aidan
+
+
+-----------------------
+
+Aidan Lakshman, PhD (he/him)<https://www.ahl27.com/>
+
+Software Engineer, Google
+
+ahl27 at pitt.edu
+
+(724) 612-9940
+
+________________________________
+From: R-devel <r-devel-bounces at r-project.org> on behalf of avi.e.gross at gmail.com <avi.e.gross at gmail.com>
+Sent: Saturday, May 2, 2026 12:04:11 PM
+To: 'Manfred Kooistra' <manfred.kooistra at gmail.com>; r-devel at r-project.org <r-devel at r-project.org>
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+I am glad this discussion exposed some ideas and alternatives.
+
+I did scratch my head a bit at this latest solution as it made me question
+what the original need was and how it was fulfilled, up to a point.
+
+The solution offered was to end the "list" of comma separated items not with
+a comma, but a comma followed by an optional argument like:
+
+c(
+1,
+2,
+3,
+recursive = FALSE)
+
+I looked it up and indeed the c() function has two optional arguments
+available. (The other is use.names).
+
+And this not only works with the added argument at the end, but anywhere, if
+used only once as in:
+
+c(
+1,
+recursive = FALSE,
+2,
+3)
+
+But this poses a problem in that sometimes you want it set to TRUE. After
+multiple edits where additional data is added or changed, you could end up
+with something like this that fails:
+
+  c(
+    1,
+    recursive = FALSE,
+    2,
+    alpha,
+    recursive = TRUE)
+
+As I see it, it is not a clean solution. Having every line ending with a
+comma allows all kinds of manipulations such as cut/paste to re-arrange
+lines of code and adding a line at the end is clean if you remember to leave
+a trailing comma.
+
+Not all functions that you might normally provide a list of such arguments
+come necessarily with an extra option like this, either.
+
+As I see it, there is convenience for some at the expense of others who want
+errors caught. If you compare the situation to something like an English
+sentence where you have commas and the penultimate one often is extended
+with "and" you may see that rules are not always made just for one kind of
+convenience.
+
+"I bought milk, eggs, and SPAM."
+
+Or is it
+
+"I bought milk, eggs and SPAM."
+
+But normally not
+
+"I bought milk, eggs, SPAM."
+
+Humans adjust and I suggest programmers can too. If the rule is no terminal
+comma, then when editing, just follow the rule. The use of comma followed by
+NULL at the end (or it seems anywhere, seems perfectly fine for those who
+need it.
+
+The problem may largely be one for people who use multiple languages to
+program in that have different ways. The reality is they tend to be
+different in many other ways too and need not all march in lockstep.
+
+
+
+-----Original Message-----
+From: R-devel <r-devel-bounces at r-project.org> On Behalf Of Manfred Kooistra
+Sent: Saturday, May 2, 2026 3:25 AM
+To: r-devel at r-project.org
+Subject: Re: [Rd] Feature request: Allow comma after last element in a list
+
+Thank you all for the suggested workarounds and feedback!
+
+Here is one other easy and practicable workaround:
+
+c(
+1,
+2,
+3,
+recursive = FALSE)
+
+Is is not as brief as Gabor Grothendieck's suggested workaround of c(... ,
+NULL), which is also visually easier to parse and logically more intuitive,
+and which I already have adopted.
+
+For my purposes, my feature request has thus been satisfyingly answered and
+my problem has been solved.
+
+
+* * *
+
+
+[ Below are some additional thoughts not relevant to the discussion. ]
+
+While following the discussion, I realized that in my mind,
+
+c(1,2,3)
+
+is not the same as
+
+c(
+1,
+2,
+3
+)
+
+even though they result in the same object. As I use them, the first is a
+"list", the second is a "table", if with only one column.
+
+When I manually maintain tabular data, I commonly use
+
+read.table(textConnection("
+1 A 12.3
+2 B 45.6
+"), header = ..., colClasses = c(...))
+
+which easily allows me to add, delete, or rearrange rows. Here, the end of
+line serves to separate the individual data points, and no comma is
+necessary anywhere. This practice is what lead to my expectation to be able
+to use c() in the same way.
+
+Understanding how my expectation arose gave me the idea to use
+
+scan(textConnection("
+1
+2
+3
+"), what = numeric(), sep = "\n")
+
+ as another possible workaround for vectors in which elements need to be
+easily rearranged.
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>
+
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>
+
+	[[alternative HTML version deleted]]
+
+
