@@ -5427,3 +5427,60 @@ Hope this helps,
 Rui Barradas
 
 
+From v|ncent@gou|et @end|ng |rom me@com  Fri May  8 16:05:07 2026
+From: v|ncent@gou|et @end|ng |rom me@com (Vincent Goulet)
+Date: Fri, 8 May 2026 10:05:07 -0400
+Subject: [Rd] quantile always prints names
+In-Reply-To: <af6dfd4a-a109-4086-bb29-b6d43e4e4be2@sapo.pt>
+References: <90263C6F-9CB6-4772-8C83-C8C024FA04B6@me.com>
+ <af6dfd4a-a109-4086-bb29-b6d43e4e4be2@sapo.pt>
+Message-ID: <2325EFA0-D0C4-4CFE-9BB7-D0333373A4FB@me.com>
+
+
+> Le 7 mai 2026 ? 11:38, Rui Barradas <ruipbarradas at sapo.pt> a ?crit :
+> 
+> ?s 16:16 de 07/05/2026, Vincent Goulet via R-devel escreveu:
+>> Hi all,
+>> ?quantile states:
+>>    names: logical; if true, the result has a names attribute.  Set to
+>>           ?FALSE? for speedup with many ?probs?.
+>> Unless I'm missing something entirely, the "set to FALSE for speedup" part appears to no longer apply. I could trace it back to the introduction of the auxiliairy function 'format_perc':
+>> commit cc003015a4aed96ed49b4f310209d3e75a48eeb3
+>> Author: maechler <maechler at 00db46b3-68df-0310-9c12-caf00c1e9a41>
+>> Date:   Wed Oct 15 15:55:42 2014 +0000
+>>     format_perc() factored out of quantile.default()  + an RFC on "export"
+>> I'm not sure if the intend is to modify the code to comply to the documentation, or the other way around. ;-) I'm willing to prepare a patch if informed.
+>> HTH
+>> v.
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> Hello,
+> 
+> I cannot reproduce this on R 4.6.0 / Windows 11, see the sample run.
+> 
+> set.seed(2026)
+> quantile(rnorm(10), names = FALSE)
+> # [1] -2.51608903 -0.94887840 -0.57021530  0.06397863  0.52058907
+
+First,  after closer inspection, the commit I quoted is not relevant. Please disregard.
+
+The more I think about it, the clearer it becomes that I read the documentation wrong, thinking "Set to ?FALSE? for speedup with many ?probs?" means "The argument 'names' is automatically set to FALSE for long 'probs' vectors". Which is not the case:
+
+> quantile(rnorm(1e6), probs = seq(0, 1, len = 101))
+          0%           1%           2%           3%           4%           5%           6% 
+-4.889538417 -2.326726002 -2.051119453 -1.880294024 -1.748065447 -1.642306376 -1.552670826 
+[...]
+
+The sentence would rather be an injunction: "If your vector 'probs' is long, use 'names = FALSE' to speedup the result". The documentation is then obviously right, although somewhat subject to interpretation. I'd propose a small adjustment along these lines:
+
+-    attribute.  Set to \code{FALSE} for speedup with many \code{probs}.}
++    attribute.  Setting to \code{FALSE} with many \code{probs} speeds up
++    computations.}
+
+Then I realize the text has been there for many years without visibly being an issue before. ;-)
+
+HTH/Sorry for the noise.
+
+v.
+
