@@ -6223,3 +6223,484 @@ Change your thoughts and you change the world.
 	[[alternative HTML version deleted]]
 
 
+From @oko| @end|ng |rom |n@@-tou|ou@e@|r  Tue May 12 09:39:37 2026
+From: @oko| @end|ng |rom |n@@-tou|ou@e@|r (Sokol Serguei)
+Date: Tue, 12 May 2026 09:39:37 +0200
+Subject: [Rd] sprintf of big int
+Message-ID: <bc9e9890-ed94-41f1-9659-d8038278c430@insa-toulouse.fr>
+
+Hi,
+
+I wanted to print a big integer value in hexadecimal format with sprintf() but could not (cf. here 
+after). As R supports integer values upto 2**53-1 (storing them in a double) is it possible to make 
+sprintf() to work on such big values?
+
+Best,
+Serguei.
+
+ > sprintf("%x", 2**31-1)
+[1] "7fffffff"
+ > sprintf("%x", 2**31)
+Error in sprintf("%x", 2^31) :
+ ? invalid format '%x'; use format %f, %e, %g or %a for numeric objects
+ > sessionInfo()
+R version 4.6.0 (2026-04-24)
+Platform: x86_64-pc-linux-gnu
+Running under: Linux Mint 21.1
+
+Matrix products: default
+BLAS/LAPACK: /opt/OpenBLAS/lib/libopenblas_nonthreaded_haswell-r0.3.27.so; LAPACK version 3.12.0
+
+locale:
+[1] C
+
+time zone: Europe/Paris
+tzcode source: system (glibc)
+
+attached base packages:
+[1] stats? ? ?graphics? grDevices utils? ? ?datasets? methods ?base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.6.0
+
+
+From cybergeorge2020 @end|ng |rom gm@||@com  Tue May 12 13:04:40 2026
+From: cybergeorge2020 @end|ng |rom gm@||@com (Tomek Gieorgijewski)
+Date: Tue, 12 May 2026 13:04:40 +0200
+Subject: [Rd] sprintf of big int
+In-Reply-To: <bc9e9890-ed94-41f1-9659-d8038278c430@insa-toulouse.fr>
+References: <bc9e9890-ed94-41f1-9659-d8038278c430@insa-toulouse.fr>
+Message-ID: <CAFGdzppzzPXJH_Eya=oU1tPGvep0vgpue=WtyQOcC2ueBnyoOA@mail.gmail.com>
+
+Hi!
+
+My first thought was that it may be possible as there is already coercion
+for numeric vectors to int if some conditions ("exactlyInteger")
+are met. Here is the code of Internal sprintf in that matter:
+ case 'x':
+ case 'X':
+          if(TYPEOF(_this) == REALSXP) {
+              // qdapTools manages to call this with NaN
+              Rboolean exactlyInteger = TRUE;
+              R_xlen_t i = 0;
+              R_xlen_t n = XLENGTH(_this);
+              for(i = 0; i < n; i++) {
+                  double r = REAL(_this)[i];
+                  if (R_IsNA(r)) continue; // NA_REAL is ok
+                  if (!R_FINITE(r) || (double)((int) r) != r) {
+                      exactlyInteger = FALSE;
+                      break;
+                  }
+               }
+              if(exactlyInteger)
+              _this = coerceVector(_this, INTSXP);
+               PROTECT(a[nthis] = _this);
+               nprotect++;
+           }
+         break;
+
+But the idea here is to coerce to INTSXP and then do formatting, so it
+won't store bigger integers than 31 bits.
+And without coercion we may need to wait for 64bit integers in R or change
+the further part of the code for
+REALSXP where we add separate part for "%x" format and check if it's pure
+integer stored in numeric:
+case REALSXP:
+                              {
+                                  double x = REAL(_this)[ns % thislen];
+                                  if (checkfmt(fmtp, "aAfeEgG"))
+                                      error(_("invalid format '%s'; %s"),
+fmtp,
+                                            _("use format %f, %e, %g or %a
+for numeric objects"));
+                                 if (R_FINITE(x)) {
+                                     _my_sprintf(x)
+                                  } else { // ....and so on
+I guess changing _my_sprintf macro would also be involved as it is based on
+snprintf and generally "%x" format does not allow double/floats.
+But that's only my first attempt at analyzing sprintf function. The file
+sprintf.c has ~500 lines of code and even more subtleties one must
+understand to change the function.
+
+So if you really need bigger ints to be shown as hex, I propose you
+implement your own R function to print such thing.
+Start with dividing by 16 iteratively and checking the modulo for proper
+hex character.
+
+T.
+
+wt., 12 maj 2026 o 09:38 Sokol Serguei via R-devel <r-devel at r-project.org>
+napisa?(a):
+
+> Hi,
+>
+> I wanted to print a big integer value in hexadecimal format with sprintf()
+> but could not (cf. here
+> after). As R supports integer values upto 2**53-1 (storing them in a
+> double) is it possible to make
+> sprintf() to work on such big values?
+>
+> Best,
+> Serguei.
+>
+>  > sprintf("%x", 2**31-1)
+> [1] "7fffffff"
+>  > sprintf("%x", 2**31)
+> Error in sprintf("%x", 2^31) :
+>    invalid format '%x'; use format %f, %e, %g or %a for numeric objects
+>  > sessionInfo()
+> R version 4.6.0 (2026-04-24)
+> Platform: x86_64-pc-linux-gnu
+> Running under: Linux Mint 21.1
+>
+> Matrix products: default
+> BLAS/LAPACK: /opt/OpenBLAS/lib/libopenblas_nonthreaded_haswell-r0.3.27.so;
+> LAPACK version 3.12.0
+>
+> locale:
+> [1] C
+>
+> time zone: Europe/Paris
+> tzcode source: system (glibc)
+>
+> attached base packages:
+> [1] stats     graphics  grDevices utils     datasets  methods  base
+>
+> loaded via a namespace (and not attached):
+> [1] compiler_4.6.0
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From hugh@p@r@on@ge @end|ng |rom gm@||@com  Tue May 12 14:49:06 2026
+From: hugh@p@r@on@ge @end|ng |rom gm@||@com (Hugh Parsonage)
+Date: Tue, 12 May 2026 22:49:06 +1000
+Subject: [Rd] sprintf of big int
+In-Reply-To: <CAFGdzppzzPXJH_Eya=oU1tPGvep0vgpue=WtyQOcC2ueBnyoOA@mail.gmail.com>
+References: <bc9e9890-ed94-41f1-9659-d8038278c430@insa-toulouse.fr>
+ <CAFGdzppzzPXJH_Eya=oU1tPGvep0vgpue=WtyQOcC2ueBnyoOA@mail.gmail.com>
+Message-ID: <CAJmOi+PE8V5Y=rjsuuRd=NrXNbAy9dehsmWyJNc6zdqSQyFK1w@mail.gmail.com>
+
+That section seems to invite undefined behaviour through (int)r != r  where
+the integral part of r could exceed the representable part. The impact is
+relatively small as the function ordinarily errors out under such
+conditions, and the documentation is clear that this function is a footgun,
+but UB is UB, and it seems like an uncharacteristic blemish rather than a
+feature.
+
+R core probably has existing and better inline functions machinery for
+this, but data.table has the following to test whether (int)x is safe,
+which I wrote:
+
+```c
+bool within_int32_repres(double x) {
+  // N.B. (int)2147483647.99 is not undefined behaviour since s 6.3.1.4 of
+the C
+  // standard states that behaviour is undefined only if the integral part
+of a
+  // finite value of standard floating type cannot be represented.
+  // Also, note that these are not the same values you would get from
+INT32_MAX and INT32_MIN
+  return R_FINITE(x) && x < 2147483648 && x > -2147483648;
+}
+```
+so
+ if (!R_FINITE(r) || (double)((int) r) != r) {
+would become
+ if (!within_int32_repres(r) || (double)((int) r) != r) {
+
+
+On Tue, 12 May 2026 at 21:05, Tomek Gieorgijewski <cybergeorge2020 at gmail.com>
+wrote:
+
+> Hi!
+>
+> My first thought was that it may be possible as there is already coercion
+> for numeric vectors to int if some conditions ("exactlyInteger")
+> are met. Here is the code of Internal sprintf in that matter:
+>  case 'x':
+>  case 'X':
+>           if(TYPEOF(_this) == REALSXP) {
+>               // qdapTools manages to call this with NaN
+>               Rboolean exactlyInteger = TRUE;
+>               R_xlen_t i = 0;
+>               R_xlen_t n = XLENGTH(_this);
+>               for(i = 0; i < n; i++) {
+>                   double r = REAL(_this)[i];
+>                   if (R_IsNA(r)) continue; // NA_REAL is ok
+>                   if (!R_FINITE(r) || (double)((int) r) != r) {
+>                       exactlyInteger = FALSE;
+>                       break;
+>                   }
+>                }
+>               if(exactlyInteger)
+>               _this = coerceVector(_this, INTSXP);
+>                PROTECT(a[nthis] = _this);
+>                nprotect++;
+>            }
+>          break;
+>
+> But the idea here is to coerce to INTSXP and then do formatting, so it
+> won't store bigger integers than 31 bits.
+> And without coercion we may need to wait for 64bit integers in R or change
+> the further part of the code for
+> REALSXP where we add separate part for "%x" format and check if it's pure
+> integer stored in numeric:
+> case REALSXP:
+>                               {
+>                                   double x = REAL(_this)[ns % thislen];
+>                                   if (checkfmt(fmtp, "aAfeEgG"))
+>                                       error(_("invalid format '%s'; %s"),
+> fmtp,
+>                                             _("use format %f, %e, %g or %a
+> for numeric objects"));
+>                                  if (R_FINITE(x)) {
+>                                      _my_sprintf(x)
+>                                   } else { // ....and so on
+> I guess changing _my_sprintf macro would also be involved as it is based on
+> snprintf and generally "%x" format does not allow double/floats.
+> But that's only my first attempt at analyzing sprintf function. The file
+> sprintf.c has ~500 lines of code and even more subtleties one must
+> understand to change the function.
+>
+> So if you really need bigger ints to be shown as hex, I propose you
+> implement your own R function to print such thing.
+> Start with dividing by 16 iteratively and checking the modulo for proper
+> hex character.
+>
+> T.
+>
+> wt., 12 maj 2026 o 09:38 Sokol Serguei via R-devel <r-devel at r-project.org>
+> napisa?(a):
+>
+> > Hi,
+> >
+> > I wanted to print a big integer value in hexadecimal format with
+> sprintf()
+> > but could not (cf. here
+> > after). As R supports integer values upto 2**53-1 (storing them in a
+> > double) is it possible to make
+> > sprintf() to work on such big values?
+> >
+> > Best,
+> > Serguei.
+> >
+> >  > sprintf("%x", 2**31-1)
+> > [1] "7fffffff"
+> >  > sprintf("%x", 2**31)
+> > Error in sprintf("%x", 2^31) :
+> >    invalid format '%x'; use format %f, %e, %g or %a for numeric objects
+> >  > sessionInfo()
+> > R version 4.6.0 (2026-04-24)
+> > Platform: x86_64-pc-linux-gnu
+> > Running under: Linux Mint 21.1
+> >
+> > Matrix products: default
+> > BLAS/LAPACK: /opt/OpenBLAS/lib/
+> libopenblas_nonthreaded_haswell-r0.3.27.so;
+> > LAPACK version 3.12.0
+> >
+> > locale:
+> > [1] C
+> >
+> > time zone: Europe/Paris
+> > tzcode source: system (glibc)
+> >
+> > attached base packages:
+> > [1] stats     graphics  grDevices utils     datasets  methods  base
+> >
+> > loaded via a namespace (and not attached):
+> > [1] compiler_4.6.0
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue May 12 22:56:08 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 12 May 2026 23:56:08 +0300
+Subject: [Rd] Unicode substitutions for Rd2txt \[d]eqn{}
+Message-ID: <20260512235608.7e632d2c@Tarkus>
+
+Hello R-devel,
+
+The idea to use Unicode when rendering equations in plain text was
+mentioned a few times in the past, most recently by Sebastian Meyer in
+a Bugzilla comment. I would like to share the patch to use Unicode
+characters for approximately the same symbols that used to be
+substituted in the old HTML equation renderer.
+
+Why do it? Familiar Greek letters would be more consistent with HTML
+and PDF documentation.
+
+What are the downsides?
+
+ - Some symbols don't look as good on a terminal as they do in a
+   document when typeset with a mathematical font. Depending on the
+   font used in the terminal, \pi ? ? may look very similar to n. (For
+   example, the popular Terminus font uses exactly the same glyph for
+   '?', U+03C0 GREEK SMALL LETTER PI, and '?', U+043F CYRILLIC SMALL
+   LETTER PE.) \infty ? '?' and \dots ? '?' are too small and narrow
+   when rendered at the same width as normal monospace letters. '?',
+   '?'/'?', and '?'/'?' may look too unexpected compared to 'sqrt',
+   'sum', and 'prod'.
+
+ - There may be accessibility implications. Would a screen reader
+   struggle upon seeing a '?' instead of 'prod'? Hopefully the screen
+   reader users can enjoy the more accessible HTML documentation now,
+   and there is an option to disable the Unicode symbols.
+
+ - The patch is only mildly tested by reading ?stats::TDist and
+   ?pracma::expint and making sure that for (pkg in
+   rownames(installed.packages())) for (Rd in tools::Rd_db(pkg))
+   tools::Rd2txt(Rd) doesn't fail, with or without a UTF-8-capable
+   locale.
+
+Thanks to Sebastian Meyer for the initial comments!
+
+Index: src/library/tools/R/Rd2HTML.R
+===================================================================
+--- src/library/tools/R/Rd2HTML.R	(revision 90047)
++++ src/library/tools/R/Rd2HTML.R	(working copy)
+@@ -109,14 +109,13 @@
+     x <- fsub('"\\{"', '"{"', x)
+     ## http://htmlhelp.com/reference/html40/entities/symbols.html
+     if(inEqn) {
+-        x <- psub("\\\\(Alpha|Beta|Gamma|Delta|Epsilon|Zeta|Eta|Theta|Iota|Kappa|Lambda|Mu|Nu|Xi|Omicron|Pi|Rho|Sigma|Tau|Upsilon|Phi|Chi|Psi|Omega|alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|sum|prod)", "&\\1;", x)
+-        x <- psub("\\\\(dots|ldots)", "&hellip;", x)
+-        x <- psub("\\\\(left|right)", "", x)
+-        x <- psub("\\\\leq?", "&le;", x)
+-        x <- psub("\\\\geq?", "&ge;", x)
+-        x <- psub("\\\\neq?", "&ne;", x)
+-        x <- fsub("\\infty", "&infin;", x)
+-        x <- fsub("\\sqrt", "&radic;", x)
++        rx <- paste0("\\\\(",
++                     paste(math_replacements[,"name"], collapse = "|"),
++                     ")(?![a-zA-Z])")
++        m <- gregexec(rx, x, perl = TRUE)
++        ii <- lapply(regmatches(x, m),
++                     function(mm) if (length(mm)) match(mm[2,], math_replacements[,"name"]))
++        regmatches(x, gregexpr(rx, x, perl = TRUE)) <- lapply(ii, function(i) math_replacements[i, "html"])
+     }
+     x
+ }
+Index: src/library/tools/R/Rd2txt.R
+===================================================================
+--- src/library/tools/R/Rd2txt.R	(revision 90047)
++++ src/library/tools/R/Rd2txt.R	(working copy)
+@@ -55,6 +55,71 @@
+     }
+ })
+ 
++math_replacements <- matrix(c(
++    "Alpha",   "\u391",  "Alpha",   "&Alpha;",
++    "Beta",    "\u392",  "Beta",    "&Beta;",
++    "Gamma",   "\u393",  "Gamma",   "&Gamma;",
++    "Delta",   "\u394",  "Delta",   "&Delta;",
++    "Epsilon", "\u395",  "Epsilon", "&Epsilon;",
++    "Zeta",    "\u396",  "Zeta",    "&Zeta;",
++    "Eta",     "\u397",  "Eta",     "&Eta;",
++    "Theta",   "\u398",  "Theta",   "&Theta;",
++    "Iota",    "\u399",  "Iota",    "&Iota;",
++    "Kappa",   "\u39a",  "Kappa",   "&Kappa;",
++    "Lambda",  "\u39b",  "Lambda",  "&Lambda;",
++    "Mu",      "\u39c",  "Mu",      "&Mu;",
++    "Nu",      "\u39d",  "Nu",      "&Nu;",
++    "Xi",      "\u39e",  "Xi",      "&Xi;",
++    "Omicron", "\u39f",  "Omicron", "&Omicron;",
++    "Pi",      "\u3a0",  "Pi",      "&Pi;",
++    "Rho",     "\u3a1",  "Rho",     "&Rho;",
++    "Sigma",   "\u3a3",  "Sigma",   "&Sigma;",
++    "Tau",     "\u3a4",  "Tau",     "&Tau;",
++    "Upsilon", "\u3a5",  "Upsilon", "&Upsilon;",
++    "Phi",     "\u3a6",  "Phi",     "&Phi;",
++    "Chi",     "\u3a7",  "Chi",     "&Chi;",
++    "Psi",     "\u3a8",  "Psi",     "&Psi;",
++    "Omega",   "\u3a9",  "Omega",   "&Omega;",
++    "alpha",   "\u3b1",  "alpha",   "&alpha;",
++    "beta",    "\u3b2",  "beta",    "&beta;",
++    "gamma",   "\u3b3",  "gamma",   "&gamma;",
++    "delta",   "\u3b4",  "delta",   "&delta;",
++    "epsilon", "\u3b5",  "epsilon", "&epsilon;",
++    "zeta",    "\u3b6",  "zeta",    "&zeta;",
++    "eta",     "\u3b7",  "eta",     "&eta;",
++    "theta",   "\u3b8",  "theta",   "&theta;",
++    "iota",    "\u3b9",  "iota",    "&iota;",
++    "kappa",   "\u3ba",  "kappa",   "&kappa;",
++    "lambda",  "\u3bb",  "lambda",  "&lambda;",
++    "mu",      "\u3bc",  "mu",      "&mu;",
++    "nu",      "\u3bd",  "nu",      "&nu;",
++    "xi",      "\u3be",  "xi",      "&xi;",
++    "omicron", "\u3bf",  "omicron", "&omicron;",
++    "pi",      "\u3c0",  "pi",      "&pi;",
++    "rho",     "\u3c1",  "rho",     "&rho;",
++    "sigma",   "\u3c3",  "sigma",   "&sigma;",
++    "tau",     "\u3c4",  "tau",     "&tau;",
++    "upsilon", "\u3c5",  "upsilon", "&upsilon;",
++    "phi",     "\u3c6",  "phi",     "&phi;",
++    "chi",     "\u3c7",  "chi",     "&chi;",
++    "psi",     "\u3c8",  "psi",     "&psi;",
++    "omega",   "\u3c9",  "omega",   "&omega;",
++    "sum",     "\u2211", "sum",     "&sum;",
++    "prod",    "\u220f", "prod",    "&prod;",
++    "sqrt",    "\u221a", "sqrt",    "&radic;",
++    "dots",    "\u2026", "...",     "&hellip;",
++    "ldots",   "\u2026", "...",     "&hellip;",
++    "le",      "\u2264", "<=",      "&le;",
++    "leq",     "\u2264", "<=",      "&le;",
++    "ge",      "\u2265", ">=",      "&ge;",
++    "geq",     "\u2265", ">=",      "&ge;",
++    "ne",      "\u2260", "!=",      "&ne;",
++    "neq",     "\u2260", "!=",      "&ne;",
++    "infty",   "\u221e", "Inf",     "&infin;",
++    "left",    "",       "",        "",
++    "right",   "",       "",        ""
++), ncol = 4, byrow = TRUE, dimnames = list(NULL, c("name", "fancy", "ascii", "html")))
++
+ transformMethod <- function(i, blocks, Rdfile) {
+     editblock <- function(block, newtext)
+     	list(tagged(newtext,
+@@ -529,13 +594,14 @@
+     }
+ 
+     txt_eqn <- function(x) {
+-        x <- psub("\\\\(Alpha|Beta|Gamma|Delta|Epsilon|Zeta|Eta|Theta|Iota|Kappa|Lambda|Mu|Nu|Xi|Omicron|Pi|Rho|Sigma|Tau|Upsilon|Phi|Chi|Psi|Omega|alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|sum|prod|sqrt)", "\\1", x)
+-        x <- psub("\\\\(dots|ldots)", "...", x)
+-        x <- psub("\\\\(left|right)", "", x)
+-        x <- psub("\\\\leq?", "<=", x)
+-        x <- psub("\\\\geq?", ">=", x)
+-        x <- psub("\\\\neq?", "!=", x)
+-        x <- fsub("\\infty", "Inf", x)
++        replacement <- if (unicode_symbols) "fancy" else "ascii"
++        rx <- paste0("\\\\(",
++                     paste(math_replacements[,"name"], collapse = "|"),
++                     ")(?![a-zA-Z])")
++        m <- gregexec(rx, x, perl = TRUE)
++        ii <- lapply(regmatches(x, m),
++                     function(mm) if (length(mm)) match(mm[2,], math_replacements[,"name"]))
++        regmatches(x, gregexpr(rx, x, perl = TRUE)) <- lapply(ii, function(i) math_replacements[i, replacement])
+         ## FIXME: are these needed?
+         x <- psub("\\\\(bold|strong|emph|var)\\{([^}]*)\\}", "\\2", x)
+         x <- psub("\\\\(code|samp)\\{([^}]*)\\}", "'\\2'", x)
+
+-- 
+Best regards,
+Ivan
+
+
