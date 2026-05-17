@@ -7040,3 +7040,105 @@ Best
 > Ivan
 
 
+From chrch@ng523 @end|ng |rom gm@||@com  Sat May 16 23:24:19 2026
+From: chrch@ng523 @end|ng |rom gm@||@com (Chris Chang)
+Date: Sat, 16 May 2026 14:24:19 -0700
+Subject: [Rd] Feature request: Fisher's 2x2, binomial (,
+ others?) exact test efficiency improvements
+In-Reply-To: <CAE0b9YMOjgEr1NHOZQSUgebsyRJtx-3jrZxGNU5hjc9-mCed_w@mail.gmail.com>
+References: <CAE0b9YMOjgEr1NHOZQSUgebsyRJtx-3jrZxGNU5hjc9-mCed_w@mail.gmail.com>
+Message-ID: <CAE0b9YPsEXuVhSTx--ERpJusg5he=hnH_vnftC6xvgO931Ms-Q@mail.gmail.com>
+
+After looking at src/library/stats/R/fisher.test.R, I realize that my
+initial guess at why one-sided fisher.test() is slow was incorrect:
+phyper() is actually used for the one-sided p-value, it's the logdc
+calculation over the entire distribution support (which is unconditionally
+needed by the later mle(x) call) that's currently most responsible for the
+slowdown.  Sorry about the misdiagnosis.
+
+I will revise my feature request to "have an easily-discoverable fast
+p-value-only calculation" for those who aren't using the odds ratio or
+confidence interval.
+
+On Sat, May 16, 2026 at 10:54?AM Chris Chang <chrchang at alumni.caltech.edu>
+wrote:
+
+> Recent R versions come with accurate and efficient implementations of the
+> {d,p,q}hyper() and {d,p,q}binom() functions, which can even handle
+> probabilities smaller than DBL_MIN properly.
+>
+> However, the equivalent Fisher's 2x2 one-sided test is inefficient:
+>
+>
+> > install.packages("microbenchmark")
+> trying URL '
+> https://cran.rstudio.com/bin/macosx/big-sur-arm64/contrib/4.5/microbenchmark_1.5.0.tgz
+> '
+> Content type 'application/x-gzip' length 73120 bytes (71 KB)
+> ==================================================
+> downloaded 71 KB
+>
+>
+> The downloaded binary packages are in
+>
+> /var/folders/hw/lw9w89gj5jncz6_gcyh0kj1m0000gn/T//RtmprzZbVW/downloaded_packages
+> > microbenchmark::microbenchmark(phyper_result <- phyper(1000000, 4000000,
+> 7900000, 3000000))
+> Unit: microseconds
+>                                                   expr   min    lq    mean
+> median
+>  phyper_result <- phyper(1e+06, 4e+06, 7900000, 3e+06) 2.706 2.706 2.86508
+>  2.747
+>     uq    max neval
+>  2.747 13.161   100
+> Warning message:
+> In microbenchmark::microbenchmark(phyper_result <- phyper(1e+06,  :
+>   less accurate nanosecond times to avoid potential integer overflows
+>
+> > phyper_result
+> [1] 7.446407e-33
+> > microbenchmark::microbenchmark(fisher_result <-
+> fisher.test(matrix(c(1000000, 2000000, 3000000, 5900000), nr=2),
+> alternative="less"))
+> Unit: milliseconds
+>
+> expr
+>  fisher_result <- fisher.test(matrix(c(1e+06, 2e+06, 3e+06, 5900000),
+>  nr = 2), alternative = "less")
+>       min       lq     mean   median      uq      max neval
+>  803.6944 810.1379 831.0808 836.1659 845.203 889.8512   100
+> > fisher_result
+>
+> Fisher's Exact Test for Count Data
+>
+> data:  matrix(c(1e+06, 2e+06, 3e+06, 5900000), nr = 2)
+> p-value < 2.2e-16
+> alternative hypothesis: true odds ratio is less than 1
+> 95 percent confidence interval:
+>  0.0000000 0.9856339
+> sample estimates:
+> odds ratio
+>  0.9833322
+>
+> > fisher_result$p.value
+> [1] 7.446407e-33
+>
+>
+> (Yes, fisher.test() is returning some additional values, but that isn't
+> the bottleneck.)
+>
+> The one-sided binom.test() does not have this kind of performance problem,
+> but the two-sided test (which can be written in a manner similar to
+> qbinom(): instead of searching for minimal k satisfying pbinom(k, ...) >=
+> p, search for the innermost opposite-tail k satisfying dbinom(k) <=
+> dbinom(x)) does.
+>
+> I can submit a patch with efficient two-sided binomial and Fisher's 2x2
+> exact test implementations if there is interest.
+>
+> --Chris
+>
+
+	[[alternative HTML version deleted]]
+
+

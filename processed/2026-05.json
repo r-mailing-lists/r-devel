@@ -974,6 +974,24 @@
       "thread_id": "thread-85098b309de6",
       "thread_depth": 3,
       "month": "2026-05"
+    },
+    {
+      "id": "msg-f3357e635331",
+      "message_id": "<CAE0b9YPsEXuVhSTx--ERpJusg5he=hnH_vnftC6xvgO931Ms-Q@mail.gmail.com>",
+      "from_name": "Chris Chang",
+      "from_email_hash": "0ff59db69d4207b6c48a2ca5449aafa71892584d63ce5c04be4ea33debdd9f22",
+      "date": "2026-05-16T21:24:19Z",
+      "subject": "[Rd] Feature request: Fisher's 2x2, binomial (, others?) exact test efficiency improvements",
+      "subject_clean": "Feature request: Fisher's 2x2, binomial (, others?) exact test efficiency improvements",
+      "in_reply_to": "<CAE0b9YMOjgEr1NHOZQSUgebsyRJtx-3jrZxGNU5hjc9-mCed_w@mail.gmail.com>",
+      "references": [
+        "<CAE0b9YMOjgEr1NHOZQSUgebsyRJtx-3jrZxGNU5hjc9-mCed_w@mail.gmail.com>"
+      ],
+      "body_plain": "After looking at src/library/stats/R/fisher.test.R, I realize that my\ninitial guess at why one-sided fisher.test() is slow was incorrect:\nphyper() is actually used for the one-sided p-value, it's the logdc\ncalculation over the entire distribution support (which is unconditionally\nneeded by the later mle(x) call) that's currently most responsible for the\nslowdown.  Sorry about the misdiagnosis.\n\nI will revise my feature request to \"have an easily-discoverable fast\np-value-only calculation\" for those who aren't using the odds ratio or\nconfidence interval.\n\nOn Sat, May 16, 2026 at 10:54?AM Chris Chang <chrchang at alumni.caltech.edu>\nwrote:\n\n> Recent R versions come with accurate and efficient implementations of the\n> {d,p,q}hyper() and {d,p,q}binom() functions, which can even handle\n> probabilities smaller than DBL_MIN properly.\n>\n> However, the equivalent Fisher's 2x2 one-sided test is inefficient:\n>\n>\n> > install.packages(\"microbenchmark\")\n> trying URL '\n> https://cran.rstudio.com/bin/macosx/big-sur-arm64/contrib/4.5/microbenchmark_1.5.0.tgz\n> '\n> Content type 'application/x-gzip' length 73120 bytes (71 KB)\n> ==================================================\n> downloaded 71 KB\n>\n>\n> The downloaded binary packages are in\n>\n> /var/folders/hw/lw9w89gj5jncz6_gcyh0kj1m0000gn/T//RtmprzZbVW/downloaded_packages\n> > microbenchmark::microbenchmark(phyper_result <- phyper(1000000, 4000000,\n> 7900000, 3000000))\n> Unit: microseconds\n>                                                   expr   min    lq    mean\n> median\n>  phyper_result <- phyper(1e+06, 4e+06, 7900000, 3e+06) 2.706 2.706 2.86508\n>  2.747\n>     uq    max neval\n>  2.747 13.161   100\n> Warning message:\n> In microbenchmark::microbenchmark(phyper_result <- phyper(1e+06,  :\n>   less accurate nanosecond times to avoid potential integer overflows\n>\n> > phyper_result\n> [1] 7.446407e-33\n> > microbenchmark::microbenchmark(fisher_result <-\n> fisher.test(matrix(c(1000000, 2000000, 3000000, 5900000), nr=2),\n> alternative=\"less\"))\n> Unit: milliseconds\n>\n> expr\n>  fisher_result <- fisher.test(matrix(c(1e+06, 2e+06, 3e+06, 5900000),\n>  nr = 2), alternative = \"less\")\n>       min       lq     mean   median      uq      max neval\n>  803.6944 810.1379 831.0808 836.1659 845.203 889.8512   100\n> > fisher_result\n>\n> Fisher's Exact Test for Count Data\n>\n> data:  matrix(c(1e+06, 2e+06, 3e+06, 5900000), nr = 2)\n> p-value < 2.2e-16\n> alternative hypothesis: true odds ratio is less than 1\n> 95 percent confidence interval:\n>  0.0000000 0.9856339\n> sample estimates:\n> odds ratio\n>  0.9833322\n>\n> > fisher_result$p.value\n> [1] 7.446407e-33\n>\n>\n> (Yes, fisher.test() is returning some additional values, but that isn't\n> the bottleneck.)\n>\n> The one-sided binom.test() does not have this kind of performance problem,\n> but the two-sided test (which can be written in a manner similar to\n> qbinom(): instead of searching for minimal k satisfying pbinom(k, ...) >=\n> p, search for the innermost opposite-tail k satisfying dbinom(k) <=\n> dbinom(x)) does.\n>\n> I can submit a patch with efficient two-sided binomial and Fisher's 2x2\n> exact test implementations if there is interest.\n>\n> --Chris\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "After looking at src/library/stats/R/fisher.test.R, I realize that my\ninitial guess at why one-sided fisher.test() is slow was incorrect:\nphyper() is actually used for the one-sided p-value, it's the ",
+      "thread_id": "thread-f3357e635331",
+      "thread_depth": 0,
+      "month": "2026-05"
     }
   ],
   "threads": [
@@ -1106,6 +1124,17 @@
       "started": "2026-05-13T08:52:57Z",
       "last_reply": "2026-05-13T08:52:57Z",
       "root_message_id": "msg-6230e39957c4"
+    },
+    {
+      "id": "thread-f3357e635331",
+      "subject": "Feature request: Fisher's 2x2, binomial (, others?) exact test efficiency improvements",
+      "message_count": 1,
+      "participants": [
+        "Chris Chang"
+      ],
+      "started": "2026-05-16T21:24:19Z",
+      "last_reply": "2026-05-16T21:24:19Z",
+      "root_message_id": "msg-f3357e635331"
     }
   ]
 }
