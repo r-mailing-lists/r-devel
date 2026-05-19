@@ -1011,6 +1011,174 @@
       "thread_id": "thread-f3357e635331",
       "thread_depth": 1,
       "month": "2026-05"
+    },
+    {
+      "id": "msg-ab8d3d4f4dd6",
+      "message_id": "<27147.10080.656798.937865@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-05-18T14:51:12Z",
+      "subject": "[Rd] Feature request: Fisher's 2x2, binomial (, others?) exact test efficiency improvements",
+      "subject_clean": "Feature request: Fisher's 2x2, binomial (, others?) exact test efficiency improvements",
+      "in_reply_to": "<fake-VM-id.3863c50efe65e50ff51a165b6d40f3d6@talos.iv>",
+      "references": [
+        "<CAE0b9YMOjgEr1NHOZQSUgebsyRJtx-3jrZxGNU5hjc9-mCed_w@mail.gmail.com>",
+        "<CAE0b9YPsEXuVhSTx--ERpJusg5he=hnH_vnftC6xvgO931Ms-Q@mail.gmail.com>",
+        "<A1F18C2C-8306-4AA5-A438-474EFE6FEE23@collocations.de>"
+      ],
+      "body_plain": ">>>>> Stephanie Evert \n>>>>>     on Sun, 17 May 2026 09:03:52 +0200 writes:\n\n    >> I will revise my feature request to \"have an\n    >> easily-discoverable fast p-value-only calculation\" for\n    >> those who aren't using the odds ratio or confidence\n    >> interval.\n\n    > fisher.pval() in the \"corpora\" package.\n\n    > Best, Steph\n\nThank you Steph;\n\nHowever, I still agree with Chris  that it would be nice to have\nan easy way to basically just get the p-value, in a case where\nneither the ESTIMATE nor the confidence interval is needed.\n\nIndeed, I've not unfrequently seen R code snippets\n\n\t<some>.test(.........)$p.value\n\nalso in CRAN package R code  and I think  base R should provide\na simple documented way to get only the pvalue in cases where\nthe full test costs a factor of 1000 more,  even if is still\nonly microseconds in case of small data sets.\n\nMy svn commit to the  R sources, > 22 years ago (!)\n\n   r29551 | maechler | 2004-05-24 21:34 |\n\ndid introduce the optional argument 'conf.int = TRUE' for the\n2x2 case _and_ the  NEWS entry (of svn rev 29551) has been\n\n>   o   fisher.test(*, conf.int=FALSE) allows to skip the confidence interval computation\n\nHowever, Chris is (indirectly) correct -- he did not mention the\n'conf.int' option -- but in this very large case,  conf.int=FALSE\ndoes not help much, as indeed, the unconditionalized\n\n     logdc <- dhyper(support, m, n, k, log = TRUE)\n\nis already expensive, and also the computation of the sample OR (odds ratio)\n\n     ESTIMATE <- mle(x)\n\nis costly.  Indeed, I will add a new argument to  fisher.test()  to allow skipping\nthe expensive parts and get the p.value and *still* a valid result\nof class \"htest\".\nFor now, this will only be fast when as by default the null\nhypothesis is  `or = 1`\n\nMartin Maechler",
+      "body_snippet": ">>>>> Stephanie Evert \n>>>>>     on Sun, 17 May 2026 09:03:52 +0200 writes:\n\n    >> I will revise my feature request to \"have an\n    >> easily-discoverable fast p-value-only calculation\" for\n    >> th",
+      "thread_id": "thread-f3357e635331",
+      "thread_depth": 2,
+      "month": "2026-05"
+    },
+    {
+      "id": "msg-fee720e9ef2c",
+      "message_id": "<27147.15415.134682.773829@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-05-18T16:20:07Z",
+      "subject": "[Rd] Feature request: ..., binomial ... exact test efficiency improvements",
+      "subject_clean": "Feature request: ..., binomial ... exact test efficiency improvements",
+      "in_reply_to": "<fake-VM-id.6ab22638c6545451e30f6682c3fc89cc@talos.iv>",
+      "references": [
+        "<CAE0b9YMOjgEr1NHOZQSUgebsyRJtx-3jrZxGNU5hjc9-mCed_w@mail.gmail.com>",
+        "<CAE0b9YPsEXuVhSTx--ERpJusg5he=hnH_vnftC6xvgO931Ms-Q@mail.gmail.com>"
+      ],
+      "body_plain": ">>>>> Chris Chang \n>>>>>     on Sat, 16 May 2026 14:24:19 -0700 writes:\n\n[............................]\t  \n\n    >> The one-sided binom.test() does not have this kind of\n    >> performance problem, but the two-sided test (which can be\n    >> written in a manner similar to qbinom(): instead of\n    >> searching for minimal k satisfying pbinom(k, ...) >= p,\n    >> search for the innermost opposite-tail k satisfying\n    >> dbinom(k) <= dbinom(x)) does.\n    >> \n    >> I can submit a patch with efficient two-sided binomial\n    >> and Fisher's 2x2 exact test implementations if there is\n    >> interest.\n    >> \n    >> --Chris\n\nDear Chris  (and other readers),\n\nAbove, you also mention binom.test(),\nand indeed, when I choose numbers in the order of 1e8,\nI see binom.test() taking quite some time, e.g.,\n\n > system.time(btL <- binom.test(c(4e8, 1.01e8), p = 0.8, alternative = \"two.sided\"))\n   user  system elapsed \n  8.306   0.837   9.159 \n\nand here, the time spent is really during p-value computation itself,\neverything else in binom.test() being very fast, AFAICS.\n\nHere it would be useful if you provide a patch to speed the\np-value computation, still getting exact p-values, using\npbinom() only instead of  dbinom(<large_support), ..).\n\nTraditionally, we as R core and any applied statistician would\nsay that in such large N cases, simple normal approximations should be accurate enough,\nwhich it would be practically in any case, OTOH, it would still\nbe nice to get the exact probabilities / confidence intervals,\nwith a faster calulation.\n\nEventually using a new argument  `exact = N < 1e6`  (for some N)\nand using a normal (or better!) asymptotic approximation for\nexact = FALSE  may make sense here as well...\n\nThank you for raising the issue!\n\nWith best regards,\nMartin\n\n--\nMartin Maechler\nETH Zurich and  R Core team",
+      "body_snippet": ">>>>> Chris Chang \n>>>>>     on Sat, 16 May 2026 14:24:19 -0700 writes:\n\n[............................]\t  \n\n    >> The one-sided binom.test() does not have this kind of\n    >> performance problem, but",
+      "thread_id": "thread-f3357e635331",
+      "thread_depth": 1,
+      "month": "2026-05"
+    },
+    {
+      "id": "msg-92c16697ae65",
+      "message_id": "<27147.15808.627173.877796@hornik.net>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "38d7001af840d889a64ba1cdcb8ec8beb738b8daf9643622801f3acb78b6052a",
+      "date": "2026-05-18T16:26:40Z",
+      "subject": "[Rd] Feature request: ..., binomial ... exact test efficiency improvements",
+      "subject_clean": "Feature request: ..., binomial ... exact test efficiency improvements",
+      "in_reply_to": "<27147.15415.134682.773829@stat.math.ethz.ch>",
+      "references": [
+        "<CAE0b9YMOjgEr1NHOZQSUgebsyRJtx-3jrZxGNU5hjc9-mCed_w@mail.gmail.com>",
+        "<CAE0b9YPsEXuVhSTx--ERpJusg5he=hnH_vnftC6xvgO931Ms-Q@mail.gmail.com>",
+        "<27147.15415.134682.773829@stat.math.ethz.ch>"
+      ],
+      "body_plain": ">>>>> Martin Maechler writes:\n\nHmm.  binom.test is documented to perform an \"Exact Binomial Test\" ...?\n\n-k\n\n>>>>> Chris Chang \n>>>>>     on Sat, 16 May 2026 14:24:19 -0700 writes:\n\n> [............................]\t  \n\n>>> The one-sided binom.test() does not have this kind of\n>>> performance problem, but the two-sided test (which can be\n>>> written in a manner similar to qbinom(): instead of\n>>> searching for minimal k satisfying pbinom(k, ...) >= p,\n>>> search for the innermost opposite-tail k satisfying\n>>> dbinom(k) <= dbinom(x)) does.\n>>> \n>>> I can submit a patch with efficient two-sided binomial\n>>> and Fisher's 2x2 exact test implementations if there is\n>>> interest.\n>>> \n>>> --Chris\n\n> Dear Chris  (and other readers),\n\n> Above, you also mention binom.test(),\n> and indeed, when I choose numbers in the order of 1e8,\n> I see binom.test() taking quite some time, e.g.,\n\n>> system.time(btL <- binom.test(c(4e8, 1.01e8), p = 0.8, alternative = \"two.sided\"))\n>    user  system elapsed \n>   8.306   0.837   9.159 \n\n> and here, the time spent is really during p-value computation itself,\n> everything else in binom.test() being very fast, AFAICS.\n\n> Here it would be useful if you provide a patch to speed the\n> p-value computation, still getting exact p-values, using\n> pbinom() only instead of  dbinom(<large_support), ..).\n\n> Traditionally, we as R core and any applied statistician would\n> say that in such large N cases, simple normal approximations should be accurate enough,\n> which it would be practically in any case, OTOH, it would still\n> be nice to get the exact probabilities / confidence intervals,\n> with a faster calulation.\n\n> Eventually using a new argument  `exact = N < 1e6`  (for some N)\n> and using a normal (or better!) asymptotic approximation for\n> exact = FALSE  may make sense here as well...\n\n> Thank you for raising the issue!\n\n> With best regards,\n> Martin\n\n> --\n> Martin Maechler\n> ETH Zurich and  R Core team\n\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">>>>> Martin Maechler writes:\n\nHmm.  binom.test is documented to perform an \"Exact Binomial Test\" ...?\n\n-k\n\n>>>>> Chris Chang \n>>>>>     on Sat, 16 May 2026 14:24:19 -0700 writes:\n\n> [................",
+      "thread_id": "thread-f3357e635331",
+      "thread_depth": 2,
+      "month": "2026-05"
+    },
+    {
+      "id": "msg-a31b6957be28",
+      "message_id": "<57f448bb-7f17-49f0-88ea-d2e75e3724b9@gmail.com>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2026-05-18T18:36:07Z",
+      "subject": "[Rd] copy-before-ignore in R CMD build",
+      "subject_clean": "copy-before-ignore in R CMD build",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "As currently implemented, R CMD build copies everything in the package \ndirectory to a working directory, then unlinks those in .Rbuildignore \n(see this comment by Jim Hester from 2018).\n\nhttps://github.com/r-lib/rcmdcheck/issues/90#issuecomment-435938362\n\n   If one accidentally happens :-( to create a directory with many \ngigabytes of junk in it, say from reverse-dependency-checking a widely \nused package, then the presence of that directory (even if \n.Rbuildignore'd) will make R CMD build hang as it tries to copy the \ncontents of the directory ...\n\n   I realize it's considerably more complicated to skip .Rbuildignore'd \nfiles in the process of copying (I don't see offhand how to do it \nwithout some fairly fancy unix-`find`-like tool, as opposed to a \nstraight-up `file.copy(..., recursive = TRUE)`, but I wonder if there's \nany appetite for changing this behaviour?\n\n   cheers\n    Ben Bolker",
+      "body_snippet": "As currently implemented, R CMD build copies everything in the package \ndirectory to a working directory, then unlinks those in .Rbuildignore \n(see this comment by Jim Hester from 2018).\n\nhttps://gith",
+      "thread_id": "thread-a31b6957be28",
+      "thread_depth": 0,
+      "month": "2026-05"
+    },
+    {
+      "id": "msg-b61bff5695f8",
+      "message_id": "<CAJXgQP0+Yih1=+8ZATP3rMsVEt_QdO=bGOMjfXE8APaDt5=E3Q@mail.gmail.com>",
+      "from_name": "Kevin Ushey",
+      "from_email_hash": "c0bffc799bd95bf26caa6b1c9abdc3f8fdc556eac7399824869756688d2f0689",
+      "date": "2026-05-18T18:44:10Z",
+      "subject": "[Rd] copy-before-ignore in R CMD build",
+      "subject_clean": "copy-before-ignore in R CMD build",
+      "in_reply_to": "<57f448bb-7f17-49f0-88ea-d2e75e3724b9@gmail.com>",
+      "references": [
+        "<57f448bb-7f17-49f0-88ea-d2e75e3724b9@gmail.com>"
+      ],
+      "body_plain": "This was filed on the bug tracker some time ago here:\n\nhttps://bugs.r-project.org/show_bug.cgi?id=17549\n\nbut (at least at the time) it seemed there wasn't any appetite to\nimplement this on the R side.\n\nFor what it's worth, one way to handle this locally is to put your own\nversion of 'cp' on the PATH, and have that ignore certain files /\ndirectories when copying files. This is what I've been using\nsuccessfully for some time\n\nhttps://gist.github.com/kevinushey/2351194ba540627831fa2d58073c097a\n\nbut I agree it would be nice to have this, or something similar,\nimplemented in R itself.\n\nBest,\nKevin\n\nOn Mon, May 18, 2026 at 11:36?AM Ben Bolker <bbolker at gmail.com> wrote:\n>\n>   As currently implemented, R CMD build copies everything in the package\n> directory to a working directory, then unlinks those in .Rbuildignore\n> (see this comment by Jim Hester from 2018).\n>\n> https://github.com/r-lib/rcmdcheck/issues/90#issuecomment-435938362\n>\n>    If one accidentally happens :-( to create a directory with many\n> gigabytes of junk in it, say from reverse-dependency-checking a widely\n> used package, then the presence of that directory (even if\n> .Rbuildignore'd) will make R CMD build hang as it tries to copy the\n> contents of the directory ...\n>\n>    I realize it's considerably more complicated to skip .Rbuildignore'd\n> files in the process of copying (I don't see offhand how to do it\n> without some fairly fancy unix-`find`-like tool, as opposed to a\n> straight-up `file.copy(..., recursive = TRUE)`, but I wonder if there's\n> any appetite for changing this behaviour?\n>\n>    cheers\n>     Ben Bolker\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "This was filed on the bug tracker some time ago here:\n\nhttps://bugs.r-project.org/show_bug.cgi?id=17549\n\nbut (at least at the time) it seemed there wasn't any appetite to\nimplement this on the R side.",
+      "thread_id": "thread-a31b6957be28",
+      "thread_depth": 1,
+      "month": "2026-05"
+    },
+    {
+      "id": "msg-16d4d2b91ac3",
+      "message_id": "<DS4PR01MB94347FA4CCB4E92603BAF6CBF2032@DS4PR01MB9434.prod.exchangelabs.com>",
+      "from_name": "Ravi Varadhan",
+      "from_email_hash": "e29065f0ed01d24d142abdfc5db43f0fbc0a52a9d70244c81382700b6ce4b7f2",
+      "date": "2026-05-18T18:45:33Z",
+      "subject": "[Rd] Feature request: ..., binomial ... exact test efficiency improvements",
+      "subject_clean": "Feature request: ..., binomial ... exact test efficiency improvements",
+      "in_reply_to": "<27147.15415.134682.773829@stat.math.ethz.ch>",
+      "references": [
+        "<CAE0b9YMOjgEr1NHOZQSUgebsyRJtx-3jrZxGNU5hjc9-mCed_w@mail.gmail.com>",
+        "<CAE0b9YPsEXuVhSTx--ERpJusg5he=hnH_vnftC6xvgO931Ms-Q@mail.gmail.com>",
+        "<27147.15415.134682.773829@stat.math.ethz.ch>"
+      ],
+      "body_plain": "This code block in binom.test() is the bottleneck for large n:\n\n                           else if (x < m) {\n                               i <- seq.int(from = ceiling(m), to = n)\n                               y <- sum(dbinom(i, n, p) <= d * relErr)\n                               pbinom(x, n, p) +\n                                   pbinom(n - y, n, p, lower.tail = FALSE)\n                           } else {\n                               i <- seq.int(from = 0, to = floor(m))\n                               y <- sum(dbinom(i, n, p) <= d * relErr)\n                               pbinom(y - 1, n, p) +\n                                   pbinom(x - 1, n, p, lower.tail = FALSE)\n                           }\nInstead of summing over the entire support, we can:\n\n  1.\nFind the left and right boundary integers, yL and yR, where the PMF drops to or below the observed probability (using uniroot).\n  2.\nCompute the exact p-value as:  pbinom(yL, n, p) + (1 - pbinom(yR-1, n, p)).\n\nThis is much faster: O(log n) for the search versus O(n).\nHere is a function (I used n=1e05 as the threshold):\nbinom.test.fast <- function(x, n, p = 0.5, alternative = c(\"two.sided\", \"less\", \"greater\"), conf.level = 0.95) {\n  DNAME <- deparse1(substitute(x))\n  xr <- round(x)\n  if (any(is.na(x) | (x < 0)) || max(abs(x - xr)) > 1e-07)\n    stop(\"'x' must be nonnegative and integer\")\n  x <- xr\n  if (length(x) == 2L) {\n    n <- sum(x)\n    x <- x[1L]\n  }\n  else if (length(x) == 1L) {\n    nr <- round(n)\n    if ((length(n) > 1L) || is.na(n) || (n < 1) || abs(n - nr) > 1e-07 || (x > nr))\n      stop(\"'n' must be a positive integer >= 'x'\")\n    DNAME <- paste(DNAME, \"and\", deparse1(substitute(n)))\n    n <- nr\n  }\n  else stop(\"incorrect length of 'x'\")\n\n  if (!missing(p) && (length(p) > 1L || is.na(p) || p < 0 || p > 1))\n    stop(\"'p' must be a single number between 0 and 1\")\n  alternative <- match.arg(alternative)\n  if (!((length(conf.level) == 1L) && is.finite(conf.level) && (conf.level > 0) && (conf.level < 1)))\n    stop(\"'conf.level' must be a single number between 0 and 1\")\n\n  PVAL <- switch(alternative,\n                 less = pbinom(x, n, p),\n                 greater = pbinom(x - 1, n, p, lower.tail = FALSE),\n                 two.sided = {\n                   if (p == 0) (x == 0) else if (p == 1) (x == n) else {\n                     if (n > 1e5) {\n                       # Fast O(log n) path for large n\n                       log_dx <- dbinom(x, n, p, log = TRUE)\n                       if (!is.finite(log_dx)) {\n                         0\n                       } else {\n                         relErr <- 1 + 1e-07\n                         log_thresh <- log_dx + log(relErr)\n                         mode <- floor((n + 1) * p)\n\n                         # Left boundary: largest k <= mode with dbinom(k) <= dbinom(x)*relErr\n                         lo <- 0L; hi <- min(x, mode)\n                         while (lo < hi) {\n                           mid <- (lo + hi + 1L) %/% 2L\n                           if (dbinom(mid, n, p, log = TRUE) > log_thresh) hi <- mid - 1L\n                           else lo <- mid\n                         }\n                         yL <- lo\n\n                         # Right boundary: smallest k >= mode with dbinom(k) <= dbinom(x)*relErr\n                         lo <- max(x, mode); hi <- n\n                         while (lo < hi) {\n                           mid <- (lo + hi) %/% 2L\n                           if (dbinom(mid, n, p, log = TRUE) > log_thresh) lo <- mid + 1L\n                           else hi <- mid\n                         }\n                         yR <- lo\n\n                         pbinom(yL, n, p) + pbinom(yR, n, p, lower.tail = FALSE)\n                       }\n                     } else {\n            # Original vectorized path for small n\n                       relErr <- 1 + 1e-07\n                       d <- dbinom(x, n, p)\n                       m <- n * p\n                       if (x == m) 1 else if (x < m) {\n                         i <- seq.int(from = ceiling(m), to = n)\n                         y <- sum(dbinom(i, n, p) <= d * relErr)\n                         pbinom(x, n, p) + pbinom(n - y, n, p, lower.tail = FALSE)\n                       } else {\n                         i <- seq.int(from = 0, to = floor(m))\n                         y <- sum(dbinom(i, n, p) <= d * relErr)\n                         pbinom(y - 1, n, p) + pbinom(x - 1, n, p, lower.tail = FALSE)\n                       }\n                     }\n                   }\n                 }\n  )\n\n  p.L <- function(x, alpha) {\n    if (x == 0) 0 else qbeta(alpha, x, n - x + 1)\n  }\n  p.U <- function(x, alpha) {\n    if (x == n) 1 else qbeta(1 - alpha, x + 1, n - x)\n  }\n  CINT <- switch(alternative,\n                 less = c(0, p.U(x, 1 - conf.level)),\n                 greater = c(p.L(x, 1 - conf.level), 1),\n                 two.sided = {\n                   alpha <- (1 - conf.level)/2\n                   c(p.L(x, alpha), p.U(x, alpha))\n                 }\n  )\n  attr(CINT, \"conf.level\") <- conf.level\n  ESTIMATE <- x/n\n  names(x) <- \"number of successes\"\n  names(n) <- \"number of trials\"\n  names(ESTIMATE) <- names(p) <- \"probability of success\"\n  structure(list(statistic = x, parameter = n, p.value = PVAL,\n                 conf.int = CINT, estimate = ESTIMATE, null.value = p,\n                 alternative = alternative, method = \"Exact binomial test\",\n                 data.name = DNAME), class = \"htest\")\n}\nRavi\n\n________________________________\nFrom: R-devel <r-devel-bounces at r-project.org> on behalf of Martin Maechler <maechler at stat.math.ethz.ch>\nSent: Monday, May 18, 2026 12:20\nTo: Chris Chang <chrchang523 at gmail.com>\nCc: R Development List <R-devel at r-project.org>\nSubject: Re: [Rd] Feature request: ..., binomial ... exact test efficiency improvements\n\n\n      External Email - Use Caution\n\n\n\n>>>>> Chris Chang\n>>>>>     on Sat, 16 May 2026 14:24:19 -0700 writes:\n\n[............................]\n\n    >> The one-sided binom.test() does not have this kind of\n    >> performance problem, but the two-sided test (which can be\n    >> written in a manner similar to qbinom(): instead of\n    >> searching for minimal k satisfying pbinom(k, ...) >= p,\n    >> search for the innermost opposite-tail k satisfying\n    >> dbinom(k) <= dbinom(x)) does.\n    >>\n    >> I can submit a patch with efficient two-sided binomial\n    >> and Fisher's 2x2 exact test implementations if there is\n    >> interest.\n    >>\n    >> --Chris\n\nDear Chris  (and other readers),\n\nAbove, you also mention binom.test(),\nand indeed, when I choose numbers in the order of 1e8,\nI see binom.test() taking quite some time, e.g.,\n\n > system.time(btL <- binom.test(c(4e8, 1.01e8), p = 0.8, alternative = \"two.sided\"))\n   user  system elapsed\n  8.306   0.837   9.159\n\nand here, the time spent is really during p-value computation itself,\neverything else in binom.test() being very fast, AFAICS.\n\nHere it would be useful if you provide a patch to speed the\np-value computation, still getting exact p-values, using\npbinom() only instead of  dbinom(<large_support), ..).\n\nTraditionally, we as R core and any applied statistician would\nsay that in such large N cases, simple normal approximations should be accurate enough,\nwhich it would be practically in any case, OTOH, it would still\nbe nice to get the exact probabilities / confidence intervals,\nwith a faster calulation.\n\nEventually using a new argument  `exact = N < 1e6`  (for some N)\nand using a normal (or better!) asymptotic approximation for\nexact = FALSE  may make sense here as well...\n\nThank you for raising the issue!\n\nWith best regards,\nMartin\n\n--\nMartin Maechler\nETH Zurich and  R Core team\n\n______________________________________________\nR-devel at r-project.org mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "This code block in binom.test() is the bottleneck for large n:\n\n                           else if (x < m) {\n                               i <- seq.int(from = ceiling(m), to = n)\n                    ",
+      "thread_id": "thread-f3357e635331",
+      "thread_depth": 2,
+      "month": "2026-05"
+    },
+    {
+      "id": "msg-efcd0f62f5a1",
+      "message_id": "<CFD25B03-ADEC-4363-B56E-DDCA64D98A2E@hiddenelephants.co.uk>",
+      "from_name": "Tim Taylor",
+      "from_email_hash": "e3071ae8257bda4085d8999a9801b324cc930f4864ac0aec1c44601958781446",
+      "date": "2026-05-18T18:46:50Z",
+      "subject": "[Rd] copy-before-ignore in R CMD build",
+      "subject_clean": "copy-before-ignore in R CMD build",
+      "in_reply_to": "<57f448bb-7f17-49f0-88ea-d2e75e3724b9@gmail.com>",
+      "references": [
+        "<57f448bb-7f17-49f0-88ea-d2e75e3724b9@gmail.com>"
+      ],
+      "body_plain": "Hi Ben\n\nI think this was discussed recently on one of the lists (although that may be a figment of my imagination). Either way, for info, there is more related discussion over in https://bugs.r-project.org/show_bug.cgi?id=17549.\n\nTim\n\n> On 18 May 2026, at 19:36, Ben Bolker <bbolker at gmail.com> wrote:\n> \n> ? As currently implemented, R CMD build copies everything in the package directory to a working directory, then unlinks those in .Rbuildignore (see this comment by Jim Hester from 2018).\n> \n> https://github.com/r-lib/rcmdcheck/issues/90#issuecomment-435938362\n> \n>  If one accidentally happens :-( to create a directory with many gigabytes of junk in it, say from reverse-dependency-checking a widely used package, then the presence of that directory (even if .Rbuildignore'd) will make R CMD build hang as it tries to copy the contents of the directory ...\n> \n>  I realize it's considerably more complicated to skip .Rbuildignore'd files in the process of copying (I don't see offhand how to do it without some fairly fancy unix-`find`-like tool, as opposed to a straight-up `file.copy(..., recursive = TRUE)`, but I wonder if there's any appetite for changing this behaviour?\n> \n>  cheers\n>   Ben Bolker\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi Ben\n\nI think this was discussed recently on one of the lists (although that may be a figment of my imagination). Either way, for info, there is more related discussion over in https://bugs.r-projec",
+      "thread_id": "thread-a31b6957be28",
+      "thread_depth": 1,
+      "month": "2026-05"
+    },
+    {
+      "id": "msg-615d9b20153d",
+      "message_id": "<91A7E638-6968-4278-8983-865011AC43D1@hiddenelephants.co.uk>",
+      "from_name": "Tim Taylor",
+      "from_email_hash": "e3071ae8257bda4085d8999a9801b324cc930f4864ac0aec1c44601958781446",
+      "date": "2026-05-18T18:53:33Z",
+      "subject": "[Rd] copy-before-ignore in R CMD build",
+      "subject_clean": "copy-before-ignore in R CMD build",
+      "in_reply_to": "<CFD25B03-ADEC-4363-B56E-DDCA64D98A2E@hiddenelephants.co.uk>",
+      "references": [
+        "<CFD25B03-ADEC-4363-B56E-DDCA64D98A2E@hiddenelephants.co.uk>"
+      ],
+      "body_plain": "For completeness here?s the thread I recalled\n\nhttps://stat.ethz.ch/pipermail/r-devel/2024-August/083610.html\n\nTim\n\n> On 18 May 2026, at 19:46, Tim Taylor <tim.taylor at hiddenelephants.co.uk> wrote:\n> \n> ?\n> Hi Ben\n> \n> I think this was discussed recently on one of the lists (although that may be a figment of my imagination). Either way, for info, there is more related discussion over in https://bugs.r-project.org/show_bug.cgi?id=17549.\n> \n> Tim\n> \n>>> On 18 May 2026, at 19:36, Ben Bolker <bbolker at gmail.com> wrote:\n>>> \n>> ? As currently implemented, R CMD build copies everything in the package directory to a working directory, then unlinks those in .Rbuildignore (see this comment by Jim Hester from 2018).\n>> \n>> https://github.com/r-lib/rcmdcheck/issues/90#issuecomment-435938362\n>> \n>>  If one accidentally happens :-( to create a directory with many gigabytes of junk in it, say from reverse-dependency-checking a widely used package, then the presence of that directory (even if .Rbuildignore'd) will make R CMD build hang as it tries to copy the contents of the directory ...\n>> \n>>  I realize it's considerably more complicated to skip .Rbuildignore'd files in the process of copying (I don't see offhand how to do it without some fairly fancy unix-`find`-like tool, as opposed to a straight-up `file.copy(..., recursive = TRUE)`, but I wonder if there's any appetite for changing this behaviour?\n>> \n>>  cheers\n>>   Ben Bolker\n>> \n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "For completeness here?s the thread I recalled\n\nhttps://stat.ethz.ch/pipermail/r-devel/2024-August/083610.html\n\nTim\n\n> On 18 May 2026, at 19:46, Tim Taylor <tim.taylor at hiddenelephants.co.uk> wrote:\n",
+      "thread_id": "thread-a31b6957be28",
+      "thread_depth": 2,
+      "month": "2026-05"
+    },
+    {
+      "id": "msg-110842726d47",
+      "message_id": "<CAFDcVCS7A-q00Rbgn926ZZbkMPtD7jayz2HUPD9cOUSfhXNyWw@mail.gmail.com>",
+      "from_name": "Henrik Bengtsson",
+      "from_email_hash": "4861a2b833132ccee758def2caa0ac4dc6bbdf1b2c4e2f28a1b1b8a43ceeb278",
+      "date": "2026-05-18T19:35:51Z",
+      "subject": "[Rd] copy-before-ignore in R CMD build",
+      "subject_clean": "copy-before-ignore in R CMD build",
+      "in_reply_to": "<91A7E638-6968-4278-8983-865011AC43D1@hiddenelephants.co.uk>",
+      "references": [
+        "<CFD25B03-ADEC-4363-B56E-DDCA64D98A2E@hiddenelephants.co.uk>",
+        "<91A7E638-6968-4278-8983-865011AC43D1@hiddenelephants.co.uk>"
+      ],
+      "body_plain": "There's also a more-recent, related discussion titled 'Bug 18186:\nignore broken symlinks in R CMD build #49' at\n<https://github.com/r-devel/r-dev-day/issues/49>, with useful\ncomments.\n\n/Henrik\n\nOn Mon, May 18, 2026 at 12:06?PM Tim Taylor\n<tim.taylor at hiddenelephants.co.uk> wrote:\n>\n> For completeness here?s the thread I recalled\n>\n> https://stat.ethz.ch/pipermail/r-devel/2024-August/083610.html\n>\n> Tim\n>\n> > On 18 May 2026, at 19:46, Tim Taylor <tim.taylor at hiddenelephants.co.uk> wrote:\n> >\n> > ?\n> > Hi Ben\n> >\n> > I think this was discussed recently on one of the lists (although that may be a figment of my imagination). Either way, for info, there is more related discussion over in https://bugs.r-project.org/show_bug.cgi?id=17549.\n> >\n> > Tim\n> >\n> >>> On 18 May 2026, at 19:36, Ben Bolker <bbolker at gmail.com> wrote:\n> >>>\n> >> ? As currently implemented, R CMD build copies everything in the package directory to a working directory, then unlinks those in .Rbuildignore (see this comment by Jim Hester from 2018).\n> >>\n> >> https://github.com/r-lib/rcmdcheck/issues/90#issuecomment-435938362\n> >>\n> >>  If one accidentally happens :-( to create a directory with many gigabytes of junk in it, say from reverse-dependency-checking a widely used package, then the presence of that directory (even if .Rbuildignore'd) will make R CMD build hang as it tries to copy the contents of the directory ...\n> >>\n> >>  I realize it's considerably more complicated to skip .Rbuildignore'd files in the process of copying (I don't see offhand how to do it without some fairly fancy unix-`find`-like tool, as opposed to a straight-up `file.copy(..., recursive = TRUE)`, but I wonder if there's any appetite for changing this behaviour?\n> >>\n> >>  cheers\n> >>   Ben Bolker\n> >>\n> >> ______________________________________________\n> >> R-devel at r-project.org mailing list\n> >> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "There's also a more-recent, related discussion titled 'Bug 18186:\nignore broken symlinks in R CMD build #49' at\n<https://github.com/r-devel/r-dev-day/issues/49>, with useful\ncomments.\n\n/Henrik\n\nOn Mon",
+      "thread_id": "thread-a31b6957be28",
+      "thread_depth": 3,
+      "month": "2026-05"
     }
   ],
   "threads": [
@@ -1147,14 +1315,31 @@
     {
       "id": "thread-f3357e635331",
       "subject": "Feature request: Fisher's 2x2, binomial (, others?) exact test efficiency improvements",
-      "message_count": 2,
+      "message_count": 6,
       "participants": [
         "Chris Chang",
+        "Kurt Hornik",
+        "Martin Maechler",
+        "Ravi Varadhan",
         "Stephanie Evert"
       ],
       "started": "2026-05-16T21:24:19Z",
-      "last_reply": "2026-05-17T07:03:52Z",
+      "last_reply": "2026-05-18T18:45:33Z",
       "root_message_id": "msg-f3357e635331"
+    },
+    {
+      "id": "thread-a31b6957be28",
+      "subject": "copy-before-ignore in R CMD build",
+      "message_count": 5,
+      "participants": [
+        "Ben Bolker",
+        "Henrik Bengtsson",
+        "Kevin Ushey",
+        "Tim Taylor"
+      ],
+      "started": "2026-05-18T18:36:07Z",
+      "last_reply": "2026-05-18T19:35:51Z",
+      "root_message_id": "msg-a31b6957be28"
     }
   ]
 }
