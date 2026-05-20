@@ -7800,3 +7800,179 @@ On Mon, May 18, 2026 at 12:06?PM Tim Taylor
 > https://stat.ethz.ch/mailman/listinfo/r-devel
 
 
+From chrch@ng523 @end|ng |rom gm@||@com  Tue May 19 08:11:56 2026
+From: chrch@ng523 @end|ng |rom gm@||@com (Chris Chang)
+Date: Mon, 18 May 2026 23:11:56 -0700
+Subject: [Rd] Feature request: ...,
+ binomial ... exact test efficiency improvements
+In-Reply-To: <27147.15415.134682.773829@stat.math.ethz.ch>
+References: <CAE0b9YMOjgEr1NHOZQSUgebsyRJtx-3jrZxGNU5hjc9-mCed_w@mail.gmail.com>
+ <CAE0b9YPsEXuVhSTx--ERpJusg5he=hnH_vnftC6xvgO931Ms-Q@mail.gmail.com>
+ <fake-VM-id.6ab22638c6545451e30f6682c3fc89cc@talos.iv>
+ <27147.15415.134682.773829@stat.math.ethz.ch>
+Message-ID: <CAE0b9YP9HfW5N-N3bCDAqBKes=f_08uYYFhgjGHb32m1Lm=gDQ@mail.gmail.com>
+
+Hi,
+
+In the binomial and Fisher?s 2x2 cases, the exact p-value calculation
+remains tractable for N well beyond 1e6.  Ravi's function shows roughly
+what I had in mind for binom.test, and the fisher.test two-sided p-value
+calculation (as well as other two-sided exact tests based on unimodal
+distributions with an efficient cdf+ccdf implementation) would work
+essentially the same way.
+
+(In the meantime, I'm drafting https://pypi.org/project/exact-tests/ ,
+which uses a "double-double" arithmetic library to mitigate the
+log-factorial catastrophic cancellation problem.  It's still a few weeks
+away from what I'd consider production quality, but it does already contain
+accurate and efficient implementations of binomial and Fisher 2x2 exact
+tests allowing N up to ~2^31 in general, and ~2^52 in the one-sided cases.
+That is where I will initially try to implement efficient alternatives to
+the current fisher.test odds-ratio and confidence-interval calculations.)
+
+--Chris
+
+On Mon, May 18, 2026 at 9:20?AM Martin Maechler <maechler at stat.math.ethz.ch>
+wrote:
+
+> >>>>> Chris Chang
+> >>>>>     on Sat, 16 May 2026 14:24:19 -0700 writes:
+>
+> [............................]
+>
+>     >> The one-sided binom.test() does not have this kind of
+>     >> performance problem, but the two-sided test (which can be
+>     >> written in a manner similar to qbinom(): instead of
+>     >> searching for minimal k satisfying pbinom(k, ...) >= p,
+>     >> search for the innermost opposite-tail k satisfying
+>     >> dbinom(k) <= dbinom(x)) does.
+>     >>
+>     >> I can submit a patch with efficient two-sided binomial
+>     >> and Fisher's 2x2 exact test implementations if there is
+>     >> interest.
+>     >>
+>     >> --Chris
+>
+> Dear Chris  (and other readers),
+>
+> Above, you also mention binom.test(),
+> and indeed, when I choose numbers in the order of 1e8,
+> I see binom.test() taking quite some time, e.g.,
+>
+>  > system.time(btL <- binom.test(c(4e8, 1.01e8), p = 0.8, alternative =
+> "two.sided"))
+>    user  system elapsed
+>   8.306   0.837   9.159
+>
+> and here, the time spent is really during p-value computation itself,
+> everything else in binom.test() being very fast, AFAICS.
+>
+> Here it would be useful if you provide a patch to speed the
+> p-value computation, still getting exact p-values, using
+> pbinom() only instead of  dbinom(<large_support), ..).
+>
+> Traditionally, we as R core and any applied statistician would
+> say that in such large N cases, simple normal approximations should be
+> accurate enough,
+> which it would be practically in any case, OTOH, it would still
+> be nice to get the exact probabilities / confidence intervals,
+> with a faster calulation.
+>
+> Eventually using a new argument  `exact = N < 1e6`  (for some N)
+> and using a normal (or better!) asymptotic approximation for
+> exact = FALSE  may make sense here as well...
+>
+> Thank you for raising the issue!
+>
+> With best regards,
+> Martin
+>
+> --
+> Martin Maechler
+> ETH Zurich and  R Core team
+>
+>
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Tue May 19 15:25:07 2026
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Tue, 19 May 2026 15:25:07 +0200
+Subject: [Rd] Feature request: Fisher's 2x2, binomial (,
+ others?) exact test efficiency improvements
+In-Reply-To: <27147.10080.656798.937865@stat.math.ethz.ch>
+References: <CAE0b9YMOjgEr1NHOZQSUgebsyRJtx-3jrZxGNU5hjc9-mCed_w@mail.gmail.com>
+ <CAE0b9YPsEXuVhSTx--ERpJusg5he=hnH_vnftC6xvgO931Ms-Q@mail.gmail.com>
+ <A1F18C2C-8306-4AA5-A438-474EFE6FEE23@collocations.de>
+ <27147.10080.656798.937865@stat.math.ethz.ch>
+Message-ID: <27148.25779.548940.759052@hornik.net>
+
+>>>>> Martin Maechler writes:
+
+>>>>> Stephanie Evert 
+>>>>>     on Sun, 17 May 2026 09:03:52 +0200 writes:
+
+>>> I will revise my feature request to "have an
+>>> easily-discoverable fast p-value-only calculation" for
+>>> those who aren't using the odds ratio or confidence
+>>> interval.
+
+>> fisher.pval() in the "corpora" package.
+
+>> Best, Steph
+
+> Thank you Steph;
+
+> However, I still agree with Chris  that it would be nice to have
+> an easy way to basically just get the p-value, in a case where
+> neither the ESTIMATE nor the confidence interval is needed.
+
+> Indeed, I've not unfrequently seen R code snippets
+
+> 	<some>.test(.........)$p.value
+
+> also in CRAN package R code  and I think  base R should provide
+> a simple documented way to get only the pvalue in cases where
+> the full test costs a factor of 1000 more,  even if is still
+> only microseconds in case of small data sets.
+
+> My svn commit to the  R sources, > 22 years ago (!)
+
+>    r29551 | maechler | 2004-05-24 21:34 |
+
+> did introduce the optional argument 'conf.int = TRUE' for the
+> 2x2 case _and_ the  NEWS entry (of svn rev 29551) has been
+
+>> o   fisher.test(*, conf.int=FALSE) allows to skip the confidence interval computation
+
+> However, Chris is (indirectly) correct -- he did not mention the
+> 'conf.int' option -- but in this very large case,  conf.int=FALSE
+> does not help much, as indeed, the unconditionalized
+
+>      logdc <- dhyper(support, m, n, k, log = TRUE)
+
+> is already expensive, and also the computation of the sample OR (odds ratio)
+
+>      ESTIMATE <- mle(x)
+
+> is costly.  Indeed, I will add a new argument to  fisher.test()  to allow skipping
+> the expensive parts and get the p.value and *still* a valid result
+> of class "htest".
+> For now, this will only be fast when as by default the null
+> hypothesis is  `or = 1`
+
+Perhaps we could simply take `or = NULL` or `or = NA` to say "do not
+even estimate the OR"?
+
+-k
+
+> Martin Maechler
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
