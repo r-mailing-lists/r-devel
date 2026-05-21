@@ -7976,3 +7976,227 @@ even estimate the OR"?
 > https://stat.ethz.ch/mailman/listinfo/r-devel
 
 
+From pd@|gd @end|ng |rom gm@||@com  Wed May 20 15:16:21 2026
+From: pd@|gd @end|ng |rom gm@||@com (Peter Dalgaard)
+Date: Wed, 20 May 2026 15:16:21 +0200
+Subject: [Rd] Feature request: Fisher's 2x2, binomial (,
+ others?) exact test efficiency improvements
+In-Reply-To: <27148.25779.548940.759052@hornik.net>
+References: <CAE0b9YMOjgEr1NHOZQSUgebsyRJtx-3jrZxGNU5hjc9-mCed_w@mail.gmail.com>
+ <CAE0b9YPsEXuVhSTx--ERpJusg5he=hnH_vnftC6xvgO931Ms-Q@mail.gmail.com>
+ <A1F18C2C-8306-4AA5-A438-474EFE6FEE23@collocations.de>
+ <27147.10080.656798.937865@stat.math.ethz.ch>
+ <27148.25779.548940.759052@hornik.net>
+Message-ID: <AC748760-1E6B-489B-AE0C-75FC20E8A9DC@gmail.com>
+
+
+
+> On 19 May 2026, at 15.25, Kurt Hornik <Kurt.Hornik at wu.ac.at> wrote:
+> 
+>>>>>> Martin Maechler writes:
+> 
+>>>>>> Stephanie Evert 
+>>>>>>    on Sun, 17 May 2026 09:03:52 +0200 writes:
+> 
+>>>> I will revise my feature request to "have an
+>>>> easily-discoverable fast p-value-only calculation" for
+>>>> those who aren't using the odds ratio or confidence
+>>>> interval.
+> 
+>>> fisher.pval() in the "corpora" package.
+> 
+>>> Best, Steph
+> 
+>> Thank you Steph;
+> 
+>> However, I still agree with Chris  that it would be nice to have
+>> an easy way to basically just get the p-value, in a case where
+>> neither the ESTIMATE nor the confidence interval is needed.
+> 
+>> Indeed, I've not unfrequently seen R code snippets
+> 
+>> <some>.test(.........)$p.value
+> 
+>> also in CRAN package R code  and I think  base R should provide
+>> a simple documented way to get only the pvalue in cases where
+>> the full test costs a factor of 1000 more,  even if is still
+>> only microseconds in case of small data sets.
+> 
+>> My svn commit to the  R sources, > 22 years ago (!)
+> 
+>>   r29551 | maechler | 2004-05-24 21:34 |
+> 
+>> did introduce the optional argument 'conf.int = TRUE' for the
+>> 2x2 case _and_ the  NEWS entry (of svn rev 29551) has been
+> 
+>>> o   fisher.test(*, conf.int=FALSE) allows to skip the confidence interval computation
+> 
+>> However, Chris is (indirectly) correct -- he did not mention the
+>> 'conf.int' option -- but in this very large case,  conf.int=FALSE
+>> does not help much, as indeed, the unconditionalized
+> 
+>>     logdc <- dhyper(support, m, n, k, log = TRUE)
+> 
+>> is already expensive, and also the computation of the sample OR (odds ratio)
+> 
+>>     ESTIMATE <- mle(x)
+> 
+>> is costly.  Indeed, I will add a new argument to  fisher.test()  to allow skipping
+>> the expensive parts and get the p.value and *still* a valid result
+>> of class "htest".
+>> For now, this will only be fast when as by default the null
+>> hypothesis is  `or = 1`
+> 
+> Perhaps we could simply take `or = NULL` or `or = NA` to say "do not
+> even estimate the OR"?
+> 
+
+Hm, no. A simple testonly=TRUE would be better. Double-dutying an argument just makes it trickier to explain. And you might actually want to get the p-value for other values of OR.
+
+-p
+
+
+> -k
+> 
+>> Martin Maechler
+> 
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk  Wed May 20 17:23:06 2026
+From: t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk (Tim Taylor)
+Date: Wed, 20 May 2026 16:23:06 +0100
+Subject: [Rd] Allow passing of a compression argument to saveRDS
+Message-ID: <127989e7-dc93-42f1-be00-5119093ce2a1@app.fastmail.com>
+
+When `saveRDS()` is called and you are not using a connection, the compression value remains at the default for the underlying connection (i.e. 6 for `gzfile`, 9 for `bzfile`, 6 for `xzfile` and 9 for `zstdfile`). It would be convenient to be able to pass these values directly to `saveRDS()` without setting up a connection directly. 
+
+Hugo Gruson has kindly pointed that there was an off-list discussion of this topic prior/during one of the previous R dev days (see https://github.com/r-devel/r-dev-day/issues/89). Here there was also a similar (but more involved due to touching C code) request for memCompress to accept different levels of compression as an argument.
+
+Raising here for discussion prior to submitting a 'wish' to bugzilla.
+
+Best
+
+Tim
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed May 20 22:25:26 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 20 May 2026 22:25:26 +0200
+Subject: [Rd] Feature request: Fisher's 2x2, binomial (,
+ others?) exact test efficiency improvements
+In-Reply-To: <fake-VM-id.eb1c159957aedec6322fe26eaec81f8b@talos.iv>
+References: <CAE0b9YMOjgEr1NHOZQSUgebsyRJtx-3jrZxGNU5hjc9-mCed_w@mail.gmail.com>
+ <CAE0b9YPsEXuVhSTx--ERpJusg5he=hnH_vnftC6xvgO931Ms-Q@mail.gmail.com>
+ <A1F18C2C-8306-4AA5-A438-474EFE6FEE23@collocations.de>
+ <27147.10080.656798.937865@stat.math.ethz.ch>
+ <27148.25779.548940.759052@hornik.net>
+ <AC748760-1E6B-489B-AE0C-75FC20E8A9DC@gmail.com>
+Message-ID: <27150.6326.121832.867034@stat.math.ethz.ch>
+
+>>>>> Peter Dalgaard 
+>>>>>     on Wed, 20 May 2026 15:16:21 +0200 writes:
+
+    >> On 19 May 2026, at 15.25, Kurt Hornik
+    >> <Kurt.Hornik at wu.ac.at> wrote:
+    >> 
+    >>>>>>> Martin Maechler writes:
+    >> 
+    >>>>>>> Stephanie Evert on Sun, 17 May 2026 09:03:52 +0200
+    >>>>>>> writes:
+    >> 
+    >>>>> I will revise my feature request to "have an
+    >>>>> easily-discoverable fast p-value-only calculation" for
+    >>>>> those who aren't using the odds ratio or confidence
+    >>>>> interval.
+    >> 
+    >>>> fisher.pval() in the "corpora" package.
+    >> 
+    >>>> Best, Steph
+    >> 
+    >>> Thank you Steph;
+    >> 
+    >>> However, I still agree with Chris that it would be nice
+    >>> to have an easy way to basically just get the p-value,
+    >>> in a case where neither the ESTIMATE nor the confidence
+    >>> interval is needed.
+    >> 
+    >>> Indeed, I've not unfrequently seen R code snippets
+    >> 
+    >>> <some>.test(.........)$p.value
+    >> 
+    >>> also in CRAN package R code and I think base R should
+    >>> provide a simple documented way to get only the pvalue
+    >>> in cases where the full test costs a factor of 1000
+    >>> more, even if is still only microseconds in case of
+    >>> small data sets.
+    >> 
+    >>> My svn commit to the R sources, > 22 years ago (!)
+    >> 
+    >>> r29551 | maechler | 2004-05-24 21:34 |
+    >> 
+    >>> did introduce the optional argument 'conf.int = TRUE'
+    >>> for the 2x2 case _and_ the NEWS entry (of svn rev 29551)
+    >>> has been
+    >> 
+    >>>> o fisher.test(*, conf.int=FALSE) allows to skip the
+    >>>> confidence interval computation
+    >> 
+    >>> However, Chris is (indirectly) correct -- he did not
+    >>> mention the 'conf.int' option -- but in this very large
+    >>> case, conf.int=FALSE does not help much, as indeed, the
+    >>> unconditionalized
+    >> 
+    >>> logdc <- dhyper(support, m, n, k, log = TRUE)
+    >> 
+    >>> is already expensive, and also the computation of the
+    >>> sample OR (odds ratio)
+    >> 
+    >>> ESTIMATE <- mle(x)
+    >> 
+    >>> is costly.  Indeed, I will add a new argument to
+    >>> fisher.test() to allow skipping the expensive parts and
+    >>> get the p.value and *still* a valid result of class
+    >>> "htest".  For now, this will only be fast when as by
+    >>> default the null hypothesis is `or = 1`
+    >> 
+    >> Perhaps we could simply take `or = NULL` or `or = NA` to
+    >> say "do not even estimate the OR"?
+    >> 
+
+    > Hm, no. A simple testonly=TRUE would be
+    > better. Double-dutying an argument just makes it trickier
+    > to explain. And you might actually want to get the p-value
+    > for other values of OR.
+
+Indeed,  the default   or = 1  specifies H_0, the null
+hypothesis; but one can use  or = 1.1  or 1.5 , 0.5
+
+In my not-yet-committed but finished version of  fisher.test(),
+I have used  pval.only (or pvalue.only),
+as we have several precedences of logical  <something>.only
+function arguments  (and "." there is *not* looking like S3
+_and_ is typed faster than say "_")
+
+-M
+
+    > -p
+
+    >> -k
+
+
