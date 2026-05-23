@@ -8200,3 +8200,249 @@ _and_ is typed faster than say "_")
     >> -k
 
 
+From @uh@rto_@nggono @end|ng |rom y@hoo@com  Fri May 22 12:38:07 2026
+From: @uh@rto_@nggono @end|ng |rom y@hoo@com (Suharto Anggono Suharto Anggono)
+Date: Fri, 22 May 2026 10:38:07 +0000 (UTC)
+Subject: [Rd] Define how diff methods in base R treat lag that is not a
+ whole number?
+References: <1634534416.4299891.1779446287482.ref@mail.yahoo.com>
+Message-ID: <1634534416.4299891.1779446287482@mail.yahoo.com>
+
+R documentation doesn't state what happens if the supplied 'lag' (or 'differences') to the default, "POSIXt", "Date", "difftime" or "ts" method of 'diff' is not a whole number.
+
+S-PLUS 3.4 help on 'diff' has such a statement:
+lag:
+Non-integer values are rounded to the nearest integer.
+differences:
+Non-integer values are rounded to the nearest integer.
+
+
+In R 4.6.0:
+
+> diff(1:10, 1.25)
+[1] 1 1 1 1 1 1 1 1 9
+Warning message:
+In r[i1] - `length<-`(r, max(length(r) - lag, 0L)) :
+  longer object length is not a multiple of shorter object length
+> diff(1:10, 1.75)
+[1] 1 1 1 1 1 1 1 1 9
+Warning message:
+In r[i1] - `length<-`(r, max(length(r) - lag, 0L)) :
+  longer object length is not a multiple of shorter object length
+
+9 in the result is because of recycling. It is because
+'i1', which is -seq_len(lag) , is -1 and r[i1] has length 9, and
+max(length(r) - lag, 0L) is between 8 and 9 and `length<-`(r, max(length(r) - lag, 0L)) has length 8.
+
+In R 4.5.3 (and previous R versions):
+
+> diff(1:10, 1.25)
+[1] 1 1 1 1 1 1 1 1 1
+> diff(1:10, 1.75)
+[1] 1 1 1 1 1 1 1 1 1
+
+
+"POSIXt", "Date" and "difftime" cases are similar.
+
+In R 4.6.0:
+
+> diff(.POSIXct(1:10), 1.25)
+Time differences in secs
+[1] 1 1 1 1 1 1 1 1 9
+Warning message:
+In unclass(time1) - unclass(time2) :
+  longer object length is not a multiple of shorter object length
+> diff(.POSIXct(1:10), 1.75)
+Time differences in secs
+[1] 1 1 1 1 1 1 1 1 9
+Warning message:
+In unclass(time1) - unclass(time2) :
+  longer object length is not a multiple of shorter object length
+> diff(.Date(1:10), 1.25)
+Time differences in days
+[1] 1 1 1 1 1 1 1 1 9
+Warning message:
+In unclass(time1) - unclass(time2) :
+  longer object length is not a multiple of shorter object length
+> diff(.Date(1:10), 1.75)
+Time differences in days
+[1] 1 1 1 1 1 1 1 1 9
+Warning message:
+In unclass(time1) - unclass(time2) :
+  longer object length is not a multiple of shorter object length
+> diff(.difftime(1:10, "secs"), 1.25)
+Time differences in secs
+[1] 1 1 1 1 1 1 1 1 9
+Warning message:
+In r[i1] - `length<-`(r, max(length(r) - lag, 0L)) :
+  longer object length is not a multiple of shorter object length
+> diff(.difftime(1:10, "secs"), 1.75)
+Time differences in secs
+[1] 1 1 1 1 1 1 1 1 9
+Warning message:
+In r[i1] - `length<-`(r, max(length(r) - lag, 0L)) :
+  longer object length is not a multiple of shorter object length
+
+In R 4.5.3:
+
+> diff(.POSIXct(1:10), 1.25)
+Time differences in secs
+[1] 1 1 1 1 1 1 1 1 1
+> diff(.POSIXct(1:10), 1.75)
+Time differences in secs
+[1] 1 1 1 1 1 1 1 1 1
+> diff(.Date(1:10), 1.25)
+Time differences in days
+[1] 1 1 1 1 1 1 1 1 1
+> diff(.Date(1:10), 1.75)
+Time differences in days
+[1] 1 1 1 1 1 1 1 1 1
+> diff(.difftime(1:10, "secs"), 1.25)
+Time differences in secs
+[1] 1 1 1 1 1 1 1 1 1
+> diff(.difftime(1:10, "secs"), 1.75)
+Time differences in secs
+[1] 1 1 1 1 1 1 1 1 1
+
+
+"ts" case is different.
+
+In R 4.5.3 and 4.6.0:
+
+> diff(ts(1:10), 1.25)
+Time Series:
+Start = 2
+End = 10
+Frequency = 1
+[1] 1 1 1 1 1 1 1 1 1
+Warning message:
+In lag.default(r, -lag) : 'k' is not an integer
+> diff(ts(1:10), 1.75)
+Time Series:
+Start = 3
+End = 10
+Frequency = 1
+[1] 2 2 2 2 2 2 2 2
+Warning message:
+In lag.default(r, -lag) : 'k' is not an integer
+
+In R 4.0.3 (or any versions up to 4.5.2):
+
+> diff(ts(1:10), 1.25)
+Error in .cbind.ts(list(e1, e2), c(deparse(substitute(e1))[1L], deparse(substitute(e2))[1L]),  :
+  not all series have the same phase
+> diff(ts(1:10), 1.75)
+Error in .cbind.ts(list(e1, e2), c(deparse(substitute(e1))[1L], deparse(substitute(e2))[1L]),  :
+  not all series have the same phase
+
+It is because, since R 4.5.3, in 'diff.ts', 'lag' is used to replace 'tsLag', and 'lag.default' rounds 'k'.
+
+The rounding of 'k' by 'lag.default' in R happens since the beginning, but is not documented. S-PLUS 3.4 help on 'lag' (https://sites.oxy.edu/lengyel/m150/Sueselbeck/helpfiles/lag.html) has a statement:
+Non-integer, values of 'k' are rounded to the nearest integer.
+
+
+How about defining how to treat the supplied 'lag' argument to the default, "POSIXt", "Date", "difftime" or "ts" method that is not a whole number? Maybe following 'lag.default' that rounds? Maybe having the same treatment in the default and "ts" method of 'diffinv'? Also, I think it is good to emit a warning for non-integer.
+
+
+Because of
+for (i in seq_len(differences))
+or
+for (i in 1L:differences)
+, 'differences' is implicitly truncated. It hasn't changed.
+
+
+The early return in 'diff.ts' doesn't consider rounding.
+
+In R 4.5.3 and 4.6.0:
+
+> diff(ts(1:10), 1.25, 7)
+Time Series:
+Start = 8
+End = 10
+Frequency = 1
+[1] 0 0 0
+Warning messages:
+1: In lag.default(r, -lag) : 'k' is not an integer
+2: In lag.default(r, -lag) : 'k' is not an integer
+3: In lag.default(r, -lag) : 'k' is not an integer
+4: In lag.default(r, -lag) : 'k' is not an integer
+5: In lag.default(r, -lag) : 'k' is not an integer
+6: In lag.default(r, -lag) : 'k' is not an integer
+7: In lag.default(r, -lag) : 'k' is not an integer
+> diff(ts(1:10), 1.25, 8)
+integer(0)
+> diff(ts(1:10), 1.75, 5)
+Error in ts(r, end = xtsp[2L], frequency = xtsp[3L]) :
+  'ts' object must have one or more observations
+In addition: Warning messages:
+1: In lag.default(r, -lag) : 'k' is not an integer
+2: In lag.default(r, -lag) : 'k' is not an integer
+3: In lag.default(r, -lag) : 'k' is not an integer
+4: In lag.default(r, -lag) : 'k' is not an integer
+5: In lag.default(r, -lag) : 'k' is not an integer
+6: In .cbind.ts(list(e1, e2), c(deparse(substitute(e1))[1L], deparse(substitute(e2))[1L]),  :
+  non-intersecting series
+
+
+From @|ex@nder@e@kud @end|ng |rom y@ndex@com  Fri May 22 10:26:46 2026
+From: @|ex@nder@e@kud @end|ng |rom y@ndex@com (AK)
+Date: Fri, 22 May 2026 10:26:46 +0200
+Subject: [Rd] bug in Shapiro Wilk Test
+Message-ID: <5a908645-189a-4178-b138-a5a73983d129@yandex.com>
+
+Good afternoon,
+
+This concerns the Shapiro-Wilk test for normal distribution in the field 
+of mathematical statistics.
+Did you take into account the latest research findings from the 2014 
+publication by Hanusz & Tarasi?ska (1) when calculating the coefficients 
+for the W-statistic? Both authors point out an error in the original 
+work by Shapiro and Wilk.
+
+If you have not yet corrected the coefficient calculation, this could 
+lead to incorrect decisions in the case of the so-called H0 hypothesis.
+
+I hope you find this helpful.
+
+Best regards
+Alexander Kud
+
+
+(1) Zofia Hanusz & Joanna Tarasi?ska (2014) Simulation Study on Improved 
+Shapiro?Wilk Tests for Normality, Communications in Statistics - 
+Simulation and Computation, 43:9, 2093-2105, DOI: 
+10.1080/03610918.2013.844835
+Link to this article: http://dx.doi.org/10.1080/03610918.2013.844835
+
+Abstract
+
+The article concerns tests for normality based on the Shapiro?Wilk W 
+statistic. The constants in the test statistic are recalculated as those 
+given in Shapiro and Wilk are incorrect. The empirical significance 
+levels and power of improved tests have been evaluated in simulation 
+study and compared to original ones. The improved tests were also 
+applied to the multivariate case. In this case, we consider two 
+implementations of the W statistic, the first one proposed by Srivastava 
+and Hui and the other by Hanusz and Tarasinska. Empirical size of tests 
+and their power have been compared to the Henze?Zirkler test.
+
+
+
+
+---------------------------------------------------
+Dr. Alexander Kud
+Scientist in Physical Chemistry
+
+alexander.e.kud at yandex.com
+---------------------------------------------------
+
+
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: OpenPGP_signature.asc
+Type: application/pgp-signature
+Size: 665 bytes
+Desc: OpenPGP digital signature
+URL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20260522/e06bda03/attachment.sig>
+
