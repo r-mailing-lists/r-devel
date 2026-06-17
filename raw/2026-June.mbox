@@ -930,3 +930,1384 @@ Best regards,
 Martin
 
 
+From @uh@rto_@nggono @end|ng |rom y@hoo@com  Tue Jun 16 09:48:39 2026
+From: @uh@rto_@nggono @end|ng |rom y@hoo@com (Suharto Anggono Suharto Anggono)
+Date: Tue, 16 Jun 2026 07:48:39 +0000 (UTC)
+Subject: [Rd] Revisit c.POSIXlt , [<-.POSIXlt , [[<-.POSIXlt ?
+In-Reply-To: <27184.35315.815637.330239@stat.math.ethz.ch>
+References: <1804279034.1260983.1775558086062.ref@mail.yahoo.com>
+ <1804279034.1260983.1775558086062@mail.yahoo.com>
+ <fake-VM-id.b7632a73456b0be045b83615cecc8e5d@talos.iv>
+ <27097.4108.50021.462875@stat.math.ethz.ch>
+ <512804963.196196.1776410028138@mail.yahoo.com>
+ <157052525.1657254.1781444233242@mail.yahoo.com>
+ <27184.9099.740826.906532@stat.math.ethz.ch>
+ <fake-VM-id.c966bf084ab9af595ab9e8da7843afa5@talos.iv>
+ <27184.35315.815637.330239@stat.math.ethz.ch>
+Message-ID: <812774018.2256720.1781596119081@mail.yahoo.com>
+
+ Isn't the NEWS item too condensed?
+
+On 'c.POSIXlt', the part from "Changes in R-devel" can be taken over:
+c(x) could become one second ahead of x in R 4.6.0
+
+On '[<-.POSIXlt' and '[[<-.POSIXlt', the following can be stated:
+x[i] <- val and x[[i]] <- val now also works as intended for POSIXlt object 'x' without "tzone" attribute.
+Or:
+For POSIXlt object 'x' without "tzone" attribute, x[i] <- val and x[[i]] <- val now works and converts 'val' as intended.
+Or:
+In R 4.6.0, if 'x' is a POSIXlt object without "tzone" attribute and 'val' is not a POSIXlt object without "tzone" attribute, x[i] <- val and x[[i]] <- val failed or didn't convert 'va' to current time zone.
+
+______
+On Tuesday, 16 June 2026 at 06:25:42 am GMT+7, Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+
+
+>>>>> Martin Maechler
+>>>>>? ? on Mon, 15 Jun 2026 18:08:43 +0200 writes:
+
+>>>>> Suharto Anggono Suharto Anggono
+>>>>>? ? on Sun, 14 Jun 2026 13:37:13 +0000 (UTC) writes:
+
+? ? >> Could at least a minimalistic fix be put for the upcoming R 4.6.1? For example:
+? ? >> ln '[<-.POSIXlt' and '[[<-.POSIXlt', change
+? ? >> ? ? else as.POSIXlt(as.POSIXct(value), tz = tz[1L]))
+? ? >> to
+? ? >> ? ? else as.POSIXlt(as.POSIXct(value), tz = if(is.null(tz)) "" else tz[1L]))
+
+? ? >> In 'c.POSIXlt', apply 'floor' to the 'sec' component before converting to POSIXct like in Bug 18989 Comment 9 (https://bugs.r-project.org/show_bug.cgi?id=18989#c9).
+
+
+? ? > Yes, this *could* be done, last minute, i.e., fixing some bugs
+? ? > in POSIXlt <--> POSIXct? handling.
+
+? ? > I've tried in my local copy of? "R 4.6.1 beta".
+
+? ? > and indeed, these minimal patches already fix the two problems
+? ? > you mention below (and I've marked with? '1.'? and '2.' ).
+
+? ? > *However* your wish is rather late (we have code freeze in 1.5 days and
+? ? > should only fix somewhat urgent problems with small fixes),
+? ? > *and* the two problematic examples below are not new bugs, they
+? ? > do "not work" already in 4.4.x (I tried one) and 4.5.0, .. 4.5.3, etc
+
+? ? > Whereas your proposed changes *are* nicely small and look
+? ? > sensible, the bugs (below) have been in R for a while now *and*
+? ? > are fixed in R-devel (already with svn r89926 I think).
+
+? ? > So I don't know if there is anybody (but you ;-) who'd be very
+? ? > happy for such a late bug fix.
+
+? ? > Other opinions -- notably R core / Release Manager ?
+
+? ? > Thank you in any case, for the suggestion, and the effort to
+? ? > find such a minimal (informal) patch.
+
+? ? > Best regards,
+? ? > Martin
+
+
+I've decided to commit these -- together with the
+as.matrix(<POSIXlt>)? bug fix, ported from R-devel.
+
+So these should make into R 4.6.1? next week.
+
+Best regards,
+Martin  
+	[[alternative HTML version deleted]]
+
+
+From @uh@rto_@nggono @end|ng |rom y@hoo@com  Tue Jun 16 10:59:37 2026
+From: @uh@rto_@nggono @end|ng |rom y@hoo@com (Suharto Anggono Suharto Anggono)
+Date: Tue, 16 Jun 2026 08:59:37 +0000 (UTC)
+Subject: [Rd] Revisit c.POSIXlt , [<-.POSIXlt , [[<-.POSIXlt ?
+In-Reply-To: <812774018.2256720.1781596119081@mail.yahoo.com>
+References: <1804279034.1260983.1775558086062.ref@mail.yahoo.com>
+ <1804279034.1260983.1775558086062@mail.yahoo.com>
+ <fake-VM-id.b7632a73456b0be045b83615cecc8e5d@talos.iv>
+ <27097.4108.50021.462875@stat.math.ethz.ch>
+ <512804963.196196.1776410028138@mail.yahoo.com>
+ <157052525.1657254.1781444233242@mail.yahoo.com>
+ <27184.9099.740826.906532@stat.math.ethz.ch>
+ <fake-VM-id.c966bf084ab9af595ab9e8da7843afa5@talos.iv>
+ <27184.35315.815637.330239@stat.math.ethz.ch>
+ <812774018.2256720.1781596119081@mail.yahoo.com>
+Message-ID: <934953155.2275242.1781600377181@mail.yahoo.com>
+
+ In 'c.POSIXlt', because 'floor' has been applied first, the final correction,
+ x$sec[i] <- floor(x$sec[i]) + s[i]
+, doesn't need 'floor' anymore, although 'floor' doesn't harm.
+
+_______
+On Tuesday, 16 June 2026 at 02:48:39 pm GMT+7, Suharto Anggono Suharto Anggono <suharto_anggono at yahoo.com> wrote:
+
+
+Isn't the NEWS item too condensed?
+
+On 'c.POSIXlt', the part from "Changes in R-devel" can be taken over:
+c(x) could become one second ahead of x in R 4.6.0
+
+On '[<-.POSIXlt' and '[[<-.POSIXlt', the following can be stated:
+x[i] <- val and x[[i]] <- val now also works as intended for POSIXlt object 'x' without "tzone" attribute.
+Or:
+For POSIXlt object 'x' without "tzone" attribute, x[i] <- val and x[[i]] <- val now works and converts 'val' as intended.
+Or:
+In R 4.6.0, if 'x' is a POSIXlt object without "tzone" attribute and 'val' is not a POSIXlt object without "tzone" attribute, x[i] <- val and x[[i]] <- val failed or didn't convert 'va' to current time zone.
+
+______
+On Tuesday, 16 June 2026 at 06:25:42 am GMT+7, Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+
+
+>>>>> Martin Maechler
+>>>>>? ? on Mon, 15 Jun 2026 18:08:43 +0200 writes:
+
+>>>>> Suharto Anggono Suharto Anggono
+>>>>>? ? on Sun, 14 Jun 2026 13:37:13 +0000 (UTC) writes:
+
+? ? >> Could at least a minimalistic fix be put for the upcoming R 4.6.1? For example:
+? ? >> ln '[<-.POSIXlt' and '[[<-.POSIXlt', change
+? ? >> ? ? else as.POSIXlt(as.POSIXct(value), tz = tz[1L]))
+? ? >> to
+? ? >> ? ? else as.POSIXlt(as.POSIXct(value), tz = if(is.null(tz)) "" else tz[1L]))
+
+? ? >> In 'c.POSIXlt', apply 'floor' to the 'sec' component before converting to POSIXct like in Bug 18989 Comment 9 (https://bugs.r-project.org/show_bug.cgi?id=18989#c9).
+
+
+? ? > Yes, this *could* be done, last minute, i.e., fixing some bugs
+? ? > in POSIXlt <--> POSIXct? handling.
+
+? ? > I've tried in my local copy of? "R 4.6.1 beta".
+
+? ? > and indeed, these minimal patches already fix the two problems
+? ? > you mention below (and I've marked with? '1.'? and '2.' ).
+
+? ? > *However* your wish is rather late (we have code freeze in 1.5 days and
+? ? > should only fix somewhat urgent problems with small fixes),
+? ? > *and* the two problematic examples below are not new bugs, they
+? ? > do "not work" already in 4.4.x (I tried one) and 4.5.0, .. 4.5.3, etc
+
+? ? > Whereas your proposed changes *are* nicely small and look
+? ? > sensible, the bugs (below) have been in R for a while now *and*
+? ? > are fixed in R-devel (already with svn r89926 I think).
+
+? ? > So I don't know if there is anybody (but you ;-) who'd be very
+? ? > happy for such a late bug fix.
+
+? ? > Other opinions -- notably R core / Release Manager ?
+
+? ? > Thank you in any case, for the suggestion, and the effort to
+? ? > find such a minimal (informal) patch.
+
+? ? > Best regards,
+? ? > Martin
+
+
+I've decided to commit these -- together with the
+as.matrix(<POSIXlt>)? bug fix, ported from R-devel.
+
+So these should make into R 4.6.1? next week.
+
+Best regards,
+Martin  
+	[[alternative HTML version deleted]]
+
+
+From pd@|gd @end|ng |rom gm@||@com  Tue Jun 16 11:54:51 2026
+From: pd@|gd @end|ng |rom gm@||@com (Peter Dalgaard)
+Date: Tue, 16 Jun 2026 11:54:51 +0200
+Subject: [Rd] pmatch bug?
+In-Reply-To: <0d81c5b2-3397-4446-89c9-e4caa8c546d0@gmail.com>
+References: <54e778e3-16a0-4e57-9328-b82c14a60d1f@umontpellier.fr>
+ <0d81c5b2-3397-4446-89c9-e4caa8c546d0@gmail.com>
+Message-ID: <DAD22F6A-669A-4979-AD05-F406D2453AC7@gmail.com>
+
+Something definitely looks odd... I certain can't think of a reason why the behaviour would be keyed to the _size_ of the first argument like this:
+
+>  pmatch(as.character(x)[1:100], as.character(x))
+  [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+ [19]  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36
+ [37]  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  52  53  54
+ [55]  55  56  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72
+ [73]  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90
+ [91]  91  92  93  94  95  96  97  98  99 100
+>  pmatch(as.character(x)[1:101], as.character(x))
+  [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+ [19]  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36
+ [37]  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  NA  NA  NA
+ [55]  NA  NA  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72
+ [73]  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90
+ [91]  91  92  93  94  95  96  97  98  99 100 101
+>  pmatch(as.character(x)[2:102], as.character(x))
+  [1]   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19
+ [19]  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37
+ [37]  38  39  40  41  42  43  44  45  46  47  48  49  50  51   1  NA  NA  NA
+ [55]  NA  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73
+ [73]  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91
+ [91]  92  93  94  95  96  97  98  99 100 101 102
+>  >  pmatch(as.character(x)[3:102], as.character(x))
+  [1]   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20
+ [19]  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38
+ [37]  39  40  41  42  43  44  45  46  47  48  49  50  51   1   2  54  55  56
+ [55]  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74
+ [73]  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91  92
+ [91]  93  94  95  96  97  98  99 100 101 102
+
+It's happening in the C code, though, so some poking around is required.
+
+- pd
+
+
+> On 15 Jun 2026, at 22.14, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+> I think your example is overly complicated.  Wouldn't it be enough to show one vector that gives a bad result?  For example:
+> 
+>  x <- c(1:51, 1:51)
+>  pmatch(x, x)
+> 
+> which gives
+> 
+>  [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16 17  18  19  20  21  22  23  24  25  26  27  28  29
+> [30]  30  31  32  33  34  35  36  37  38  39  40  41  42  43  44  45 46  47  48  49  50  51  NA  NA  NA  NA  NA  57  58
+> [59]  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74 75  76  77  78  79  80  81  82  83  84  85  86  87
+> [88]  88  89  90  91  92  93  94  95  96  97  98  99 100 101 102
+> 
+> (with the NAs showing up at locations 52 to 56).
+> 
+> I'm not 100% sure that's a bug, since the documentation for pmatch doesn't discuss what should happen if table (the second argument) contains duplicates.  I think I'd agree with you that you should get 1:102 as the output, but maybe that was never intended to be supported.
+> 
+> Duncan Murdoch
+> 
+> On 2026-06-15 3:12 p.m., Fran?ois Rousset via R-devel wrote:
+>> Dear R-devel list,
+>> the following code shows NA's appearing in the result of pmatch() when
+>> comparing a vector to itself when the length of the vector is more than 100.
+>> The main specificity of this example is that elements are repeated in
+>> the vector which is matched to itself.
+>> The results when they do not include any NA (i.e. for argument of length
+>> <=100) are exactly as I expect from the documentation.
+>> I see that the source C code uses distinct algorithms whether n_input <=
+>> 100 || n_target <= 100 or not. Could there by a problem in the source
+>> code for larger values ?
+>> The NA's correspond to the first positions of the second replicate of
+>> the integer sequence, e.g. positions 52 to 56 if n=51 in the example below.
+>> But as shown below, the NA's do not appear when the sequence is reversed
+>> before being compared to itself.
+>> This was first detected with R 4.5.3 and is reproducible with a
+>> just-downloaded, virgin R-devel installation.
+>> Thanks in advance for any feedback,
+>> F.
+>> ======================
+>> countNAs <- function(n, rev.=FALSE) {
+>>    seqn <- seq(n)
+>>    if (rev.) seqn <- rev(seqn)
+>>    seqn <- rep(seqn,2)                         # of  length 2 n: NA's
+>> appear when 2 n > 100
+>>    chk <- pmatch(seqn, seqn)             # I expect the result to be
+>> seq(2*n)
+>>    sum(is.na(chk))
+>> }
+>> sapply(1:100, countNAs )
+>> sapply(1:100, countNAs , rev.=TRUE)
+>> =======================
+>> Results:
+>>  > sapply(1:100, countNAs )
+>>    [1]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 0  0
+>> 0  0  0  0  0  0
+>>   [29]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 0  0
+>> 5  5  5  5  5  5
+>>   [57]  5  5  5  6  6  6  6  6  6  6  6  6  6  7  7  7  7  7  7  7 7  7
+>> 7  8  8  8  8  8
+>>   [85]  8  8  8  8  8  9  9  9  9  9  9  9  9  9  9 10
+>>  > sapply(1:100, countNAs , rev.=TRUE)
+>>    [1] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>> 0 0 0 0 0 0 0 0 0
+>>   [43] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>> 0 0 0 0 0 0 0 0 0
+>>   [85] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>  > sessionInfo()
+>> R Under development (unstable) (2026-06-14 r90150 ucrt)
+>> Platform: x86_64-w64-mingw32/x64
+>> Running under: Windows 10 x64 (build 19045)
+>> Matrix products: default
+>>    LAPACK version 3.12.1
+>> locale:
+>> [1] LC_COLLATE=French_France.utf8  LC_CTYPE=French_France.utf8
+>> [3] LC_MONETARY=French_France.utf8 LC_NUMERIC=C
+>> [5] LC_TIME=French_France.utf8
+>> time zone: Europe/Paris
+>> tzcode source: internal
+>> attached base packages:
+>> [1] stats     graphics  grDevices utils     datasets  methods  base
+>> loaded via a namespace (and not attached):
+>> [1] compiler_4.7.0 tools_4.7.0
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From pd@|gd @end|ng |rom gm@||@com  Tue Jun 16 13:29:50 2026
+From: pd@|gd @end|ng |rom gm@||@com (Peter Dalgaard)
+Date: Tue, 16 Jun 2026 13:29:50 +0200
+Subject: [Rd] pmatch bug?
+In-Reply-To: <DAD22F6A-669A-4979-AD05-F406D2453AC7@gmail.com>
+References: <54e778e3-16a0-4e57-9328-b82c14a60d1f@umontpellier.fr>
+ <0d81c5b2-3397-4446-89c9-e4caa8c546d0@gmail.com>
+ <DAD22F6A-669A-4979-AD05-F406D2453AC7@gmail.com>
+Message-ID: <EFE65E6A-3419-4836-B28B-DCC013F6F090@gmail.com>
+
+OK, so 100 is the cutoff whether to use a hash table or not. It is still odd that it only affects a relatively short block at the beginning of the repeated targets, though.
+
+> On 16 Jun 2026, at 11.54, Peter Dalgaard <pdalgd at gmail.com> wrote:
+> 
+> Something definitely looks odd... I certain can't think of a reason why the behaviour would be keyed to the _size_ of the first argument like this:
+> 
+>> pmatch(as.character(x)[1:100], as.character(x))
+>  [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+> [19]  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36
+> [37]  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  52  53  54
+> [55]  55  56  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72
+> [73]  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90
+> [91]  91  92  93  94  95  96  97  98  99 100
+>> pmatch(as.character(x)[1:101], as.character(x))
+>  [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+> [19]  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36
+> [37]  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  NA  NA  NA
+> [55]  NA  NA  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72
+> [73]  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90
+> [91]  91  92  93  94  95  96  97  98  99 100 101
+>> pmatch(as.character(x)[2:102], as.character(x))
+>  [1]   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19
+> [19]  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37
+> [37]  38  39  40  41  42  43  44  45  46  47  48  49  50  51   1  NA  NA  NA
+> [55]  NA  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73
+> [73]  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91
+> [91]  92  93  94  95  96  97  98  99 100 101 102
+>>> pmatch(as.character(x)[3:102], as.character(x))
+>  [1]   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20
+> [19]  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38
+> [37]  39  40  41  42  43  44  45  46  47  48  49  50  51   1   2  54  55  56
+> [55]  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74
+> [73]  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91  92
+> [91]  93  94  95  96  97  98  99 100 101 102
+> 
+> It's happening in the C code, though, so some poking around is required.
+> 
+> - pd
+> 
+> 
+>> On 15 Jun 2026, at 22.14, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>> 
+>> I think your example is overly complicated.  Wouldn't it be enough to show one vector that gives a bad result?  For example:
+>> 
+>> x <- c(1:51, 1:51)
+>> pmatch(x, x)
+>> 
+>> which gives
+>> 
+>> [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16 17  18  19  20  21  22  23  24  25  26  27  28  29
+>> [30]  30  31  32  33  34  35  36  37  38  39  40  41  42  43  44  45 46  47  48  49  50  51  NA  NA  NA  NA  NA  57  58
+>> [59]  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74 75  76  77  78  79  80  81  82  83  84  85  86  87
+>> [88]  88  89  90  91  92  93  94  95  96  97  98  99 100 101 102
+>> 
+>> (with the NAs showing up at locations 52 to 56).
+>> 
+>> I'm not 100% sure that's a bug, since the documentation for pmatch doesn't discuss what should happen if table (the second argument) contains duplicates.  I think I'd agree with you that you should get 1:102 as the output, but maybe that was never intended to be supported.
+>> 
+>> Duncan Murdoch
+>> 
+>> On 2026-06-15 3:12 p.m., Fran?ois Rousset via R-devel wrote:
+>>> Dear R-devel list,
+>>> the following code shows NA's appearing in the result of pmatch() when
+>>> comparing a vector to itself when the length of the vector is more than 100.
+>>> The main specificity of this example is that elements are repeated in
+>>> the vector which is matched to itself.
+>>> The results when they do not include any NA (i.e. for argument of length
+>>> <=100) are exactly as I expect from the documentation.
+>>> I see that the source C code uses distinct algorithms whether n_input <=
+>>> 100 || n_target <= 100 or not. Could there by a problem in the source
+>>> code for larger values ?
+>>> The NA's correspond to the first positions of the second replicate of
+>>> the integer sequence, e.g. positions 52 to 56 if n=51 in the example below.
+>>> But as shown below, the NA's do not appear when the sequence is reversed
+>>> before being compared to itself.
+>>> This was first detected with R 4.5.3 and is reproducible with a
+>>> just-downloaded, virgin R-devel installation.
+>>> Thanks in advance for any feedback,
+>>> F.
+>>> ======================
+>>> countNAs <- function(n, rev.=FALSE) {
+>>>   seqn <- seq(n)
+>>>   if (rev.) seqn <- rev(seqn)
+>>>   seqn <- rep(seqn,2)                         # of  length 2 n: NA's
+>>> appear when 2 n > 100
+>>>   chk <- pmatch(seqn, seqn)             # I expect the result to be
+>>> seq(2*n)
+>>>   sum(is.na(chk))
+>>> }
+>>> sapply(1:100, countNAs )
+>>> sapply(1:100, countNAs , rev.=TRUE)
+>>> =======================
+>>> Results:
+>>>> sapply(1:100, countNAs )
+>>>   [1]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 0  0
+>>> 0  0  0  0  0  0
+>>>  [29]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 0  0
+>>> 5  5  5  5  5  5
+>>>  [57]  5  5  5  6  6  6  6  6  6  6  6  6  6  7  7  7  7  7  7  7 7  7
+>>> 7  8  8  8  8  8
+>>>  [85]  8  8  8  8  8  9  9  9  9  9  9  9  9  9  9 10
+>>>> sapply(1:100, countNAs , rev.=TRUE)
+>>>   [1] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>> 0 0 0 0 0 0 0 0 0
+>>>  [43] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>> 0 0 0 0 0 0 0 0 0
+>>>  [85] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>> sessionInfo()
+>>> R Under development (unstable) (2026-06-14 r90150 ucrt)
+>>> Platform: x86_64-w64-mingw32/x64
+>>> Running under: Windows 10 x64 (build 19045)
+>>> Matrix products: default
+>>>   LAPACK version 3.12.1
+>>> locale:
+>>> [1] LC_COLLATE=French_France.utf8  LC_CTYPE=French_France.utf8
+>>> [3] LC_MONETARY=French_France.utf8 LC_NUMERIC=C
+>>> [5] LC_TIME=French_France.utf8
+>>> time zone: Europe/Paris
+>>> tzcode source: internal
+>>> attached base packages:
+>>> [1] stats     graphics  grDevices utils     datasets  methods  base
+>>> loaded via a namespace (and not attached):
+>>> [1] compiler_4.7.0 tools_4.7.0
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>> 
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+> 
+> -- 
+> Peter Dalgaard, Professor,
+> Center for Statistics, Copenhagen Business School
+> Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+> Phone: (+45)38153501
+> Office: A 4.23
+> Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+> 
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Jun 16 13:59:45 2026
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 16 Jun 2026 07:59:45 -0400
+Subject: [Rd] pmatch bug?
+In-Reply-To: <EFE65E6A-3419-4836-B28B-DCC013F6F090@gmail.com>
+References: <54e778e3-16a0-4e57-9328-b82c14a60d1f@umontpellier.fr>
+ <0d81c5b2-3397-4446-89c9-e4caa8c546d0@gmail.com>
+ <DAD22F6A-669A-4979-AD05-F406D2453AC7@gmail.com>
+ <EFE65E6A-3419-4836-B28B-DCC013F6F090@gmail.com>
+Message-ID: <c6a8f7cf-4a94-40b6-9f09-d9f31699ce01@gmail.com>
+
+I believe the problem is that the hash code doesn't allow values to be 
+removed.  So when x is c(1:n, 1:n) for n > 50, pmatch(x,x) gets exact 
+matches to the first half of the values, but not to the second half: 
+the hashes point to the removed values and they are rejected.
+
+When it switches to partial matches, for n=51 there are multiple partial 
+matches to 1:5, but not to bigger numbers, so those come out as NA.  For 
+numbers 6:51, the partial match code sees unique partial matches (which 
+happen to be exact).
+
+I think the best fix is:
+
+  - Fix the hash code to allow for multiple copies in the hash table, 
+and record whether values have been used in each of those.
+
+This would be programmed similar to handling hash collisions (which I 
+think aren't handled now).
+
+
+Duncan Murdoch
+
+
+On 2026-06-16 7:29 a.m., Peter Dalgaard wrote:
+> OK, so 100 is the cutoff whether to use a hash table or not. It is still odd that it only affects a relatively short block at the beginning of the repeated targets, though.
+> 
+>> On 16 Jun 2026, at 11.54, Peter Dalgaard <pdalgd at gmail.com> wrote:
+>>
+>> Something definitely looks odd... I certain can't think of a reason why the behaviour would be keyed to the _size_ of the first argument like this:
+>>
+>>> pmatch(as.character(x)[1:100], as.character(x))
+>>   [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+>> [19]  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36
+>> [37]  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  52  53  54
+>> [55]  55  56  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72
+>> [73]  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90
+>> [91]  91  92  93  94  95  96  97  98  99 100
+>>> pmatch(as.character(x)[1:101], as.character(x))
+>>   [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+>> [19]  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36
+>> [37]  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  NA  NA  NA
+>> [55]  NA  NA  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72
+>> [73]  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90
+>> [91]  91  92  93  94  95  96  97  98  99 100 101
+>>> pmatch(as.character(x)[2:102], as.character(x))
+>>   [1]   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19
+>> [19]  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37
+>> [37]  38  39  40  41  42  43  44  45  46  47  48  49  50  51   1  NA  NA  NA
+>> [55]  NA  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73
+>> [73]  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91
+>> [91]  92  93  94  95  96  97  98  99 100 101 102
+>>>> pmatch(as.character(x)[3:102], as.character(x))
+>>   [1]   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20
+>> [19]  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38
+>> [37]  39  40  41  42  43  44  45  46  47  48  49  50  51   1   2  54  55  56
+>> [55]  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74
+>> [73]  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91  92
+>> [91]  93  94  95  96  97  98  99 100 101 102
+>>
+>> It's happening in the C code, though, so some poking around is required.
+>>
+>> - pd
+>>
+>>
+>>> On 15 Jun 2026, at 22.14, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>>
+>>> I think your example is overly complicated.  Wouldn't it be enough to show one vector that gives a bad result?  For example:
+>>>
+>>> x <- c(1:51, 1:51)
+>>> pmatch(x, x)
+>>>
+>>> which gives
+>>>
+>>> [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16 17  18  19  20  21  22  23  24  25  26  27  28  29
+>>> [30]  30  31  32  33  34  35  36  37  38  39  40  41  42  43  44  45 46  47  48  49  50  51  NA  NA  NA  NA  NA  57  58
+>>> [59]  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74 75  76  77  78  79  80  81  82  83  84  85  86  87
+>>> [88]  88  89  90  91  92  93  94  95  96  97  98  99 100 101 102
+>>>
+>>> (with the NAs showing up at locations 52 to 56).
+>>>
+>>> I'm not 100% sure that's a bug, since the documentation for pmatch doesn't discuss what should happen if table (the second argument) contains duplicates.  I think I'd agree with you that you should get 1:102 as the output, but maybe that was never intended to be supported.
+>>>
+>>> Duncan Murdoch
+>>>
+>>> On 2026-06-15 3:12 p.m., Fran?ois Rousset via R-devel wrote:
+>>>> Dear R-devel list,
+>>>> the following code shows NA's appearing in the result of pmatch() when
+>>>> comparing a vector to itself when the length of the vector is more than 100.
+>>>> The main specificity of this example is that elements are repeated in
+>>>> the vector which is matched to itself.
+>>>> The results when they do not include any NA (i.e. for argument of length
+>>>> <=100) are exactly as I expect from the documentation.
+>>>> I see that the source C code uses distinct algorithms whether n_input <=
+>>>> 100 || n_target <= 100 or not. Could there by a problem in the source
+>>>> code for larger values ?
+>>>> The NA's correspond to the first positions of the second replicate of
+>>>> the integer sequence, e.g. positions 52 to 56 if n=51 in the example below.
+>>>> But as shown below, the NA's do not appear when the sequence is reversed
+>>>> before being compared to itself.
+>>>> This was first detected with R 4.5.3 and is reproducible with a
+>>>> just-downloaded, virgin R-devel installation.
+>>>> Thanks in advance for any feedback,
+>>>> F.
+>>>> ======================
+>>>> countNAs <- function(n, rev.=FALSE) {
+>>>>    seqn <- seq(n)
+>>>>    if (rev.) seqn <- rev(seqn)
+>>>>    seqn <- rep(seqn,2)                         # of  length 2 n: NA's
+>>>> appear when 2 n > 100
+>>>>    chk <- pmatch(seqn, seqn)             # I expect the result to be
+>>>> seq(2*n)
+>>>>    sum(is.na(chk))
+>>>> }
+>>>> sapply(1:100, countNAs )
+>>>> sapply(1:100, countNAs , rev.=TRUE)
+>>>> =======================
+>>>> Results:
+>>>>> sapply(1:100, countNAs )
+>>>>    [1]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 0  0
+>>>> 0  0  0  0  0  0
+>>>>   [29]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 0  0
+>>>> 5  5  5  5  5  5
+>>>>   [57]  5  5  5  6  6  6  6  6  6  6  6  6  6  7  7  7  7  7  7  7 7  7
+>>>> 7  8  8  8  8  8
+>>>>   [85]  8  8  8  8  8  9  9  9  9  9  9  9  9  9  9 10
+>>>>> sapply(1:100, countNAs , rev.=TRUE)
+>>>>    [1] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>> 0 0 0 0 0 0 0 0 0
+>>>>   [43] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>> 0 0 0 0 0 0 0 0 0
+>>>>   [85] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>>> sessionInfo()
+>>>> R Under development (unstable) (2026-06-14 r90150 ucrt)
+>>>> Platform: x86_64-w64-mingw32/x64
+>>>> Running under: Windows 10 x64 (build 19045)
+>>>> Matrix products: default
+>>>>    LAPACK version 3.12.1
+>>>> locale:
+>>>> [1] LC_COLLATE=French_France.utf8  LC_CTYPE=French_France.utf8
+>>>> [3] LC_MONETARY=French_France.utf8 LC_NUMERIC=C
+>>>> [5] LC_TIME=French_France.utf8
+>>>> time zone: Europe/Paris
+>>>> tzcode source: internal
+>>>> attached base packages:
+>>>> [1] stats     graphics  grDevices utils     datasets  methods  base
+>>>> loaded via a namespace (and not attached):
+>>>> [1] compiler_4.7.0 tools_4.7.0
+>>>> ______________________________________________
+>>>> R-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>
+>>> ______________________________________________
+>>> R-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+>> -- 
+>> Peter Dalgaard, Professor,
+>> Center for Statistics, Copenhagen Business School
+>> Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+>> Phone: (+45)38153501
+>> Office: A 4.23
+>> Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+>>
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Jun 16 14:13:52 2026
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 16 Jun 2026 08:13:52 -0400
+Subject: [Rd] pmatch bug?
+In-Reply-To: <c6a8f7cf-4a94-40b6-9f09-d9f31699ce01@gmail.com>
+References: <54e778e3-16a0-4e57-9328-b82c14a60d1f@umontpellier.fr>
+ <0d81c5b2-3397-4446-89c9-e4caa8c546d0@gmail.com>
+ <DAD22F6A-669A-4979-AD05-F406D2453AC7@gmail.com>
+ <EFE65E6A-3419-4836-B28B-DCC013F6F090@gmail.com>
+ <c6a8f7cf-4a94-40b6-9f09-d9f31699ce01@gmail.com>
+Message-ID: <d7fce8b6-f97e-4b6c-bf73-315864bfaaa3@gmail.com>
+
+On 2026-06-16 7:59 a.m., Duncan Murdoch wrote:
+> I believe the problem is that the hash code doesn't allow values to be
+> removed.  So when x is c(1:n, 1:n) for n > 50, pmatch(x,x) gets exact
+> matches to the first half of the values, but not to the second half:
+> the hashes point to the removed values and they are rejected.
+> 
+> When it switches to partial matches, for n=51 there are multiple partial
+> matches to 1:5, but not to bigger numbers, so those come out as NA.  For
+> numbers 6:51, the partial match code sees unique partial matches (which
+> happen to be exact).
+> 
+> I think the best fix is:
+> 
+>    - Fix the hash code to allow for multiple copies in the hash table,
+> and record whether values have been used in each of those.
+> 
+> This would be programmed similar to handling hash collisions (which I
+> think aren't handled now).
+
+I'm wrong about that part.  Hash collisions are currently not a problem. 
+  It's only the duplicates.ok=FALSE case that isn't handled now.
+
+A much simpler fix is to skip hashing if duplicates.ok = FALSE.  I don't 
+know how badly that would affect performance.
+
+Duncan Murdoch
+
+> 
+> 
+> Duncan Murdoch
+> 
+> 
+> On 2026-06-16 7:29 a.m., Peter Dalgaard wrote:
+>> OK, so 100 is the cutoff whether to use a hash table or not. It is still odd that it only affects a relatively short block at the beginning of the repeated targets, though.
+>>
+>>> On 16 Jun 2026, at 11.54, Peter Dalgaard <pdalgd at gmail.com> wrote:
+>>>
+>>> Something definitely looks odd... I certain can't think of a reason why the behaviour would be keyed to the _size_ of the first argument like this:
+>>>
+>>>> pmatch(as.character(x)[1:100], as.character(x))
+>>>    [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+>>> [19]  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36
+>>> [37]  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  52  53  54
+>>> [55]  55  56  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72
+>>> [73]  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90
+>>> [91]  91  92  93  94  95  96  97  98  99 100
+>>>> pmatch(as.character(x)[1:101], as.character(x))
+>>>    [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+>>> [19]  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36
+>>> [37]  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  NA  NA  NA
+>>> [55]  NA  NA  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72
+>>> [73]  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90
+>>> [91]  91  92  93  94  95  96  97  98  99 100 101
+>>>> pmatch(as.character(x)[2:102], as.character(x))
+>>>    [1]   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19
+>>> [19]  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37
+>>> [37]  38  39  40  41  42  43  44  45  46  47  48  49  50  51   1  NA  NA  NA
+>>> [55]  NA  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73
+>>> [73]  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91
+>>> [91]  92  93  94  95  96  97  98  99 100 101 102
+>>>>> pmatch(as.character(x)[3:102], as.character(x))
+>>>    [1]   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20
+>>> [19]  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38
+>>> [37]  39  40  41  42  43  44  45  46  47  48  49  50  51   1   2  54  55  56
+>>> [55]  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74
+>>> [73]  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91  92
+>>> [91]  93  94  95  96  97  98  99 100 101 102
+>>>
+>>> It's happening in the C code, though, so some poking around is required.
+>>>
+>>> - pd
+>>>
+>>>
+>>>> On 15 Jun 2026, at 22.14, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>>>
+>>>> I think your example is overly complicated.  Wouldn't it be enough to show one vector that gives a bad result?  For example:
+>>>>
+>>>> x <- c(1:51, 1:51)
+>>>> pmatch(x, x)
+>>>>
+>>>> which gives
+>>>>
+>>>> [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16 17  18  19  20  21  22  23  24  25  26  27  28  29
+>>>> [30]  30  31  32  33  34  35  36  37  38  39  40  41  42  43  44  45 46  47  48  49  50  51  NA  NA  NA  NA  NA  57  58
+>>>> [59]  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74 75  76  77  78  79  80  81  82  83  84  85  86  87
+>>>> [88]  88  89  90  91  92  93  94  95  96  97  98  99 100 101 102
+>>>>
+>>>> (with the NAs showing up at locations 52 to 56).
+>>>>
+>>>> I'm not 100% sure that's a bug, since the documentation for pmatch doesn't discuss what should happen if table (the second argument) contains duplicates.  I think I'd agree with you that you should get 1:102 as the output, but maybe that was never intended to be supported.
+>>>>
+>>>> Duncan Murdoch
+>>>>
+>>>> On 2026-06-15 3:12 p.m., Fran?ois Rousset via R-devel wrote:
+>>>>> Dear R-devel list,
+>>>>> the following code shows NA's appearing in the result of pmatch() when
+>>>>> comparing a vector to itself when the length of the vector is more than 100.
+>>>>> The main specificity of this example is that elements are repeated in
+>>>>> the vector which is matched to itself.
+>>>>> The results when they do not include any NA (i.e. for argument of length
+>>>>> <=100) are exactly as I expect from the documentation.
+>>>>> I see that the source C code uses distinct algorithms whether n_input <=
+>>>>> 100 || n_target <= 100 or not. Could there by a problem in the source
+>>>>> code for larger values ?
+>>>>> The NA's correspond to the first positions of the second replicate of
+>>>>> the integer sequence, e.g. positions 52 to 56 if n=51 in the example below.
+>>>>> But as shown below, the NA's do not appear when the sequence is reversed
+>>>>> before being compared to itself.
+>>>>> This was first detected with R 4.5.3 and is reproducible with a
+>>>>> just-downloaded, virgin R-devel installation.
+>>>>> Thanks in advance for any feedback,
+>>>>> F.
+>>>>> ======================
+>>>>> countNAs <- function(n, rev.=FALSE) {
+>>>>>     seqn <- seq(n)
+>>>>>     if (rev.) seqn <- rev(seqn)
+>>>>>     seqn <- rep(seqn,2)                         # of  length 2 n: NA's
+>>>>> appear when 2 n > 100
+>>>>>     chk <- pmatch(seqn, seqn)             # I expect the result to be
+>>>>> seq(2*n)
+>>>>>     sum(is.na(chk))
+>>>>> }
+>>>>> sapply(1:100, countNAs )
+>>>>> sapply(1:100, countNAs , rev.=TRUE)
+>>>>> =======================
+>>>>> Results:
+>>>>>> sapply(1:100, countNAs )
+>>>>>     [1]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 0  0
+>>>>> 0  0  0  0  0  0
+>>>>>    [29]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 0  0
+>>>>> 5  5  5  5  5  5
+>>>>>    [57]  5  5  5  6  6  6  6  6  6  6  6  6  6  7  7  7  7  7  7  7 7  7
+>>>>> 7  8  8  8  8  8
+>>>>>    [85]  8  8  8  8  8  9  9  9  9  9  9  9  9  9  9 10
+>>>>>> sapply(1:100, countNAs , rev.=TRUE)
+>>>>>     [1] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>>> 0 0 0 0 0 0 0 0 0
+>>>>>    [43] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>>> 0 0 0 0 0 0 0 0 0
+>>>>>    [85] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>>>> sessionInfo()
+>>>>> R Under development (unstable) (2026-06-14 r90150 ucrt)
+>>>>> Platform: x86_64-w64-mingw32/x64
+>>>>> Running under: Windows 10 x64 (build 19045)
+>>>>> Matrix products: default
+>>>>>     LAPACK version 3.12.1
+>>>>> locale:
+>>>>> [1] LC_COLLATE=French_France.utf8  LC_CTYPE=French_France.utf8
+>>>>> [3] LC_MONETARY=French_France.utf8 LC_NUMERIC=C
+>>>>> [5] LC_TIME=French_France.utf8
+>>>>> time zone: Europe/Paris
+>>>>> tzcode source: internal
+>>>>> attached base packages:
+>>>>> [1] stats     graphics  grDevices utils     datasets  methods  base
+>>>>> loaded via a namespace (and not attached):
+>>>>> [1] compiler_4.7.0 tools_4.7.0
+>>>>> ______________________________________________
+>>>>> R-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>
+>>>> ______________________________________________
+>>>> R-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>
+>>> -- 
+>>> Peter Dalgaard, Professor,
+>>> Center for Statistics, Copenhagen Business School
+>>> Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+>>> Phone: (+45)38153501
+>>> Office: A 4.23
+>>> Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+>>>
+>>
+>
+
+
+From jwood000 @end|ng |rom gm@||@com  Tue Jun 16 18:39:06 2026
+From: jwood000 @end|ng |rom gm@||@com (Joseph Wood)
+Date: Tue, 16 Jun 2026 12:39:06 -0400
+Subject: [Rd] pmatch bug?
+Message-ID: <CAKDcrSg7jvFqut8rR5Pn7DeBsnugNcTZrmDU0Jtdyir-ybN0rg@mail.gmail.com>
+
+Hey Duncan,
+
+I was digging into the C code and your explanation looks right to me.
+
+One thing that initially threw me off is that pmatch is not going through an
+integer matching path here. I first tried to reproduce the issue by implementing
+the integer hash path and was not able to reproduce the behavior. But pmatch
+converts both arguments to character:
+
+    pmatch
+    function (x, table, nomatch = NA_integer_, duplicates.ok = FALSE)
+    .Internal(pmatch(as.character(x), as.character(table), nomatch,
+        duplicates.ok))
+
+So the relevant case is not really
+
+    c(1L, 2L, ..., 51L, 1L, 2L, ...)
+
+but
+
+    c("1", "2", ..., "51", "1", "2", ...)
+
+Looking at do_pmatch, the small input path and the hashed path seem to have
+different semantics when duplicates.ok = FALSE.
+
+The small input exact match path scans the target and skips already used
+entries:
+
+    for (int j = 0; j < n_target; j++) {
+        if (no_dups && used[j]) continue;
+        if (strcmp(ss, tar[j]) == 0) {
+            ians[i] = j + 1;
+            if (no_dups) used[j] = 1;
+            nexact++;
+            break;
+        }
+    }
+
+But the hashed path asks Lookup for one representative match and then rejects
+it if that position has already been used:
+
+    int j = Lookup(target, input, i, &data);
+    if ((j == 0) || (no_dups && used[j - 1])) continue;
+
+The hash table is built through DoHashing/isDuplicated, and isDuplicated does
+not retain later equal target positions once it finds an equal existing entry:
+
+    while (h[i] != NIL) {
+        if (d->equal(x, h[i], x, indx))
+            return h[i] >= 0 ? 1 : 0;
+        i = (i + 1) % d->M;
+    }
+    h[i] = (int) indx;
+
+So the hashed path can return an already used representative, even though a
+later unused duplicate exists in the table.
+
+Your explanation of the partial match pass also explains the observed number of
+NAs. For
+
+    x <- c(1:n, 1:n)
+
+the unmatched second copies then go through partial matching as strings. Values
+like "1" are ambiguous because they partially match "1", "10", "11", ..., "19"
+among the still unused target entries; similarly for "2" with "20"?"29", etc.
+That lines up with seeing floor(n / 10) NAs.
+
+I agree that skipping hashing whenever duplicates.ok = FALSE would be a much
+simpler fix, though I would expect that could be costly for large inputs where
+the current hash path is otherwise helping.
+
+Regards,
+Joseph Wood
+
+>On 2026-06-16 7:59 a.m., Duncan Murdoch wrote:
+>> I believe the problem is that the hash code doesn't allow values to be
+>> removed.  So when x is c(1:n, 1:n) for n > 50, pmatch(x,x) gets exact
+>> matches to the first half of the values, but not to the second half:
+>> the hashes point to the removed values and they are rejected.
+>>
+>> When it switches to partial matches, for n=51 there are multiple partial
+>> matches to 1:5, but not to bigger numbers, so those come out as NA.  For
+>> numbers 6:51, the partial match code sees unique partial matches (which
+>> happen to be exact).
+>>
+>> I think the best fix is:
+>>
+>>    - Fix the hash code to allow for multiple copies in the hash table,
+>> and record whether values have been used in each of those.
+>>
+>> This would be programmed similar to handling hash collisions (which I
+>> think aren't handled now).
+>
+>I'm wrong about that part.  Hash collisions are currently not a problem.
+>  It's only the duplicates.ok=FALSE case that isn't handled now.
+>
+>A much simpler fix is to skip hashing if duplicates.ok = FALSE.  I don't
+>know how badly that would affect performance.
+>
+>Duncan Murdoch
+>
+>>
+>>
+>> Duncan Murdoch
+>>
+>>
+>> On 2026-06-16 7:29 a.m., Peter Dalgaard wrote:
+>>> OK, so 100 is the cutoff whether to use a hash table or not. It is still odd that it only affects a relatively short block at the beginning of the repeated targets, though.
+>>>
+>>>> On 16 Jun 2026, at 11.54, Peter Dalgaard <pdalgd using gmail.com> wrote:
+>>>>
+>>>> Something definitely looks odd... I certain can't think of a reason why the behaviour would be keyed to the _size_ of the first argument like this:
+>>>>
+>>>>> pmatch(as.character(x)[1:100], as.character(x))
+>>>>    [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+>>>> [19]  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36
+>>>> [37]  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  52  53  54
+>>>> [55]  55  56  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72
+>>>> [73]  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90
+>>>> [91]  91  92  93  94  95  96  97  98  99 100
+>>>>> pmatch(as.character(x)[1:101], as.character(x))
+>>>>    [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+>>>> [19]  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36
+>>>> [37]  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  NA  NA  NA
+>>>> [55]  NA  NA  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72
+>>>> [73]  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90
+>>>> [91]  91  92  93  94  95  96  97  98  99 100 101
+>>>>> pmatch(as.character(x)[2:102], as.character(x))
+>>>>    [1]   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19
+>>>> [19]  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37
+>>>> [37]  38  39  40  41  42  43  44  45  46  47  48  49  50  51   1  NA  NA  NA
+>>>> [55]  NA  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73
+>>>> [73]  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91
+>>>> [91]  92  93  94  95  96  97  98  99 100 101 102
+>>>>>> pmatch(as.character(x)[3:102], as.character(x))
+>>>>    [1]   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20
+>>>> [19]  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38
+>>>> [37]  39  40  41  42  43  44  45  46  47  48  49  50  51   1   2  54  55  56
+>>>> [55]  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74
+>>>> [73]  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91  92
+>>>> [91]  93  94  95  96  97  98  99 100 101 102
+>>>>
+>>>> It's happening in the C code, though, so some poking around is required.
+>>>>
+>>>> - pd
+>>>>
+>>>>
+>>>>> On 15 Jun 2026, at 22.14, Duncan Murdoch <murdoch.duncan using gmail.com> wrote:
+>>>>>
+>>>>> I think your example is overly complicated.  Wouldn't it be enough to show one vector that gives a bad result?  For example:
+>>>>>
+>>>>> x <- c(1:51, 1:51)
+>>>>> pmatch(x, x)
+>>>>>
+>>>>> which gives
+>>>>>
+>>>>> [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16 17  18  19  20  21  22  23  24  25  26  27  28  29
+>>>>> [30]  30  31  32  33  34  35  36  37  38  39  40  41  42  43  44  45 46  47  48  49  50  51  NA  NA  NA  NA  NA  57  58
+>>>>> [59]  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74 75  76  77  78  79  80  81  82  83  84  85  86  87
+>>>>> [88]  88  89  90  91  92  93  94  95  96  97  98  99 100 101 102
+>>>>>
+>>>>> (with the NAs showing up at locations 52 to 56).
+>>>>>
+>>>>> I'm not 100% sure that's a bug, since the documentation for pmatch doesn't discuss what should happen if table (the second argument) contains duplicates.  I think I'd agree with you that you should get 1:102 as the output, but maybe that was never intended to be supported.
+>>>>>
+>>>>> Duncan Murdoch
+>>>>>
+>>>>> On 2026-06-15 3:12 p.m., Fran?ois Rousset via R-devel wrote:
+>>>>>> Dear R-devel list,
+>>>>>> the following code shows NA's appearing in the result of pmatch() when
+>>>>>> comparing a vector to itself when the length of the vector is more than 100.
+>>>>>> The main specificity of this example is that elements are repeated in
+>>>>>> the vector which is matched to itself.
+>>>>>> The results when they do not include any NA (i.e. for argument of length
+>>>>>> <=100) are exactly as I expect from the documentation.
+>>>>>> I see that the source C code uses distinct algorithms whether n_input <=
+>>>>>> 100 || n_target <= 100 or not. Could there by a problem in the source
+>>>>>> code for larger values ?
+>>>>>> The NA's correspond to the first positions of the second replicate of
+>>>>>> the integer sequence, e.g. positions 52 to 56 if n=51 in the example below.
+>>>>>> But as shown below, the NA's do not appear when the sequence is reversed
+>>>>>> before being compared to itself.
+>>>>>> This was first detected with R 4.5.3 and is reproducible with a
+>>>>>> just-downloaded, virgin R-devel installation.
+>>>>>> Thanks in advance for any feedback,
+>>>>>> F.
+>>>>>> ======================
+>>>>>> countNAs <- function(n, rev.=FALSE) {
+>>>>>>     seqn <- seq(n)
+>>>>>>     if (rev.) seqn <- rev(seqn)
+>>>>>>     seqn <- rep(seqn,2)                         # of  length 2 n: NA's
+>>>>>> appear when 2 n > 100
+>>>>>>     chk <- pmatch(seqn, seqn)             # I expect the result to be
+>>>>>> seq(2*n)
+>>>>>>     sum(is.na(chk))
+>>>>>> }
+>>>>>> sapply(1:100, countNAs )
+>>>>>> sapply(1:100, countNAs , rev.=TRUE)
+>>>>>> =======================
+>>>>>> Results:
+>>>>>>> sapply(1:100, countNAs )
+>>>>>>     [1]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 0  0
+>>>>>> 0  0  0  0  0  0
+>>>>>>    [29]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 0  0
+>>>>>> 5  5  5  5  5  5
+>>>>>>    [57]  5  5  5  6  6  6  6  6  6  6  6  6  6  7  7  7  7  7  7  7 7  7
+>>>>>> 7  8  8  8  8  8
+>>>>>>    [85]  8  8  8  8  8  9  9  9  9  9  9  9  9  9  9 10
+>>>>>>> sapply(1:100, countNAs , rev.=TRUE)
+>>>>>>     [1] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>>>> 0 0 0 0 0 0 0 0 0
+>>>>>>    [43] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>>>> 0 0 0 0 0 0 0 0 0
+>>>>>>    [85] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>>>>> sessionInfo()
+>>>>>> R Under development (unstable) (2026-06-14 r90150 ucrt)
+>>>>>> Platform: x86_64-w64-mingw32/x64
+>>>>>> Running under: Windows 10 x64 (build 19045)
+>>>>>> Matrix products: default
+>>>>>>     LAPACK version 3.12.1
+>>>>>> locale:
+>>>>>> [1] LC_COLLATE=French_France.utf8  LC_CTYPE=French_France.utf8
+>>>>>> [3] LC_MONETARY=French_France.utf8 LC_NUMERIC=C
+>>>>>> [5] LC_TIME=French_France.utf8
+>>>>>> time zone: Europe/Paris
+>>>>>> tzcode source: internal
+>>>>>> attached base packages:
+>>>>>> [1] stats     graphics  grDevices utils     datasets  methods  base
+>>>>>> loaded via a namespace (and not attached):
+>>>>>> [1] compiler_4.7.0 tools_4.7.0
+>>>>>> ______________________________________________
+>>>>>> R-devel using r-project.org mailing list
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-devel using r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>
+>>>> --
+>>>> Peter Dalgaard, Professor,
+>>>> Center for Statistics, Copenhagen Business School
+>>>> Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+>>>> Phone: (+45)38153501
+>>>> Office: A 4.23
+>>>> Email: pd.mes using cbs.dk  Priv: PDalgd using gmail.com
+>>>>
+>>>
+>>
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Jun 16 18:55:07 2026
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 16 Jun 2026 12:55:07 -0400
+Subject: [Rd] pmatch bug?
+In-Reply-To: <CAKDcrSg7jvFqut8rR5Pn7DeBsnugNcTZrmDU0Jtdyir-ybN0rg@mail.gmail.com>
+References: <CAKDcrSg7jvFqut8rR5Pn7DeBsnugNcTZrmDU0Jtdyir-ybN0rg@mail.gmail.com>
+Message-ID: <1b9cd50f-003c-4d97-a704-329c98cf872e@gmail.com>
+
+The hash table implementation depends on two functions:  one hashes an 
+entry, and another compares for equality. (That's how hash collisions 
+are handled.) So one way to implement the more complicated fix would 
+follow this strategy:
+
+Instead of inserting pointers to the strings into the hash table, insert 
+both a string pointer and a pointer to the entry in the `used` vector. 
+Use the string pointer to generate the hash, and the value pointed to by 
+the other part to decide if the hit is equal (i.e. it's equal if the 
+string pointers match and the other pointer points to `false`).
+
+That might not be too hard...
+
+Duncan Murdoch
+
+On 2026-06-16 12:39 p.m., Joseph Wood wrote:
+> Hey Duncan,
+> 
+> I was digging into the C code and your explanation looks right to me.
+> 
+> One thing that initially threw me off is that pmatch is not going through an
+> integer matching path here. I first tried to reproduce the issue by implementing
+> the integer hash path and was not able to reproduce the behavior. But pmatch
+> converts both arguments to character:
+> 
+>      pmatch
+>      function (x, table, nomatch = NA_integer_, duplicates.ok = FALSE)
+>      .Internal(pmatch(as.character(x), as.character(table), nomatch,
+>          duplicates.ok))
+> 
+> So the relevant case is not really
+> 
+>      c(1L, 2L, ..., 51L, 1L, 2L, ...)
+> 
+> but
+> 
+>      c("1", "2", ..., "51", "1", "2", ...)
+> 
+> Looking at do_pmatch, the small input path and the hashed path seem to have
+> different semantics when duplicates.ok = FALSE.
+> 
+> The small input exact match path scans the target and skips already used
+> entries:
+> 
+>      for (int j = 0; j < n_target; j++) {
+>          if (no_dups && used[j]) continue;
+>          if (strcmp(ss, tar[j]) == 0) {
+>              ians[i] = j + 1;
+>              if (no_dups) used[j] = 1;
+>              nexact++;
+>              break;
+>          }
+>      }
+> 
+> But the hashed path asks Lookup for one representative match and then rejects
+> it if that position has already been used:
+> 
+>      int j = Lookup(target, input, i, &data);
+>      if ((j == 0) || (no_dups && used[j - 1])) continue;
+> 
+> The hash table is built through DoHashing/isDuplicated, and isDuplicated does
+> not retain later equal target positions once it finds an equal existing entry:
+> 
+>      while (h[i] != NIL) {
+>          if (d->equal(x, h[i], x, indx))
+>              return h[i] >= 0 ? 1 : 0;
+>          i = (i + 1) % d->M;
+>      }
+>      h[i] = (int) indx;
+> 
+> So the hashed path can return an already used representative, even though a
+> later unused duplicate exists in the table.
+> 
+> Your explanation of the partial match pass also explains the observed number of
+> NAs. For
+> 
+>      x <- c(1:n, 1:n)
+> 
+> the unmatched second copies then go through partial matching as strings. Values
+> like "1" are ambiguous because they partially match "1", "10", "11", ..., "19"
+> among the still unused target entries; similarly for "2" with "20"?"29", etc.
+> That lines up with seeing floor(n / 10) NAs.
+> 
+> I agree that skipping hashing whenever duplicates.ok = FALSE would be a much
+> simpler fix, though I would expect that could be costly for large inputs where
+> the current hash path is otherwise helping.
+> 
+> Regards,
+> Joseph Wood
+> 
+>> On 2026-06-16 7:59 a.m., Duncan Murdoch wrote:
+>>> I believe the problem is that the hash code doesn't allow values to be
+>>> removed.  So when x is c(1:n, 1:n) for n > 50, pmatch(x,x) gets exact
+>>> matches to the first half of the values, but not to the second half:
+>>> the hashes point to the removed values and they are rejected.
+>>>
+>>> When it switches to partial matches, for n=51 there are multiple partial
+>>> matches to 1:5, but not to bigger numbers, so those come out as NA.  For
+>>> numbers 6:51, the partial match code sees unique partial matches (which
+>>> happen to be exact).
+>>>
+>>> I think the best fix is:
+>>>
+>>>     - Fix the hash code to allow for multiple copies in the hash table,
+>>> and record whether values have been used in each of those.
+>>>
+>>> This would be programmed similar to handling hash collisions (which I
+>>> think aren't handled now).
+>>
+>> I'm wrong about that part.  Hash collisions are currently not a problem.
+>>   It's only the duplicates.ok=FALSE case that isn't handled now.
+>>
+>> A much simpler fix is to skip hashing if duplicates.ok = FALSE.  I don't
+>> know how badly that would affect performance.
+>>
+>> Duncan Murdoch
+>>
+>>>
+>>>
+>>> Duncan Murdoch
+>>>
+>>>
+>>> On 2026-06-16 7:29 a.m., Peter Dalgaard wrote:
+>>>> OK, so 100 is the cutoff whether to use a hash table or not. It is still odd that it only affects a relatively short block at the beginning of the repeated targets, though.
+>>>>
+>>>>> On 16 Jun 2026, at 11.54, Peter Dalgaard <pdalgd using gmail.com> wrote:
+>>>>>
+>>>>> Something definitely looks odd... I certain can't think of a reason why the behaviour would be keyed to the _size_ of the first argument like this:
+>>>>>
+>>>>>> pmatch(as.character(x)[1:100], as.character(x))
+>>>>>     [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+>>>>> [19]  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36
+>>>>> [37]  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  52  53  54
+>>>>> [55]  55  56  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72
+>>>>> [73]  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90
+>>>>> [91]  91  92  93  94  95  96  97  98  99 100
+>>>>>> pmatch(as.character(x)[1:101], as.character(x))
+>>>>>     [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+>>>>> [19]  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36
+>>>>> [37]  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  NA  NA  NA
+>>>>> [55]  NA  NA  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72
+>>>>> [73]  73  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90
+>>>>> [91]  91  92  93  94  95  96  97  98  99 100 101
+>>>>>> pmatch(as.character(x)[2:102], as.character(x))
+>>>>>     [1]   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19
+>>>>> [19]  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37
+>>>>> [37]  38  39  40  41  42  43  44  45  46  47  48  49  50  51   1  NA  NA  NA
+>>>>> [55]  NA  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73
+>>>>> [73]  74  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91
+>>>>> [91]  92  93  94  95  96  97  98  99 100 101 102
+>>>>>>> pmatch(as.character(x)[3:102], as.character(x))
+>>>>>     [1]   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20
+>>>>> [19]  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38
+>>>>> [37]  39  40  41  42  43  44  45  46  47  48  49  50  51   1   2  54  55  56
+>>>>> [55]  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74
+>>>>> [73]  75  76  77  78  79  80  81  82  83  84  85  86  87  88  89  90  91  92
+>>>>> [91]  93  94  95  96  97  98  99 100 101 102
+>>>>>
+>>>>> It's happening in the C code, though, so some poking around is required.
+>>>>>
+>>>>> - pd
+>>>>>
+>>>>>
+>>>>>> On 15 Jun 2026, at 22.14, Duncan Murdoch <murdoch.duncan using gmail.com> wrote:
+>>>>>>
+>>>>>> I think your example is overly complicated.  Wouldn't it be enough to show one vector that gives a bad result?  For example:
+>>>>>>
+>>>>>> x <- c(1:51, 1:51)
+>>>>>> pmatch(x, x)
+>>>>>>
+>>>>>> which gives
+>>>>>>
+>>>>>> [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16 17  18  19  20  21  22  23  24  25  26  27  28  29
+>>>>>> [30]  30  31  32  33  34  35  36  37  38  39  40  41  42  43  44  45 46  47  48  49  50  51  NA  NA  NA  NA  NA  57  58
+>>>>>> [59]  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74 75  76  77  78  79  80  81  82  83  84  85  86  87
+>>>>>> [88]  88  89  90  91  92  93  94  95  96  97  98  99 100 101 102
+>>>>>>
+>>>>>> (with the NAs showing up at locations 52 to 56).
+>>>>>>
+>>>>>> I'm not 100% sure that's a bug, since the documentation for pmatch doesn't discuss what should happen if table (the second argument) contains duplicates.  I think I'd agree with you that you should get 1:102 as the output, but maybe that was never intended to be supported.
+>>>>>>
+>>>>>> Duncan Murdoch
+>>>>>>
+>>>>>> On 2026-06-15 3:12 p.m., Fran?ois Rousset via R-devel wrote:
+>>>>>>> Dear R-devel list,
+>>>>>>> the following code shows NA's appearing in the result of pmatch() when
+>>>>>>> comparing a vector to itself when the length of the vector is more than 100.
+>>>>>>> The main specificity of this example is that elements are repeated in
+>>>>>>> the vector which is matched to itself.
+>>>>>>> The results when they do not include any NA (i.e. for argument of length
+>>>>>>> <=100) are exactly as I expect from the documentation.
+>>>>>>> I see that the source C code uses distinct algorithms whether n_input <=
+>>>>>>> 100 || n_target <= 100 or not. Could there by a problem in the source
+>>>>>>> code for larger values ?
+>>>>>>> The NA's correspond to the first positions of the second replicate of
+>>>>>>> the integer sequence, e.g. positions 52 to 56 if n=51 in the example below.
+>>>>>>> But as shown below, the NA's do not appear when the sequence is reversed
+>>>>>>> before being compared to itself.
+>>>>>>> This was first detected with R 4.5.3 and is reproducible with a
+>>>>>>> just-downloaded, virgin R-devel installation.
+>>>>>>> Thanks in advance for any feedback,
+>>>>>>> F.
+>>>>>>> ======================
+>>>>>>> countNAs <- function(n, rev.=FALSE) {
+>>>>>>>      seqn <- seq(n)
+>>>>>>>      if (rev.) seqn <- rev(seqn)
+>>>>>>>      seqn <- rep(seqn,2)                         # of  length 2 n: NA's
+>>>>>>> appear when 2 n > 100
+>>>>>>>      chk <- pmatch(seqn, seqn)             # I expect the result to be
+>>>>>>> seq(2*n)
+>>>>>>>      sum(is.na(chk))
+>>>>>>> }
+>>>>>>> sapply(1:100, countNAs )
+>>>>>>> sapply(1:100, countNAs , rev.=TRUE)
+>>>>>>> =======================
+>>>>>>> Results:
+>>>>>>>> sapply(1:100, countNAs )
+>>>>>>>      [1]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 0  0
+>>>>>>> 0  0  0  0  0  0
+>>>>>>>     [29]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 0  0
+>>>>>>> 5  5  5  5  5  5
+>>>>>>>     [57]  5  5  5  6  6  6  6  6  6  6  6  6  6  7  7  7  7  7  7  7 7  7
+>>>>>>> 7  8  8  8  8  8
+>>>>>>>     [85]  8  8  8  8  8  9  9  9  9  9  9  9  9  9  9 10
+>>>>>>>> sapply(1:100, countNAs , rev.=TRUE)
+>>>>>>>      [1] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>>>>> 0 0 0 0 0 0 0 0 0
+>>>>>>>     [43] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>>>>> 0 0 0 0 0 0 0 0 0
+>>>>>>>     [85] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>>>>>>> sessionInfo()
+>>>>>>> R Under development (unstable) (2026-06-14 r90150 ucrt)
+>>>>>>> Platform: x86_64-w64-mingw32/x64
+>>>>>>> Running under: Windows 10 x64 (build 19045)
+>>>>>>> Matrix products: default
+>>>>>>>      LAPACK version 3.12.1
+>>>>>>> locale:
+>>>>>>> [1] LC_COLLATE=French_France.utf8  LC_CTYPE=French_France.utf8
+>>>>>>> [3] LC_MONETARY=French_France.utf8 LC_NUMERIC=C
+>>>>>>> [5] LC_TIME=French_France.utf8
+>>>>>>> time zone: Europe/Paris
+>>>>>>> tzcode source: internal
+>>>>>>> attached base packages:
+>>>>>>> [1] stats     graphics  grDevices utils     datasets  methods  base
+>>>>>>> loaded via a namespace (and not attached):
+>>>>>>> [1] compiler_4.7.0 tools_4.7.0
+>>>>>>> ______________________________________________
+>>>>>>> R-devel using r-project.org mailing list
+>>>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>>>
+>>>>>> ______________________________________________
+>>>>>> R-devel using r-project.org mailing list
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>>>>
+>>>>> --
+>>>>> Peter Dalgaard, Professor,
+>>>>> Center for Statistics, Copenhagen Business School
+>>>>> Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+>>>>> Phone: (+45)38153501
+>>>>> Office: A 4.23
+>>>>> Email: pd.mes using cbs.dk  Priv: PDalgd using gmail.com
+>>>>>
+>>>>
+>>>
+>>
+
+
