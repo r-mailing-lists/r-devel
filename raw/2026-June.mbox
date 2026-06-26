@@ -2551,3 +2551,98 @@ Best
 > https://stat.ethz.ch/mailman/listinfo/r-devel
 
 
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Thu Jun 25 16:26:06 2026
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Thu, 25 Jun 2026 16:26:06 +0200
+Subject: [Rd] R calls with side effects in R package source
+In-Reply-To: <27195.58897.46143.226988@hornik.net>
+References: <CABFfbXtJs4AUJSCRzEq_72m8xaQVm3R5Ua-hw9dr3+F0trrXEw@mail.gmail.com>
+ <27195.58897.46143.226988@hornik.net>
+Message-ID: <27197.14974.405045.6626@hornik.net>
+
+>>>>> Kurt Hornik writes:
+
+Jeroen,
+
+I now took a closer look.  
+
+The check code by default uses tools:::.check_packages_used() on the
+code in the installed package, and hence cannot pick up top-level calls
+as these got processed when installing.  In principle one can also run
+tools:::.check_packages_used() on the actual source code, which for
+HDBRR nicely gives
+
+R> tools:::.check_packages_used(dir = "/data/rsync/PKGS/HDBRR")
+'::' or ':::' import not declared from: ?bigparallelr?
+'library' or 'require' calls not declared from:
+  ?MASS? ?bigparallelr? ?bigstatsr? ?numDeriv? ?parallel?
+'library' or 'require' calls in package code:
+  ?MASS? ?bigparallelr? ?bigstatsr? ?numDeriv? ?parallel?
+  Please use :: or requireNamespace() instead.
+  See section 'Suggested packages' in the 'Writing R Extensions' manual.
+
+Not so nicely, apparently there are quite a few packages with similar
+issues, but even worse, running tools:::.check_packages_used() on the
+actual source code fails for several packages, so I will need to look
+into fixing this.
+
+Also, the code in installed package variant knows to look for S4 things
+but not for code in reference classes (from methods or R6).
+
+Now, in any case tools:::.check_packages_used() would only pick up calls
+related to package use, and other top-level non-assignment calls can
+have undesirable side effects when installing.  One could do something
+like
+
+R> x <-
+    tools:::.find_calls_in_package_code("/data/rsync/PKGS/HDBRR",
+                                        which = "code")
+Filter(length,
+       lapply(lapply(x, tools:::.call_names),
+              setdiff,
+              c("<-", "=", "if")))
+$`HDBRR/R/HDBRR.R`
+[1] "require"                       "bigparallelr::set_blas_ncores"
+
+to find such calls.
+
+(One might wonder why the require(bigparallelr) etc without having
+bigparallelr as a dependency make no problem: that's because it is a
+recursive strong dependency.)
+
+Best
+-k
+
+
+>>>>> Jeroen Ooms writes:
+> Thanks.  Let me try to (find the time to) take a closer look (including
+> reminding myself of how the package dependency check code works ...)
+
+> Best
+> -k
+
+>> I encountered a few CRAN packages that do surprising things in their
+>> R/ files, that perhaps R could warn against.
+
+>> WRE states "Ideally, the R code files should only directly assign R
+>> objects and definitely should not call functions with side effects
+>> such as require and options. One example of a package that does
+>> exactly these things:
+>> https://github.com/cran/HDBRR/blob/master/R/HDBRR.R#L1-L15 .
+>> Interestingly, it calls require(bigparallelr) and then a function from
+>> bigparallelr, without even declaring this dependency in the
+>> DESCRIPTION, which goes unnoticed in CMD check.
+
+>> I suspect the author wants this to run this on package-load time,
+>> while in fact this happens during install time. Hence it does not have
+>> the intended effect and leads to strange behavior on build-servers.
+
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+

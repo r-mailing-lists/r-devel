@@ -445,6 +445,25 @@
       "thread_id": "thread-193e9ec68280",
       "thread_depth": 1,
       "month": "2026-06"
+    },
+    {
+      "id": "msg-8e2da7a95907",
+      "message_id": "<27197.14974.405045.6626@hornik.net>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "38d7001af840d889a64ba1cdcb8ec8beb738b8daf9643622801f3acb78b6052a",
+      "date": "2026-06-25T14:26:06Z",
+      "subject": "[Rd] R calls with side effects in R package source",
+      "subject_clean": "R calls with side effects in R package source",
+      "in_reply_to": "<27195.58897.46143.226988@hornik.net>",
+      "references": [
+        "<CABFfbXtJs4AUJSCRzEq_72m8xaQVm3R5Ua-hw9dr3+F0trrXEw@mail.gmail.com>",
+        "<27195.58897.46143.226988@hornik.net>"
+      ],
+      "body_plain": ">>>>> Kurt Hornik writes:\n\nJeroen,\n\nI now took a closer look.  \n\nThe check code by default uses tools:::.check_packages_used() on the\ncode in the installed package, and hence cannot pick up top-level calls\nas these got processed when installing.  In principle one can also run\ntools:::.check_packages_used() on the actual source code, which for\nHDBRR nicely gives\n\nR> tools:::.check_packages_used(dir = \"/data/rsync/PKGS/HDBRR\")\n'::' or ':::' import not declared from: ?bigparallelr?\n'library' or 'require' calls not declared from:\n  ?MASS? ?bigparallelr? ?bigstatsr? ?numDeriv? ?parallel?\n'library' or 'require' calls in package code:\n  ?MASS? ?bigparallelr? ?bigstatsr? ?numDeriv? ?parallel?\n  Please use :: or requireNamespace() instead.\n  See section 'Suggested packages' in the 'Writing R Extensions' manual.\n\nNot so nicely, apparently there are quite a few packages with similar\nissues, but even worse, running tools:::.check_packages_used() on the\nactual source code fails for several packages, so I will need to look\ninto fixing this.\n\nAlso, the code in installed package variant knows to look for S4 things\nbut not for code in reference classes (from methods or R6).\n\nNow, in any case tools:::.check_packages_used() would only pick up calls\nrelated to package use, and other top-level non-assignment calls can\nhave undesirable side effects when installing.  One could do something\nlike\n\nR> x <-\n    tools:::.find_calls_in_package_code(\"/data/rsync/PKGS/HDBRR\",\n                                        which = \"code\")\nFilter(length,\n       lapply(lapply(x, tools:::.call_names),\n              setdiff,\n              c(\"<-\", \"=\", \"if\")))\n$`HDBRR/R/HDBRR.R`\n[1] \"require\"                       \"bigparallelr::set_blas_ncores\"\n\nto find such calls.\n\n(One might wonder why the require(bigparallelr) etc without having\nbigparallelr as a dependency make no problem: that's because it is a\nrecursive strong dependency.)\n\nBest\n-k\n\n\n>>>>> Jeroen Ooms writes:\n> Thanks.  Let me try to (find the time to) take a closer look (including\n> reminding myself of how the package dependency check code works ...)\n\n> Best\n> -k\n\n>> I encountered a few CRAN packages that do surprising things in their\n>> R/ files, that perhaps R could warn against.\n\n>> WRE states \"Ideally, the R code files should only directly assign R\n>> objects and definitely should not call functions with side effects\n>> such as require and options. One example of a package that does\n>> exactly these things:\n>> https://github.com/cran/HDBRR/blob/master/R/HDBRR.R#L1-L15 .\n>> Interestingly, it calls require(bigparallelr) and then a function from\n>> bigparallelr, without even declaring this dependency in the\n>> DESCRIPTION, which goes unnoticed in CMD check.\n\n>> I suspect the author wants this to run this on package-load time,\n>> while in fact this happens during install time. Hence it does not have\n>> the intended effect and leads to strange behavior on build-servers.\n\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">>>>> Kurt Hornik writes:\n\nJeroen,\n\nI now took a closer look.  \n\nThe check code by default uses tools:::.check_packages_used() on the\ncode in the installed package, and hence cannot pick up top-level ",
+      "thread_id": "thread-193e9ec68280",
+      "thread_depth": 2,
+      "month": "2026-06"
     }
   ],
   "threads": [
@@ -566,13 +585,13 @@
     {
       "id": "thread-193e9ec68280",
       "subject": "R calls with side effects in R package source",
-      "message_count": 2,
+      "message_count": 3,
       "participants": [
         "Jeroen Ooms",
         "Kurt Hornik"
       ],
       "started": "2026-06-24T13:58:01Z",
-      "last_reply": "2026-06-24T14:13:37Z",
+      "last_reply": "2026-06-25T14:26:06Z",
       "root_message_id": "msg-193e9ec68280"
     }
   ]
