@@ -2646,3 +2646,136 @@ Best
 > https://stat.ethz.ch/mailman/listinfo/r-devel
 
 
+From r@mon@p|enn|nger @end|ng |rom kpt@ch  Fri Jun 26 13:43:11 2026
+From: r@mon@p|enn|nger @end|ng |rom kpt@ch (Pfenninger Ramon, IT Security)
+Date: Fri, 26 Jun 2026 11:43:11 +0000
+Subject: [Rd] Packages - Code signing
+Message-ID: <ZR1P278MB16434A40609D76ED0F94F81CE5EB2@ZR1P278MB1643.CHEP278.PROD.OUTLOOK.COM>
+
+Dear Ladies and Gentlemen
+
+Some of our employees are using R and RStudio.
+They install packages via RStudio, which are downloaded from https://cloud.r-project.org/bin/windows/contrib/.
+
+Some of the packages contain DLL files, mostly in the subdirectory \libs\x64.
+These DLL files are not digitally signed.
+This causes some problems with our security as unsinged DLLs are not allowed to be loaded by any application.
+
+Are there any plans to digitally sign DLL files in the near future?
+
+Thank you very much for your assistance.
+
+Best regards
+
+Ramon Pfenninger
+Security Operations Manager
+KPT, Postfach, CH-3001 Bern
+
+ramon.pfenninger at kpt.ch<mailto:ramon.pfenninger at kpt.ch>
+
+kpt.ch<https://kpt.ch/>
+
+
+KPT Krankenkasse AG und KPT Versicherungen AG
+Diese Mitteilung ist nur zum Gebrauch durch den Adressaten bestimmt. Die darin enthaltenen Informationen k?nnen vertraulich, pers?nlich oder rechtlich gesch?tzt sein. Die Informationen bleiben auch im Falle von ?bermittlungsfehlern vertraulich und rechtlich gesch?tzt. Haben Sie diese Mitteilung irrt?mlich erhalten, l?schen Sie sie und allf?llige Kopien unverz?glich von Ihrem System, vernichten Sie etwaige Ausdrucke und benachrichtigen Sie bitte den Absender. Wenn Sie nicht der vorgesehene Empf?nger dieser Mitteilung sind, ist es Ihnen untersagt, die Mitteilung oder Teile davon indirekt oder direkt zu verwenden, bekannt zu geben, zu verbreiten, zu drucken, zu speichern oder zu kopieren.
+
+From c@g|||e@p|e @end|ng |rom gm@||@com  Fri Jun 26 16:34:43 2026
+From: c@g|||e@p|e @end|ng |rom gm@||@com (Colin Gillespie)
+Date: Fri, 26 Jun 2026 15:34:43 +0100
+Subject: [Rd] Duplicate Packages in Imports & Suggests
+Message-ID: <CADbDLZkTXC6A3ZUEn9k8Y+0+cZSiweM08o05Gv-+Tfq4U3gSBw@mail.gmail.com>
+
+Hi,
+
+I've noticed that a few packages duplicate their Imports/Suggest.
+
+For example, https://cran.r-project.org/web/packages/landpred/index.html
+lists quantreg twice. It's also a problem for
+
+"landpred","LLMing", "MDgof", "NBDCtools", "PDXpower", "RHclust",
+"toscca", "wrappedtools"
+
+as well.
+
+Suggests has the same problem:
+
+"echarts4r" ,"fgdiR", "httkexamples", "toro", "treestats"
+
+E.g. https://cran.r-project.org/web/packages/echarts4r/index.html has
+data.tree listed twice
+
+Related (but a CRAN question): Could the imports/Suggests be listed
+alphabetically on CRAN pages?
+
+Colin
+
+
+From m|ch@e|ch|r|co4 @end|ng |rom gm@||@com  Sat Jun 27 00:49:58 2026
+From: m|ch@e|ch|r|co4 @end|ng |rom gm@||@com (Michael Chirico)
+Date: Fri, 26 Jun 2026 15:49:58 -0700
+Subject: [Rd] Avoiding overflow in integer multiplication by using 64-bit
+ multiplication?
+Message-ID: <CAPRVBcyPVbhcKj-6EObXYK9tw-JmCFVepa7WyYgWHbBLVSGJ8g@mail.gmail.com>
+
+Hi all,
+
+I submit myself humbly before you trying to understand something very
+basic in low-level R.
+
+The routine R_integer_times [1] is used to multiply two integers. It
+works by multiplying the two integers _as integers_, then only
+afterwards comparing the result of multiplying them _as doubles_, and
+giving NA+warning if they don't match. Implicitly, it relies on x*y
+wrapping around if x*y doesn't fit in 'int', however, strictly
+speaking this is relying on UB. The comment acknowledges this, but
+doesn't explain why we rely on it.
+
+We can trigger this easily: 2L * .Machine$integer.max
+
+This implementation has been around in R for many years. Why? Isn't it
+preferable to use a 64-bit type to compute the multiplication? Even on
+32-bit platforms it should be faster than the conversion to double
+that's done now. I feel I must be missing something.
+
+This patch survives 'make check':
+
+Index: src/main/arithmetic.c
+===================================================================
+--- src/main/arithmetic.c       (revision 90193)
++++ src/main/arithmetic.c       (working copy)
+@@ -348,15 +348,14 @@
+     return x - y;
+ }
+
+-#define GOODIPROD(x, y, z) ((double) (x) * (double) (y) == (z))
+ static R_INLINE int R_integer_times(int x, int y, bool *pnaflag)
+ {
+     if (x == NA_INTEGER || y == NA_INTEGER)
+        return NA_INTEGER;
+     else {
+-       int z = x * y;  // UBSAN will warn if this overflows (happens in bda)
+-       if (GOODIPROD(x, y, z) && z != NA_INTEGER)
+-           return z;
++       int64_t z = (int64_t)x * (int64_t)y;
++       if (z <= R_INT_MAX && z >= R_INT_MIN)
++           return (int)z;
+        else {
+            if (pnaflag != NULL)
+                *pnaflag = true;
+
+And this script shows the 30% performance improvement:
+
+x <- y <- rep(10000L, 5e7)
+system.time(for(i in 1:100) x * y)
+# current trunk
+#   user  system elapsed
+# 13.631   1.056  14.691
+# with patch
+#   user  system elapsed
+#  9.231   1.207  10.445
+
+Mike C
+
+[1] https://github.com/r-devel/r-svn/blob/4fa83d820f50676eef08c38fff0cdd6bfc10f5e5/src/main/arithmetic.c#L351-L366
+
+
