@@ -2779,3 +2779,173 @@ Mike C
 [1] https://github.com/r-devel/r-svn/blob/4fa83d820f50676eef08c38fff0cdd6bfc10f5e5/src/main/arithmetic.c#L351-L366
 
 
+From |uke-t|erney @end|ng |rom u|ow@@edu  Sat Jun 27 17:08:40 2026
+From: |uke-t|erney @end|ng |rom u|ow@@edu (Tierney, Luke)
+Date: Sat, 27 Jun 2026 15:08:40 +0000
+Subject: [Rd] [External] Avoiding overflow in integer multiplication by
+ using 64-bit multiplication?
+In-Reply-To: <CAPRVBcyPVbhcKj-6EObXYK9tw-JmCFVepa7WyYgWHbBLVSGJ8g@mail.gmail.com>
+References: <CAPRVBcyPVbhcKj-6EObXYK9tw-JmCFVepa7WyYgWHbBLVSGJ8g@mail.gmail.com>
+Message-ID: <03B91138-1348-49FD-8F38-9ECF72F5E920@uiowa.edu>
+
+I?m pretty sure that at the time this code was written, when R was used almost exclusively on 32-bit hardware, this was the option that performed best across a range of platforms. Also this pre-dated having int64_t available, so reliably getting a 64-bit integer variable across all platforms might have been challenging.
+
+You could look at using __builtin_mul_overflow() when available to see if that helps. I suspect it doesn?t by enough to warrant the hassle of configure checks, but might be worth a try.
+
+Best,
+
+luke
+
+> On Jun 26, 2026, at 5:49?PM, Michael Chirico <michaelchirico4 at gmail.com> wrote:
+>
+> Hi all,
+>
+> I submit myself humbly before you trying to understand something very
+> basic in low-level R.
+>
+> The routine R_integer_times [1] is used to multiply two integers. It
+> works by multiplying the two integers _as integers_, then only
+> afterwards comparing the result of multiplying them _as doubles_, and
+> giving NA+warning if they don't match. Implicitly, it relies on x*y
+> wrapping around if x*y doesn't fit in 'int', however, strictly
+> speaking this is relying on UB. The comment acknowledges this, but
+> doesn't explain why we rely on it.
+>
+> We can trigger this easily: 2L * .Machine$integer.max
+>
+> This implementation has been around in R for many years. Why? Isn't it
+> preferable to use a 64-bit type to compute the multiplication? Even on
+> 32-bit platforms it should be faster than the conversion to double
+> that's done now. I feel I must be missing something.
+>
+> This patch survives 'make check':
+>
+> Index: src/main/arithmetic.c
+> ===================================================================
+> --- src/main/arithmetic.c       (revision 90193)
+> +++ src/main/arithmetic.c       (working copy)
+> @@ -348,15 +348,14 @@
+>     return x - y;
+> }
+>
+> -#define GOODIPROD(x, y, z) ((double) (x) * (double) (y) == (z))
+> static R_INLINE int R_integer_times(int x, int y, bool *pnaflag)
+> {
+>     if (x == NA_INTEGER || y == NA_INTEGER)
+>        return NA_INTEGER;
+>     else {
+> -       int z = x * y;  // UBSAN will warn if this overflows (happens in bda)
+> -       if (GOODIPROD(x, y, z) && z != NA_INTEGER)
+> -           return z;
+> +       int64_t z = (int64_t)x * (int64_t)y;
+> +       if (z <= R_INT_MAX && z >= R_INT_MIN)
+> +           return (int)z;
+>        else {
+>            if (pnaflag != NULL)
+>                *pnaflag = true;
+>
+> And this script shows the 30% performance improvement:
+>
+> x <- y <- rep(10000L, 5e7)
+> system.time(for(i in 1:100) x * y)
+> # current trunk
+> #   user  system elapsed
+> # 13.631   1.056  14.691
+> # with patch
+> #   user  system elapsed
+> #  9.231   1.207  10.445
+>
+> Mike C
+>
+> [1] https://github.com/r-devel/r-svn/blob/4fa83d820f50676eef08c38fff0cdd6bfc10f5e5/src/main/arithmetic.c#L351-L366
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From |uke-t|erney @end|ng |rom u|ow@@edu  Sat Jun 27 17:35:31 2026
+From: |uke-t|erney @end|ng |rom u|ow@@edu (Tierney, Luke)
+Date: Sat, 27 Jun 2026 15:35:31 +0000
+Subject: [Rd] [External] Avoiding overflow in integer multiplication by
+ using 64-bit multiplication?
+In-Reply-To: <CAPRVBcyPVbhcKj-6EObXYK9tw-JmCFVepa7WyYgWHbBLVSGJ8g@mail.gmail.com>
+References: <CAPRVBcyPVbhcKj-6EObXYK9tw-JmCFVepa7WyYgWHbBLVSGJ8g@mail.gmail.com>
+Message-ID: <03B91138-1348-49FD-8F38-9ECF72F5E920@uiowa.edu>
+
+I?m pretty sure that at the time this code was written, when R was used almost exclusively on 32-bit hardware, this was the option that performed best across a range of platforms. Also this pre-dated having int64_t available, so reliably getting a 64-bit integer variable across all platforms might have been challenging.
+
+You could look at using __builtin_mul_overflow() when available to see if that helps. I suspect it doesn?t by enough to warrant the hassle of configure checks, but might be worth a try.
+
+Best,
+
+luke
+
+> On Jun 26, 2026, at 5:49?PM, Michael Chirico <michaelchirico4 at gmail.com> wrote:
+>
+> Hi all,
+>
+> I submit myself humbly before you trying to understand something very
+> basic in low-level R.
+>
+> The routine R_integer_times [1] is used to multiply two integers. It
+> works by multiplying the two integers _as integers_, then only
+> afterwards comparing the result of multiplying them _as doubles_, and
+> giving NA+warning if they don't match. Implicitly, it relies on x*y
+> wrapping around if x*y doesn't fit in 'int', however, strictly
+> speaking this is relying on UB. The comment acknowledges this, but
+> doesn't explain why we rely on it.
+>
+> We can trigger this easily: 2L * .Machine$integer.max
+>
+> This implementation has been around in R for many years. Why? Isn't it
+> preferable to use a 64-bit type to compute the multiplication? Even on
+> 32-bit platforms it should be faster than the conversion to double
+> that's done now. I feel I must be missing something.
+>
+> This patch survives 'make check':
+>
+> Index: src/main/arithmetic.c
+> ===================================================================
+> --- src/main/arithmetic.c       (revision 90193)
+> +++ src/main/arithmetic.c       (working copy)
+> @@ -348,15 +348,14 @@
+>     return x - y;
+> }
+>
+> -#define GOODIPROD(x, y, z) ((double) (x) * (double) (y) == (z))
+> static R_INLINE int R_integer_times(int x, int y, bool *pnaflag)
+> {
+>     if (x == NA_INTEGER || y == NA_INTEGER)
+>        return NA_INTEGER;
+>     else {
+> -       int z = x * y;  // UBSAN will warn if this overflows (happens in bda)
+> -       if (GOODIPROD(x, y, z) && z != NA_INTEGER)
+> -           return z;
+> +       int64_t z = (int64_t)x * (int64_t)y;
+> +       if (z <= R_INT_MAX && z >= R_INT_MIN)
+> +           return (int)z;
+>        else {
+>            if (pnaflag != NULL)
+>                *pnaflag = true;
+>
+> And this script shows the 30% performance improvement:
+>
+> x <- y <- rep(10000L, 5e7)
+> system.time(for(i in 1:100) x * y)
+> # current trunk
+> #   user  system elapsed
+> # 13.631   1.056  14.691
+> # with patch
+> #   user  system elapsed
+> #  9.231   1.207  10.445
+>
+> Mike C
+>
+> [1] https://github.com/r-devel/r-svn/blob/4fa83d820f50676eef08c38fff0cdd6bfc10f5e5/src/main/arithmetic.c#L351-L366
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
