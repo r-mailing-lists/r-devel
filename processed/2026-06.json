@@ -530,6 +530,43 @@
       "thread_id": "thread-298f925cb57f",
       "thread_depth": 1,
       "month": "2026-06"
+    },
+    {
+      "id": "msg-ddb3b8162651",
+      "message_id": "<27202.13809.75129.232837@hornik.net>",
+      "from_name": "Kurt Hornik",
+      "from_email_hash": "38d7001af840d889a64ba1cdcb8ec8beb738b8daf9643622801f3acb78b6052a",
+      "date": "2026-06-29T09:08:01Z",
+      "subject": "[Rd] Duplicate Packages in Imports & Suggests",
+      "subject_clean": "Duplicate Packages in Imports & Suggests",
+      "in_reply_to": "<CADbDLZkTXC6A3ZUEn9k8Y+0+cZSiweM08o05Gv-+Tfq4U3gSBw@mail.gmail.com>",
+      "references": [
+        "<CADbDLZkTXC6A3ZUEn9k8Y+0+cZSiweM08o05Gv-+Tfq4U3gSBw@mail.gmail.com>"
+      ],
+      "body_plain": ">>>>> Colin Gillespie writes:\n\n> Hi,\n> I've noticed that a few packages duplicate their Imports/Suggest.\n\n> For example, https://cran.r-project.org/web/packages/landpred/index.html\n> lists quantreg twice. It's also a problem for\n\n> \"landpred\",\"LLMing\", \"MDgof\", \"NBDCtools\", \"PDXpower\", \"RHclust\",\n> \"toscca\", \"wrappedtools\"\n\n> as well.\n\n> Suggests has the same problem:\n\n> \"echarts4r\" ,\"fgdiR\", \"httkexamples\", \"toro\", \"treestats\"\n\n> E.g. https://cran.r-project.org/web/packages/echarts4r/index.html has\n> data.tree listed twice\n\nColin,\n\nIndeed, running something like\n\na <- available.packages()\na <- a[startsWith(a[, \"Repository\"], getOption(\"repos\")[\"CRAN\"]), ]\ny <- data.frame(Package = a[, \"Package\"])\nfields <- c(\"Imports\", \"Depends\", \"LinkingTo\", \"Suggests\")\nfor(f in fields)\n    y[[f]] <- lapply(a[, f], tools:::.extract_dependency_package_names)\nz1 <- lapply(fields,\n             function(f) {\n                 d <- y[[f]]\n                 i <- which(vapply(d, anyDuplicated, 0) > 0)\n                 x <- lapply(d[i], function(e) sort(e[duplicated(e)]))\n                 names(x) <- y$Package[i]\n                 x\n             })\nnames(z1) <- fields\n\nz3 <- data.frame(package = unlist(lapply(z1, names), use.names = FALSE),\n                 field = rep.int(names(z1), lengths(z1)))\n\ncurrently finds \n\nR> z3\n         package     field\n1          crane   Imports\n2  FinanceGraphs   Imports\n3       landpred   Imports\n4         LLMing   Imports\n5   MatrixModels   Imports\n6          MDgof   Imports\n7      NBDCtools   Imports\n8       PDXpower   Imports\n9        RHclust   Imports\n10        toscca   Imports\n11  wrappedtools   Imports\n12       bmgarch LinkingTo\n13         ctsem LinkingTo\n14     echarts4r  Suggests\n15         fgdiR  Suggests\n16  httkexamples  Suggests\n17          toro  Suggests\n18     treestats  Suggests\n\nNow actually using the dependencies goes via\ntools:::.split_dependencies() which runs unique() after splitting,\nreducing the above via\n\nz3 <- Map(function(p, f) {\n               d <- tools:::.split_dependencies(a[p, f])\n               d <- split(d, names(d))\n               d[lengths(d) > 1]\n          },\n          z3$package, z3$field)\n\nto\n\nR> names(Filter(length, z3))\n[1] \"crane\"         \"FinanceGraphs\" \"MatrixModels\" \n\nThe last is from having\n\n  Imports: stats, methods, Matrix (>= 1.6-0), Matrix(< 1.8-0)\n\nwhich shows that having duplicated package names is actually ok.  The\nother two are from having\n\n  scales, scales (>= 1.3.0)\n  utils (>= 4.0.0), utils (>= 4.5.0)\n\nin Imports: likely unintended but harmless afaict.\n\n> Related (but a CRAN question): Could the imports/Suggests be listed\n> alphabetically on CRAN pages?\n\nI'll take a look ...\n\nVest\n-k\n\n> Colin\n\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">>>>> Colin Gillespie writes:\n\n> Hi,\n> I've noticed that a few packages duplicate their Imports/Suggest.\n\n> For example, https://cran.r-project.org/web/packages/landpred/index.html\n> lists quantreg tw",
+      "thread_id": "thread-c26bc1257016",
+      "thread_depth": 1,
+      "month": "2026-06"
+    },
+    {
+      "id": "msg-3620f01f9b24",
+      "message_id": "<7cfdd7a4-4207-4807-a454-8dcb65c57863@icloud.com>",
+      "from_name": "Prof Brian Ripley",
+      "from_email_hash": "c5d0d8f09bc545ede8356a1fd199c0f278d5b7361e67127bf6c141458274153c",
+      "date": "2026-06-29T09:57:50Z",
+      "subject": "[Rd] [External] Avoiding overflow in integer multiplication by using 64-bit multiplication?",
+      "subject_clean": "[External] Avoiding overflow in integer multiplication by using 64-bit multiplication?",
+      "in_reply_to": "<03B91138-1348-49FD-8F38-9ECF72F5E920@uiowa.edu>",
+      "references": [
+        "<CAPRVBcyPVbhcKj-6EObXYK9tw-JmCFVepa7WyYgWHbBLVSGJ8g@mail.gmail.com>",
+        "<03B91138-1348-49FD-8F38-9ECF72F5E920@uiowa.edu>"
+      ],
+      "body_plain": "On 27/06/2026 16:35, Tierney, Luke via R-devel wrote:\n> I?m pretty sure that at the time this code was written, when R was used almost exclusively on 32-bit hardware, this was the option that performed best across a range of platforms. Also this pre-dated having int64_t available, so reliably getting a 64-bit integer variable across all platforms might have been challenging.\n\nIt was (and not all platforms had a complete C99 compiler).  Further, my \nmemory is that int64_t was made optional in C11 (it certainly is in \ncurrent C17/23).  Consider int_least64_t or int_fast64_t instead.\n\n> You could look at using __builtin_mul_overflow() when available to see if that helps. I suspect it doesn?t by enough to warrant the hassle of configure checks, but might be worth a try.\n> \n> Best,\n> \n> luke\n> \n>> On Jun 26, 2026, at 5:49?PM, Michael Chirico <michaelchirico4 at gmail.com> wrote:\n>>\n>> Hi all,\n>>\n>> I submit myself humbly before you trying to understand something very\n>> basic in low-level R.\n>>\n>> The routine R_integer_times [1] is used to multiply two integers. It\n>> works by multiplying the two integers _as integers_, then only\n>> afterwards comparing the result of multiplying them _as doubles_, and\n>> giving NA+warning if they don't match. Implicitly, it relies on x*y\n>> wrapping around if x*y doesn't fit in 'int', however, strictly\n>> speaking this is relying on UB. The comment acknowledges this, but\n>> doesn't explain why we rely on it.\n>>\n>> We can trigger this easily: 2L * .Machine$integer.max\n>>\n>> This implementation has been around in R for many years. Why? Isn't it\n>> preferable to use a 64-bit type to compute the multiplication? Even on\n>> 32-bit platforms it should be faster than the conversion to double\n>> that's done now. I feel I must be missing something.\n>>\n>> This patch survives 'make check':\n>>\n>> Index: src/main/arithmetic.c\n>> ===================================================================\n>> --- src/main/arithmetic.c       (revision 90193)\n>> +++ src/main/arithmetic.c       (working copy)\n>> @@ -348,15 +348,14 @@\n>>      return x - y;\n>> }\n>>\n>> -#define GOODIPROD(x, y, z) ((double) (x) * (double) (y) == (z))\n>> static R_INLINE int R_integer_times(int x, int y, bool *pnaflag)\n>> {\n>>      if (x == NA_INTEGER || y == NA_INTEGER)\n>>         return NA_INTEGER;\n>>      else {\n>> -       int z = x * y;  // UBSAN will warn if this overflows (happens in bda)\n>> -       if (GOODIPROD(x, y, z) && z != NA_INTEGER)\n>> -           return z;\n>> +       int64_t z = (int64_t)x * (int64_t)y;\n>> +       if (z <= R_INT_MAX && z >= R_INT_MIN)\n>> +           return (int)z;\n>>         else {\n>>             if (pnaflag != NULL)\n>>                 *pnaflag = true;\n>>\n>> And this script shows the 30% performance improvement:\n\nThis likely depends on the hardware and the compiler, both unstated.\n\n>> x <- y <- rep(10000L, 5e7)\n>> system.time(for(i in 1:100) x * y)\n>> # current trunk\n>> #   user  system elapsed\n>> # 13.631   1.056  14.691\n>> # with patch\n>> #   user  system elapsed\n>> #  9.231   1.207  10.445\n>>\n>> Mike C\n>>\n>> [1] https://github.com/r-devel/r-svn/blob/4fa83d820f50676eef08c38fff0cdd6bfc10f5e5/src/main/arithmetic.c#L351-L366\n\nPlease refer to the actual R sources.\n\n-- \nBrian D. Ripley,                  ripleybd at icloud.com\nEmeritus Professor of Applied Statistics, University of Oxford",
+      "body_snippet": "On 27/06/2026 16:35, Tierney, Luke via R-devel wrote:\n> I?m pretty sure that at the time this code was written, when R was used almost exclusively on 32-bit hardware, this was the option that performe",
+      "thread_id": "thread-298f925cb57f",
+      "thread_depth": 2,
+      "month": "2026-06"
     }
   ],
   "threads": [
@@ -674,24 +711,26 @@
     {
       "id": "thread-c26bc1257016",
       "subject": "Duplicate Packages in Imports & Suggests",
-      "message_count": 1,
+      "message_count": 2,
       "participants": [
-        "Colin Gillespie"
+        "Colin Gillespie",
+        "Kurt Hornik"
       ],
       "started": "2026-06-26T14:34:43Z",
-      "last_reply": "2026-06-26T14:34:43Z",
+      "last_reply": "2026-06-29T09:08:01Z",
       "root_message_id": "msg-c26bc1257016"
     },
     {
       "id": "thread-298f925cb57f",
       "subject": "Avoiding overflow in integer multiplication by using 64-bit multiplication?",
-      "message_count": 2,
+      "message_count": 3,
       "participants": [
         "Michael Chirico",
+        "Prof Brian Ripley",
         "Tierney, Luke"
       ],
       "started": "2026-06-26T22:49:58Z",
-      "last_reply": "2026-06-27T15:08:40Z",
+      "last_reply": "2026-06-29T09:57:50Z",
       "root_message_id": "msg-298f925cb57f"
     }
   ]
