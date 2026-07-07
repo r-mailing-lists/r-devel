@@ -20,6 +20,38 @@
       "thread_id": "thread-7143089396a7",
       "thread_depth": 0,
       "month": "2026-07"
+    },
+    {
+      "id": "msg-9742b75bf2c0",
+      "message_id": "<qYJyf-usp1qAY5EBx6B1cnbcifUihJpuZ_dTt9_CnllFe6z5rZU4TxatMFIbqQKhyZ-u4F2L4nTRGrSjEJ8eLjJz-xYZWptw0XiLDX_yvUA=@stderr.org>",
+      "from_name": "elijah wright",
+      "from_email_hash": "42f54732a6aca7e4b3e165043715381cf9304821bed1ce797742b75e9387b9bc",
+      "date": "2026-07-06T14:30:06Z",
+      "subject": "[Rd] ongoing work: tracing support for R; Dtrace and eBPF",
+      "subject_clean": "ongoing work: tracing support for R; Dtrace and eBPF",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hi folks - I've put together some recent work to add support for Dtrace and eBPF profiling of the core R interpreter - it's pretty experimental but it DOES work. Side project, but hopefully becoming more useful in the long run.\n\nThere's a patch here - not terribly big, actually - showing the minimal changes required to add the pragmas into the core to make it traceable.\n\npatch-diff.githubusercontent.com/raw/wch/r-source/pull/25.patch\n\nMy thinking is that this sort of works in concert / cooperation with the profiling work that Brian Ripley did to the core, 20-some years ago now. ;-)\n\nIf you're not terribly familiar with the two technologies involved here - Dtrace is a technology that came from the Solaris world - essentially you're measuring the impact and occurrence rate of syscalls as the eval() loop in the center of the R core runs. It's also supported natively on macOS. eBPF, similarly, is a technology on the Linux side of the world - a derivative of the good old Berkeley Packet Filter, it allows for adding custom fragments to a running kernel and measuring performance (and other...) as a system runs.\n\nIncluded is a harness to allow you to use lima to test the Linux-y eBPF bits on a relatively current macOS install, inside of a VM - it's as small as I could reasonably make it,\n\nThe demo here - is to actually run the standard demo() loop, on top of an instrumented R engine. The included harness script does that, and outputs PDFs showing you the (minimal) impact of trace probes, as well as how much time various parts of the system are spending on their tasks.\n\nThere is future work to be done, some of which is already in progress - for example, I've been working on a patch to the Matrix package to allow some of the same techniques to be applied there, sort of bubbling the same technology and techniques to places where they can be maximally useful. (Matrix, as a part of r-recommended, has a TON of other packages that are dependent upon it - enough to make it a prime target for improvements of any sort.)\n\nI hope this lands nicely for folks doing related work - I was quite surprised by how straightforward the patch appears, given how much work it's setting up.\n\nbest, and thanks for all the previous contributions you've made to R and the larger performance tooling ecosystem...\n\n--e\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi folks - I've put together some recent work to add support for Dtrace and eBPF profiling of the core R interpreter - it's pretty experimental but it DOES work. Side project, but hopefully becoming m",
+      "thread_id": "thread-9742b75bf2c0",
+      "thread_depth": 0,
+      "month": "2026-07"
+    },
+    {
+      "id": "msg-3f3116f94428",
+      "message_id": "<20260707002944.1d8cc0ae@parabola>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2026-07-06T21:29:44Z",
+      "subject": "[Rd] Data pointer caching vs ALTREP",
+      "subject_clean": "Data pointer caching vs ALTREP",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hello R-devel,\n\nHere's a simplification of the problem that currently plagues lme4:\n\nx <- local({\n  # y[[1]] is large enough to have its own mmap() allocation\n  y <- list(rep(1, 1e7))\n  # y[[1]] is also large enough (>=64 elements) so structure() will\n  # create a wrapper instead of duplicating\n  structure(y[[1]], foo = 'bar')\n  # y[[1]] now has a reference count of >=2\n})\n# now x has the only reference to the original vector\n\nwriteLines('\n#include <Rinternals.h>\n\nstatic double run_arbitrary_R_code(SEXP x) {\n  const double * xd = REAL(x); // oops, forgot REAL_RO\n  // since the underlying vector is MAYBE_SHARED, the\n  // wrapper in x duplicated the underlying vector and\n  // returned a different data pointer\n  Rprintf(\"REAL(x) = %p\\\\n\", xd);\n\n  double sum = 0;\n  for (R_xlen_t i = 0; i < XLENGTH(x); ++i) sum += xd[i];\n\n  R_gc();\n  // the original vector is now freed, memory unmapped\n\n  return sum;\n}\n\nSEXP foo(SEXP x) {\n  // cache a read-only pointer to the data of x\n  const double *xd = REAL_RO(x);\n  Rprintf(\"REAL_RO(x) = %p\\\\n\", xd);\n\n  double ret1 = run_arbitrary_R_code(x);\n  // xd is now invalid\n\n  double ret2 = 0;\n  for (R_xlen_t i = 0; i < XLENGTH(x); ++i) ret2 += xd[i]; // <-- crash\n  return ScalarLogical(ret1 == ret2);\n}\n', 'foo.c')\nstopifnot(tools::Rcmd('SHLIB foo.c') == 0)\ndyn.load(paste0('foo', .Platform$dynlib.ext))\n.Call('foo', x)\n# REAL_RO(x) = 0x7f11527b4040\n# REAL(x) = 0x7f114db68040\n# \n#  *** caught segfault ***\n# address 0x7f11527b4040, cause 'memory not mapped'\n\nIn the original lme4 code the data pointers are cached inside Eigen\nobjects courtesy of RcppEigen (shared with the R session, ensuring that\nthe R objects underlying the data pointers stay protected), and the role\nof run_arbitrary_R_code() is played by a %*% operation (which uses\nREAL() to read a vector).\n\nIs there a nice way to solve this problem of a protected object's data\npointer suddenly becoming invalid? (Where is the best place to solve\nit? lme4, Rcpp, R itself?) Would it be safe for lme4 to cache writable\ndata pointers (e.g. REAL() instead of DATAPTR_RO()), assuming that the\nformer will stay the same as long as the object exists? Or does it need\nan extensive rewrite to always refresh cached data pointers?\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "Hello R-devel,\n\nHere's a simplification of the problem that currently plagues lme4:\n\nx <- local({\n  # y[[1]] is large enough to have its own mmap() allocation\n  y <- list(rep(1, 1e7))\n  # y[[1]] is al",
+      "thread_id": "thread-3f3116f94428",
+      "thread_depth": 0,
+      "month": "2026-07"
     }
   ],
   "threads": [
@@ -33,6 +65,28 @@
       "started": "2026-07-02T10:30:57Z",
       "last_reply": "2026-07-02T10:30:57Z",
       "root_message_id": "msg-7143089396a7"
+    },
+    {
+      "id": "thread-9742b75bf2c0",
+      "subject": "ongoing work: tracing support for R; Dtrace and eBPF",
+      "message_count": 1,
+      "participants": [
+        "elijah wright"
+      ],
+      "started": "2026-07-06T14:30:06Z",
+      "last_reply": "2026-07-06T14:30:06Z",
+      "root_message_id": "msg-9742b75bf2c0"
+    },
+    {
+      "id": "thread-3f3116f94428",
+      "subject": "Data pointer caching vs ALTREP",
+      "message_count": 1,
+      "participants": [
+        "Ivan Krylov"
+      ],
+      "started": "2026-07-06T21:29:44Z",
+      "last_reply": "2026-07-06T21:29:44Z",
+      "root_message_id": "msg-3f3116f94428"
     }
   ]
 }

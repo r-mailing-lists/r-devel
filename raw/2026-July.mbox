@@ -45,3 +45,112 @@ Jing Hua Zhao
 	[[alternative HTML version deleted]]
 
 
+From e|w @end|ng |rom @tderr@org  Mon Jul  6 16:30:06 2026
+From: e|w @end|ng |rom @tderr@org (elijah wright)
+Date: Mon, 06 Jul 2026 14:30:06 +0000
+Subject: [Rd] ongoing work: tracing support for R; Dtrace and eBPF
+Message-ID: <qYJyf-usp1qAY5EBx6B1cnbcifUihJpuZ_dTt9_CnllFe6z5rZU4TxatMFIbqQKhyZ-u4F2L4nTRGrSjEJ8eLjJz-xYZWptw0XiLDX_yvUA=@stderr.org>
+
+Hi folks - I've put together some recent work to add support for Dtrace and eBPF profiling of the core R interpreter - it's pretty experimental but it DOES work. Side project, but hopefully becoming more useful in the long run.
+
+There's a patch here - not terribly big, actually - showing the minimal changes required to add the pragmas into the core to make it traceable.
+
+patch-diff.githubusercontent.com/raw/wch/r-source/pull/25.patch
+
+My thinking is that this sort of works in concert / cooperation with the profiling work that Brian Ripley did to the core, 20-some years ago now. ;-)
+
+If you're not terribly familiar with the two technologies involved here - Dtrace is a technology that came from the Solaris world - essentially you're measuring the impact and occurrence rate of syscalls as the eval() loop in the center of the R core runs. It's also supported natively on macOS. eBPF, similarly, is a technology on the Linux side of the world - a derivative of the good old Berkeley Packet Filter, it allows for adding custom fragments to a running kernel and measuring performance (and other...) as a system runs.
+
+Included is a harness to allow you to use lima to test the Linux-y eBPF bits on a relatively current macOS install, inside of a VM - it's as small as I could reasonably make it,
+
+The demo here - is to actually run the standard demo() loop, on top of an instrumented R engine. The included harness script does that, and outputs PDFs showing you the (minimal) impact of trace probes, as well as how much time various parts of the system are spending on their tasks.
+
+There is future work to be done, some of which is already in progress - for example, I've been working on a patch to the Matrix package to allow some of the same techniques to be applied there, sort of bubbling the same technology and techniques to places where they can be maximally useful. (Matrix, as a part of r-recommended, has a TON of other packages that are dependent upon it - enough to make it a prime target for improvements of any sort.)
+
+I hope this lands nicely for folks doing related work - I was quite surprised by how straightforward the patch appears, given how much work it's setting up.
+
+best, and thanks for all the previous contributions you've made to R and the larger performance tooling ecosystem...
+
+--e
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Jul  6 23:29:44 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 7 Jul 2026 00:29:44 +0300
+Subject: [Rd] Data pointer caching vs ALTREP
+Message-ID: <20260707002944.1d8cc0ae@parabola>
+
+Hello R-devel,
+
+Here's a simplification of the problem that currently plagues lme4:
+
+x <- local({
+  # y[[1]] is large enough to have its own mmap() allocation
+  y <- list(rep(1, 1e7))
+  # y[[1]] is also large enough (>=64 elements) so structure() will
+  # create a wrapper instead of duplicating
+  structure(y[[1]], foo = 'bar')
+  # y[[1]] now has a reference count of >=2
+})
+# now x has the only reference to the original vector
+
+writeLines('
+#include <Rinternals.h>
+
+static double run_arbitrary_R_code(SEXP x) {
+  const double * xd = REAL(x); // oops, forgot REAL_RO
+  // since the underlying vector is MAYBE_SHARED, the
+  // wrapper in x duplicated the underlying vector and
+  // returned a different data pointer
+  Rprintf("REAL(x) = %p\\n", xd);
+
+  double sum = 0;
+  for (R_xlen_t i = 0; i < XLENGTH(x); ++i) sum += xd[i];
+
+  R_gc();
+  // the original vector is now freed, memory unmapped
+
+  return sum;
+}
+
+SEXP foo(SEXP x) {
+  // cache a read-only pointer to the data of x
+  const double *xd = REAL_RO(x);
+  Rprintf("REAL_RO(x) = %p\\n", xd);
+
+  double ret1 = run_arbitrary_R_code(x);
+  // xd is now invalid
+
+  double ret2 = 0;
+  for (R_xlen_t i = 0; i < XLENGTH(x); ++i) ret2 += xd[i]; // <-- crash
+  return ScalarLogical(ret1 == ret2);
+}
+', 'foo.c')
+stopifnot(tools::Rcmd('SHLIB foo.c') == 0)
+dyn.load(paste0('foo', .Platform$dynlib.ext))
+.Call('foo', x)
+# REAL_RO(x) = 0x7f11527b4040
+# REAL(x) = 0x7f114db68040
+# 
+#  *** caught segfault ***
+# address 0x7f11527b4040, cause 'memory not mapped'
+
+In the original lme4 code the data pointers are cached inside Eigen
+objects courtesy of RcppEigen (shared with the R session, ensuring that
+the R objects underlying the data pointers stay protected), and the role
+of run_arbitrary_R_code() is played by a %*% operation (which uses
+REAL() to read a vector).
+
+Is there a nice way to solve this problem of a protected object's data
+pointer suddenly becoming invalid? (Where is the best place to solve
+it? lme4, Rcpp, R itself?) Would it be safe for lme4 to cache writable
+data pointers (e.g. REAL() instead of DATAPTR_RO()), assuming that the
+former will stay the same as long as the object exists? Or does it need
+an extensive rewrite to always refresh cached data pointers?
+
+-- 
+Best regards,
+Ivan
+
+
