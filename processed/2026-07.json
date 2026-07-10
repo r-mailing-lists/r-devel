@@ -52,6 +52,42 @@
       "thread_id": "thread-3f3116f94428",
       "thread_depth": 0,
       "month": "2026-07"
+    },
+    {
+      "id": "msg-44df67332f72",
+      "message_id": "<27215.44347.844814.999763@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-07-09T14:16:27Z",
+      "subject": "[Rd] Integer overflow in rhyper.c",
+      "subject_clean": "Integer overflow in rhyper.c",
+      "in_reply_to": "<fake-VM-id.8a4e1bad5fb7d10a9d296120b9d14cbb@talos.iv>",
+      "references": [
+        "<CAMzdVvvwOb5mdPyj-p-iyJGBiyULAPc0P-Gf-uhBHAVS7Ao1ew@mail.gmail.com>"
+      ],
+      "body_plain": ">>>>> Jonathan Blood \n>>>>>     on Fri, 24 Apr 2026 08:21:03 -0400 writes:\n\n    > Hello R-Devel,\n    > I have identified an integer overflow bug in rhyper that occurs when the\n    > total population (`m + n`) exceeds `.Machine$integer.max`, provided that\n    > the parameters themselves are still 32-bit integers and the number of draws\n    > (`k`) is small.\n\n    > The Issue:\n\n    > In src/nmath/rhyper.c, internal calculations involving the total population\n    > size appear to cast to 32-bit signed integers. This causes a wrap-around to\n    > negative values when `m + n >= 2^31`, triggering a \"SHOULD NOT HAPPEN\"\n    > warning in the `afc()` factorial helper and causing the function to always\n    > return 0.\n\n    > Interestingly, the bug is sensitive to the value of `k`, suggesting it only\n    > affects one specific algorithmic branch (likely the H2PE algorithm setup).\n\n    > Minimal Reproducible Example:\n\n    > ```r\n    > set.seed(1)\n\n    > # 1. Sum of population is exactly 2^31, k < 19\n    > # This triggers warnings and incorrectly returns 0\n    > rhyper(1, 2^30, 2^30, 18)\n    > #> Warning in rhyper(1, 2^30, 2^30, 18): rhyper.c: afc(i), i=-2147483648 <\n    > 0 --\n    > #> SHOULD NOT HAPPEN!\n    > #> [1] 0\n\n    > # 2. Subsequent calls with identical parameters no longer trigger the\n    > warning,\n    > # but consistently return 0\n    > sum(rhyper(1e5, 2^30, 2^30, 18))\n    > #> [1] 0\n\n    > # 3. Same population, but k >= 19 behaves correctly (likely different branch)\n    > rhyper(1, 2^30, 2^30, 19)\n    > #> [1] 12\n\n    > # 4. Reducing population sum below 2^31 behaves correctly\n    > rhyper(1, 2^30 - 1, 2^30 - 1, 18)\n    > #> [1] 9\n\n    > # 5. Parameters large enough to be treated as doubles behave correctly\n    > rhyper(1, 2^31, 2^31, 18)\n    > #> [1] 7\n\n    > sessionInfo()\n    > #> R version 4.5.3 (2026-03-11 ucrt)\n    > #> Platform: x86_64-w64-mingw32/x64\n    > #> Running under: Windows 11 x64 (build 22631)\n\n....\n\n    > Regards,\n    > Jon Blood\n\n\nThank you, Jon.\n\nI've finally addressed this and fixed it;  the internal check\nneeded    n+m > MAX_INT  instead of only checking the n and m.\n\n  --> Fixed in svn rev 90223\n\nI'm sorry this was not addressed earlier.\n\nBest regards,\nMartin",
+      "body_snippet": ">>>>> Jonathan Blood \n>>>>>     on Fri, 24 Apr 2026 08:21:03 -0400 writes:\n\n    > Hello R-Devel,\n    > I have identified an integer overflow bug in rhyper that occurs when the\n    > total population (",
+      "thread_id": "thread-44df67332f72",
+      "thread_depth": 0,
+      "month": "2026-07"
+    },
+    {
+      "id": "msg-db5a535c6e44",
+      "message_id": "<bc3f2619-a892-8f73-6a7f-d71cb1a21844@uiowa.edu>",
+      "from_name": "iuke-tier@ey m@iii@g oii uiow@@edu",
+      "from_email_hash": "d99ccb54811d841ac041f12e5dfc823053fe0bdf1cebd8d1047b8e5f0d6a24b7",
+      "date": "2026-07-09T14:16:28Z",
+      "subject": "[Rd] [External]  Data pointer caching vs ALTREP",
+      "subject_clean": "[External]  Data pointer caching vs ALTREP",
+      "in_reply_to": "<20260707002944.1d8cc0ae@parabola>",
+      "references": [
+        "<20260707002944.1d8cc0ae@parabola>"
+      ],
+      "body_plain": "Thanks for the report and the careful analysis. This looks like a bug\nin the wrapper implementation. I'll look more carefully and patch\nR-devel/R-patched next week when I am back from useR. For caching it\nshould be sufficient for now to cache the writable pointer.\n\nBest,\n\nluke\n\nOn Mon, 6 Jul 2026, Ivan Krylov via R-devel wrote:\n\n> Hello R-devel,\n>\n> Here's a simplification of the problem that currently plagues lme4:\n>\n> x <- local({\n>  # y[[1]] is large enough to have its own mmap() allocation\n>  y <- list(rep(1, 1e7))\n>  # y[[1]] is also large enough (>=64 elements) so structure() will\n>  # create a wrapper instead of duplicating\n>  structure(y[[1]], foo = 'bar')\n>  # y[[1]] now has a reference count of >=2\n> })\n> # now x has the only reference to the original vector\n>\n> writeLines('\n> #include <Rinternals.h>\n>\n> static double run_arbitrary_R_code(SEXP x) {\n>  const double * xd = REAL(x); // oops, forgot REAL_RO\n>  // since the underlying vector is MAYBE_SHARED, the\n>  // wrapper in x duplicated the underlying vector and\n>  // returned a different data pointer\n>  Rprintf(\"REAL(x) = %p\\\\n\", xd);\n>\n>  double sum = 0;\n>  for (R_xlen_t i = 0; i < XLENGTH(x); ++i) sum += xd[i];\n>\n>  R_gc();\n>  // the original vector is now freed, memory unmapped\n>\n>  return sum;\n> }\n>\n> SEXP foo(SEXP x) {\n>  // cache a read-only pointer to the data of x\n>  const double *xd = REAL_RO(x);\n>  Rprintf(\"REAL_RO(x) = %p\\\\n\", xd);\n>\n>  double ret1 = run_arbitrary_R_code(x);\n>  // xd is now invalid\n>\n>  double ret2 = 0;\n>  for (R_xlen_t i = 0; i < XLENGTH(x); ++i) ret2 += xd[i]; // <-- crash\n>  return ScalarLogical(ret1 == ret2);\n> }\n> ', 'foo.c')\n> stopifnot(tools::Rcmd('SHLIB foo.c') == 0)\n> dyn.load(paste0('foo', .Platform$dynlib.ext))\n> .Call('foo', x)\n> # REAL_RO(x) = 0x7f11527b4040\n> # REAL(x) = 0x7f114db68040\n> #\n> #  *** caught segfault ***\n> # address 0x7f11527b4040, cause 'memory not mapped'\n>\n> In the original lme4 code the data pointers are cached inside Eigen\n> objects courtesy of RcppEigen (shared with the R session, ensuring that\n> the R objects underlying the data pointers stay protected), and the role\n> of run_arbitrary_R_code() is played by a %*% operation (which uses\n> REAL() to read a vector).\n>\n> Is there a nice way to solve this problem of a protected object's data\n> pointer suddenly becoming invalid? (Where is the best place to solve\n> it? lme4, Rcpp, R itself?) Would it be safe for lme4 to cache writable\n> data pointers (e.g. REAL() instead of DATAPTR_RO()), assuming that the\n> former will stay the same as long as the object exists? Or does it need\n> an extensive rewrite to always refresh cached data pointers?\n>\n>\n\n-- \nLuke Tierney\nProfessor Emeritus\nDepartment of Statistics and\n    Actuarial Science\nUniversity of Iowa\n241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu\nIowa City, IA 52242                 WWW:  http://stat.uiowa.edu",
+      "body_snippet": "Thanks for the report and the careful analysis. This looks like a bug\nin the wrapper implementation. I'll look more carefully and patch\nR-devel/R-patched next week when I am back from useR. For cachin",
+      "thread_id": "thread-3f3116f94428",
+      "thread_depth": 1,
+      "month": "2026-07"
     }
   ],
   "threads": [
@@ -80,13 +116,25 @@
     {
       "id": "thread-3f3116f94428",
       "subject": "Data pointer caching vs ALTREP",
-      "message_count": 1,
+      "message_count": 2,
       "participants": [
-        "Ivan Krylov"
+        "Ivan Krylov",
+        "iuke-tier@ey m@iii@g oii uiow@@edu"
       ],
       "started": "2026-07-06T21:29:44Z",
-      "last_reply": "2026-07-06T21:29:44Z",
+      "last_reply": "2026-07-09T14:16:28Z",
       "root_message_id": "msg-3f3116f94428"
+    },
+    {
+      "id": "thread-44df67332f72",
+      "subject": "Integer overflow in rhyper.c",
+      "message_count": 1,
+      "participants": [
+        "Martin Maechler"
+      ],
+      "started": "2026-07-09T14:16:27Z",
+      "last_reply": "2026-07-09T14:16:27Z",
+      "root_message_id": "msg-44df67332f72"
     }
   ]
 }
