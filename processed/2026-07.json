@@ -88,6 +88,22 @@
       "thread_id": "thread-3f3116f94428",
       "thread_depth": 1,
       "month": "2026-07"
+    },
+    {
+      "id": "msg-0ace51d22c30",
+      "message_id": "<20260714173244.52c8e019@arachnoid>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2026-07-14T14:32:44Z",
+      "subject": "[Rd] Fix printing of length in a sequence() warning",
+      "subject_clean": "Fix printing of length in a sequence() warning",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hello R-devel,\n\nHere's a compilation warning and a snprintf() long / long long type\nmismatch on Windows:\n\nseq.c: In function 'do_sequence':\nseq.c:1167:47: warning: format '%ld' expects argument of type 'long\nint', but argument 4 has type 'R_xlen_t' {aka 'long long int'}\n[-Wformat=]\n\n## This will require 16 GiB of memory!\nx <- integer(2^31)\ny <- integer(2^31+1)\nsequence(x, y, y)\n# Error in sequence.default(x, y, y) :\n#   (converted from warning) length(nvec) -2147483648 < -2147483647 =\n#   max(length(from), length(by)) -- future R`s default 'recycle =\n#   TRUE' will recycle 'nvec'\n\nThe fix is to print the lengths as 'long long' like in the rest of base\nR code.\n\nIndex: src/main/seq.c\n===================================================================\n--- src/main/seq.c\t(revision 90253)\n+++ src/main/seq.c\t(working copy)\n@@ -1164,8 +1164,8 @@\n \tstatic bool warn_1st = true;\n \tif(warn_1st && maybe_warn) {\n \t    char msg[99];\n-\t    snprintf(msg, 99, \"length(nvec) %ld < %ld = max(length(from), length(by))\",\n-\t\t     lengths_len, max_len);\n+\t    snprintf(msg, 99, \"length(nvec) %lld < %lld = max(length(from), length(by))\",\n+\t\t     (long long)lengths_len, (long long)max_len);\n \t    warning(_(\"%s -- future R`s default 'recycle = TRUE' will recycle 'nvec'\"), msg);\n \t    warn_1st = false;\n \t}\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "Hello R-devel,\n\nHere's a compilation warning and a snprintf() long / long long type\nmismatch on Windows:\n\nseq.c: In function 'do_sequence':\nseq.c:1167:47: warning: format '%ld' expects argument of typ",
+      "thread_id": "thread-0ace51d22c30",
+      "thread_depth": 0,
+      "month": "2026-07"
     }
   ],
   "threads": [
@@ -135,6 +151,17 @@
       "started": "2026-07-09T14:16:27Z",
       "last_reply": "2026-07-09T14:16:27Z",
       "root_message_id": "msg-44df67332f72"
+    },
+    {
+      "id": "thread-0ace51d22c30",
+      "subject": "Fix printing of length in a sequence() warning",
+      "message_count": 1,
+      "participants": [
+        "Ivan Krylov"
+      ],
+      "started": "2026-07-14T14:32:44Z",
+      "last_reply": "2026-07-14T14:32:44Z",
+      "root_message_id": "msg-0ace51d22c30"
     }
   ]
 }
