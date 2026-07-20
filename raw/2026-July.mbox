@@ -408,3 +408,59 @@ Best regards,
 Ivan
 
 
+From j@g@nmn2 @end|ng |rom gm@||@com  Sun Jul 19 06:26:05 2026
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Sun, 19 Jul 2026 00:26:05 -0400
+Subject: [Rd] Fix printing of length in a sequence() warning
+In-Reply-To: <mailman.55494.1.1784109601.64533.r-devel@r-project.org>
+References: <mailman.55494.1.1784109601.64533.r-devel@r-project.org>
+Message-ID: <063980fa-0dad-45c1-9a1f-08eb790d7cbc@gmail.com>
+
+Thanks, Ivan - I've just committed a fix, r90278.
+
+Mikael
+
+
+> From: Ivan Krylov <ikrylov at disroot.org>
+> To: r-devel at r-project.org
+> 
+> Hello R-devel,
+> 
+> Here's a compilation warning and a snprintf() long / long long type
+> mismatch on Windows:
+> 
+> seq.c: In function 'do_sequence':
+> seq.c:1167:47: warning: format '%ld' expects argument of type 'long
+> int', but argument 4 has type 'R_xlen_t' {aka 'long long int'}
+> [-Wformat=]
+> 
+> ## This will require 16 GiB of memory!
+> x <- integer(2^31)
+> y <- integer(2^31+1)
+> sequence(x, y, y)
+> # Error in sequence.default(x, y, y) :
+> #   (converted from warning) length(nvec) -2147483648 < -2147483647 =
+> #   max(length(from), length(by)) -- future R`s default 'recycle =
+> #   TRUE' will recycle 'nvec'
+> 
+> The fix is to print the lengths as 'long long' like in the rest of base
+> R code.
+> 
+> Index: src/main/seq.c
+> ===================================================================
+> --- src/main/seq.c	(revision 90253)
+> +++ src/main/seq.c	(working copy)
+> @@ -1164,8 +1164,8 @@
+>   	static bool warn_1st = true;
+>   	if(warn_1st && maybe_warn) {
+>   	    char msg[99];
+> -	    snprintf(msg, 99, "length(nvec) %ld < %ld = max(length(from), length(by))",
+> -		     lengths_len, max_len);
+> +	    snprintf(msg, 99, "length(nvec) %lld < %lld = max(length(from), length(by))",
+> +		     (long long)lengths_len, (long long)max_len);
+>   	    warning(_("%s -- future R`s default 'recycle = TRUE' will recycle 'nvec'"), msg);
+>   	    warn_1st = false;
+>   	}
+>
+
+
