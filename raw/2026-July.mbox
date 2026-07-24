@@ -488,3 +488,47 @@ Avi
 [2] https://jrsoftware.org/isdl.php#v7
 
 
+From m|ch@e|ch|r|co4 @end|ng |rom gm@||@com  Thu Jul 23 23:21:13 2026
+From: m|ch@e|ch|r|co4 @end|ng |rom gm@||@com (Michael Chirico)
+Date: Thu, 23 Jul 2026 14:21:13 -0700
+Subject: [Rd] Should library(PKG,
+ pos="package:base") attach Depends closer to PKG?
+Message-ID: <CAPRVBcyRap3dkvV-MPWbtZqBCcBy8Sg2GDHnWLjcC3nHnTDUQg@mail.gmail.com>
+
+Consider the following (currently {caret} Depends on {ggplot2} and {lattice}):
+
+NB: in the below I set R_DEFAULT_PACKAGES=methods just to reduce visual noise
+
+search()
+# [1] ".GlobalEnv"      "package:methods" "Autoloads"       "package:base"
+library(data.table)
+library(caret, pos="package:base")
+search()
+# [1] ".GlobalEnv"         "package:lattice"    "package:ggplot2"
+# [4] "package:data.table" "package:caret"      "package:methods"
+# [7] "Autoloads"          "package:base"
+
+c.f. a session where we attach the Depends ourselves:
+
+library(data.table)
+library(lattice, pos='package:base')
+library(ggplot2, pos='package:base')
+library(caret, pos='package:base')
+search()
+# [1] ".GlobalEnv"         "package:data.table" "package:methods"
+# [4] "Autoloads"          "package:lattice"    "package:ggplot2"
+# [7] "package:caret"      "package:base"
+
+I.e., the search() resolution of the Depends w.r.t. {data.table}
+differs in the two invocations.
+This is a bit surprising to me -- add it to the list of reasons why I
+think 'Depends' should be deprecated.
+
+For now, is this a bug? An existing workaround is to use
+attach.required=FALSE, but it's not ideal -- it has the similar effect
+of requiring the author to track down recursive Depends to attach them
+manually.
+
+Michael Chirico
+
+
