@@ -1700,3 +1700,520 @@ University of Iowa
 Iowa City, IA 52242                 WWW:  http://stat.uiowa.edu
 
 
+From jc@r|o@@g@v|r|@ @end|ng |rom ude@@edu@co  Thu Jul 30 21:09:05 2026
+From: jc@r|o@@g@v|r|@ @end|ng |rom ude@@edu@co (JUAN CARLOS GAVIRIA CHAVERRA)
+Date: Thu, 30 Jul 2026 14:09:05 -0500
+Subject: [Rd] Bug report: mean(...,
+ trim) silently applies integer truncation when k = trim * n is
+ non-integer
+Message-ID: <CAFma-WM-mzSuHaYbEZEQ=XxBdpmytrWPTzvCUW3AM=gG7ZhPNg@mail.gmail.com>
+
+Subject: Bug report: mean(..., trim) silently applies integer truncation
+when k = trim * n is non-integer
+
+Dear R Core Team,
+
+I am writing to report a structural limitation in the mean(..., trim)
+function in base R that has gone undetected for over three decades and
+affects the overwhelming majority of practical uses of trimmed mean
+computation.
+
+--- NARRATIVE JUSTIFICATION ---
+
+For more than three decades, researchers in econometrics, finance, public
+health, environmental sciences and many other fields have trusted that
+mean(..., trim = 0.05) applies exactly 5% trimming to their data. This
+implicit trust is precisely what makes the integer truncation problem so
+consequential: it affects any combination of n and trim that produces a
+non-integer k = trim * n, which represents the overwhelming majority of
+practical uses.
+
+The problem has two manifestations. When k < 1 (Type A), R reduces k to
+zero and returns the arithmetic mean, completely ignoring the requested
+trimming without any warning. When k > 1 but non-integer (Type B), R trims
+fewer observations than requested, with losses reaching 33% of the nominal
+value, also without any warning.
+
+The scope extends beyond direct users: packages such as WRS2 (hundreds of
+thousands of downloads) use mean(x, tr) internally, propagating the
+distortion silently to confidence intervals and hypothesis tests.
+
+We are not requesting a change in the existing algorithm. We are requesting
+transparency: a warning when the effective trimming differs from the
+requested trimming, preserving complete backward compatibility.
+
+The existence of sgmean as a separate package (CRAN v0.1.1) should not be
+interpreted as a permanent solution. sgmean and mean(..., trim) produce
+identical results whenever k = trim * n is an exact integer. The only
+difference is that sgmean also handles non-integer k correctly. Directing
+users to install a separate package to obtain the result that base R's own
+mean() function should produce is not a solution ? it is a transfer of
+responsibility. The R Core Team has the unique opportunity to resolve this
+at the root, ensuring that every R user benefits from correct trimmed mean
+computation.
+
+--- REPRODUCIBLE EXAMPLE ---
+
+x <- c(850, 920, 980, 1050, 1120, 1180, 1250,
+       1320, 1400, 1480, 1550, 1700, 1850, 2100, 8500)
+
+# TYPE A: k < 1
+cat('k requested:', 0.05 * 15, '| k applied:', floor(0.05 * 15), '\n')
+# k requested: 0.75 | k applied: 0
+mean(x)               # [1] 1816.667
+mean(x, trim = 0.05)  # [1] 1816.667 -- SAME: no trimming applied
+# Expected (Statgraphics): 1499.074
+
+# TYPE B: k > 1, non-integer
+cat('k requested:', 0.10 * 15, '| k applied:', floor(0.10 * 15), '| Loss:
+33.3%\n')
+mean(x, trim = 0.10)  # [1] 1376.923
+# Expected (Statgraphics): 1365.833
+
+--- CROSS-PLATFORM EVIDENCE ---
+
+This bug exists identically in Python's scipy.stats.trim_mean, confirming
+that integer truncation in trimmed mean computation is a systematic
+limitation shared across the two most widely used scientific computing
+environments in the world.
+
+Software              | Type A (k=0.75) | Type B (k=1.50)
+R base mean(...,trim) | 1816.667 (wrong)| 1376.923 (wrong)
+Python trim_mean      | 1816.667 (wrong)| 1376.923 (wrong)
+Statgraphics          | 1499.074 (correct) | 1365.833 (correct)
+sgmean CRAN v0.1.1    | 1499.074 (correct) | 1365.833 (correct)
+
+--- PROPOSED SOLUTION ---
+
+Minimum fix: add a warning in mean.default() when k = trim * n is
+non-integer:
+
+if (k != floor(k)) {
+  if (floor(k) == 0L) {
+    warning(paste0('trim * length(x) = ', k, ' < 1. ',
+      'No trimming applied (effective trim = 0%). ',
+      'Consider sgmean::sgmean() for proportional trimming.'))
+  } else {
+    warning(paste0('trim * length(x) = ', k, ' is not an integer. ',
+      'Effective trimming: ', round(floor(k)/length(x)*100,1), '% ',
+      '(requested: ', trim*100, '%, loss: ',
+      round((k-floor(k))/k*100,1), '%).'))
+  }
+}
+
+--- AVAILABLE SOLUTION ---
+
+A corrected implementation is available on CRAN:
+install.packages('sgmean')
+DOI: https://doi.org/10.32614/CRAN.package.sgmean
+GitHub: https://github.com/jcarlosgaviria/sgmean
+
+--- R VERSION ---
+
+R version 4.5.3 (2026-03-11 ucrt)
+Platform: x86_64-w64-mingw32/x64
+
+Best regards,
+
+Juan C. Gaviria-Chaverra
+ALIADO-Analytics and Research for Decision Making
+Department of Industrial Engineering, Universidad de Antioquia
+Medellin, Colombia
+jcarlos.gaviria at udea.edu.co
+ORCID: 0009-0008-9403-416X
+GitHub: https://github.com/jcarlosgaviria
+
+-- 
+
+
+"La informaci?n aqu? contenida es para uso exclusivo de la persona o 
+entidad de destino. Est? estrictamente prohibida su utilizaci?n, copia, 
+descarga, distribuci?n, modificaci?n y/o reproducci?n total o parcial, sin 
+el permiso expreso de Universidad de Antioquia, pues su contenido puede ser 
+de car?cter confidencial y/o contener material privilegiado. Si usted 
+recibi? esta informaci?n por error, por favor contacte en forma inmediata a 
+quien la envi? y borre este material de su computador.?Universidad de 
+Antioquia?no es?responsable por la informaci?n contenida en esta 
+comunicaci?n, el directo responsable es quien la firma o el autor de la 
+misma."
+
+
+From r@v|@v@r@dh@n @end|ng |rom jhu@edu  Thu Jul 30 22:16:00 2026
+From: r@v|@v@r@dh@n @end|ng |rom jhu@edu (Ravi Varadhan)
+Date: Thu, 30 Jul 2026 20:16:00 +0000
+Subject: [Rd] Bug report: mean(...,
+ trim) silently applies integer truncation when k = trim * n is
+ non-integer
+In-Reply-To: <CAFma-WM-mzSuHaYbEZEQ=XxBdpmytrWPTzvCUW3AM=gG7ZhPNg@mail.gmail.com>
+References: <CAFma-WM-mzSuHaYbEZEQ=XxBdpmytrWPTzvCUW3AM=gG7ZhPNg@mail.gmail.com>
+Message-ID: <DS4PR01MB9434F83E280DC80F7907029FF2C92@DS4PR01MB9434.prod.exchangelabs.com>
+
+This is not a bug. Your premise is that trim*n should not be truncated to an integer. However, you cannot trim a fraction of an observation. If you have 15 observations and request a 5% trim, you are asking to remove 0.75 observations from each end. Because observations are discrete, R must choose an integer. R chooses floor(0.75) = 0.  One could have chosen round instead of floor, but both are reasonable choices.
+
+Statgraphics is calculating an interpolated or fractional trimmed mean, which is a different statistical estimator than the standard discrete trimmed mean.
+
+Ravi
+
+________________________________
+From: R-devel <r-devel-bounces at r-project.org> on behalf of JUAN CARLOS GAVIRIA CHAVERRA via R-devel <r-devel at r-project.org>
+Sent: Thursday, July 30, 2026 15:09
+To: r-devel at r-project.org <r-devel at r-project.org>
+Subject: [Rd] Bug report: mean(..., trim) silently applies integer truncation when k = trim * n is non-integer
+
+
+      External Email - Use Caution
+
+
+
+Subject: Bug report: mean(..., trim) silently applies integer truncation
+when k = trim * n is non-integer
+
+Dear R Core Team,
+
+I am writing to report a structural limitation in the mean(..., trim)
+function in base R that has gone undetected for over three decades and
+affects the overwhelming majority of practical uses of trimmed mean
+computation.
+
+--- NARRATIVE JUSTIFICATION ---
+
+For more than three decades, researchers in econometrics, finance, public
+health, environmental sciences and many other fields have trusted that
+mean(..., trim = 0.05) applies exactly 5% trimming to their data. This
+implicit trust is precisely what makes the integer truncation problem so
+consequential: it affects any combination of n and trim that produces a
+non-integer k = trim * n, which represents the overwhelming majority of
+practical uses.
+
+The problem has two manifestations. When k < 1 (Type A), R reduces k to
+zero and returns the arithmetic mean, completely ignoring the requested
+trimming without any warning. When k > 1 but non-integer (Type B), R trims
+fewer observations than requested, with losses reaching 33% of the nominal
+value, also without any warning.
+
+The scope extends beyond direct users: packages such as WRS2 (hundreds of
+thousands of downloads) use mean(x, tr) internally, propagating the
+distortion silently to confidence intervals and hypothesis tests.
+
+We are not requesting a change in the existing algorithm. We are requesting
+transparency: a warning when the effective trimming differs from the
+requested trimming, preserving complete backward compatibility.
+
+The existence of sgmean as a separate package (CRAN v0.1.1) should not be
+interpreted as a permanent solution. sgmean and mean(..., trim) produce
+identical results whenever k = trim * n is an exact integer. The only
+difference is that sgmean also handles non-integer k correctly. Directing
+users to install a separate package to obtain the result that base R's own
+mean() function should produce is not a solution ? it is a transfer of
+responsibility. The R Core Team has the unique opportunity to resolve this
+at the root, ensuring that every R user benefits from correct trimmed mean
+computation.
+
+--- REPRODUCIBLE EXAMPLE ---
+
+x <- c(850, 920, 980, 1050, 1120, 1180, 1250,
+       1320, 1400, 1480, 1550, 1700, 1850, 2100, 8500)
+
+# TYPE A: k < 1
+cat('k requested:', 0.05 * 15, '| k applied:', floor(0.05 * 15), '\n')
+# k requested: 0.75 | k applied: 0
+mean(x)               # [1] 1816.667
+mean(x, trim = 0.05)  # [1] 1816.667 -- SAME: no trimming applied
+# Expected (Statgraphics): 1499.074
+
+# TYPE B: k > 1, non-integer
+cat('k requested:', 0.10 * 15, '| k applied:', floor(0.10 * 15), '| Loss:
+33.3%\n')
+mean(x, trim = 0.10)  # [1] 1376.923
+# Expected (Statgraphics): 1365.833
+
+--- CROSS-PLATFORM EVIDENCE ---
+
+This bug exists identically in Python's scipy.stats.trim_mean, confirming
+that integer truncation in trimmed mean computation is a systematic
+limitation shared across the two most widely used scientific computing
+environments in the world.
+
+Software              | Type A (k=0.75) | Type B (k=1.50)
+R base mean(...,trim) | 1816.667 (wrong)| 1376.923 (wrong)
+Python trim_mean      | 1816.667 (wrong)| 1376.923 (wrong)
+Statgraphics          | 1499.074 (correct) | 1365.833 (correct)
+sgmean CRAN v0.1.1    | 1499.074 (correct) | 1365.833 (correct)
+
+--- PROPOSED SOLUTION ---
+
+Minimum fix: add a warning in mean.default() when k = trim * n is
+non-integer:
+
+if (k != floor(k)) {
+  if (floor(k) == 0L) {
+    warning(paste0('trim * length(x) = ', k, ' < 1. ',
+      'No trimming applied (effective trim = 0%). ',
+      'Consider sgmean::sgmean() for proportional trimming.'))
+  } else {
+    warning(paste0('trim * length(x) = ', k, ' is not an integer. ',
+      'Effective trimming: ', round(floor(k)/length(x)*100,1), '% ',
+      '(requested: ', trim*100, '%, loss: ',
+      round((k-floor(k))/k*100,1), '%).'))
+  }
+}
+
+--- AVAILABLE SOLUTION ---
+
+A corrected implementation is available on CRAN:
+install.packages('sgmean')
+DOI: https://doi.org/10.32614/CRAN.package.sgmean
+GitHub: https://github.com/jcarlosgaviria/sgmean<https://github.com/jcarlosgaviria/sgmean>
+
+--- R VERSION ---
+
+R version 4.5.3 (2026-03-11 ucrt)
+Platform: x86_64-w64-mingw32/x64
+
+Best regards,
+
+Juan C. Gaviria-Chaverra
+ALIADO-Analytics and Research for Decision Making
+Department of Industrial Engineering, Universidad de Antioquia
+Medellin, Colombia
+jcarlos.gaviria at udea.edu.co
+ORCID: 0009-0008-9403-416X
+GitHub: https://github.com/jcarlosgaviria<https://github.com/jcarlosgaviria>
+
+--
+
+
+"La informaci?n aqu? contenida es para uso exclusivo de la persona o
+entidad de destino. Est? estrictamente prohibida su utilizaci?n, copia,
+descarga, distribuci?n, modificaci?n y/o reproducci?n total o parcial, sin
+el permiso expreso de Universidad de Antioquia, pues su contenido puede ser
+de car?cter confidencial y/o contener material privilegiado. Si usted
+recibi? esta informaci?n por error, por favor contacte en forma inmediata a
+quien la envi? y borre este material de su computador. Universidad de
+Antioquia no es responsable por la informaci?n contenida en esta
+comunicaci?n, el directo responsable es quien la firma o el autor de la
+misma."
+
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>
+
+	[[alternative HTML version deleted]]
+
+
+From g@bembecker @end|ng |rom gm@||@com  Fri Jul 31 02:04:54 2026
+From: g@bembecker @end|ng |rom gm@||@com (Gabriel Becker)
+Date: Thu, 30 Jul 2026 17:04:54 -0700
+Subject: [Rd] Bug report: mean(...,
+ trim) silently applies integer truncation when k = trim * n is
+ non-integer
+In-Reply-To: <DS4PR01MB9434F83E280DC80F7907029FF2C92@DS4PR01MB9434.prod.exchangelabs.com>
+References: <CAFma-WM-mzSuHaYbEZEQ=XxBdpmytrWPTzvCUW3AM=gG7ZhPNg@mail.gmail.com>
+ <DS4PR01MB9434F83E280DC80F7907029FF2C92@DS4PR01MB9434.prod.exchangelabs.com>
+Message-ID: <CAD4oTHF02HYoCLY78m8y=sjWqqWuxVavtXfpp0U9gTUbS+Lf9Q@mail.gmail.com>
+
+Hi Juan,
+
+I understand your motivations in reporting this, and even your frustration
+at R not doing what you thought it was. That can absolutely be a rug-pull
+moment that isn't any fun.
+
+To add to Ravi's (to my mind correct) answer, however, I would go further
+and argue that floor is *the* correct/best choice for R to use in this
+situation. Data is, for lack of a better word, sacred; R absolutely should
+not, in my mind, *ever* discard more data than requested in a situation
+like this. This translates "please trim 5% of the data" to "please trim as
+much data as possible *without exceeding 5%*". In light of that, the floor
+(ie integer truncation) of number of observations to trim is exactly what
+it should be doing.
+
+If such behavior is not acceptable I'd suggest using weighted.mean (for
+which any trimming of data is just a special case with a weight vector of
+0s and 1s) or a third-party package such as the one you mention to get the
+behavior you want.
+
+Finally, I don't know that I agree with your claim that packages which call
+mean( , trim = ) don't know what it is doing. I would say it is (at least)
+equally possible that they *do* know but follow Ravi's/R's reasoning on the
+proper algorithm.
+
+Just my 2c.
+
+Best,
+~G
+
+On Thu, Jul 30, 2026 at 1:16?PM Ravi Varadhan via R-devel <
+r-devel at r-project.org> wrote:
+
+> This is not a bug. Your premise is that trim*n should not be truncated to
+> an integer. However, you cannot trim a fraction of an observation. If you
+> have 15 observations and request a 5% trim, you are asking to remove 0.75
+> observations from each end. Because observations are discrete, R must
+> choose an integer. R chooses floor(0.75) = 0.  One could have chosen round
+> instead of floor, but both are reasonable choices.
+>
+> Statgraphics is calculating an interpolated or fractional trimmed mean,
+> which is a different statistical estimator than the standard discrete
+> trimmed mean.
+>
+> Ravi
+>
+> ________________________________
+> From: R-devel <r-devel-bounces at r-project.org> on behalf of JUAN CARLOS
+> GAVIRIA CHAVERRA via R-devel <r-devel at r-project.org>
+> Sent: Thursday, July 30, 2026 15:09
+> To: r-devel at r-project.org <r-devel at r-project.org>
+> Subject: [Rd] Bug report: mean(..., trim) silently applies integer
+> truncation when k = trim * n is non-integer
+>
+>
+>       External Email - Use Caution
+>
+>
+>
+> Subject: Bug report: mean(..., trim) silently applies integer truncation
+> when k = trim * n is non-integer
+>
+> Dear R Core Team,
+>
+> I am writing to report a structural limitation in the mean(..., trim)
+> function in base R that has gone undetected for over three decades and
+> affects the overwhelming majority of practical uses of trimmed mean
+> computation.
+>
+> --- NARRATIVE JUSTIFICATION ---
+>
+> For more than three decades, researchers in econometrics, finance, public
+> health, environmental sciences and many other fields have trusted that
+> mean(..., trim = 0.05) applies exactly 5% trimming to their data. This
+> implicit trust is precisely what makes the integer truncation problem so
+> consequential: it affects any combination of n and trim that produces a
+> non-integer k = trim * n, which represents the overwhelming majority of
+> practical uses.
+>
+> The problem has two manifestations. When k < 1 (Type A), R reduces k to
+> zero and returns the arithmetic mean, completely ignoring the requested
+> trimming without any warning. When k > 1 but non-integer (Type B), R trims
+> fewer observations than requested, with losses reaching 33% of the nominal
+> value, also without any warning.
+>
+> The scope extends beyond direct users: packages such as WRS2 (hundreds of
+> thousands of downloads) use mean(x, tr) internally, propagating the
+> distortion silently to confidence intervals and hypothesis tests.
+>
+> We are not requesting a change in the existing algorithm. We are requesting
+> transparency: a warning when the effective trimming differs from the
+> requested trimming, preserving complete backward compatibility.
+>
+> The existence of sgmean as a separate package (CRAN v0.1.1) should not be
+> interpreted as a permanent solution. sgmean and mean(..., trim) produce
+> identical results whenever k = trim * n is an exact integer. The only
+> difference is that sgmean also handles non-integer k correctly. Directing
+> users to install a separate package to obtain the result that base R's own
+> mean() function should produce is not a solution ? it is a transfer of
+> responsibility. The R Core Team has the unique opportunity to resolve this
+> at the root, ensuring that every R user benefits from correct trimmed mean
+> computation.
+>
+> --- REPRODUCIBLE EXAMPLE ---
+>
+> x <- c(850, 920, 980, 1050, 1120, 1180, 1250,
+>        1320, 1400, 1480, 1550, 1700, 1850, 2100, 8500)
+>
+> # TYPE A: k < 1
+> cat('k requested:', 0.05 * 15, '| k applied:', floor(0.05 * 15), '\n')
+> # k requested: 0.75 | k applied: 0
+> mean(x)               # [1] 1816.667
+> mean(x, trim = 0.05)  # [1] 1816.667 -- SAME: no trimming applied
+> # Expected (Statgraphics): 1499.074
+>
+> # TYPE B: k > 1, non-integer
+> cat('k requested:', 0.10 * 15, '| k applied:', floor(0.10 * 15), '| Loss:
+> 33.3%\n')
+> mean(x, trim = 0.10)  # [1] 1376.923
+> # Expected (Statgraphics): 1365.833
+>
+> --- CROSS-PLATFORM EVIDENCE ---
+>
+> This bug exists identically in Python's scipy.stats.trim_mean, confirming
+> that integer truncation in trimmed mean computation is a systematic
+> limitation shared across the two most widely used scientific computing
+> environments in the world.
+>
+> Software              | Type A (k=0.75) | Type B (k=1.50)
+> R base mean(...,trim) | 1816.667 (wrong)| 1376.923 (wrong)
+> Python trim_mean      | 1816.667 (wrong)| 1376.923 (wrong)
+> Statgraphics          | 1499.074 (correct) | 1365.833 (correct)
+> sgmean CRAN v0.1.1    | 1499.074 (correct) | 1365.833 (correct)
+>
+> --- PROPOSED SOLUTION ---
+>
+> Minimum fix: add a warning in mean.default() when k = trim * n is
+> non-integer:
+>
+> if (k != floor(k)) {
+>   if (floor(k) == 0L) {
+>     warning(paste0('trim * length(x) = ', k, ' < 1. ',
+>       'No trimming applied (effective trim = 0%). ',
+>       'Consider sgmean::sgmean() for proportional trimming.'))
+>   } else {
+>     warning(paste0('trim * length(x) = ', k, ' is not an integer. ',
+>       'Effective trimming: ', round(floor(k)/length(x)*100,1), '% ',
+>       '(requested: ', trim*100, '%, loss: ',
+>       round((k-floor(k))/k*100,1), '%).'))
+>   }
+> }
+>
+> --- AVAILABLE SOLUTION ---
+>
+> A corrected implementation is available on CRAN:
+> install.packages('sgmean')
+> DOI: https://doi.org/10.32614/CRAN.package.sgmean
+> GitHub: https://github.com/jcarlosgaviria/sgmean<
+> https://github.com/jcarlosgaviria/sgmean>
+>
+> --- R VERSION ---
+>
+> R version 4.5.3 (2026-03-11 ucrt)
+> Platform: x86_64-w64-mingw32/x64
+>
+> Best regards,
+>
+> Juan C. Gaviria-Chaverra
+> ALIADO-Analytics and Research for Decision Making
+> Department of Industrial Engineering, Universidad de Antioquia
+> Medellin, Colombia
+> jcarlos.gaviria at udea.edu.co
+> ORCID: 0009-0008-9403-416X
+> GitHub: https://github.com/jcarlosgaviria<
+> https://github.com/jcarlosgaviria>
+>
+> --
+>
+>
+> "La informaci?n aqu? contenida es para uso exclusivo de la persona o
+> entidad de destino. Est? estrictamente prohibida su utilizaci?n, copia,
+> descarga, distribuci?n, modificaci?n y/o reproducci?n total o parcial, sin
+> el permiso expreso de Universidad de Antioquia, pues su contenido puede ser
+> de car?cter confidencial y/o contener material privilegiado. Si usted
+> recibi? esta informaci?n por error, por favor contacte en forma inmediata a
+> quien la envi? y borre este material de su computador. Universidad de
+> Antioquia no es responsable por la informaci?n contenida en esta
+> comunicaci?n, el directo responsable es quien la firma o el autor de la
+> misma."
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel<
+> https://stat.ethz.ch/mailman/listinfo/r-devel>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
