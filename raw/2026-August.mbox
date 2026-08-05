@@ -123,3 +123,569 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From ||u|@@rev|||@ @end|ng |rom gm@||@com  Tue Aug  4 12:48:14 2026
+From: ||u|@@rev|||@ @end|ng |rom gm@||@com (=?UTF-8?Q?Llu=C3=ADs_Revilla?=)
+Date: Tue, 4 Aug 2026 12:48:14 +0200
+Subject: [Rd] setRepositories: name argument
+Message-ID: <CAN+W6_ttwAxTnmcbHiqSevsRWrJx=SVsO9vTEiQJWX+QtExRqw@mail.gmail.com>
+
+Hi all,
+
+setRepositories has a name argument to select repositories. I've been
+exploring how to use it and I'd like to share some comments with you:
+
+The documentation says: "NULL or character vector of names of the
+repositories in the repository table which has the same effect as passing
+the corresponding indices to ind.". I understood it was the graphical names
+saved as menu_name on R.home()/etc/repositories, but those aren't accepted:
+Instead users need to use the row names of the matrix.
+A change in the documentation could clarify which name it refers to.
+However, I would prefer if the argument would accept the menu_name and
+users could select repositories with names matching the
+graphical/interactive menu: setRepositories(name = c("CRAN", "BioC
+software")) instead of setRepositories(name = c("CRAN", "BioCSoft")).
+
+It can be hard to know which are the names of the repositories a user
+should use. I see that R checks the R_REPOSITORIES system environment
+variable to find them (utils:::.get_repositories). A helper to
+get repository names would be appreciated, it would make it easier to check
+before setting them.
+
+In addition, when setting repositories with setRepositories(ind = 1:99)
+there is no error or warning for selecting more repositories than
+available, but setting repositories by name, for example
+setRepositories(name = c("CRAN", "XYZ")), fails with an error. I think that
+any repository requested but not available should be a warning (and not an
+error in the case of name argument), or at least the behaviour between both
+parameters be consistent.
+
+Of the CRAN packages that use setRepositories I could find, most (all) use
+ind instead of name to set the repositories. If the order of the
+repositories change or some checks performed on CRAN do not have the same
+repositories by default, using names and having a way to check which
+repositories are available would make it easier to use the repositories
+configuration file and pass those checks without trouble.
+
+Cheers,
+
+Llu?s
+
+PS: Using setRepositories(ind = 1:99) works the first time but any
+subsequent call will fail with "Error in aa[aa == ""] <- repos[new][aa ==
+""] :  NAs are not allowed in subscripted assignments".
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Wed Aug  5 00:16:21 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 4 Aug 2026 17:16:21 -0500
+Subject: [Rd] Revisiting and updating reproducible builds for base R in
+ Debian
+Message-ID: <27250.25781.774076.975806@paul.eddelbuettel.com>
+
+
+tl;dr: I would need help from someone in R Core to see why package 'tools' is
+treated differently here. Please read on -- I am reasonably close to decent
+progress but quite madly not quite there yet.
+
+
+Reproducible builds, now also at https://reproducible-builds.org/ was once a
+more niche idea within Debian. It is very much a release goal for Debian.
+Being able to produce bit-by-bit identical artifacts upon repeated builds is
+seen my many as a good goal towards better security, validation, and
+reproducibility. Over time many packages got patched to optionally skip
+'current timestamp' or machine IDs during build.
+
+Overall, the status is generally good, and available for each (source or
+binary) package via the status and qa pages [1]. For Debian as a whole most
+packages now pass. For example, all the CRAN packages are in good shape and
+pass.  The r-base package however is not there yet, and we can see the 'diff'
+between consecutive builds [2][3].  The diffs (via [2]) clearly show that
+most of the difference comes from the included packages. (There are a few
+more, we can get to the remaining ones in the next iteration.)
+
+As for enabling this for the base R package, we did an initial push in 2015
+and Martin Maechler committed some changes allowing the use of passing a
+'time stamp' at build time via an make variable PKG_BUILT_STAMP. The build
+when instrumented for it retrieves a timestamp from the most-recent value in
+the debian/changelog file. I had that disabled of late (since early 2025 it
+seems) but have over the last few days looked into revitalizing it. (There
+was a brief confusion earlier this year as to whether this impacts Simon's
+scheme of ordering builds by the Built: flag, and it does not. This is AFAIK
+only used for the Debian build; everything else remains as it is.)
+
+In short, the PKG_BUILT_STAMP variable is used in two make rules from the
+file share/make/basepkg.mk.  The rules mkdesc (for packages base and tools)
+and mkdesc2 (for all others) check this for being non-empty, and if so pass
+it on. (Oddly, in mkdesc it is passed to an R helper function that parses the
+timestamp and returns an ISO-formatted one in UTC; in mkdesc2 it is passed
+on; the resulting Built: entry always show ISO-format in UTC so from mkdesc2
+it must also be parsed and replaced somewhere but I do not know where. This
+could be related.)
+
+The upshot is that I currently managed to cover all but one: 'tools' does not
+behave. This outcome is identical between a local build of R-devel on my
+machine (setting PKG_BUILT_STAMP in the shell script I use to drive the build
+with the options I typically use) and local tests builds of the Debian
+package. See [4] for the result from R-devel and [5] for the same for
+R-release when locally updating the R package for Debian and installing it in
+a container.
+
+I am setting the PKG_BUILT_STAMP at all appropriate 'make' calls; this is
+easiest for R-devel as there are only 'make' and 'make install'.  For the
+Debian package it is similar but we have more calls (and 'make' and eg 'make
+doc' are done separately, there is 'make check' and more). Now, I would truly
+appreciate a nudge and helping hand from someone in R Core: when / where /
+why is tools different, and when does it get re-configure / re-installed?  I
+can take from my logs that the timestamp is passed on at first. (I removed
+the @ from the snippet to have the code visible, and added a marker for
+quicker search, see [6]).
+
+Thanks for reading this far, and caring about a somewhat esoteric issue. Any
+help would be appreciated; I am currently a little blocked on this as I can't
+quite figure out when/where tools gets updated again.
+
+Cheers, Dirk
+
+
+[1] Mine is at https://qa.debian.org/developer.php?login=edd&comaint=yes 
+and the info is in the fourth-last column
+
+[2] A summary page is https://tests.reproducible-builds.org/debian/rb-pkg/unstable/amd64/r-base.html
+from which get differences displayed in
+https://tests.reproducible-builds.org/debian/rb-pkg/unstable/amd64/diffoscope-results/r-base.html
+and also in text form
+https://tests.reproducible-builds.org/debian/rb-pkg/unstable/amd64/diffoscope-results/r-base.html
+
+[3] A second summary page is at https://reproduce.debian.net/excuses.html?source_name=r-base
+
+[4] A quick grep across the installation of R-devel below /usr/local/lib
+shows tools as the outlier with the current date, all others echo the last
+changelog date of the R Debian package (accessed here only to fetch that timestamp)
+edd at paul:~/svn/r-devel$ grep '^Built' /usr/local/lib/R-devel/lib/R/library/*/DESCRIPTION |grep 2026-08-0
+/usr/local/lib/R-devel/lib/R/library/base/DESCRIPTION:Built: R 4.7.0; ; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/compiler/DESCRIPTION:Built: R 4.7.0; ; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/datasets/DESCRIPTION:Built: R 4.7.0; ; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/graphics/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/grDevices/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/grid/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/methods/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/parallel/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/splines/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/stats4/DESCRIPTION:Built: R 4.7.0; ; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/stats/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/tcltk/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/tools/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-04 21:56:44 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/utils/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+edd at paul:~/svn/r-devel$ 
+
+[5] Similar for R-release via the Debian build using currently uncommitted
+local changes.
+root at 893920fad19e:/work# grep Built: /usr/lib/R/library/*/DESCRIPTION | grep 2026-08-0
+/usr/lib/R/library/base/DESCRIPTION:Built: R 4.6.1; ; 2026-08-02 16:37:21 UTC; unix
+/usr/lib/R/library/compiler/DESCRIPTION:Built: R 4.6.1; ; 2026-08-02 16:37:21 UTC; unix
+/usr/lib/R/library/datasets/DESCRIPTION:Built: R 4.6.1; ; 2026-08-02 16:37:21 UTC; unix
+/usr/lib/R/library/graphics/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/lib/R/library/grDevices/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/lib/R/library/grid/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/lib/R/library/methods/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/lib/R/library/parallel/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/lib/R/library/splines/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/lib/R/library/stats4/DESCRIPTION:Built: R 4.6.1; ; 2026-08-02 16:37:21 UTC; unix
+/usr/lib/R/library/stats/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/lib/R/library/tcltk/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/lib/R/library/tools/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu; 2026-08-04 21:10:07 UTC; unix
+/usr/lib/R/library/utils/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+root at 893920fad19e:/work# 
+
+[6] During the build, tools gets the timestamp passes just as all the other
+base packages do. From the log (after removing one '@') seeing the code from
+basepkg.mk, not now the correct Aug 2, 11:37:21 Central gets passed that then
+gets reparsed:
+make[5]: Entering directory '/build/r-base-4.6.1/src/library/tools'
+echo "xxxxxx"; \
+if test "Sun, 02 Aug 2026 11:37:21 -0500" != ""; then \
+  echo "Built: R 4.6.1; ; Sun, 02 Aug 2026 11:37:21 -0500; unix" \
+     >> ../../../library/tools/DESCRIPTION ; \
+else \
+  echo "Built: R 4.6.1; ; `TZ=UTC date`; unix" \
+     >> ../../../library/tools/DESCRIPTION ; \
+fi
+xxxxxx
+
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From g@bembecker @end|ng |rom gm@||@com  Wed Aug  5 01:23:03 2026
+From: g@bembecker @end|ng |rom gm@||@com (Gabriel Becker)
+Date: Tue, 4 Aug 2026 16:23:03 -0700
+Subject: [Rd] Revisiting and updating reproducible builds for base R in
+ Debian
+In-Reply-To: <27250.25781.774076.975806@paul.eddelbuettel.com>
+References: <27250.25781.774076.975806@paul.eddelbuettel.com>
+Message-ID: <CAD4oTHH4g_bkpb02UXSaq2XAUvpaC1JqwN2t0PO7qP0JCgCdNg@mail.gmail.com>
+
+Hey Dirk,
+
+I could be way off base but I think it might be here from
+src/library/tools/Makefile.in:
+
+## This is deliberately conservative: -nt seems to work differently in some
+shells
+## We first use mkdesc2 (with date) to install the DESCRIPTION, then
+re-install
+all: Makefile DESCRIPTION
+@$(ECHO) "building package '$(pkg)'"
+@$(MKINSTALLDIRS) $(top_builddir)/library/$(pkg)
+@$(MKINSTALLDIRS) $(top_builddir)/library/$(pkg)/misc
+@$(ECHO) $(abs_top_srcdir) \
+ > $(top_builddir)/library/$(pkg)/misc/top.txt
+@$(MAKE) mkR1 mkdesc2  $(WRE_DATA)
+@$(MAKE) mksrc
+@if ! test -f $(top_builddir)/library/$(pkg)/R/$(pkg); then \
+ $(INSTALL_DATA) all.R $(top_builddir)/library/$(pkg)/R/$(pkg); \
+else if test all.R -nt $(top_builddir)/library/$(pkg)/R/$(pkg); then \
+ $(INSTALL_DATA) all.R $(top_builddir)/library/$(pkg)/R/$(pkg); \
+ fi \
+fi
+@$(MAKE) sysdata
+
+* @$(ECHO) "tools:::.install_package_description('.',
+'"$(top_builddir)/library/${pkg}"')" | \  R_DEFAULT_PACKAGES=NULL $(R_EXE)
+> /dev/null*
+
+Note this last tools:::.install_packages_description is *not* passing the
+timestamp value as it does in the shared basepkg.mk. So I think mkdesc2 is
+grabbing the timestamp environment field but then the DESCRIPTION is being
+overwritten by the bolded command at the end which doesn't respect the
+timestamp.
+
+Caveat: I haven't run anything to confirm this is the issue. Anyway, HTH.
+
+Best,
+~G
+
+On Tue, Aug 4, 2026 at 3:16?PM Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> tl;dr: I would need help from someone in R Core to see why package 'tools'
+> is
+> treated differently here. Please read on -- I am reasonably close to decent
+> progress but quite madly not quite there yet.
+>
+>
+> Reproducible builds, now also at https://reproducible-builds.org/ was
+> once a
+> more niche idea within Debian. It is very much a release goal for Debian.
+> Being able to produce bit-by-bit identical artifacts upon repeated builds
+> is
+> seen my many as a good goal towards better security, validation, and
+> reproducibility. Over time many packages got patched to optionally skip
+> 'current timestamp' or machine IDs during build.
+>
+> Overall, the status is generally good, and available for each (source or
+> binary) package via the status and qa pages [1]. For Debian as a whole most
+> packages now pass. For example, all the CRAN packages are in good shape and
+> pass.  The r-base package however is not there yet, and we can see the
+> 'diff'
+> between consecutive builds [2][3].  The diffs (via [2]) clearly show that
+> most of the difference comes from the included packages. (There are a few
+> more, we can get to the remaining ones in the next iteration.)
+>
+> As for enabling this for the base R package, we did an initial push in 2015
+> and Martin Maechler committed some changes allowing the use of passing a
+> 'time stamp' at build time via an make variable PKG_BUILT_STAMP. The build
+> when instrumented for it retrieves a timestamp from the most-recent value
+> in
+> the debian/changelog file. I had that disabled of late (since early 2025 it
+> seems) but have over the last few days looked into revitalizing it. (There
+> was a brief confusion earlier this year as to whether this impacts Simon's
+> scheme of ordering builds by the Built: flag, and it does not. This is
+> AFAIK
+> only used for the Debian build; everything else remains as it is.)
+>
+> In short, the PKG_BUILT_STAMP variable is used in two make rules from the
+> file share/make/basepkg.mk.  The rules mkdesc (for packages base and
+> tools)
+> and mkdesc2 (for all others) check this for being non-empty, and if so pass
+> it on. (Oddly, in mkdesc it is passed to an R helper function that parses
+> the
+> timestamp and returns an ISO-formatted one in UTC; in mkdesc2 it is passed
+> on; the resulting Built: entry always show ISO-format in UTC so from
+> mkdesc2
+> it must also be parsed and replaced somewhere but I do not know where. This
+> could be related.)
+>
+> The upshot is that I currently managed to cover all but one: 'tools' does
+> not
+> behave. This outcome is identical between a local build of R-devel on my
+> machine (setting PKG_BUILT_STAMP in the shell script I use to drive the
+> build
+> with the options I typically use) and local tests builds of the Debian
+> package. See [4] for the result from R-devel and [5] for the same for
+> R-release when locally updating the R package for Debian and installing it
+> in
+> a container.
+>
+> I am setting the PKG_BUILT_STAMP at all appropriate 'make' calls; this is
+> easiest for R-devel as there are only 'make' and 'make install'.  For the
+> Debian package it is similar but we have more calls (and 'make' and eg
+> 'make
+> doc' are done separately, there is 'make check' and more). Now, I would
+> truly
+> appreciate a nudge and helping hand from someone in R Core: when / where /
+> why is tools different, and when does it get re-configure / re-installed?
+> I
+> can take from my logs that the timestamp is passed on at first. (I removed
+> the @ from the snippet to have the code visible, and added a marker for
+> quicker search, see [6]).
+>
+> Thanks for reading this far, and caring about a somewhat esoteric issue.
+> Any
+> help would be appreciated; I am currently a little blocked on this as I
+> can't
+> quite figure out when/where tools gets updated again.
+>
+> Cheers, Dirk
+>
+>
+> [1] Mine is at https://qa.debian.org/developer.php?login=edd&comaint=yes
+> and the info is in the fourth-last column
+>
+> [2] A summary page is
+> https://tests.reproducible-builds.org/debian/rb-pkg/unstable/amd64/r-base.html
+> from which get differences displayed in
+>
+> https://tests.reproducible-builds.org/debian/rb-pkg/unstable/amd64/diffoscope-results/r-base.html
+> and also in text form
+>
+> https://tests.reproducible-builds.org/debian/rb-pkg/unstable/amd64/diffoscope-results/r-base.html
+>
+> [3] A second summary page is at
+> https://reproduce.debian.net/excuses.html?source_name=r-base
+>
+> [4] A quick grep across the installation of R-devel below /usr/local/lib
+> shows tools as the outlier with the current date, all others echo the last
+> changelog date of the R Debian package (accessed here only to fetch that
+> timestamp)
+> edd at paul:~/svn/r-devel$ grep '^Built'
+> /usr/local/lib/R-devel/lib/R/library/*/DESCRIPTION |grep 2026-08-0
+> /usr/local/lib/R-devel/lib/R/library/base/DESCRIPTION:Built: R 4.7.0; ;
+> 2026-08-02 16:37:21 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/compiler/DESCRIPTION:Built: R 4.7.0;
+> ; 2026-08-02 16:37:21 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/datasets/DESCRIPTION:Built: R 4.7.0;
+> ; 2026-08-02 16:37:21 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/graphics/DESCRIPTION:Built: R 4.7.0;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/grDevices/DESCRIPTION:Built: R 4.7.0;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/grid/DESCRIPTION:Built: R 4.7.0;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/methods/DESCRIPTION:Built: R 4.7.0;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/parallel/DESCRIPTION:Built: R 4.7.0;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/splines/DESCRIPTION:Built: R 4.7.0;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/stats4/DESCRIPTION:Built: R 4.7.0; ;
+> 2026-08-02 16:37:21 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/stats/DESCRIPTION:Built: R 4.7.0;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/tcltk/DESCRIPTION:Built: R 4.7.0;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/tools/DESCRIPTION:Built: R 4.7.0;
+> x86_64-pc-linux-gnu; 2026-08-04 21:56:44 UTC; unix
+> /usr/local/lib/R-devel/lib/R/library/utils/DESCRIPTION:Built: R 4.7.0;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> edd at paul:~/svn/r-devel$
+>
+> [5] Similar for R-release via the Debian build using currently uncommitted
+> local changes.
+> root at 893920fad19e:/work# grep Built: /usr/lib/R/library/*/DESCRIPTION |
+> grep 2026-08-0
+> /usr/lib/R/library/base/DESCRIPTION:Built: R 4.6.1; ; 2026-08-02 16:37:21
+> UTC; unix
+> /usr/lib/R/library/compiler/DESCRIPTION:Built: R 4.6.1; ; 2026-08-02
+> 16:37:21 UTC; unix
+> /usr/lib/R/library/datasets/DESCRIPTION:Built: R 4.6.1; ; 2026-08-02
+> 16:37:21 UTC; unix
+> /usr/lib/R/library/graphics/DESCRIPTION:Built: R 4.6.1;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/lib/R/library/grDevices/DESCRIPTION:Built: R 4.6.1;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/lib/R/library/grid/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu;
+> 2026-08-02 16:37:21 UTC; unix
+> /usr/lib/R/library/methods/DESCRIPTION:Built: R 4.6.1;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/lib/R/library/parallel/DESCRIPTION:Built: R 4.6.1;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/lib/R/library/splines/DESCRIPTION:Built: R 4.6.1;
+> x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+> /usr/lib/R/library/stats4/DESCRIPTION:Built: R 4.6.1; ; 2026-08-02
+> 16:37:21 UTC; unix
+> /usr/lib/R/library/stats/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu;
+> 2026-08-02 16:37:21 UTC; unix
+> /usr/lib/R/library/tcltk/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu;
+> 2026-08-02 16:37:21 UTC; unix
+> /usr/lib/R/library/tools/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu;
+> 2026-08-04 21:10:07 UTC; unix
+> /usr/lib/R/library/utils/DESCRIPTION:Built: R 4.6.1; x86_64-pc-linux-gnu;
+> 2026-08-02 16:37:21 UTC; unix
+> root at 893920fad19e:/work#
+>
+> [6] During the build, tools gets the timestamp passes just as all the other
+> base packages do. From the log (after removing one '@') seeing the code
+> from
+> basepkg.mk, not now the correct Aug 2, 11:37:21 Central gets passed that
+> then
+> gets reparsed:
+> make[5]: Entering directory '/build/r-base-4.6.1/src/library/tools'
+> echo "xxxxxx"; \
+> if test "Sun, 02 Aug 2026 11:37:21 -0500" != ""; then \
+>   echo "Built: R 4.6.1; ; Sun, 02 Aug 2026 11:37:21 -0500; unix" \
+>      >> ../../../library/tools/DESCRIPTION ; \
+> else \
+>   echo "Built: R 4.6.1; ; `TZ=UTC date`; unix" \
+>      >> ../../../library/tools/DESCRIPTION ; \
+> fi
+> xxxxxx
+>
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Wed Aug  5 02:01:03 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 4 Aug 2026 19:01:03 -0500
+Subject: [Rd] Revisiting and updating reproducible builds for base R in
+ Debian
+In-Reply-To: <CAD4oTHH4g_bkpb02UXSaq2XAUvpaC1JqwN2t0PO7qP0JCgCdNg@mail.gmail.com>
+References: <27250.25781.774076.975806@paul.eddelbuettel.com>
+ <CAD4oTHH4g_bkpb02UXSaq2XAUvpaC1JqwN2t0PO7qP0JCgCdNg@mail.gmail.com>
+Message-ID: <27250.32063.558447.645370@paul.eddelbuettel.com>
+
+
+Hi Gabe,
+
+On 4 August 2026 at 16:23, Gabriel Becker wrote:
+| I could be way off base but I think it might be here from
+| src/library/tools/Makefile.in:
+| 
+| ## This is deliberately conservative: -nt seems to work differently in some
+| shells
+| ## We first use mkdesc2 (with date) to install the DESCRIPTION, then
+| re-install
+| all: Makefile DESCRIPTION
+| @$(ECHO) "building package '$(pkg)'"
+| @$(MKINSTALLDIRS) $(top_builddir)/library/$(pkg)
+| @$(MKINSTALLDIRS) $(top_builddir)/library/$(pkg)/misc
+| @$(ECHO) $(abs_top_srcdir) \
+|  > $(top_builddir)/library/$(pkg)/misc/top.txt
+| @$(MAKE) mkR1 mkdesc2  $(WRE_DATA)
+| @$(MAKE) mksrc
+| @if ! test -f $(top_builddir)/library/$(pkg)/R/$(pkg); then \
+|  $(INSTALL_DATA) all.R $(top_builddir)/library/$(pkg)/R/$(pkg); \
+| else if test all.R -nt $(top_builddir)/library/$(pkg)/R/$(pkg); then \
+|  $(INSTALL_DATA) all.R $(top_builddir)/library/$(pkg)/R/$(pkg); \
+|  fi \
+| fi
+| @$(MAKE) sysdata
+| 
+| * @$(ECHO) "tools:::.install_package_description('.',
+| '"$(top_builddir)/library/${pkg}"')" | \  R_DEFAULT_PACKAGES=NULL $(R_EXE)
+| > /dev/null*
+| 
+| Note this last tools:::.install_packages_description is *not* passing the
+| timestamp value as it does in the shared basepkg.mk. So I think mkdesc2 is
+
+That is along the lines I was expecting: another call without the timestamp
+so current time gets used. What I didn't grok was how it affected 'tools' but
+not 'base'.
+
+But you seem to have solved that: it is a one-off in tools/Makefile.in. That
+could do it.
+
+| grabbing the timestamp environment field but then the DESCRIPTION is being
+| overwritten by the bolded command at the end which doesn't respect the
+| timestamp.
+
+Spot on, and I concur. I need to shimmy the PKG_BUILT_STAMP in there too. And
+the '@$(MAKE) mkR1 mkdesc2  $(WRE_DATA)' looks suspicious too. Another
+possible regeneration.
+
+But also "bolded" <wink> ?  I read email in tty mode not html so I may have
+missed that. The mailman list archive is text but I do see the wrapping '*'.
+All good though.
+
+| Caveat: I haven't run anything to confirm this is the issue. Anyway, HTH.
+
+This is good, and much appreciated!  Will play with it, likely tomorrow.
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From edd @end|ng |rom deb|@n@org  Wed Aug  5 02:30:43 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 4 Aug 2026 19:30:43 -0500
+Subject: [Rd] Revisiting and updating reproducible builds for base R in
+ Debian
+In-Reply-To: <27250.32063.558447.645370@paul.eddelbuettel.com>
+References: <27250.25781.774076.975806@paul.eddelbuettel.com>
+ <CAD4oTHH4g_bkpb02UXSaq2XAUvpaC1JqwN2t0PO7qP0JCgCdNg@mail.gmail.com>
+ <27250.32063.558447.645370@paul.eddelbuettel.com>
+Message-ID: <27250.33843.545655.403512@paul.eddelbuettel.com>
+
+
+On 4 August 2026 at 19:01, Dirk Eddelbuettel wrote:
+| On 4 August 2026 at 16:23, Gabriel Becker wrote:
+| | grabbing the timestamp environment field but then the DESCRIPTION is being
+| | overwritten by the bolded command at the end which doesn't respect the
+| | timestamp.
+[...]
+| This is good, and much appreciated!  Will play with it, likely tomorrow.
+
+Easiest most minimal fix seems to be to replace the call you bolded with the
+equivalent (?) call to the snippet from the helper file:
+
+	@$(MAKE) mkdesc
+
+Then (in R-devel) all is good and normalised:
+
+edd at paul:~/svn/r-devel$ grep '^Built' /usr/local/lib/R-devel/lib/R/library/*/DESCRIPTION |grep 2026-08-0
+/usr/local/lib/R-devel/lib/R/library/base/DESCRIPTION:Built: R 4.7.0; ; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/compiler/DESCRIPTION:Built: R 4.7.0; ; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/datasets/DESCRIPTION:Built: R 4.7.0; ; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/graphics/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/grDevices/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/grid/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/methods/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/parallel/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/splines/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/stats4/DESCRIPTION:Built: R 4.7.0; ; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/stats/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/tcltk/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/tools/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+/usr/local/lib/R-devel/lib/R/library/utils/DESCRIPTION:Built: R 4.7.0; x86_64-pc-linux-gnu; 2026-08-02 16:37:21 UTC; unix
+edd at paul:~/svn/r-devel$
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
