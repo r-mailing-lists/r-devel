@@ -257,6 +257,61 @@
       "thread_id": "thread-21c44f87b906",
       "thread_depth": 0,
       "month": "2026-08"
+    },
+    {
+      "id": "msg-06b1bbe787b0",
+      "message_id": "<SY7P282MB4900181C2C9CDB5B53CD4724F4DD2@SY7P282MB4900.AUSP282.PROD.OUTLOOK.COM>",
+      "from_name": "Kai Lin",
+      "from_email_hash": "e32325c799f3fe1ecccbcc112c13a9c686ce5d25e555897f905955b3d094a394",
+      "date": "2026-08-11T09:12:41Z",
+      "subject": "[Rd] Out-of-bounds read in R_is_redirection_tty() on Windows (wcsstr over non-NUL-terminated FILE_NAME_INFO.FileName)",
+      "subject_clean": "Out-of-bounds read in R_is_redirection_tty() on Windows (wcsstr over non-NUL-terminated FILE_NAME_INFO.FileName)",
+      "in_reply_to": null,
+      "references": [
+        "<aa331b45-779b-4dc5-b676-833b15731902.ef408264-835d-4458-a5c1-02b775861060.4f22c184-9cce-47e3-a0f8-86d4305b393d@emailsignatures365.codetwo.com>"
+      ],
+      "body_plain": "Dear R-devel,\n\nI believe there is an out-of-bounds read in R_is_redirection_tty()\n(src/main/sysutils.c) on Windows. It intermittently crashes R with a\nSTATUS_ACCESS_VIOLATION (0xC0000005) whenever one of R's standard\nstreams is a pipe. Code inspection alone seems sufficient, but I also\nhave a crash dump that confirms it; details below. The code is unchanged\nin current r-devel trunk (observed on R 4.5.2, x86_64-w64-mingw32).\n\nThe function runs at startup -- src/gnuwin32/system.c calls\nR_is_redirection_tty(0) && R_is_redirection_tty(1) -- and again from\nR_isatty(). It returns early unless the handle is FILE_TYPE_PIPE, so the\nbug affects only front-ends that connect R's std streams to pipes\n(process managers, CI systems, orchestration tools, embedding). Console\nand file handles are unaffected.\n\nThe problem\n\nGetFileInformationByHandleEx(..., FileNameInfo, ...) fills a\nFILE_NAME_INFO whose FileName field is a counted string of\nFileNameLength bytes and is NOT NUL-terminated (the documented Win32\ncontract). The code allocates a buffer sized only for the name, never\nwrites a terminator, and passes FileName to wcsstr(), which scans until\nit finds a NUL. The relevant lines (around sysutils.c:3050):\n\n    DWORD fnLength = fnInfo->FileNameLength;\n    size = sizeof(FILE_NAME_INFO) + fnLength;   /* no room for terminator */\n    free(fnInfo);\n    fnInfo = malloc(size);                       /* uninitialised */\n    fnInfo->FileNameLength = fnLength;\n    r = GetFileInformationByHandleEx(h, FileNameInfo, fnInfo, size);\n    if (r)\n        /* note that fnInfo->FileName is not null terminated */\n        res = ((wcsstr(fnInfo->FileName, L\"msys-\") ||\n                wcsstr(fnInfo->FileName, L\"cygwin-\")) &&\n                wcsstr(fnInfo->FileName, L\"-pty\"));\n\nThe existing comment already notes FileName is not NUL-terminated, but\nwcsstr() requires a terminator. The few slack bytes from struct padding\nare uninitialised (malloc, not calloc), so they stop the scan only when\nthey happen to be zero. When they are non-zero and the buffer sits at\nthe end of a committed page with the next page unmapped, wcsstr() reads\nacross the page boundary and the process dies. Hence the crash is\nheap-layout dependent and intermittent.\n\nCrash dump (ucrtbase symbols)\n\n    Faulting instruction:  ucrtbase!wcsstr+0x62   movdqu xmm0, [rax]\n    rax = ...fdad2000   (a 4 KB page boundary; the page is unmapped)\n    rdi = ...fdad1f20   (fnInfo->FileName, readable)\n    rdx -> L\"msys-\"     (the needle from the source)\n    caller: R!R_is_redirection_tty\n\nThe scan ran ~224 bytes past the buffer base without meeting a NUL and\nfaulted on the first 16-byte SSE load that crossed into the unmapped\npage.\n\nSuggested fix\n\nReserve one extra WCHAR and terminate the name before searching:\n\n    size = sizeof(FILE_NAME_INFO) + fnLength + sizeof(WCHAR);\n    ...\n    r = GetFileInformationByHandleEx(h, FileNameInfo, fnInfo, size);\n    if (r) {\n        /* FileName is a counted string, not NUL-terminated: terminate it */\n        fnInfo->FileName[fnInfo->FileNameLength / sizeof(WCHAR)] = L'\\0';\n        res = ((wcsstr(fnInfo->FileName, L\"msys-\") ||\n                wcsstr(fnInfo->FileName, L\"cygwin-\")) &&\n                wcsstr(fnInfo->FileName, L\"-pty\"));\n    }\n\nA length-bounded search would also work; terminating is the smaller\nchange and keeps the existing wcsstr() logic. Using FileNameLength from\nthe second (successful) call for the index guards against the length\nchanging between the two queries.\n\nAs a workaround, front-ends can ensure R's std streams are not pipes\n(redirect to files or the NUL device), which skips the affected branch.\n\nThanks,\nKai Lin, Aaron Jiang, Fable 5, KimiK3\n<your name>\n<optional affiliation>\n\nKai Lin\nHead of Data Science, CTO\nM: +61 422 144 887\nE: kai.lin at coolabahcapital.com\n\n\nWebsite: coolabahcapital.com<https://coolabahcapital.com/>\nPodcast: coolabah.podbean.com<https://coolabah.podbean.com/>\nYouTube: Coolabah Capital Investments<https://www.youtube.com/channel/UCU5hkECR7oKSH4HzPjqSNHQ>\n[cid:all-logos-inline-740_db850fcf-a816-414d-815f-c1213c11aa12.png]\n\nAustralia - Sydney\nAustralia - Melbourne\nUnited Kingdom - London\nUnited States - Miami\nNew Zealand - Auckland\n\nLevel 3, 1 Bligh Street, Sydney NSW 2000, Australia\n\nLevel 38, South Tower, 80 Collins Street, Melbourne VIC 3000, Australia\n\n1st Floor, 10 Foster Lane, London EC2V 6HR, England, United Kingdom\n\n1395 Brickell Avenue, Suite 740, Miami, FL 33131, United States\n\nLevel 17, 1 Albert Street, Auckland CBD, Auckland 1010, New Zealand\n\n\nNOTICES: 1) THIS EMAIL (INCLUDING ATTACHMENTS) IS INTENDED SOLELY FOR THE NAMED ADDRESSEE. THE CONTENTS ARE CONFIDENTIAL, MAY BE PRIVILEGED AND/OR OTHERWISE PROTECTED FROM DISCLOSURE. ANY CONFIDENTIALITY, LEGAL PRIVILEGE AND OTHER PROFESSIONAL PRIVILEGE IS NOT WAIVED, LOST OR DESTROYED BECAUSE THIS EMAIL WAS SENT TO YOU BY MISTAKE. THIS EMAIL IS ALSO SUBJECT TO COPYRIGHT. ANY UNAUTHORISED USE OF ANY PART OF THE CONTENTS IS EXPRESSLY PROHIBITED. IF YOU HAVE RECEIVED THIS EMAIL IN ERROR, PLEASE ADVISE US IMMEDIATELY AND THEN DELETE ALL COPIES OF THIS EMAIL FROM YOUR COMPUTER SYSTEM AND ALL OTHER RECORDS WHETHER ELECTRONIC, HARD COPY OR OTHERWISE. 2) EMAIL TRANSMISSIONS CANNOT BE GUARANTEED TO BE ERROR-FREE OR SECURE. EMAILS MAY BE INCOMPLETE, LOST, CORRUPTED, DESTROYED, INTERCEPTED OR CONTAIN DEFECTS OR VIRUSES. IT IS YOUR RESPONSIBILITY TO CHECK THIS EMAIL FOR DEFECTS OR VIRUSES BEFORE OPENING OR OTHERWISE DEALING WITH IT. PERSONAL INFORMATION IS HANDLED IN ACCORDANCE WITH OUR PRIVACY POLICY, AVAILABLE UPON REQUEST. 3) NEITHER SMARTER MONEY INVESTMENTS PTY LTD, COOLABAH CAPITAL INVESTMENTS PTY LTD NOR ANY ASSOCIATE ('GROUP') MAKE ANY REPRESENTATION OR WARRANTY AS TO WHETHER THE INFORMATION IN THIS EMAIL IS ACCURATE, COMPLETE OR UP TO DATE. TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE GROUP ACCEPT NO RESPONSIBILITY FOR ANY MISSTATEMENTS OR OMISSIONS, NEGLIGENT OR OTHERWISE.",
+      "body_snippet": "Dear R-devel,\n\nI believe there is an out-of-bounds read in R_is_redirection_tty()\n(src/main/sysutils.c) on Windows. It intermittently crashes R with a\nSTATUS_ACCESS_VIOLATION (0xC0000005) whenever one",
+      "thread_id": "thread-06b1bbe787b0",
+      "thread_depth": 0,
+      "month": "2026-08"
+    },
+    {
+      "id": "msg-4d7008e06d61",
+      "message_id": "<20260811143944.27183126@trisector>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "d5e69509b1e550954e7dc7df9fde68d8fd4a7973fb076b5d966efe67850be3c9",
+      "date": "2026-08-11T11:39:44Z",
+      "subject": "[Rd] Out-of-bounds read in R_is_redirection_tty() on Windows (wcsstr over non-NUL-terminated FILE_NAME_INFO.FileName)",
+      "subject_clean": "Out-of-bounds read in R_is_redirection_tty() on Windows (wcsstr over non-NUL-terminated FILE_NAME_INFO.FileName)",
+      "in_reply_to": "<SY7P282MB4900181C2C9CDB5B53CD4724F4DD2@SY7P282MB4900.AUSP282.PROD.OUTLOOK.COM>",
+      "references": [
+        "<aa331b45-779b-4dc5-b676-833b15731902.ef408264-835d-4458-a5c1-02b775861060.4f22c184-9cce-47e3-a0f8-86d4305b393d@emailsignatures365.codetwo.com>",
+        "<SY7P282MB4900181C2C9CDB5B53CD4724F4DD2@SY7P282MB4900.AUSP282.PROD.OUTLOOK.COM>"
+      ],
+      "body_plain": "Dear Kai Lin,\n\nThanks for the report! This has also been noted on R Bugzilla, but not\nyet fixed: https://bugs.r-project.org/show_bug.cgi?id=19104\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "Dear Kai Lin,\n\nThanks for the report! This has also been noted on R Bugzilla, but not\nyet fixed: https://bugs.r-project.org/show_bug.cgi?id=19104\n\n-- \nBest regards,\nIvan",
+      "thread_id": "thread-06b1bbe787b0",
+      "thread_depth": 1,
+      "month": "2026-08"
+    },
+    {
+      "id": "msg-fe8697ea7ffd",
+      "message_id": "<820d4ce9-4da7-4f4c-aa7e-7a35f21f80f3@normalesup.org>",
+      "from_name": "Hugo Gruson",
+      "from_email_hash": "66c2e2630bbb93b5c34286a90c2b348ead8d43242cf93fdc6d486cafdc54c97a",
+      "date": "2026-08-11T14:48:12Z",
+      "subject": "[Rd] request for use cases for larger integers in R",
+      "subject_clean": "request for use cases for larger integers in R",
+      "in_reply_to": "<09303393-9c39-d91a-db6c-17bc58e69eb9@uiowa.edu>",
+      "references": [
+        "<09303393-9c39-d91a-db6c-17bc58e69eb9@uiowa.edu>"
+      ],
+      "body_plain": "Adding my use case but it mostly aligns with what others have already \nmentioned, with a couple of additional explicit highlights:\n\nI am maintaining a couple of packages that ingest data from binary files \ngenerated from other languages. It is not uncommon to have to read \nint64, uint32 or uint64 from these binary files.\n\nCurrently, I have to use custom code, usually in C, to read these types \n& convert them to int32 if they can fit and convert to NA / double / \nbit64 otherwise depending on the case. I would be delighted to be able \nto remove this custom code and rely on native support for larger integers.\n\nCompared to other answers, I would like to insist on two points, which \nmay very well already be included in your proposal:\n\n- the same issue exists for uint32 & uint64 so a solution addressing \nthese would provide even more value than a solution just for signed int64\n\n- it would be great if these new data types were usable directly with \nreadBin() / writeBin()\n\nBest wishes,\n\nHugo\n\nOn 24/07/2026 20:04, luke-tierney--- via R-devel wrote:\n> R integers are current limited to a magnitude ot 2^31 - 1. Integer\n> values up to a magnitude of 2^53 can be represented exatcly as\n> doubles. At times it would be useful to be able to handle larger\n> values.\n>\n> Several options for adding support for large integers to R are under\n> consideration, each with advantages and disadvantages. To help with\n> deciding how to move forward it would be helpful to have a collection\n> of use cases where something is either difficult or impossible to\n> achieve with the current R integer representations. Examples would be\n> most helpful if they are concrete enough to allow us to build test\n> cases.\n>\n> Thanks,\n>\n> luke\n>",
+      "body_snippet": "Adding my use case but it mostly aligns with what others have already \nmentioned, with a couple of additional explicit highlights:\n\nI am maintaining a couple of packages that ingest data from binary f",
+      "thread_id": "thread-fe8697ea7ffd",
+      "thread_depth": 0,
+      "month": "2026-08"
     }
   ],
   "threads": [
@@ -329,6 +384,29 @@
       "started": "2026-08-10T18:54:00Z",
       "last_reply": "2026-08-10T18:54:00Z",
       "root_message_id": "msg-21c44f87b906"
+    },
+    {
+      "id": "thread-06b1bbe787b0",
+      "subject": "Out-of-bounds read in R_is_redirection_tty() on Windows (wcsstr over non-NUL-terminated FILE_NAME_INFO.FileName)",
+      "message_count": 2,
+      "participants": [
+        "Ivan Krylov",
+        "Kai Lin"
+      ],
+      "started": "2026-08-11T09:12:41Z",
+      "last_reply": "2026-08-11T11:39:44Z",
+      "root_message_id": "msg-06b1bbe787b0"
+    },
+    {
+      "id": "thread-fe8697ea7ffd",
+      "subject": "request for use cases for larger integers in R",
+      "message_count": 1,
+      "participants": [
+        "Hugo Gruson"
+      ],
+      "started": "2026-08-11T14:48:12Z",
+      "last_reply": "2026-08-11T14:48:12Z",
+      "root_message_id": "msg-fe8697ea7ffd"
     }
   ]
 }

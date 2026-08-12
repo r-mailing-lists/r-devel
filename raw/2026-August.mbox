@@ -1087,3 +1087,201 @@ Best,
 Uwe Ligges
 
 
+From k@|@||n @end|ng |rom coo|@b@hc@p|t@|@com  Tue Aug 11 11:12:41 2026
+From: k@|@||n @end|ng |rom coo|@b@hc@p|t@|@com (Kai Lin)
+Date: Tue, 11 Aug 2026 09:12:41 +0000
+Subject: [Rd] Out-of-bounds read in R_is_redirection_tty() on Windows
+ (wcsstr over non-NUL-terminated FILE_NAME_INFO.FileName)
+References: <aa331b45-779b-4dc5-b676-833b15731902.ef408264-835d-4458-a5c1-02b775861060.4f22c184-9cce-47e3-a0f8-86d4305b393d@emailsignatures365.codetwo.com>
+Message-ID: <SY7P282MB4900181C2C9CDB5B53CD4724F4DD2@SY7P282MB4900.AUSP282.PROD.OUTLOOK.COM>
+
+Dear R-devel,
+
+I believe there is an out-of-bounds read in R_is_redirection_tty()
+(src/main/sysutils.c) on Windows. It intermittently crashes R with a
+STATUS_ACCESS_VIOLATION (0xC0000005) whenever one of R's standard
+streams is a pipe. Code inspection alone seems sufficient, but I also
+have a crash dump that confirms it; details below. The code is unchanged
+in current r-devel trunk (observed on R 4.5.2, x86_64-w64-mingw32).
+
+The function runs at startup -- src/gnuwin32/system.c calls
+R_is_redirection_tty(0) && R_is_redirection_tty(1) -- and again from
+R_isatty(). It returns early unless the handle is FILE_TYPE_PIPE, so the
+bug affects only front-ends that connect R's std streams to pipes
+(process managers, CI systems, orchestration tools, embedding). Console
+and file handles are unaffected.
+
+The problem
+
+GetFileInformationByHandleEx(..., FileNameInfo, ...) fills a
+FILE_NAME_INFO whose FileName field is a counted string of
+FileNameLength bytes and is NOT NUL-terminated (the documented Win32
+contract). The code allocates a buffer sized only for the name, never
+writes a terminator, and passes FileName to wcsstr(), which scans until
+it finds a NUL. The relevant lines (around sysutils.c:3050):
+
+    DWORD fnLength = fnInfo->FileNameLength;
+    size = sizeof(FILE_NAME_INFO) + fnLength;   /* no room for terminator */
+    free(fnInfo);
+    fnInfo = malloc(size);                       /* uninitialised */
+    fnInfo->FileNameLength = fnLength;
+    r = GetFileInformationByHandleEx(h, FileNameInfo, fnInfo, size);
+    if (r)
+        /* note that fnInfo->FileName is not null terminated */
+        res = ((wcsstr(fnInfo->FileName, L"msys-") ||
+                wcsstr(fnInfo->FileName, L"cygwin-")) &&
+                wcsstr(fnInfo->FileName, L"-pty"));
+
+The existing comment already notes FileName is not NUL-terminated, but
+wcsstr() requires a terminator. The few slack bytes from struct padding
+are uninitialised (malloc, not calloc), so they stop the scan only when
+they happen to be zero. When they are non-zero and the buffer sits at
+the end of a committed page with the next page unmapped, wcsstr() reads
+across the page boundary and the process dies. Hence the crash is
+heap-layout dependent and intermittent.
+
+Crash dump (ucrtbase symbols)
+
+    Faulting instruction:  ucrtbase!wcsstr+0x62   movdqu xmm0, [rax]
+    rax = ...fdad2000   (a 4 KB page boundary; the page is unmapped)
+    rdi = ...fdad1f20   (fnInfo->FileName, readable)
+    rdx -> L"msys-"     (the needle from the source)
+    caller: R!R_is_redirection_tty
+
+The scan ran ~224 bytes past the buffer base without meeting a NUL and
+faulted on the first 16-byte SSE load that crossed into the unmapped
+page.
+
+Suggested fix
+
+Reserve one extra WCHAR and terminate the name before searching:
+
+    size = sizeof(FILE_NAME_INFO) + fnLength + sizeof(WCHAR);
+    ...
+    r = GetFileInformationByHandleEx(h, FileNameInfo, fnInfo, size);
+    if (r) {
+        /* FileName is a counted string, not NUL-terminated: terminate it */
+        fnInfo->FileName[fnInfo->FileNameLength / sizeof(WCHAR)] = L'\0';
+        res = ((wcsstr(fnInfo->FileName, L"msys-") ||
+                wcsstr(fnInfo->FileName, L"cygwin-")) &&
+                wcsstr(fnInfo->FileName, L"-pty"));
+    }
+
+A length-bounded search would also work; terminating is the smaller
+change and keeps the existing wcsstr() logic. Using FileNameLength from
+the second (successful) call for the index guards against the length
+changing between the two queries.
+
+As a workaround, front-ends can ensure R's std streams are not pipes
+(redirect to files or the NUL device), which skips the affected branch.
+
+Thanks,
+Kai Lin, Aaron Jiang, Fable 5, KimiK3
+<your name>
+<optional affiliation>
+
+Kai Lin
+Head of Data Science, CTO
+M: +61 422 144 887
+E: kai.lin at coolabahcapital.com
+
+
+Website: coolabahcapital.com<https://coolabahcapital.com/>
+Podcast: coolabah.podbean.com<https://coolabah.podbean.com/>
+YouTube: Coolabah Capital Investments<https://www.youtube.com/channel/UCU5hkECR7oKSH4HzPjqSNHQ>
+[cid:all-logos-inline-740_db850fcf-a816-414d-815f-c1213c11aa12.png]
+
+Australia - Sydney
+Australia - Melbourne
+United Kingdom - London
+United States - Miami
+New Zealand - Auckland
+
+Level 3, 1 Bligh Street, Sydney NSW 2000, Australia
+
+Level 38, South Tower, 80 Collins Street, Melbourne VIC 3000, Australia
+
+1st Floor, 10 Foster Lane, London EC2V 6HR, England, United Kingdom
+
+1395 Brickell Avenue, Suite 740, Miami, FL 33131, United States
+
+Level 17, 1 Albert Street, Auckland CBD, Auckland 1010, New Zealand
+
+
+NOTICES: 1) THIS EMAIL (INCLUDING ATTACHMENTS) IS INTENDED SOLELY FOR THE NAMED ADDRESSEE. THE CONTENTS ARE CONFIDENTIAL, MAY BE PRIVILEGED AND/OR OTHERWISE PROTECTED FROM DISCLOSURE. ANY CONFIDENTIALITY, LEGAL PRIVILEGE AND OTHER PROFESSIONAL PRIVILEGE IS NOT WAIVED, LOST OR DESTROYED BECAUSE THIS EMAIL WAS SENT TO YOU BY MISTAKE. THIS EMAIL IS ALSO SUBJECT TO COPYRIGHT. ANY UNAUTHORISED USE OF ANY PART OF THE CONTENTS IS EXPRESSLY PROHIBITED. IF YOU HAVE RECEIVED THIS EMAIL IN ERROR, PLEASE ADVISE US IMMEDIATELY AND THEN DELETE ALL COPIES OF THIS EMAIL FROM YOUR COMPUTER SYSTEM AND ALL OTHER RECORDS WHETHER ELECTRONIC, HARD COPY OR OTHERWISE. 2) EMAIL TRANSMISSIONS CANNOT BE GUARANTEED TO BE ERROR-FREE OR SECURE. EMAILS MAY BE INCOMPLETE, LOST, CORRUPTED, DESTROYED, INTERCEPTED OR CONTAIN DEFECTS OR VIRUSES. IT IS YOUR RESPONSIBILITY TO CHECK THIS EMAIL FOR DEFECTS OR VIRUSES BEFORE OPENING OR OTHERWISE DEALING WITH IT. PERSONAL INFORMATION IS HANDLED IN ACCORDANCE WITH OUR PRIVACY POLICY, AVAILABLE UPON REQUEST. 3) NEITHER SMARTER MONEY INVESTMENTS PTY LTD, COOLABAH CAPITAL INVESTMENTS PTY LTD NOR ANY ASSOCIATE ('GROUP') MAKE ANY REPRESENTATION OR WARRANTY AS TO WHETHER THE INFORMATION IN THIS EMAIL IS ACCURATE, COMPLETE OR UP TO DATE. TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE GROUP ACCEPT NO RESPONSIBILITY FOR ANY MISSTATEMENTS OR OMISSIONS, NEGLIGENT OR OTHERWISE.
+
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Aug 11 13:39:44 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 11 Aug 2026 14:39:44 +0300
+Subject: [Rd] Out-of-bounds read in R_is_redirection_tty() on Windows
+ (wcsstr over non-NUL-terminated FILE_NAME_INFO.FileName)
+In-Reply-To: <SY7P282MB4900181C2C9CDB5B53CD4724F4DD2@SY7P282MB4900.AUSP282.PROD.OUTLOOK.COM>
+References: <aa331b45-779b-4dc5-b676-833b15731902.ef408264-835d-4458-a5c1-02b775861060.4f22c184-9cce-47e3-a0f8-86d4305b393d@emailsignatures365.codetwo.com>
+ <SY7P282MB4900181C2C9CDB5B53CD4724F4DD2@SY7P282MB4900.AUSP282.PROD.OUTLOOK.COM>
+Message-ID: <20260811143944.27183126@trisector>
+
+Dear Kai Lin,
+
+Thanks for the report! This has also been noted on R Bugzilla, but not
+yet fixed: https://bugs.r-project.org/show_bug.cgi?id=19104
+
+-- 
+Best regards,
+Ivan
+
+
+From hugo@gru@on @end|ng |rom norm@|e@up@org  Tue Aug 11 16:48:12 2026
+From: hugo@gru@on @end|ng |rom norm@|e@up@org (Hugo Gruson)
+Date: Tue, 11 Aug 2026 16:48:12 +0200
+Subject: [Rd] request for use cases for larger integers in R
+In-Reply-To: <09303393-9c39-d91a-db6c-17bc58e69eb9@uiowa.edu>
+References: <09303393-9c39-d91a-db6c-17bc58e69eb9@uiowa.edu>
+Message-ID: <820d4ce9-4da7-4f4c-aa7e-7a35f21f80f3@normalesup.org>
+
+Adding my use case but it mostly aligns with what others have already 
+mentioned, with a couple of additional explicit highlights:
+
+I am maintaining a couple of packages that ingest data from binary files 
+generated from other languages. It is not uncommon to have to read 
+int64, uint32 or uint64 from these binary files.
+
+Currently, I have to use custom code, usually in C, to read these types 
+& convert them to int32 if they can fit and convert to NA / double / 
+bit64 otherwise depending on the case. I would be delighted to be able 
+to remove this custom code and rely on native support for larger integers.
+
+Compared to other answers, I would like to insist on two points, which 
+may very well already be included in your proposal:
+
+- the same issue exists for uint32 & uint64 so a solution addressing 
+these would provide even more value than a solution just for signed int64
+
+- it would be great if these new data types were usable directly with 
+readBin() / writeBin()
+
+Best wishes,
+
+Hugo
+
+On 24/07/2026 20:04, luke-tierney--- via R-devel wrote:
+> R integers are current limited to a magnitude ot 2^31 - 1. Integer
+> values up to a magnitude of 2^53 can be represented exatcly as
+> doubles. At times it would be useful to be able to handle larger
+> values.
+>
+> Several options for adding support for large integers to R are under
+> consideration, each with advantages and disadvantages. To help with
+> deciding how to move forward it would be helpful to have a collection
+> of use cases where something is either difficult or impossible to
+> achieve with the current R integer representations. Examples would be
+> most helpful if they are concrete enough to allow us to build test
+> cases.
+>
+> Thanks,
+>
+> luke
+>
+
+
