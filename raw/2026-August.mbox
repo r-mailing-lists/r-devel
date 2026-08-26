@@ -1504,3 +1504,38 @@ Best
 > https://stat.ethz.ch/mailman/listinfo/r-devel
 
 
+From |kry|ov @end|ng |rom d|@root@org  Tue Aug 25 13:35:28 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 25 Aug 2026 14:35:28 +0300
+Subject: [Rd] Loading package namespace in data scripts vs. vignette check
+Message-ID: <20260825143528.387df8b1@trisector>
+
+Hello,
+
+I've been experimenting with a package providing its own vignette
+engine and stumbled upon a problem similar to PR19020 [*]: the vignette
+engine didn't see any vignettes under R CMD check. This was mostly
+self-inflicted: contrary to WRE 1.1.6, the script in data/*.R loads the
+package namespace. Since R CMD check calls tools:::list_data_in_pkg()
+on the source package directory, this loaded the old installed version
+of my package, the one without the vignette engine.
+
+A popular idiom on CRAN avoids this problem by using delayedAssign():
+list_data_in_pkg() sees the names of the datasets without causing the
+side effects from forcing the promises, and all works well. Only a few
+packages reference their own namespace in their data scripts without
+delayedAssign (albatross, diptest, fastbeta, PhotoGEA).
+
+I'll fix my data script so that it doesn't load the namespace. Does
+this warrant any hardening in R CMD check? Perhaps the data check could
+use a temporary library path, or vignette processing could be moved
+into a child process (solving the workspace persistence problem as
+well).
+
+-- 
+Best regards,
+Ivan
+
+[*] https://bugs.r-project.org/show_bug.cgi?id=19020
+
+
