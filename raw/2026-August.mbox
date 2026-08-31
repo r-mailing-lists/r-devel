@@ -1557,3 +1557,418 @@ Thomas
 	[[alternative HTML version deleted]]
 
 
+From m@|| @end|ng |rom p@t-@@me  Sun Aug 30 16:18:37 2026
+From: m@|| @end|ng |rom p@t-@@me (Patrick Schratz)
+Date: Sun, 30 Aug 2026 16:18:37 +0200
+Subject: [Rd] [PATCH] Include Linux distribution identifiers in the default
+ HTTP User-Agent
+Message-ID: <DB4F7DF2-739C-455A-BEB3-6D652B15B120@pat-s.me>
+
+Hi all,
+
+I'd like to propose a small change to the default HTTP User-Agent on Linux and a related fix to the `libcurl` download method.
+The patch is attached and based on r90452.
+
+(The patch and parts of this email have been assisted/refined with the help of AI, though the overall design and motivation is human-based).
+
+Motivation
+----------
+
+Binary package repositories for Linux have to know which distribution and release a client is running, since a binary built for Ubuntu 24.04 is of no use on other distributions.
+Today the default User-Agent tells a server the R version, platform, architecture and OS:
+
+  R (4.7.0 x86_64-pc-linux-gnu x86_64 linux-gnu)
+
+but nothing about the distribution.
+If one wants to workaround this, a custom `HTTPUserAgent` must be set today.
+I believe that the default user agent should include the distribution information, so that requests can be handled dynamically based on the underlying distribution (and their respective release).
+
+A concrete case: cran.rpkgs.com
+-------------------------------
+
+I run https://cran.rpkgs.com, which serves CRAN binaries for several Linux distributions (Ubuntu, RHEL-compatible, Alpine) on both amd64 and arm64. The project is fully public and supported through an R consortium grant [(2025/1)](https://r-consortium.org/all-projects/2025-group-1.html#r-package-binaries-for-linux-community-edition).
+Each distribution/releases combinations lives under its own path, for example
+
+  https://cran.rpkgs.com/arm64/noble/latest
+  https://cran.rpkgs.com/amd64/alpine321/latest
+
+Hardcoding such a path works, but it ties a project's repos setting to one OS/arch combination, which breaks as soon as the same `renv.lock` or CI matrix runs on a different machine.
+
+What users actually want is a single repository URL, https://cran.rpkgs.com, and have the server pick the right binary for them in a dynamic way.
+That is possible today, but only after pasting a dozen lines into `Rprofile.site` that read `/etc/os-release` and rebuild `HTTPUserAgent` by hand.
+In practice most people never do this. On top, it feels ?hacky? and also doesn?t show a good light on R as with respect to package distribution and handling. Pretty much any other language handles this case dynamically for their main repositories.
+
+With the proposed patch the default header already carries everything needed: the architecture from `R.version$arch`, and the distribution, release and codename from `os-release`.
+A stock R installation could then use one repository URL on any supported Linux system and be routed to the matching binaries, with no client-side configuration at all - assuming the backend is capable of dynamically routing the requests as needed.
+
+What the patch does in detail
+-------------------
+
+1. On Linux, utils reads `/etc/os-release` (falling back to `/usr/lib/os-release`) and appends the `ID`, `VERSION_ID` and `VERSION_CODENAME` fields to the default User-Agent.
+   On Ubuntu the result looks like
+
+     ```
+     R (4.7.0 aarch64-unknown-linux-gnu aarch64 linux-gnu; distro=ubuntu; version=26.04; codename=resolute)
+     ```
+
+   Other platforms are unchanged.
+
+2. The `libcurl` method now sends whatever `HTTPUserAgent` is set to, like the other methods do.
+   More on why below.
+
+3. `NEWS.Rd` and `options.Rd` are updated, and a small test file is added under `src/library/utils/tests`.
+
+The parser
+----------
+
+The reader is deliberately minimal and does not source the file.
+It strips surrounding quotes, does not interpret escape sequences, takes the last assignment of a key (as os-release specifies), and only accepts values made of ASCII letters, digits, dots, underscores and hyphens.
+Anything else is silently dropped, so a malformed or hostile os-release cannot inject arbitrary text into an HTTP header.
+Descriptive fields such as PRETTY_NAME are not used.
+ID_LIKE is left out for now because it is a space-separated list; it could be added later if repositories need it.
+
+utils already reads /etc/os-release in .osVersion() at load time.
+I kept the new reader separate to keep the patch small, but I'd be happy to merge the two into one helper, which would also give osVersion the /usr/lib/os-release fallback.
+The extra cost at package load is one small file read on Linux.
+
+Why the libcurl change is needed
+--------------------------------
+
+`libcurl.c` currently ignores any `HTTPUserAgent` value that starts with `R (` and sends `libcurl/<version>` instead; `options.Rd` documents this as a reserved prefix.
+Since `libcurl` is the default method on Linux, the new identifiers would never actually reach a server without changing this.
+
+The reservation is also only a heuristic: the C code cannot tell a user-supplied value starting with `R (` from the utils default, so a user who sets such a value on purpose currently has it replaced without notice.
+The patch removes the special case so that all methods send the configured value, and `options.Rd` is adjusted accordingly.
+If R Core would rather keep a libcurl-specific default, an alternative would be for utils to set the option only for non-libcurl methods, though that seems more fragile in my view.
+
+Note: Users can still override or disable the header via `options(HTTPUserAgent = ?)` exactly as before.
+
+Privacy
+-------
+
+The added fields modestly increase what a server can learn about a client, although the header already reveals R version, architecture and platform.
+If exposing them by default is considered too broad, I'm happy to rework this as an opt-in (e.g. via an env var or adjacent option) while keeping the parser and the `libcurl` fix.
+
+Testing
+-------
+
+Build and tested on a checkout of `r90452` on x86_64 Linux with GCC 16 and libcurl 8.21.0.
+
+The new tests in `src/library/utils/tests/user-agent.R` cover quoted and unquoted values, Alpine on linux-musl, a rolling release without `VERSION_ID`, duplicate keys and surrounding whitespace, unsafe values, a missing file, a directory in place of the file, and non-Linux platforms.
+
+`tests/download.file.R` passes over HTTP and HTTPS and confirms that libcurl now transmits the R User-Agent.
+A live request from this machine sent
+
+  ```
+  R (4.7.0 x86_64-pc-linux-gnu x86_64 linux-gnu; distro=almalinux; version=10.2)
+  ```
+
+`make check` passed the package examples.
+
+I hope this patch can make it in at some point; I consider it as very important for the future of a modern R package/repository management.
+
+Best,
+Patrick Schratz
+https://pat-s.me
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: linux-distribution-user-agent.diff
+URL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20260830/dfc5bbdf/attachment.ksh>
+
+From @|mon@urb@nek @end|ng |rom r-project@org  Sun Aug 30 18:36:33 2026
+From: @|mon@urb@nek @end|ng |rom r-project@org (Simon Urbanek)
+Date: Mon, 31 Aug 2026 04:36:33 +1200
+Subject: [Rd] 
+ [PATCH] Include Linux distribution identifiers in the default
+ HTTP User-Agent
+In-Reply-To: <DB4F7DF2-739C-455A-BEB3-6D652B15B120@pat-s.me>
+References: <DB4F7DF2-739C-455A-BEB3-6D652B15B120@pat-s.me>
+Message-ID: <6B2E4A44-19A3-4721-8DFB-5D47D86FC0E7@r-project.org>
+
+Patrick,
+
+That seems like a the wrong approach to me. If you provide binaries that are system specific then you should set the platform in the R build - which is used both for the paths of the binaries as well as checking compatibility. E.g., if you set R_PLATFORM_PKGTYPE=linux.binary.x86_64-ubuntu-noble then contrib.url(,type='binary') automatically resolves to /bin/linux/x86_64-ubuntu-noble/contrib/4.6 This does not require any hacks on the server (thus also works locally) and R itself will check the compatibility when the binary is installed.
+
+Cheers,
+Simon
+
+
+> On Aug 30, 2026, at 22:23, Patrick Schratz <mail at pat-s.me> wrote:
+> 
+> ?Hi all,
+> 
+> I'd like to propose a small change to the default HTTP User-Agent on Linux and a related fix to the `libcurl` download method.
+> The patch is attached and based on r90452.
+> 
+> (The patch and parts of this email have been assisted/refined with the help of AI, though the overall design and motivation is human-based).
+> 
+> Motivation
+> ----------
+> 
+> Binary package repositories for Linux have to know which distribution and release a client is running, since a binary built for Ubuntu 24.04 is of no use on other distributions.
+> Today the default User-Agent tells a server the R version, platform, architecture and OS:
+> 
+>  R (4.7.0 x86_64-pc-linux-gnu x86_64 linux-gnu)
+> 
+> but nothing about the distribution.
+> If one wants to workaround this, a custom `HTTPUserAgent` must be set today.
+> I believe that the default user agent should include the distribution information, so that requests can be handled dynamically based on the underlying distribution (and their respective release).
+> 
+> A concrete case: cran.rpkgs.com
+> -------------------------------
+> 
+> I run https://cran.rpkgs.com, which serves CRAN binaries for several Linux distributions (Ubuntu, RHEL-compatible, Alpine) on both amd64 and arm64. The project is fully public and supported through an R consortium grant [(2025/1)](https://r-consortium.org/all-projects/2025-group-1.html#r-package-binaries-for-linux-community-edition).
+> Each distribution/releases combinations lives under its own path, for example
+> 
+>  https://cran.rpkgs.com/arm64/noble/latest
+>  https://cran.rpkgs.com/amd64/alpine321/latest
+> 
+> Hardcoding such a path works, but it ties a project's repos setting to one OS/arch combination, which breaks as soon as the same `renv.lock` or CI matrix runs on a different machine.
+> 
+> What users actually want is a single repository URL, https://cran.rpkgs.com, and have the server pick the right binary for them in a dynamic way.
+> That is possible today, but only after pasting a dozen lines into `Rprofile.site` that read `/etc/os-release` and rebuild `HTTPUserAgent` by hand.
+> In practice most people never do this. On top, it feels ?hacky? and also doesn?t show a good light on R as with respect to package distribution and handling. Pretty much any other language handles this case dynamically for their main repositories.
+> 
+> With the proposed patch the default header already carries everything needed: the architecture from `R.version$arch`, and the distribution, release and codename from `os-release`.
+> A stock R installation could then use one repository URL on any supported Linux system and be routed to the matching binaries, with no client-side configuration at all - assuming the backend is capable of dynamically routing the requests as needed.
+> 
+> What the patch does in detail
+> -------------------
+> 
+> 1. On Linux, utils reads `/etc/os-release` (falling back to `/usr/lib/os-release`) and appends the `ID`, `VERSION_ID` and `VERSION_CODENAME` fields to the default User-Agent.
+>   On Ubuntu the result looks like
+> 
+>     ```
+>     R (4.7.0 aarch64-unknown-linux-gnu aarch64 linux-gnu; distro=ubuntu; version=26.04; codename=resolute)
+>     ```
+> 
+>   Other platforms are unchanged.
+> 
+> 2. The `libcurl` method now sends whatever `HTTPUserAgent` is set to, like the other methods do.
+>   More on why below.
+> 
+> 3. `NEWS.Rd` and `options.Rd` are updated, and a small test file is added under `src/library/utils/tests`.
+> 
+> The parser
+> ----------
+> 
+> The reader is deliberately minimal and does not source the file.
+> It strips surrounding quotes, does not interpret escape sequences, takes the last assignment of a key (as os-release specifies), and only accepts values made of ASCII letters, digits, dots, underscores and hyphens.
+> Anything else is silently dropped, so a malformed or hostile os-release cannot inject arbitrary text into an HTTP header.
+> Descriptive fields such as PRETTY_NAME are not used.
+> ID_LIKE is left out for now because it is a space-separated list; it could be added later if repositories need it.
+> 
+> utils already reads /etc/os-release in .osVersion() at load time.
+> I kept the new reader separate to keep the patch small, but I'd be happy to merge the two into one helper, which would also give osVersion the /usr/lib/os-release fallback.
+> The extra cost at package load is one small file read on Linux.
+> 
+> Why the libcurl change is needed
+> --------------------------------
+> 
+> `libcurl.c` currently ignores any `HTTPUserAgent` value that starts with `R (` and sends `libcurl/<version>` instead; `options.Rd` documents this as a reserved prefix.
+> Since `libcurl` is the default method on Linux, the new identifiers would never actually reach a server without changing this.
+> 
+> The reservation is also only a heuristic: the C code cannot tell a user-supplied value starting with `R (` from the utils default, so a user who sets such a value on purpose currently has it replaced without notice.
+> The patch removes the special case so that all methods send the configured value, and `options.Rd` is adjusted accordingly.
+> If R Core would rather keep a libcurl-specific default, an alternative would be for utils to set the option only for non-libcurl methods, though that seems more fragile in my view.
+> 
+> Note: Users can still override or disable the header via `options(HTTPUserAgent = ?)` exactly as before.
+> 
+> Privacy
+> -------
+> 
+> The added fields modestly increase what a server can learn about a client, although the header already reveals R version, architecture and platform.
+> If exposing them by default is considered too broad, I'm happy to rework this as an opt-in (e.g. via an env var or adjacent option) while keeping the parser and the `libcurl` fix.
+> 
+> Testing
+> -------
+> 
+> Build and tested on a checkout of `r90452` on x86_64 Linux with GCC 16 and libcurl 8.21.0.
+> 
+> The new tests in `src/library/utils/tests/user-agent.R` cover quoted and unquoted values, Alpine on linux-musl, a rolling release without `VERSION_ID`, duplicate keys and surrounding whitespace, unsafe values, a missing file, a directory in place of the file, and non-Linux platforms.
+> 
+> `tests/download.file.R` passes over HTTP and HTTPS and confirms that libcurl now transmits the R User-Agent.
+> A live request from this machine sent
+> 
+>  ```
+>  R (4.7.0 x86_64-pc-linux-gnu x86_64 linux-gnu; distro=almalinux; version=10.2)
+>  ```
+> 
+> `make check` passed the package examples.
+> 
+> I hope this patch can make it in at some point; I consider it as very important for the future of a modern R package/repository management.
+> 
+> Best,
+> Patrick Schratz
+> https://pat-s.me
+> <linux-distribution-user-agent.diff>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+	[[alternative HTML version deleted]]
+
+
+From m@|| @end|ng |rom p@t-@@me  Sun Aug 30 22:47:35 2026
+From: m@|| @end|ng |rom p@t-@@me (Patrick Schratz)
+Date: Sun, 30 Aug 2026 22:47:35 +0200
+Subject: [Rd] 
+ [PATCH] Include Linux distribution identifiers in the default
+ HTTP User-Agent
+In-Reply-To: <6B2E4A44-19A3-4721-8DFB-5D47D86FC0E7@r-project.org>
+References: <DB4F7DF2-739C-455A-BEB3-6D652B15B120@pat-s.me>
+ <6B2E4A44-19A3-4721-8DFB-5D47D86FC0E7@r-project.org>
+Message-ID: <D69A4384-9BFD-42BA-9642-501B5BF132FF@pat-s.me>
+
+Simon,
+
+Thanks for your reply.
+
+All binaries that contains compiled code system-specific. On top, there are constraints on the system dependencies level and the R version used. We all know that. The problem is not building system-specific binaries or declaring them. Or linking to distribution/os/r-version specific repository indexes. The problem is that the absence of the distribution/os information (in the User Agent header) makes dynamic approaches, that attempt to make use of `renv.lock` files across distributions or architectures, unnecessary cumbersome.
+
+> E.g., if you set R_PLATFORM_PKGTYPE=linux.binary.x86_64-ubuntu-noble then contrib.url(,type='binary') automatically resolves to /bin/linux/x86_64-ubuntu-noble/contrib/4.6
+
+I am aware, and thanks for mentioning this, but this is not the problem at hand. The proposed change will make the life of the user *and* the ?admin? easier, but specifically the former one.
+The described problem is a long-standing one and without it, the life of users would be a lot easier. The ?manylinux? route that Posit pursued in recent years was presumably also motivated by the idea to simplify this matter (besides reducing the overall build matrix).
+No matter the approach, it would be great to see the possibility to provide a middleware script for repository maintainers that is able to gather all required information out of the request directly.
+
+> That seems like a the wrong approach to me.
+
+The binary use case is just one example, even though it reflects my primary motivation for this patch. I do not see why the default R User Agent should not return the underlying Linux distribution. Is it question of privacy? - To me, it looks like a clear bug on the first sight.
+Could you elaborate what the main argument against the patch is? (Ideally also leaving the exemplary use case I mentioned out and arguing solely on the plain UA extension proposal?)
+The proposed change will not remove any existing information but just add some for that could be useful for various kinds of use.
+
+> This does not require any hacks on the server
+
+The use of middleware scripts for dynamic routing is not a hack but a common approach in modern package management (or any kind of modern asset distribution).
+I am **not proposing** that CRAN or R?s default package installation approach should change something; I am only asking for an extension of the User Agent information.
+
+Best,
+Patrick
+
+On 30 Aug 2026, at 18:36, Simon Urbanek wrote:
+
+> Patrick,
+>
+> That seems like a the wrong approach to me. If you provide binaries that are system specific then you should set the platform in the R build - which is used both for the paths of the binaries as well as checking compatibility. E.g., if you set R_PLATFORM_PKGTYPE=linux.binary.x86_64-ubuntu-noble then contrib.url(,type='binary') automatically resolves to /bin/linux/x86_64-ubuntu-noble/contrib/4.6 This does not require any hacks on the server (thus also works locally) and R itself will check the compatibility when the binary is installed.
+>
+> Cheers,
+> Simon
+>
+>
+>> On Aug 30, 2026, at 22:23, Patrick Schratz <mail at pat-s.me> wrote:
+>>
+>> ?Hi all,
+>>
+>> I'd like to propose a small change to the default HTTP User-Agent on Linux and a related fix to the `libcurl` download method.
+>> The patch is attached and based on r90452.
+>>
+>> (The patch and parts of this email have been assisted/refined with the help of AI, though the overall design and motivation is human-based).
+>>
+>> Motivation
+>> ----------
+>>
+>> Binary package repositories for Linux have to know which distribution and release a client is running, since a binary built for Ubuntu 24.04 is of no use on other distributions.
+>> Today the default User-Agent tells a server the R version, platform, architecture and OS:
+>>
+>>  R (4.7.0 x86_64-pc-linux-gnu x86_64 linux-gnu)
+>>
+>> but nothing about the distribution.
+>> If one wants to workaround this, a custom `HTTPUserAgent` must be set today.
+>> I believe that the default user agent should include the distribution information, so that requests can be handled dynamically based on the underlying distribution (and their respective release).
+>>
+>> A concrete case: cran.rpkgs.com
+>> -------------------------------
+>>
+>> I run https://cran.rpkgs.com, which serves CRAN binaries for several Linux distributions (Ubuntu, RHEL-compatible, Alpine) on both amd64 and arm64. The project is fully public and supported through an R consortium grant [(2025/1)](https://r-consortium.org/all-projects/2025-group-1.html#r-package-binaries-for-linux-community-edition).
+>> Each distribution/releases combinations lives under its own path, for example
+>>
+>> https://cran.rpkgs.com/arm64/noble/latest
+>> https://cran.rpkgs.com/amd64/alpine321/latest
+>>
+>> Hardcoding such a path works, but it ties a project's repos setting to one OS/arch combination, which breaks as soon as the same `renv.lock` or CI matrix runs on a different machine.
+>>
+>> What users actually want is a single repository URL, https://cran.rpkgs.com, and have the server pick the right binary for them in a dynamic way.
+>> That is possible today, but only after pasting a dozen lines into `Rprofile.site` that read `/etc/os-release` and rebuild `HTTPUserAgent` by hand.
+>> In practice most people never do this. On top, it feels ?hacky? and also doesn?t show a good light on R as with respect to package distribution and handling. Pretty much any other language handles this case dynamically for their main repositories.
+>>
+>> With the proposed patch the default header already carries everything needed: the architecture from `R.version$arch`, and the distribution, release and codename from `os-release`.
+>> A stock R installation could then use one repository URL on any supported Linux system and be routed to the matching binaries, with no client-side configuration at all - assuming the backend is capable of dynamically routing the requests as needed.
+>>
+>> What the patch does in detail
+>> -------------------
+>>
+>> 1. On Linux, utils reads `/etc/os-release` (falling back to `/usr/lib/os-release`) and appends the `ID`, `VERSION_ID` and `VERSION_CODENAME` fields to the default User-Agent.
+>>   On Ubuntu the result looks like
+>>
+>>     ```
+>>     R (4.7.0 aarch64-unknown-linux-gnu aarch64 linux-gnu; distro=ubuntu; version=26.04; codename=resolute)
+>>     ```
+>>
+>>   Other platforms are unchanged.
+>>
+>> 2. The `libcurl` method now sends whatever `HTTPUserAgent` is set to, like the other methods do.
+>>   More on why below.
+>>
+>> 3. `NEWS.Rd` and `options.Rd` are updated, and a small test file is added under `src/library/utils/tests`.
+>>
+>> The parser
+>> ----------
+>>
+>> The reader is deliberately minimal and does not source the file.
+>> It strips surrounding quotes, does not interpret escape sequences, takes the last assignment of a key (as os-release specifies), and only accepts values made of ASCII letters, digits, dots, underscores and hyphens.
+>> Anything else is silently dropped, so a malformed or hostile os-release cannot inject arbitrary text into an HTTP header.
+>> Descriptive fields such as PRETTY_NAME are not used.
+>> ID_LIKE is left out for now because it is a space-separated list; it could be added later if repositories need it.
+>>
+>> utils already reads /etc/os-release in .osVersion() at load time.
+>> I kept the new reader separate to keep the patch small, but I'd be happy to merge the two into one helper, which would also give osVersion the /usr/lib/os-release fallback.
+>> The extra cost at package load is one small file read on Linux.
+>>
+>> Why the libcurl change is needed
+>> --------------------------------
+>>
+>> `libcurl.c` currently ignores any `HTTPUserAgent` value that starts with `R (` and sends `libcurl/<version>` instead; `options.Rd` documents this as a reserved prefix.
+>> Since `libcurl` is the default method on Linux, the new identifiers would never actually reach a server without changing this.
+>>
+>> The reservation is also only a heuristic: the C code cannot tell a user-supplied value starting with `R (` from the utils default, so a user who sets such a value on purpose currently has it replaced without notice.
+>> The patch removes the special case so that all methods send the configured value, and `options.Rd` is adjusted accordingly.
+>> If R Core would rather keep a libcurl-specific default, an alternative would be for utils to set the option only for non-libcurl methods, though that seems more fragile in my view.
+>>
+>> Note: Users can still override or disable the header via `options(HTTPUserAgent = ?)` exactly as before.
+>>
+>> Privacy
+>> -------
+>>
+>> The added fields modestly increase what a server can learn about a client, although the header already reveals R version, architecture and platform.
+>> If exposing them by default is considered too broad, I'm happy to rework this as an opt-in (e.g. via an env var or adjacent option) while keeping the parser and the `libcurl` fix.
+>>
+>> Testing
+>> -------
+>>
+>> Build and tested on a checkout of `r90452` on x86_64 Linux with GCC 16 and libcurl 8.21.0.
+>>
+>> The new tests in `src/library/utils/tests/user-agent.R` cover quoted and unquoted values, Alpine on linux-musl, a rolling release without `VERSION_ID`, duplicate keys and surrounding whitespace, unsafe values, a missing file, a directory in place of the file, and non-Linux platforms.
+>>
+>> `tests/download.file.R` passes over HTTP and HTTPS and confirms that libcurl now transmits the R User-Agent.
+>> A live request from this machine sent
+>>
+>>  ```
+>>  R (4.7.0 x86_64-pc-linux-gnu x86_64 linux-gnu; distro=almalinux; version=10.2)
+>>  ```
+>>
+>> `make check` passed the package examples.
+>>
+>> I hope this patch can make it in at some point; I consider it as very important for the future of a modern R package/repository management.
+>>
+>> Best,
+>> Patrick Schratz
+>> https://pat-s.me
+>> <linux-distribution-user-agent.diff>
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+	[[alternative HTML version deleted]]
+
+
