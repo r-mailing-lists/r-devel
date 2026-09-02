@@ -35,3 +35,142 @@ Best regards,
 Ivan
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Tue Sep  1 14:01:16 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Tue, 1 Sep 2026 14:01:16 +0200
+Subject: [Rd] Two small fixes for WRE
+In-Reply-To: <fake-VM-id.ab35f3100c8e0d8da4d660acccec0aeb@talos.iv>
+References: <20260901122114.08f428de@Tarkus>
+Message-ID: <27286.48780.782285.265820@stat.math.ethz.ch>
+
+>>>>> Ivan Krylov 
+>>>>>     on Tue, 1 Sep 2026 12:21:14 +0300 writes:
+
+    > There is one unintended use of \R instead of @R{}, and the prototype of
+    > Rf_acopy_string needs a small fix:
+
+    > Index: doc/manual/R-exts.texi
+    > ===================================================================
+    > --- doc/manual/R-exts.texi	(revision 90457)
+    > +++ doc/manual/R-exts.texi	(working copy)
+    > @@ -15492,7 +15492,7 @@
+    > @c @apifun Free
+    > @c The R_ forms were introduced in 2016-09, hence for R 3.4.0
+    > Historically the macros @code{Calloc}, @code{Free} and @code{Realloc}
+    > -were used but have been removed in \R 4.5.0.
+    > +were used but have been removed in @R{} 4.5.0.
+ 
+    > @code{R_Calloc}, @code{R_Realloc}, and @code{R_Free} are currently
+    > implemented as macros expanding to calls to @code{R_chk_calloc},
+    > @@ -17044,7 +17044,7 @@
+    > @end deftypefun
+ 
+    > @eapifun Rf_acopy_string
+    > - at deftypefun {const char *} Rf_acopy_string (const char *@var{in})
+    > + at deftypefun {char *} Rf_acopy_string (const char *@var{in})
+    > Return a copy of a string using memory from @code{R_alloc}.
+    > @end deftypefun
+
+Thank you, Ivan.
+I've committed these to R-devel, svn r90461, now.
+
+Martin
+
+
+From j@curr@n @end|ng |rom @uck|@nd@@c@nz  Wed Sep  2 01:44:34 2026
+From: j@curr@n @end|ng |rom @uck|@nd@@c@nz (James Curran)
+Date: Tue, 1 Sep 2026 23:44:34 +0000
+Subject: [Rd] Proposal: improved vignette discovery in utils
+Message-ID: <78d1a9bf-9726-47c3-912b-3c4ecd98d2af@auckland.ac.nz>
+
+I would like to suggest a few related improvements to vignette discovery 
+in utils.
+
+The immediate motivation came from one of my own packages, which 
+currently has:
+
+     Vignettes in package 'RGenstat':
+
+     authentication-and-accounts   Authentication and accounts with RGenstat
+     rgenstat-introduction         Getting started with RGenstat
+     structured-genstat-tables     Working with structured Genstat tables
+
+A user who knows there is an introductory vignette might reasonably try
+
+     vignette("introduction", package = "RGenstat")
+
+but currently needs to know the exact base name:
+
+     vignette("rgenstat-introduction", package = "RGenstat")
+
+RGenstat is not currently on CRAN, but the same general issue can be 
+reproduced using the recommended grid package. For example, grid 
+contains a vignette named "displaylist", but
+
+     vignette("display", package = "grid")
+
+does not find it.
+
+I wonder whether vignette() could be a little smarter when an exact 
+match isn't found. In the latter case it might respond with something like
+
+     No vignette with topic 'display' was found.
+
+     Did you mean:
+
+       vignette("displaylist", package = "grid")
+
+Similarly, where several partial or approximate matches are plausible, 
+it could list the corresponding valid vignette() calls.
+
+I don't think an approximate match should automatically be opened. Exact 
+matches could retain their current behaviour, with partial/fuzzy 
+matching used only to suggest valid vignette names when exact lookup fails.
+
+It also seems useful to have a vignette-specific analogue of help.search():
+
+     vignette.search("graphics")
+     vignette.search("display", package = "grid")
+
+This could search vignette names, titles and keywords/concepts, using 
+the existing help-search infrastructure where possible. help.search() 
+already includes vignette names, titles and keywords, so this seems 
+conceptually close to functionality R already provides.
+
+Searching vignette contents might also be worth considering at some 
+later point, if that can be done naturally and efficiently, but I don't 
+think it needs to be part of an initial implementation.
+
+Finally, I wonder whether a simple
+
+     list.vignettes("grid")
+
+would be worthwhile as a more discoverable wrapper of
+
+     vignette(package = "grid")
+
+I realise that browseVignettes() already provides another way to 
+discover available vignettes. However, I see the two as serving somewhat 
+different purposes. browseVignettes() produces an HTML browser 
+interface, whereas vignette(package = ...) already provides a console 
+listing and returns the corresponding information as an R object.
+
+list.vignettes() would therefore not replace browseVignettes() or add 
+fundamentally new functionality. Rather, it would give the existing 
+console/listing operation an explicit and discoverable name, instead of 
+requiring users to know that omitting the topic argument and specifying 
+the package name changes the role of vignette() from retrieving a 
+vignette to listing them.
+
+This would give a fairly natural interface:
+
+     vignette("name")        view a known vignette
+     list.vignettes()        list available vignettes
+     vignette.search("term") search for relevant vignettes
+     browseVignettes()       browse vignettes interactively in HTML
+
+The main motivation is simply to make vignettes easier to discover 
+without changing the successful existing behaviour of vignette().
+
+James
+

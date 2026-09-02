@@ -18,19 +18,65 @@
       "thread_id": "thread-96dff6becb21",
       "thread_depth": 0,
       "month": "2026-09"
+    },
+    {
+      "id": "msg-5f18c021e932",
+      "message_id": "<27286.48780.782285.265820@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-09-01T12:01:16Z",
+      "subject": "[Rd] Two small fixes for WRE",
+      "subject_clean": "Two small fixes for WRE",
+      "in_reply_to": "<fake-VM-id.ab35f3100c8e0d8da4d660acccec0aeb@talos.iv>",
+      "references": [
+        "<20260901122114.08f428de@Tarkus>"
+      ],
+      "body_plain": ">>>>> Ivan Krylov \n>>>>>     on Tue, 1 Sep 2026 12:21:14 +0300 writes:\n\n    > There is one unintended use of \\R instead of @R{}, and the prototype of\n    > Rf_acopy_string needs a small fix:\n\n    > Index: doc/manual/R-exts.texi\n    > ===================================================================\n    > --- doc/manual/R-exts.texi\t(revision 90457)\n    > +++ doc/manual/R-exts.texi\t(working copy)\n    > @@ -15492,7 +15492,7 @@\n    > @c @apifun Free\n    > @c The R_ forms were introduced in 2016-09, hence for R 3.4.0\n    > Historically the macros @code{Calloc}, @code{Free} and @code{Realloc}\n    > -were used but have been removed in \\R 4.5.0.\n    > +were used but have been removed in @R{} 4.5.0.\n \n    > @code{R_Calloc}, @code{R_Realloc}, and @code{R_Free} are currently\n    > implemented as macros expanding to calls to @code{R_chk_calloc},\n    > @@ -17044,7 +17044,7 @@\n    > @end deftypefun\n \n    > @eapifun Rf_acopy_string\n    > - at deftypefun {const char *} Rf_acopy_string (const char *@var{in})\n    > + at deftypefun {char *} Rf_acopy_string (const char *@var{in})\n    > Return a copy of a string using memory from @code{R_alloc}.\n    > @end deftypefun\n\nThank you, Ivan.\nI've committed these to R-devel, svn r90461, now.\n\nMartin",
+      "body_snippet": ">>>>> Ivan Krylov \n>>>>>     on Tue, 1 Sep 2026 12:21:14 +0300 writes:\n\n    > There is one unintended use of \\R instead of @R{}, and the prototype of\n    > Rf_acopy_string needs a small fix:\n\n    > In",
+      "thread_id": "thread-96dff6becb21",
+      "thread_depth": 1,
+      "month": "2026-09"
+    },
+    {
+      "id": "msg-1bbacd39b5f4",
+      "message_id": "<78d1a9bf-9726-47c3-912b-3c4ecd98d2af@auckland.ac.nz>",
+      "from_name": "James Curran",
+      "from_email_hash": "8581545845e3f18f713429791e0aed32ba97ebc652beb862bdc3b73748cd846a",
+      "date": "2026-09-01T23:44:34Z",
+      "subject": "[Rd] Proposal: improved vignette discovery in utils",
+      "subject_clean": "Proposal: improved vignette discovery in utils",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "I would like to suggest a few related improvements to vignette discovery \nin utils.\n\nThe immediate motivation came from one of my own packages, which \ncurrently has:\n\n     Vignettes in package 'RGenstat':\n\n     authentication-and-accounts   Authentication and accounts with RGenstat\n     rgenstat-introduction         Getting started with RGenstat\n     structured-genstat-tables     Working with structured Genstat tables\n\nA user who knows there is an introductory vignette might reasonably try\n\n     vignette(\"introduction\", package = \"RGenstat\")\n\nbut currently needs to know the exact base name:\n\n     vignette(\"rgenstat-introduction\", package = \"RGenstat\")\n\nRGenstat is not currently on CRAN, but the same general issue can be \nreproduced using the recommended grid package. For example, grid \ncontains a vignette named \"displaylist\", but\n\n     vignette(\"display\", package = \"grid\")\n\ndoes not find it.\n\nI wonder whether vignette() could be a little smarter when an exact \nmatch isn't found. In the latter case it might respond with something like\n\n     No vignette with topic 'display' was found.\n\n     Did you mean:\n\n       vignette(\"displaylist\", package = \"grid\")\n\nSimilarly, where several partial or approximate matches are plausible, \nit could list the corresponding valid vignette() calls.\n\nI don't think an approximate match should automatically be opened. Exact \nmatches could retain their current behaviour, with partial/fuzzy \nmatching used only to suggest valid vignette names when exact lookup fails.\n\nIt also seems useful to have a vignette-specific analogue of help.search():\n\n     vignette.search(\"graphics\")\n     vignette.search(\"display\", package = \"grid\")\n\nThis could search vignette names, titles and keywords/concepts, using \nthe existing help-search infrastructure where possible. help.search() \nalready includes vignette names, titles and keywords, so this seems \nconceptually close to functionality R already provides.\n\nSearching vignette contents might also be worth considering at some \nlater point, if that can be done naturally and efficiently, but I don't \nthink it needs to be part of an initial implementation.\n\nFinally, I wonder whether a simple\n\n     list.vignettes(\"grid\")\n\nwould be worthwhile as a more discoverable wrapper of\n\n     vignette(package = \"grid\")\n\nI realise that browseVignettes() already provides another way to \ndiscover available vignettes. However, I see the two as serving somewhat \ndifferent purposes. browseVignettes() produces an HTML browser \ninterface, whereas vignette(package = ...) already provides a console \nlisting and returns the corresponding information as an R object.\n\nlist.vignettes() would therefore not replace browseVignettes() or add \nfundamentally new functionality. Rather, it would give the existing \nconsole/listing operation an explicit and discoverable name, instead of \nrequiring users to know that omitting the topic argument and specifying \nthe package name changes the role of vignette() from retrieving a \nvignette to listing them.\n\nThis would give a fairly natural interface:\n\n     vignette(\"name\")        view a known vignette\n     list.vignettes()        list available vignettes\n     vignette.search(\"term\") search for relevant vignettes\n     browseVignettes()       browse vignettes interactively in HTML\n\nThe main motivation is simply to make vignettes easier to discover \nwithout changing the successful existing behaviour of vignette().\n\nJames",
+      "body_snippet": "I would like to suggest a few related improvements to vignette discovery \nin utils.\n\nThe immediate motivation came from one of my own packages, which \ncurrently has:\n\n     Vignettes in package 'RGenst",
+      "thread_id": "thread-1bbacd39b5f4",
+      "thread_depth": 0,
+      "month": "2026-09"
     }
   ],
   "threads": [
     {
       "id": "thread-96dff6becb21",
       "subject": "Two small fixes for WRE",
-      "message_count": 1,
+      "message_count": 2,
       "participants": [
-        "Ivan Krylov"
+        "Ivan Krylov",
+        "Martin Maechler"
       ],
       "started": "2026-09-01T09:21:14Z",
-      "last_reply": "2026-09-01T09:21:14Z",
+      "last_reply": "2026-09-01T12:01:16Z",
       "root_message_id": "msg-96dff6becb21"
+    },
+    {
+      "id": "thread-1bbacd39b5f4",
+      "subject": "Proposal: improved vignette discovery in utils",
+      "message_count": 1,
+      "participants": [
+        "James Curran"
+      ],
+      "started": "2026-09-01T23:44:34Z",
+      "last_reply": "2026-09-01T23:44:34Z",
+      "root_message_id": "msg-1bbacd39b5f4"
     }
   ]
 }
