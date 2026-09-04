@@ -239,3 +239,71 @@ On Tue, Aug 11, 2026, at 3:48 PM, Hugo Gruson wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-devel
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Sep  3 23:21:02 2026
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 4 Sep 2026 00:21:02 +0300
+Subject: [Rd] A few leaks on trunk
+Message-ID: <20260904002102.3ce49a3a@Tarkus>
+
+I was trying to run make check-devel on a sanitized build of R to
+verify a bugfix and it kept failing due to leaks:
+
+try(order(list(1,2))) leaks the 'isna' array before failing with
+UNIMPLEMENTED_TYPE:
+-----------------------------------8<-----------------------------------
+Index: src/main/sort.c
+===================================================================
+--- src/main/sort.c	(revision 90482)
++++ src/main/sort.c	(working copy)
+@@ -1193,6 +1193,7 @@
+ 	    for (i = 0; i < n; i++) isna[i] = ISNAN(cx[i].r) || ISNAN(cx[i].i);
+ 	    break;
+ 	default:
++	    R_Free(isna);
+ 	    UNIMPLEMENTED_TYPE("orderVector1", key);
+ 	}
+ 	for (i = 0; i < n; i++) numna += isna[i];
+-----------------------------------8<-----------------------------------
+
+echo hello | gzip -c > foo.gz
+Rscript -e 'close(gzcon(file("foo.gz", "rb")))'
+Leaks the underlying Rconnection struct that had been wrapped by gzcon:
+-----------------------------------8<-----------------------------------
+Index: src/main/connections.c
+===================================================================
+--- src/main/connections.c	(revision 90482)
++++ src/main/connections.c	(working copy)
+@@ -4168,6 +4168,7 @@
+ 	Rgzconn priv = con->private;
+ 	con_close1(priv->con);
+ 	R_ReleaseObject(priv->con->ex_ptr);
++	free(priv->con);
+     }
+     /* close inconv and outconv if open */
+     if(con->inconv) Riconv_close(con->inconv);
+-----------------------------------8<-----------------------------------
+
+addTaskCallback(\(...) FALSE, name = "hello world") leaks the name of
+the task callback:
+-----------------------------------8<-----------------------------------
+Index: src/main/main.c
+===================================================================
+--- src/main/main.c	(revision 90482)
++++ src/main/main.c	(working copy)
+@@ -1893,6 +1893,7 @@
+ 		Rf_ToplevelTaskHandlers = h;
+ 	    if(tmp->finalizer)
+ 		tmp->finalizer(tmp->data);
++	    free(tmp->name);
+ 	    free(tmp);
+ 	}
+     }
+-----------------------------------8<-----------------------------------
+
+Unfortunately, there are more.
+
+-- 
+Best regards,
+Ivan
+
+
