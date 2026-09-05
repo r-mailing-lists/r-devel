@@ -307,3 +307,102 @@ Best regards,
 Ivan
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Sep  4 15:19:08 2026
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 4 Sep 2026 16:19:08 +0300
+Subject: [Rd] Port r89945 to trunk?
+Message-ID: <20260904161908.3f2a1b4e@Tarkus>
+
+On R-devel/Windows, old.packages(type="both") fails when there exist
+binary packages with no corresponding source package:
+
+> old.packages()
+Error in av.src[pkg.bin, "Version"] : subscript out of bounds
+
+Enter a frame number, or 0 to exit
+
+1: old.packages()
+2: .available.both(repos, method, ...)
+
+Selection: 2
+Called from: top level
+Browse[1]> ls()
+[1] "av.bin"  "av.src"  "bin.ver" "fields"  "method"  "pkg.bin"
+"pkg.src" [8] "repos"
+Browse[1]> str(av.src)
+ chr [1:24846, 1:19] "a11yShiny" "a5R" "aae.pop" "AalenJohansen" "aamatch" ...
+ - attr(*, "dimnames")=List of 2
+  ..$ : chr [1:24846] "a11yShiny" "a5R" "aae.pop" "AalenJohansen" ...
+  ..$ : chr [1:19] "Package" "Version" "Priority" "Depends" ...
+Browse[1]> str(pkg.bin)
+ chr [1:24779] "AATtools" "ABACUS" "ABC.RAP" "ABCDscores" "ABCanalysis"
+... Browse[1]> setdiff(pkg.bin, rownames(av.src))
+[1] "RPresto"  "dlsem"    "growth"   "pulsar"   "thankr"   "tinyVAST"
+
+In R-4.6.1 this is solved by r89945 excluding such (archived) packages
+from the return value with a warning. Can we have this on trunk, or do
+we need a different solution (something to do with the unified binary
+packages)?
+
+-- 
+Best regards,
+Ivan
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Sat Sep  5 00:05:31 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Sat, 5 Sep 2026 00:05:31 +0200
+Subject: [Rd] Port r89945 to trunk?
+In-Reply-To: <fake-VM-id.4f47d0dc3644f5837d1a34c68fb7d517@talos.iv>
+References: <20260904161908.3f2a1b4e@Tarkus>
+Message-ID: <27291.16555.47749.173940@stat.math.ethz.ch>
+
+>>>>> Ivan Krylov 
+>>>>>     on Fri, 4 Sep 2026 16:19:08 +0300 writes:
+
+    > On R-devel/Windows, old.packages(type="both") fails when
+    > there exist binary packages with no corresponding source
+    > package:
+
+    >> old.packages()
+    > Error in av.src[pkg.bin, "Version"] : subscript out of
+    > bounds
+
+    .................
+    
+    > In R-4.6.1 this is solved by r89945 excluding such
+    > (archived) packages from the return value with a
+    > warning. Can we have this on trunk, or do we need a
+    > different solution (something to do with the unified
+    > binary packages)?
+
+    > -- 
+    > Best regards, Ivan
+
+Thank you, Ivan.
+Indeed, it was
+
+------------------------------------------------------------------------
+r89945 | pd | 2026-04-22 15:34:48 +0200 (Wed, 22 Apr 2026) | 1 line
+Changed paths:
+   M /branches/R-4-6-branch/src/library/utils/R/packages.R
+
+stopgap for CRAN inconsistencies: expliitly omit packages with no corresponding source
+------------------------------------------------------------------------
+
+which was shortly before the release manager (pd) switched "R
+patched" to R-alpha (etc) i.e. pre-releases..
+
+.. and indeed, R-devel has added *other* changes in the mean
+time..
+Still, I think you are right this bug should no longer be in
+R-devel, even when the April "stop gap" fix was "forgotten" or
+in any case the problem still existing in R-devel  is not good
+at all.
+
+As this is _not_ something I've been using too often,
+I'd rather have other R corers step up ..
+
+Martin
+
+
