@@ -406,3 +406,230 @@ I'd rather have other R corers step up ..
 Martin
 
 
+From terry@therne@u @end|ng |rom proton@me  Sat Sep  5 14:43:06 2026
+From: terry@therne@u @end|ng |rom proton@me (Terry Therneau)
+Date: Sat, 05 Sep 2026 12:43:06 +0000
+Subject: [Rd] png errors
+Message-ID: <1pNO78h_zca_fMKc8tlcLpBALhoZnECihunCI4l-vSYJZzmqSeF5sSM2AFvmROfzM6HmW0CijC9023VkefUJwTL-CY3JGfOAVmdjHdUXa6s=@proton.me>
+
+I run the test suites of most of the CRAN packages before submitting survival with a script that looks a bit like tools:test_packages_in_dir. The big difference is that I have a list of things to skip (Bioconductor, things that use a GPU, ...) which don't work well on my home box. I tends to remove 1 or 2 cycles of submission wrt reverse dependency errors.
+
+In the most recent R-devel versions this approach fails for any package that uses PNG, bamlss for example. But if I run R CMD check bamlss*gz from the command line all is fine.
+I took the following lines from test_packages_in_dir long ago, which stopped things from flashing on my screen, but that appears to no longer be enough. Anyone have any hints?
+
+Terry
+
+xvfb_options <- "-screen 0 1280x1024x24"
+pid <- tools:::start_virtual_X11_fb(xvfb_options)
+on.exit(tools:::close_virtual_X11_db(pid), add = TRUE)
+	[[alternative HTML version deleted]]
+
+
+From g@bembecker @end|ng |rom gm@||@com  Sat Sep  5 16:33:04 2026
+From: g@bembecker @end|ng |rom gm@||@com (Gabriel Becker)
+Date: Sat, 5 Sep 2026 15:33:04 +0100
+Subject: [Rd] png errors
+In-Reply-To: <1pNO78h_zca_fMKc8tlcLpBALhoZnECihunCI4l-vSYJZzmqSeF5sSM2AFvmROfzM6HmW0CijC9023VkefUJwTL-CY3JGfOAVmdjHdUXa6s=@proton.me>
+References: <1pNO78h_zca_fMKc8tlcLpBALhoZnECihunCI4l-vSYJZzmqSeF5sSM2AFvmROfzM6HmW0CijC9023VkefUJwTL-CY3JGfOAVmdjHdUXa6s=@proton.me>
+Message-ID: <CAD4oTHHdrWbW3ZnhTgir8UH_fmPXtXeXTBKpsoGHzvUY1TDf2g@mail.gmail.com>
+
+I believe work was done during the r sprint on a Cairo device bug where the
+required fix caused unfortunate but expected small changes to output files.
+I am not sure if that was merged in but it seems like a pretty big
+coincidence if not.
+
+I didnt work on the project directly so others will know more specifics.
+
+Hth
+~G
+
+On Sat, Sep 5, 2026, 1:43?PM Terry Therneau via R-devel <
+r-devel at r-project.org> wrote:
+
+> I run the test suites of most of the CRAN packages before submitting
+> survival with a script that looks a bit like tools:test_packages_in_dir.
+> The big difference is that I have a list of things to skip (Bioconductor,
+> things that use a GPU, ...) which don't work well on my home box. I tends
+> to remove 1 or 2 cycles of submission wrt reverse dependency errors.
+>
+> In the most recent R-devel versions this approach fails for any package
+> that uses PNG, bamlss for example. But if I run R CMD check bamlss*gz from
+> the command line all is fine.
+> I took the following lines from test_packages_in_dir long ago, which
+> stopped things from flashing on my screen, but that appears to no longer be
+> enough. Anyone have any hints?
+>
+> Terry
+>
+> xvfb_options <- "-screen 0 1280x1024x24"
+> pid <- tools:::start_virtual_X11_fb(xvfb_options)
+> on.exit(tools:::close_virtual_X11_db(pid), add = TRUE)
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From r@v|@v@r@dh@n @end|ng |rom jhu@edu  Sat Sep  5 18:26:07 2026
+From: r@v|@v@r@dh@n @end|ng |rom jhu@edu (Ravi Varadhan)
+Date: Sat, 5 Sep 2026 16:26:07 +0000
+Subject: [Rd] png errors
+In-Reply-To: <1pNO78h_zca_fMKc8tlcLpBALhoZnECihunCI4l-vSYJZzmqSeF5sSM2AFvmROfzM6HmW0CijC9023VkefUJwTL-CY3JGfOAVmdjHdUXa6s=@proton.me>
+References: <1pNO78h_zca_fMKc8tlcLpBALhoZnECihunCI4l-vSYJZzmqSeF5sSM2AFvmROfzM6HmW0CijC9023VkefUJwTL-CY3JGfOAVmdjHdUXa6s=@proton.me>
+Message-ID: <DS4PR01MB943442F084EB1315CD57DAE6F2B42@DS4PR01MB9434.prod.exchangelabs.com>
+
+Terry,
+
+I think the problem is with the argument name.  You need to explicitly name it since the first argument is not named "options" in the R devel:
+
+pid <- tools:::start_virtual_X11_fb(options = xvfb_options)
+
+
+Ravi
+________________________________
+From: R-devel <r-devel-bounces at r-project.org> on behalf of Terry Therneau via R-devel <r-devel at r-project.org>
+Sent: Saturday, September 5, 2026 08:43
+To: r-devel at r-project.org <r-devel at r-project.org>
+Subject: [Rd] png errors
+
+
+      External Email - Use Caution
+
+
+
+I run the test suites of most of the CRAN packages before submitting survival with a script that looks a bit like tools:test_packages_in_dir. The big difference is that I have a list of things to skip (Bioconductor, things that use a GPU, ...) which don't work well on my home box. I tends to remove 1 or 2 cycles of submission wrt reverse dependency errors.
+
+In the most recent R-devel versions this approach fails for any package that uses PNG, bamlss for example. But if I run R CMD check bamlss*gz from the command line all is fine.
+I took the following lines from test_packages_in_dir long ago, which stopped things from flashing on my screen, but that appears to no longer be enough. Anyone have any hints?
+
+Terry
+
+xvfb_options <- "-screen 0 1280x1024x24"
+pid <- tools:::start_virtual_X11_fb(xvfb_options)
+on.exit(tools:::close_virtual_X11_db(pid), add = TRUE)
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>
+
+	[[alternative HTML version deleted]]
+
+
+From terry@therne@u @end|ng |rom proton@me  Sat Sep  5 18:30:10 2026
+From: terry@therne@u @end|ng |rom proton@me (Terry Therneau)
+Date: Sat, 05 Sep 2026 16:30:10 +0000
+Subject: [Rd] png error
+Message-ID: <Xx9OfJp2C-Y55LPolNixdrQKTnIBs8SH_9SQzi692nbCR4O663NJOIKbEYoQRuX0Cfpvwp9xvxJzHMOOT3YxS6zgTX-LwE8COnieQNDfjb4=@proton.me>
+
+I should have given more detail in my prior message. Here is an example of the error, from frailtyEM
+
+Terry T
+
+> ggplotly(pl2)
+Warning in dev_fun(filename = tempfile(), width = width %||% 640, height = heigh
+t %||% :
+unable to open connection to X11 display ''
+Error in .External2(C_X11, paste0("png::", filename), g$width, g$height, :
+unable to start device PNG
+Calls: ggplotly -> ggplotly.ggplot -> gg2list -> dev_fun
+Execution halted
+
+Sent with [Proton Mail](https://proton.me/mail/home) secure email.
+	[[alternative HTML version deleted]]
+
+
+From terry@therne@u @end|ng |rom proton@me  Sat Sep  5 19:04:27 2026
+From: terry@therne@u @end|ng |rom proton@me (Terry Therneau)
+Date: Sat, 05 Sep 2026 17:04:27 +0000
+Subject: [Rd] png errors
+In-Reply-To: <DS4PR01MB943442F084EB1315CD57DAE6F2B42@DS4PR01MB9434.prod.exchangelabs.com>
+References: <1pNO78h_zca_fMKc8tlcLpBALhoZnECihunCI4l-vSYJZzmqSeF5sSM2AFvmROfzM6HmW0CijC9023VkefUJwTL-CY3JGfOAVmdjHdUXa6s=@proton.me>
+ <DS4PR01MB943442F084EB1315CD57DAE6F2B42@DS4PR01MB9434.prod.exchangelabs.com>
+Message-ID: <ebt1UE9QxoPHEb8oTifFWbOAtcIMSfjarV5nJsCyczOUU3CXwuUw9-Mmk5HXhiMRc0EZEy0RWuZTYNMCEntrsZqRBdpUlb1z0rjwuwOPKvg=@proton.me>
+
+I tried this and it didn't work. Thanks anyway.
+
+Terry
+
+----- Ravi Varden wrote:
+
+I think the problem is with the argument name. You need to explicitly name it since the first argument is not named "options" in the R devel:
+
+pid <- tools:::start_virtual_X11_fb(options = xvfb_options)
+
+Ravi
+
+Sent with [Proton Mail](https://proton.me/mail/home) secure email.
+
+On Saturday, September 5th, 2026 at 11:26 AM, Ravi Varadhan <ravi.varadhan at jhu.edu> wrote:
+
+> Terry,
+>
+> I think the problem is with the argument name. You need to explicitly name it since the first argument is not named "options" in the R devel:
+>
+> pid <- tools:::start_virtual_X11_fb(options = xvfb_options)
+>
+> Ravi
+> ---------------------------------------------------------------
+>
+> From: R-devel <r-devel-bounces at r-project.org> on behalf of Terry Therneau via R-devel <r-devel at r-project.org>
+> Sent: Saturday, September 5, 2026 08:43
+> To: r-devel at r-project.org <r-devel at r-project.org>
+> Subject: [Rd] png errors
+>
+> External Email - Use Caution
+>
+> I run the test suites of most of the CRAN packages before submitting survival with a script that looks a bit like tools:test_packages_in_dir. The big difference is that I have a list of things to skip (Bioconductor, things that use a GPU, ...) which don't work well on my home box. I tends to remove 1 or 2 cycles of submission wrt reverse dependency errors.
+>
+> In the most recent R-devel versions this approach fails for any package that uses PNG, bamlss for example. But if I run R CMD check bamlss*gz from the command line all is fine.
+> I took the following lines from test_packages_in_dir long ago, which stopped things from flashing on my screen, but that appears to no longer be enough. Anyone have any hints?
+>
+> Terry
+>
+> xvfb_options <- "-screen 0 1280x1024x24"
+> pid <- tools:::start_virtual_X11_fb(xvfb_options)
+> on.exit(tools:::close_virtual_X11_db(pid), add = TRUE)
+> [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> [https://stat.ethz.ch/mailman/listinfo/r-devel](https://stat.ethz.ch/mailman/listinfo/r-devel)
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Sep  5 19:30:06 2026
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 5 Sep 2026 20:30:06 +0300
+Subject: [Rd] png error
+In-Reply-To: <Xx9OfJp2C-Y55LPolNixdrQKTnIBs8SH_9SQzi692nbCR4O663NJOIKbEYoQRuX0Cfpvwp9xvxJzHMOOT3YxS6zgTX-LwE8COnieQNDfjb4=@proton.me>
+References: <Xx9OfJp2C-Y55LPolNixdrQKTnIBs8SH_9SQzi692nbCR4O663NJOIKbEYoQRuX0Cfpvwp9xvxJzHMOOT3YxS6zgTX-LwE8COnieQNDfjb4=@proton.me>
+Message-ID: <20260905203006.73ba37a8@parabola>
+
+On Sat, 05 Sep 2026 16:30:10 +0000
+Terry Therneau via R-devel <r-devel at r-project.org> wrote:
+
+> unable to open connection to X11 display ''
+> Error in .External2(C_X11, paste0("png::", filename), g$width,
+> g$height, : unable to start device PNG
+
+This is a little strange because normally R would prefer to use the
+Cairo-based device that doesn't require an X server connection. Did you
+intend for your build of R to skip using Cairo?
+
+If you're interested in debugging, see if Sys.getenv("DISPLAY") returns
+anything useful after you attempt to start Xvfb. Can you run
+DISPLAY=$that_string xeyes? Is the socket in present in /tmp/.X11-unix/?
+
+You could also try to run 'xvfb-run R' and then skip starting Xvfb by
+hand. Does 'xvfb-run R CMD check frailtyEM_*.tar.gz' work?
+
+-- 
+Best regards,
+Ivan
+
+
