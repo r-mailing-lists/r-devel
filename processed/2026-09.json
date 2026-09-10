@@ -335,6 +335,88 @@
       "thread_id": "thread-9e9548871cc7",
       "thread_depth": 1,
       "month": "2026-09"
+    },
+    {
+      "id": "msg-5c5a27c48d72",
+      "message_id": "<FQbbv7C-0CzwTg8Z6X0mlGPmGPggqdmADk2xXKAzv57_2LeQZqNILq5Ew5oIPv2s4MNWabaFQtkNTgGe8BdcISUEcyj6ETytimxCuE3Yf9k=@proton.me>",
+      "from_name": "Terry Therneau",
+      "from_email_hash": "b41bc30fb3f0fe87235b64118d933e86f82add172f9c9755197b29b2eba7722a",
+      "date": "2026-09-09T14:51:02Z",
+      "subject": "[Rd] png error",
+      "subject_clean": "png error",
+      "in_reply_to": "<20260905203006.73ba37a8@parabola>",
+      "references": [
+        "<Xx9OfJp2C-Y55LPolNixdrQKTnIBs8SH_9SQzi692nbCR4O663NJOIKbEYoQRuX0Cfpvwp9xvxJzHMOOT3YxS6zgTX-LwE8COnieQNDfjb4=@proton.me>",
+        "<20260905203006.73ba37a8@parabola>"
+      ],
+      "body_plain": "Responding to some of the suggestions.\n1. I think that Cairo is enabled.  Here is the final bit from configure in src/R-devel on my machine:\n\nR is now configured for x86_64-pc-linux-gnu\n\n  Source directory:            .\n  Installation directory:      /usr/local\n\n  C compiler:                  gcc -std=gnu2x  -g -O2\n  Fortran fixed-form compiler: gfortran  -g -O2\n\n  Default C++ compiler:        g++ -std=gnu++20  -g -O2\n  Fortran free-form compiler:  gfortran  -g -O2\n  Obj-C compiler:\t        \n\n  Interfaces supported:        X11, tcltk\n  External libraries:          pcre2, readline, curl, libdeflate\n  Additional capabilities:     PNG, JPEG, TIFF, NLS, cairo, ICU\n  Options enabled:             shared BLAS, R profiling, libdeflate for lazyload\n\n  Capabilities skipped:        \n  Options not enabled:         memory profiling\n\n  Recommended packages:        yes\n\n2. THis fails using either \n   R CMD BATCH checkdep3.R or \n   R --no-save < checkdep3.R\nand here is the heart of that script\n-------------\n#... lines to create 'survdep', the list of things to check\nxvfb_options <- \"-screen 0 1280x1024x24\"\npid <- tools:::start_virtual_X11_fb(options= xvfb_options)\non.exit(tools:::close_virtual_X11_db(pid), add = TRUE)\n \nsetwd(\"xtest\")\nsystem(\"rm -rf *.gz\")\n# don't fail a test due to a missing 'suggested' package.  This matches what\n#  CRAN does\nSys.setenv(\"_R_CHECK_FORCE_SUGGESTS_\"=FALSE) \n                                            \nfor (i in survdep) {\n    cat(i, \"\\n\")\n    download.packages(i, \".\", type=\"source\")\n    system(paste0(\"R CMD check \", i, \"*.gz\"))\n    cat(\"\\n\")\n}\nsetwd(\"..\")\n---------------\nHere is a standard error (from frailtyEM)\n-------------\n> ggplotly(pl2)\nWarning in dev_fun(filename = tempfile(), width = width %||% 640, height = heigh\nt %||%  :\n  unable to open connection to X11 display ''\nError in .External2(C_X11, paste0(\"png::\", filename), g$width, g$height,  : \n  unable to start device PNG\nCalls: ggplotly -> ggplotly.ggplot -> gg2list -> dev_fun\nExecution halted\n------------\n\n3. Here is the result of a script that replaces the for loop above\nwith the suggested display command\n\n--------\nR --no-save < test.R\n> xvfb_options <- \"-screen 0 1280x1024x24\"\n> pid <- tools:::start_virtual_X11_fb(options= xvfb_options)\n> on.exit(tools:::close_virtual_X11_db(pid), add = TRUE)\n>  \n> setwd(\"xtest\")\n> # don't fail a test due to a missing 'suggested' package.  This matches what\n> #  CRAN does\n> Sys.setenv(\"_R_CHECK_FORCE_SUGGESTS_\"=FALSE) \n>      \n> Sys.getenv(\"DISPLAY\")\n[1] \":3675973\"\n>\n-------------\n\nTerry\n\nOn Saturday, September 5th, 2026 at 12:29 PM, Ivan Krylov <krylov.r00t at gmail.com> wrote:\n\n> On Sat, 05 Sep 2026 16:30:10 +0000\n> Terry Therneau via R-devel <r-devel at r-project.org> wrote:\n> \n> > unable to open connection to X11 display ''\n> > Error in .External2(C_X11, paste0(\"png::\", filename), g$width,\n> > g$height, : unable to start device PNG\n> \n> This is a little strange because normally R would prefer to use the\n> Cairo-based device that doesn't require an X server connection. Did you\n> intend for your build of R to skip using Cairo?\n> \n> If you're interested in debugging, see if Sys.getenv(\"DISPLAY\") returns\n> anything useful after you attempt to start Xvfb. Can you run\n> DISPLAY=$that_string xeyes? Is the socket in present in /tmp/.X11-unix/?\n> \n> You could also try to run 'xvfb-run R' and then skip starting Xvfb by\n> hand. Does 'xvfb-run R CMD check frailtyEM_*.tar.gz' work?\n> \n> --\n> Best regards,\n> Ivan\n>",
+      "body_snippet": "Responding to some of the suggestions.\n1. I think that Cairo is enabled.  Here is the final bit from configure in src/R-devel on my machine:\n\nR is now configured for x86_64-pc-linux-gnu\n\n  Source dire",
+      "thread_id": "thread-7284439dbbfc",
+      "thread_depth": 2,
+      "month": "2026-09"
+    },
+    {
+      "id": "msg-1d424a72f7ca",
+      "message_id": "<20260909225922.3d82f838@Tarkus>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "72bda76034efaa18cd166b722c373c5159885b988468de351df8992020f3856a",
+      "date": "2026-09-09T19:59:22Z",
+      "subject": "[Rd] png error",
+      "subject_clean": "png error",
+      "in_reply_to": "<FQbbv7C-0CzwTg8Z6X0mlGPmGPggqdmADk2xXKAzv57_2LeQZqNILq5Ew5oIPv2s4MNWabaFQtkNTgGe8BdcISUEcyj6ETytimxCuE3Yf9k=@proton.me>",
+      "references": [
+        "<Xx9OfJp2C-Y55LPolNixdrQKTnIBs8SH_9SQzi692nbCR4O663NJOIKbEYoQRuX0Cfpvwp9xvxJzHMOOT3YxS6zgTX-LwE8COnieQNDfjb4=@proton.me>",
+        "<20260905203006.73ba37a8@parabola>",
+        "<FQbbv7C-0CzwTg8Z6X0mlGPmGPggqdmADk2xXKAzv57_2LeQZqNILq5Ew5oIPv2s4MNWabaFQtkNTgGe8BdcISUEcyj6ETytimxCuE3Yf9k=@proton.me>"
+      ],
+      "body_plain": "On Wed, 09 Sep 2026 14:51:02 +0000\nTerry Therneau via R-devel <r-devel at r-project.org> wrote:\n\n>   Additional capabilities:     PNG, JPEG, TIFF, NLS, cairo, ICU\n\nThis says that you have working \"cairo\", but R also needs \"pangocairo\"\nfor png(type=\"cairo\") to work; the configure script doesn't mention the\nlatter in the final output. Does 'pkg-config --path pangocairo' produce\nany output? R remembers the result of this configure-time test and uses\n.Call(grDevices:::C_cairoProps, 2L) to remind itself when it starts up.\nIf there's no output from pkg-config or cairoProps returns FALSE, make\nsure you have libpango1.0-dev installed.\n\nAs for why doesn't the X11 device seem to work with Xvfb... there's\nlittle error checking in tools:::start_virtual_X11_fb, so even if Xvfb\ndoesn't run at all, R still sets the DISPLAY environment variable and\nremembers a \"PID\". Hence the question whether there is a socket in\n/tmp/.X11-unix with the same number as in the DISPLAY, or whether\n'xvfb-run R CMD check *_tar.gz' works.\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "On Wed, 09 Sep 2026 14:51:02 +0000\nTerry Therneau via R-devel <r-devel at r-project.org> wrote:\n\n>   Additional capabilities:     PNG, JPEG, TIFF, NLS, cairo, ICU\n\nThis says that you have working \"cai",
+      "thread_id": "thread-7284439dbbfc",
+      "thread_depth": 3,
+      "month": "2026-09"
+    },
+    {
+      "id": "msg-66bda65b02d3",
+      "message_id": "<4DD4A463-D386-409A-8083-31EA960584FA@R-project.org>",
+      "from_name": "Simon Urbanek",
+      "from_email_hash": "0f7a36ede18d495e19236834ee83f5b20722f5d7cec3588576a59851b948b51a",
+      "date": "2026-09-09T20:26:01Z",
+      "subject": "[Rd] png error",
+      "subject_clean": "png error",
+      "in_reply_to": "<20260909225922.3d82f838@Tarkus>",
+      "references": [
+        "<Xx9OfJp2C-Y55LPolNixdrQKTnIBs8SH_9SQzi692nbCR4O663NJOIKbEYoQRuX0Cfpvwp9xvxJzHMOOT3YxS6zgTX-LwE8COnieQNDfjb4=@proton.me>",
+        "<20260905203006.73ba37a8@parabola>",
+        "<FQbbv7C-0CzwTg8Z6X0mlGPmGPggqdmADk2xXKAzv57_2LeQZqNILq5Ew5oIPv2s4MNWabaFQtkNTgGe8BdcISUEcyj6ETytimxCuE3Yf9k=@proton.me>",
+        "<20260909225922.3d82f838@Tarkus>"
+      ],
+      "body_plain": "One thing that puzzles me is that the error says DISPLAY is '' so it looks like some code wipes the DISPLAY variable - no idea where that happens.\n\nThat said, have you tried setting:\n\noptions(bitmapType=\"cairo\")\n\nThat should use cairo even if the default auto-detection decided to use X11.\n\nCheers,\nSimon\n\n\n\n> On 10/09/2026, at 07:59, Ivan Krylov <krylov.r00t at gmail.com> wrote:\n> \n> On Wed, 09 Sep 2026 14:51:02 +0000\n> Terry Therneau via R-devel <r-devel at r-project.org> wrote:\n> \n>>  Additional capabilities:     PNG, JPEG, TIFF, NLS, cairo, ICU\n> \n> This says that you have working \"cairo\", but R also needs \"pangocairo\"\n> for png(type=\"cairo\") to work; the configure script doesn't mention the\n> latter in the final output. Does 'pkg-config --path pangocairo' produce\n> any output? R remembers the result of this configure-time test and uses\n> .Call(grDevices:::C_cairoProps, 2L) to remind itself when it starts up.\n> If there's no output from pkg-config or cairoProps returns FALSE, make\n> sure you have libpango1.0-dev installed.\n> \n> As for why doesn't the X11 device seem to work with Xvfb... there's\n> little error checking in tools:::start_virtual_X11_fb, so even if Xvfb\n> doesn't run at all, R still sets the DISPLAY environment variable and\n> remembers a \"PID\". Hence the question whether there is a socket in\n> /tmp/.X11-unix with the same number as in the DISPLAY, or whether\n> 'xvfb-run R CMD check *_tar.gz' works.\n> \n> -- \n> Best regards,\n> Ivan\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>",
+      "body_snippet": "One thing that puzzles me is that the error says DISPLAY is '' so it looks like some code wipes the DISPLAY variable - no idea where that happens.\n\nThat said, have you tried setting:\n\noptions(bitmapTy",
+      "thread_id": "thread-7284439dbbfc",
+      "thread_depth": 4,
+      "month": "2026-09"
+    },
+    {
+      "id": "msg-883f29837bf0",
+      "message_id": "<97CA9625-CEAA-4DB2-87C4-9B869F0FF201@R-project.org>",
+      "from_name": "Simon Urbanek",
+      "from_email_hash": "0f7a36ede18d495e19236834ee83f5b20722f5d7cec3588576a59851b948b51a",
+      "date": "2026-09-09T20:43:46Z",
+      "subject": "[Rd] png error",
+      "subject_clean": "png error",
+      "in_reply_to": "<4DD4A463-D386-409A-8083-31EA960584FA@R-project.org>",
+      "references": [
+        "<Xx9OfJp2C-Y55LPolNixdrQKTnIBs8SH_9SQzi692nbCR4O663NJOIKbEYoQRuX0Cfpvwp9xvxJzHMOOT3YxS6zgTX-LwE8COnieQNDfjb4=@proton.me>",
+        "<20260905203006.73ba37a8@parabola>",
+        "<FQbbv7C-0CzwTg8Z6X0mlGPmGPggqdmADk2xXKAzv57_2LeQZqNILq5Ew5oIPv2s4MNWabaFQtkNTgGe8BdcISUEcyj6ETytimxCuE3Yf9k=@proton.me>",
+        "<20260909225922.3d82f838@Tarkus>",
+        "<4DD4A463-D386-409A-8083-31EA960584FA@R-project.org>"
+      ],
+      "body_plain": "Just to clarify: assuming the error comes from examples, in order to set the option there you have to use _R_CHECK_EXAMPLES_PROFILE_ to set the corresponding Rprofile file since the default profile is not loaded for examples.\n\nCheers,\nSimon\n\n\n> On 10/09/2026, at 08:26, Simon Urbanek <simon.urbanek at R-project.org> wrote:\n> \n> One thing that puzzles me is that the error says DISPLAY is '' so it looks like some code wipes the DISPLAY variable - no idea where that happens.\n> \n> That said, have you tried setting:\n> \n> options(bitmapType=\"cairo\")\n> \n> That should use cairo even if the default auto-detection decided to use X11.\n> \n> Cheers,\n> Simon\n> \n> \n> \n>> On 10/09/2026, at 07:59, Ivan Krylov <krylov.r00t at gmail.com> wrote:\n>> \n>> On Wed, 09 Sep 2026 14:51:02 +0000\n>> Terry Therneau via R-devel <r-devel at r-project.org> wrote:\n>> \n>>> Additional capabilities:     PNG, JPEG, TIFF, NLS, cairo, ICU\n>> \n>> This says that you have working \"cairo\", but R also needs \"pangocairo\"\n>> for png(type=\"cairo\") to work; the configure script doesn't mention the\n>> latter in the final output. Does 'pkg-config --path pangocairo' produce\n>> any output? R remembers the result of this configure-time test and uses\n>> .Call(grDevices:::C_cairoProps, 2L) to remind itself when it starts up.\n>> If there's no output from pkg-config or cairoProps returns FALSE, make\n>> sure you have libpango1.0-dev installed.\n>> \n>> As for why doesn't the X11 device seem to work with Xvfb... there's\n>> little error checking in tools:::start_virtual_X11_fb, so even if Xvfb\n>> doesn't run at all, R still sets the DISPLAY environment variable and\n>> remembers a \"PID\". Hence the question whether there is a socket in\n>> /tmp/.X11-unix with the same number as in the DISPLAY, or whether\n>> 'xvfb-run R CMD check *_tar.gz' works.\n>> \n>> -- \n>> Best regards,\n>> Ivan\n>> \n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>> \n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>",
+      "body_snippet": "Just to clarify: assuming the error comes from examples, in order to set the option there you have to use _R_CHECK_EXAMPLES_PROFILE_ to set the corresponding Rprofile file since the default profile is",
+      "thread_id": "thread-7284439dbbfc",
+      "thread_depth": 5,
+      "month": "2026-09"
     }
   ],
   "threads": [
@@ -412,13 +494,14 @@
     {
       "id": "thread-7284439dbbfc",
       "subject": "png error",
-      "message_count": 2,
+      "message_count": 6,
       "participants": [
         "Ivan Krylov",
+        "Simon Urbanek",
         "Terry Therneau"
       ],
       "started": "2026-09-05T16:30:10Z",
-      "last_reply": "2026-09-05T17:30:06Z",
+      "last_reply": "2026-09-09T20:43:46Z",
       "root_message_id": "msg-7284439dbbfc"
     },
     {
