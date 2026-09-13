@@ -1511,3 +1511,49 @@ Wolfgang
 > Martin
 
 
+From p@kr|v|t@ky @end|ng |rom un@w@edu@@u  Sun Sep 13 01:49:47 2026
+From: p@kr|v|t@ky @end|ng |rom un@w@edu@@u (Pavel Krivitsky)
+Date: Sat, 12 Sep 2026 23:49:47 +0000
+Subject: [Rd] Using rawConnection() + gzfile() to obtain a raw vector of
+ compressed data does not appear to work.
+Message-ID: <1be983c2ea19f174ef6c797ab4d70a7d71198601.camel@unsw.edu.au>
+
+Dear All,
+
+This was actually flagged by someone back in 2014
+(https://stat.ethz.ch/pipermail/r-help/2014-November/423197.html),
+though back then it caused a crash rather than an error.
+
+Documentation for gzcon() says the following should be possible ("Use a
+writable ?rawConnection? to compress data into a variable."), but when
+I run:
+
+   compressed <- rawConnection(raw(0), "wb")
+   compressing <- gzcon(compressed)
+   writeBin(paste(letters, collaplse = ""), compressing)
+   rawConnectionValue(compressed)
+
+I get:
+
+   Error in rawConnectionValue(compressed) :
+     internal connection is not a rawConnection
+
+In principle, this should work: the rawConnection `compressed` in write
+mode receives the data and stores them in a buffer. gzcon() then
+creates a connection `compressing`, so that writing to it should gzip
+the data and write the result to `compressed`. The compressed data
+should then be accessible by rawConnectionValue(compressed).
+
+In practice, the gzcon() actually modifies `compressed` in place, which
+is fine if it's a file or similar, but apparently rawConnectionValue()
+no longer works on it.
+
+Am I using the wrong approach? Is there a workaround? memCompress()
+uses an incompatible format.
+
+                        Best Regards,
+                        Pavel
+
+This email and any files transmitted with it may contain confidential information. If you believe you have received this email or any of its contents in error, please notify me immediately by return email and destroy this email. Do not use, disseminate, forward, print or copy any contents of an email received in error.
+
+
