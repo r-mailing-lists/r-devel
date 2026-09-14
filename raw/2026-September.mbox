@@ -1557,3 +1557,92 @@ uses an incompatible format.
 This email and any files transmitted with it may contain confidential information. If you believe you have received this email or any of its contents in error, please notify me immediately by return email and destroy this email. Do not use, disseminate, forward, print or copy any contents of an email received in error.
 
 
+From |kry|ov @end|ng |rom d|@root@org  Sun Sep 13 17:48:54 2026
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 13 Sep 2026 18:48:54 +0300
+Subject: [Rd] Using rawConnection() + gzfile() to obtain a raw vector of
+ compressed data does not appear to work.
+In-Reply-To: <1be983c2ea19f174ef6c797ab4d70a7d71198601.camel@unsw.edu.au>
+References: <1be983c2ea19f174ef6c797ab4d70a7d71198601.camel@unsw.edu.au>
+Message-ID: <20260913184854.04c28920@Tarkus>
+
+? Sat, 12 Sep 2026 23:49:47 +0000
+Pavel Krivitsky via R-devel <r-devel at r-project.org> ?????:
+
+> In practice, the gzcon() actually modifies `compressed` in place,
+> which is fine if it's a file or similar, but apparently
+> rawConnectionValue() no longer works on it.
+
+There's also another problem: gzcon buffers the compressed content
+internally and only writes it into the underlying connection when the
+buffer is full or when the connection is closed, but then there's no
+valid connection to call rawConnectionValue() on. The feature request
+with a candidate patch is now at
+https://bugs.r-project.org/show_bug.cgi?id=19172.
+
+> Am I using the wrong approach? Is there a workaround? memCompress()
+> uses an incompatible format.
+
+What's the intended use for the compressed buffer? In theory, it may be
+possible to chop off the zlib header and construct the RFC1952 header
+and trailer by hand, though CRC32 may be annoying to calculate.
+
+-- 
+Best regards,
+Ivan
+
+
+From p@kr|v|t@ky @end|ng |rom un@w@edu@@u  Mon Sep 14 00:55:39 2026
+From: p@kr|v|t@ky @end|ng |rom un@w@edu@@u (Pavel Krivitsky)
+Date: Sun, 13 Sep 2026 22:55:39 +0000
+Subject: [Rd] Using rawConnection() + gzfile() to obtain a raw vector of
+ compressed data does not appear to work.
+In-Reply-To: <20260913184854.04c28920@Tarkus>
+References: <1be983c2ea19f174ef6c797ab4d70a7d71198601.camel@unsw.edu.au>
+ <20260913184854.04c28920@Tarkus>
+Message-ID: <df25472bba46d0284e7b811460ca54bf3c90a74d.camel@unsw.edu.au>
+
+Thanks, Ivan!
+
+On Sun, 2026-09-13 at 18:48 +0300, Ivan Krylov wrote:
+> ? Sat, 12 Sep 2026 23:49:47 +0000
+> Pavel Krivitsky via R-devel <r-devel at r-project.org> ?????:
+>
+> > In practice, the gzcon() actually modifies `compressed` in place,
+> > which is fine if it's a file or similar, but apparently
+> > rawConnectionValue() no longer works on it.
+>
+> There's also another problem: gzcon buffers the compressed content
+> internally and only writes it into the underlying connection when the
+> buffer is full or when the connection is closed, but then there's no
+> valid connection to call rawConnectionValue() on. The feature request
+> with a candidate patch is now at
+> https://bugs.r-project.org/show_bug.cgi?id=19172.
+
+Ah, that explains why all the generative AIs were saying to close the
+connection---and it still didn't work.
+
+> > Am I using the wrong approach? Is there a workaround? memCompress()
+> > uses an incompatible format.
+>
+> What's the intended use for the compressed buffer? In theory, it may
+> be
+> possible to chop off the zlib header and construct the RFC1952 header
+> and trailer by hand, though CRC32 may be annoying to calculate.
+
+Long story short, I wanted to get a raw vector containing the output of
+saveRDS() without actually writing a file to the file system. Since
+saveRDS() ignores compression settings when writing to a connection, I
+needed to do the gzipping myself.
+
+I thought it would be good to flag this issue, to either fix the
+problem or fix the documentation; myself, I eventually ended up just
+using temporary files. (This was a one-time thing, so not worth
+optimising.)
+
+                                        Best,
+                                        Pavel
+
+This email and any files transmitted with it may contain confidential information. If you believe you have received this email or any of its contents in error, please notify me immediately by return email and destroy this email. Do not use, disseminate, forward, print or copy any contents of an email received in error.
+
+
