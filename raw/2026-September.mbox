@@ -1816,3 +1816,142 @@ On Wed, 16 Sep 2026, Kevin R. Coombes wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-devel
 >
 
+From @d@mboegh @end|ng |rom gm@||@com  Fri Sep 18 16:03:35 2026
+From: @d@mboegh @end|ng |rom gm@||@com (Adam marstrand)
+Date: Fri, 18 Sep 2026 16:03:35 +0200
+Subject: [Rd] Proposal for diagonal-only chol2inv option
+Message-ID: <CADkg1x2YwD_w35WX-Eggq1vsnwvedSMnmXsret9qXdy=Gii_0g@mail.gmail.com>
+
+Dear R-devel,
+
+I have a use-case where diag(chol2inv(U)) is required for many millions of
+dense Cholesky factors. Currently, chol2inv() calls Lapack's DPOTRI, which
+forms the complete inverse although only the diagonal may be needed.
+
+After DTRTRI("U", "N", ...), each diagonal element of the inverse is the
+squared 2-norm of one row of the inverted upper-triangular factor and can
+therefore be obtained simply through using BLAS DDOT. This makes the work
+after the triangular inversion quadratic instead of running the full DLAUUM
+product.
+
+It should be rather simple to implement, for example as chol2inv(x, size =
+NCOL(x), diag.only = FALSE), with the relevant part of La_chol2inv()
+becoming approximately:
+if (only_diag) {
+F77_CALL(dtrtri)("U", "N", &sz, REAL(ans), &sz, &info
+       FCONE FCONE);
+} else{
+F77_CALL(dpotri("U", &sz, REAL(ans), &sz. &info FCONE);
+}
+
+if (only_diag) {
+SEXP d = PROTECT(allocVector(REALSXP, sz)); nprot++;
+BLAS_INT inc = (BLAS_INT) sz;
+for (int i = 0; i < sz; i++) {
+BLAS_INT len = (BLAS_INT) (sz - i);
+double *x = REAL(ans) + i + SZ * i;
+REAL(d)[i] = F77_CALL(ddot)(&len, x, &inc, x, &inc);
+}
+ans = d;
+} else {
+for (int j = 0; j < sz; j++)
+for (int i = j + 1; i < sz; i++)
+REAL(ans)[i + j * SZ] = REAL(ans)[j + i * SZ];
+}
+
+On my computer (current R-devel build/Windows/LAPACK 3.12.1), this cut the
+duration of the operation almost in half (~1.8x faster) in my application
+and in some quick benchmarking. It returns identical results to
+diag(chol2inv(U)) from my testing.
+
+Would such an option be of interest? I would be happy to provide a small
+patch + test.
+
+Best,
+Adam B?gh Marstrand-J?rgensen
+
+	[[alternative HTML version deleted]]
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Fri Sep 18 16:22:48 2026
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Fri, 18 Sep 2026 10:22:48 -0400
+Subject: [Rd] Proposal for diagonal-only chol2inv option
+In-Reply-To: <CADkg1x2YwD_w35WX-Eggq1vsnwvedSMnmXsret9qXdy=Gii_0g@mail.gmail.com>
+References: <CADkg1x2YwD_w35WX-Eggq1vsnwvedSMnmXsret9qXdy=Gii_0g@mail.gmail.com>
+Message-ID: <19e29edc-639e-4a78-b6fc-4f553833db11@gmail.com>
+
+I suspect (though am open to correction) that specialized patches like this add work for R-core to maintain
+without providing enough general benefit to make that of value.
+
+On the other hand, I believe is extremely worthwhile to document how such speedups are obtained, and to
+provide the resulting improved code, perhaps as a small package or study in something like Github. Therefore
+I urge you to write up what you do, and further to try to obtain comparison results on different systems to
+ensure results are portable. I'll offer, on an "as able to do so" basis to run some tests on Linux systems if you
+do something along this line.
+
+While my experiences doing such specializations are now almost a decade old, I'll suggest that it is worth
+finding what "pieces" are best pushed into Fortran or other compiled or similarly fast code. I've been
+surprised on occasions. Moreover, sometimes quite small chunks are the key to efficiency.
+
+Best wishes for success,
+
+John Nash
+
+
+On 2026-09-18 10:03, Adam marstrand wrote:
+> Dear R-devel,
+> 
+> I have a use-case where diag(chol2inv(U)) is required for many millions of
+> dense Cholesky factors. Currently, chol2inv() calls Lapack's DPOTRI, which
+> forms the complete inverse although only the diagonal may be needed.
+> 
+> After DTRTRI("U", "N", ...), each diagonal element of the inverse is the
+> squared 2-norm of one row of the inverted upper-triangular factor and can
+> therefore be obtained simply through using BLAS DDOT. This makes the work
+> after the triangular inversion quadratic instead of running the full DLAUUM
+> product.
+> 
+> It should be rather simple to implement, for example as chol2inv(x, size =
+> NCOL(x), diag.only = FALSE), with the relevant part of La_chol2inv()
+> becoming approximately:
+> if (only_diag) {
+> F77_CALL(dtrtri)("U", "N", &sz, REAL(ans), &sz, &info
+>         FCONE FCONE);
+> } else{
+> F77_CALL(dpotri("U", &sz, REAL(ans), &sz. &info FCONE);
+> }
+> 
+> if (only_diag) {
+> SEXP d = PROTECT(allocVector(REALSXP, sz)); nprot++;
+> BLAS_INT inc = (BLAS_INT) sz;
+> for (int i = 0; i < sz; i++) {
+> BLAS_INT len = (BLAS_INT) (sz - i);
+> double *x = REAL(ans) + i + SZ * i;
+> REAL(d)[i] = F77_CALL(ddot)(&len, x, &inc, x, &inc);
+> }
+> ans = d;
+> } else {
+> for (int j = 0; j < sz; j++)
+> for (int i = j + 1; i < sz; i++)
+> REAL(ans)[i + j * SZ] = REAL(ans)[j + i * SZ];
+> }
+> 
+> On my computer (current R-devel build/Windows/LAPACK 3.12.1), this cut the
+> duration of the operation almost in half (~1.8x faster) in my application
+> and in some quick benchmarking. It returns identical results to
+> diag(chol2inv(U)) from my testing.
+> 
+> Would such an option be of interest? I would be happy to provide a small
+> patch + test.
+> 
+> Best,
+> Adam B?gh Marstrand-J?rgensen
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+

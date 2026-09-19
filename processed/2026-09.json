@@ -566,6 +566,40 @@
       "thread_id": "thread-f35301a066c6",
       "thread_depth": 1,
       "month": "2026-09"
+    },
+    {
+      "id": "msg-6050540c2396",
+      "message_id": "<CADkg1x2YwD_w35WX-Eggq1vsnwvedSMnmXsret9qXdy=Gii_0g@mail.gmail.com>",
+      "from_name": "Adam marstrand",
+      "from_email_hash": "6195d23704fc57b276416324202b8e7d2bf387ebf4c400c13687e80813708087",
+      "date": "2026-09-18T14:03:35Z",
+      "subject": "[Rd] Proposal for diagonal-only chol2inv option",
+      "subject_clean": "Proposal for diagonal-only chol2inv option",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Dear R-devel,\n\nI have a use-case where diag(chol2inv(U)) is required for many millions of\ndense Cholesky factors. Currently, chol2inv() calls Lapack's DPOTRI, which\nforms the complete inverse although only the diagonal may be needed.\n\nAfter DTRTRI(\"U\", \"N\", ...), each diagonal element of the inverse is the\nsquared 2-norm of one row of the inverted upper-triangular factor and can\ntherefore be obtained simply through using BLAS DDOT. This makes the work\nafter the triangular inversion quadratic instead of running the full DLAUUM\nproduct.\n\nIt should be rather simple to implement, for example as chol2inv(x, size =\nNCOL(x), diag.only = FALSE), with the relevant part of La_chol2inv()\nbecoming approximately:\nif (only_diag) {\nF77_CALL(dtrtri)(\"U\", \"N\", &sz, REAL(ans), &sz, &info\n       FCONE FCONE);\n} else{\nF77_CALL(dpotri(\"U\", &sz, REAL(ans), &sz. &info FCONE);\n}\n\nif (only_diag) {\nSEXP d = PROTECT(allocVector(REALSXP, sz)); nprot++;\nBLAS_INT inc = (BLAS_INT) sz;\nfor (int i = 0; i < sz; i++) {\nBLAS_INT len = (BLAS_INT) (sz - i);\ndouble *x = REAL(ans) + i + SZ * i;\nREAL(d)[i] = F77_CALL(ddot)(&len, x, &inc, x, &inc);\n}\nans = d;\n} else {\nfor (int j = 0; j < sz; j++)\nfor (int i = j + 1; i < sz; i++)\nREAL(ans)[i + j * SZ] = REAL(ans)[j + i * SZ];\n}\n\nOn my computer (current R-devel build/Windows/LAPACK 3.12.1), this cut the\nduration of the operation almost in half (~1.8x faster) in my application\nand in some quick benchmarking. It returns identical results to\ndiag(chol2inv(U)) from my testing.\n\nWould such an option be of interest? I would be happy to provide a small\npatch + test.\n\nBest,\nAdam B?gh Marstrand-J?rgensen\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear R-devel,\n\nI have a use-case where diag(chol2inv(U)) is required for many millions of\ndense Cholesky factors. Currently, chol2inv() calls Lapack's DPOTRI, which\nforms the complete inverse although",
+      "thread_id": "thread-6050540c2396",
+      "thread_depth": 0,
+      "month": "2026-09"
+    },
+    {
+      "id": "msg-ec8cf8a0a458",
+      "message_id": "<19e29edc-639e-4a78-b6fc-4f553833db11@gmail.com>",
+      "from_name": "J C Nash",
+      "from_email_hash": "3c186aece47b9fdb3cc7c9c4b2429fcf77a95534a068b908c57a0b272b212c98",
+      "date": "2026-09-18T14:22:48Z",
+      "subject": "[Rd] Proposal for diagonal-only chol2inv option",
+      "subject_clean": "Proposal for diagonal-only chol2inv option",
+      "in_reply_to": "<CADkg1x2YwD_w35WX-Eggq1vsnwvedSMnmXsret9qXdy=Gii_0g@mail.gmail.com>",
+      "references": [
+        "<CADkg1x2YwD_w35WX-Eggq1vsnwvedSMnmXsret9qXdy=Gii_0g@mail.gmail.com>"
+      ],
+      "body_plain": "I suspect (though am open to correction) that specialized patches like this add work for R-core to maintain\nwithout providing enough general benefit to make that of value.\n\nOn the other hand, I believe is extremely worthwhile to document how such speedups are obtained, and to\nprovide the resulting improved code, perhaps as a small package or study in something like Github. Therefore\nI urge you to write up what you do, and further to try to obtain comparison results on different systems to\nensure results are portable. I'll offer, on an \"as able to do so\" basis to run some tests on Linux systems if you\ndo something along this line.\n\nWhile my experiences doing such specializations are now almost a decade old, I'll suggest that it is worth\nfinding what \"pieces\" are best pushed into Fortran or other compiled or similarly fast code. I've been\nsurprised on occasions. Moreover, sometimes quite small chunks are the key to efficiency.\n\nBest wishes for success,\n\nJohn Nash\n\n\nOn 2026-09-18 10:03, Adam marstrand wrote:\n> Dear R-devel,\n> \n> I have a use-case where diag(chol2inv(U)) is required for many millions of\n> dense Cholesky factors. Currently, chol2inv() calls Lapack's DPOTRI, which\n> forms the complete inverse although only the diagonal may be needed.\n> \n> After DTRTRI(\"U\", \"N\", ...), each diagonal element of the inverse is the\n> squared 2-norm of one row of the inverted upper-triangular factor and can\n> therefore be obtained simply through using BLAS DDOT. This makes the work\n> after the triangular inversion quadratic instead of running the full DLAUUM\n> product.\n> \n> It should be rather simple to implement, for example as chol2inv(x, size =\n> NCOL(x), diag.only = FALSE), with the relevant part of La_chol2inv()\n> becoming approximately:\n> if (only_diag) {\n> F77_CALL(dtrtri)(\"U\", \"N\", &sz, REAL(ans), &sz, &info\n>         FCONE FCONE);\n> } else{\n> F77_CALL(dpotri(\"U\", &sz, REAL(ans), &sz. &info FCONE);\n> }\n> \n> if (only_diag) {\n> SEXP d = PROTECT(allocVector(REALSXP, sz)); nprot++;\n> BLAS_INT inc = (BLAS_INT) sz;\n> for (int i = 0; i < sz; i++) {\n> BLAS_INT len = (BLAS_INT) (sz - i);\n> double *x = REAL(ans) + i + SZ * i;\n> REAL(d)[i] = F77_CALL(ddot)(&len, x, &inc, x, &inc);\n> }\n> ans = d;\n> } else {\n> for (int j = 0; j < sz; j++)\n> for (int i = j + 1; i < sz; i++)\n> REAL(ans)[i + j * SZ] = REAL(ans)[j + i * SZ];\n> }\n> \n> On my computer (current R-devel build/Windows/LAPACK 3.12.1), this cut the\n> duration of the operation almost in half (~1.8x faster) in my application\n> and in some quick benchmarking. It returns identical results to\n> diag(chol2inv(U)) from my testing.\n> \n> Would such an option be of interest? I would be happy to provide a small\n> patch + test.\n> \n> Best,\n> Adam B?gh Marstrand-J?rgensen\n> \n> \t[[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "I suspect (though am open to correction) that specialized patches like this add work for R-core to maintain\nwithout providing enough general benefit to make that of value.\n\nOn the other hand, I believ",
+      "thread_id": "thread-6050540c2396",
+      "thread_depth": 1,
+      "month": "2026-09"
     }
   ],
   "threads": [
@@ -722,6 +756,18 @@
       "started": "2026-09-16T22:13:10Z",
       "last_reply": "2026-09-16T22:13:10Z",
       "root_message_id": "msg-4afbc90b0db7"
+    },
+    {
+      "id": "thread-6050540c2396",
+      "subject": "Proposal for diagonal-only chol2inv option",
+      "message_count": 2,
+      "participants": [
+        "Adam marstrand",
+        "J C Nash"
+      ],
+      "started": "2026-09-18T14:03:35Z",
+      "last_reply": "2026-09-18T14:22:48Z",
+      "root_message_id": "msg-6050540c2396"
     }
   ]
 }
