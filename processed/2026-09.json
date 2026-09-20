@@ -600,6 +600,46 @@
       "thread_id": "thread-6050540c2396",
       "thread_depth": 1,
       "month": "2026-09"
+    },
+    {
+      "id": "msg-f62830ac3260",
+      "message_id": "<27310.45708.950326.922972@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-09-19T16:04:28Z",
+      "subject": "[Rd] Proposal for diagonal-only chol2inv option",
+      "subject_clean": "Proposal for diagonal-only chol2inv option",
+      "in_reply_to": "<fake-VM-id.1e3e174566aff84270ce64b2535f7cea@talos.iv>",
+      "references": [
+        "<CADkg1x2YwD_w35WX-Eggq1vsnwvedSMnmXsret9qXdy=Gii_0g@mail.gmail.com>",
+        "<19e29edc-639e-4a78-b6fc-4f553833db11@gmail.com>"
+      ],
+      "body_plain": ">>>>> J C Nash \n>>>>>     on Fri, 18 Sep 2026 10:22:48 -0400 writes:\n\n    > I suspect (though am open to correction) that specialized\n    > patches like this add work for R-core to maintain without\n    > providing enough general benefit to make that of value.\n\n    > On the other hand, I believe is extremely worthwhile to\n    > document how such speedups are obtained, and to provide\n    > the resulting improved code, perhaps as a small package or\n    > study in something like Github. Therefore I urge you to\n    > write up what you do, and further to try to obtain\n    > comparison results on different systems to ensure results\n    > are portable. I'll offer, on an \"as able to do so\" basis\n    > to run some tests on Linux systems if you do something\n    > along this line.\n\n    > While my experiences doing such specializations are now\n    > almost a decade old, I'll suggest that it is worth finding\n    > what \"pieces\" are best pushed into Fortran or other\n    > compiled or similarly fast code. I've been surprised on\n    > occasions. Moreover, sometimes quite small chunks are the\n    > key to efficiency.\n\n    > Best wishes for success,\n    > John Nash\n\nThank you, Adam and John.\n\nIndeed, Adam's proposal already uses fast C, calling BLAS etc.\n\nJohn is right that we R-core are often reluctant to accept\n\"border line\" useful code to be added to the base source code,\nas indeed we (and our successors in the future) will have to\nkeep maintaining it.\n\nAdam's proposed changes seem not very large;\n(and if they were properly indented they would be considerably\n more readable !)\n\nAs maintainer of the Matrix package, I'm  sympathetic\nto ideas of nice algorithmic improvements of relatively common(*)\nmatrix operations, as this one.\n\n*) I found  'diag(chol2inv(' in 36 files in CRAN packages (via\n    GH search language:r org:cran)\n\nIn that sense, I recommend  Adam to go ahead and ask for an R\nBugzilla account wih which he then could open a \"WISHLIST\"\nissue, and provide a (minimal!) patch, as well.\n\nMartin\n\n\n    > On 2026-09-18 10:03, Adam marstrand wrote:\n    >> Dear R-devel,\n    >> \n    >> I have a use-case where diag(chol2inv(U)) is required for many millions of\n    >> dense Cholesky factors. Currently, chol2inv() calls Lapack's DPOTRI, which\n    >> forms the complete inverse although only the diagonal may be needed.\n    >> \n    >> After DTRTRI(\"U\", \"N\", ...), each diagonal element of the inverse is the\n    >> squared 2-norm of one row of the inverted upper-triangular factor and can\n    >> therefore be obtained simply through using BLAS DDOT. This makes the work\n    >> after the triangular inversion quadratic instead of running the full DLAUUM\n    >> product.\n    >> \n    >> It should be rather simple to implement, for example as chol2inv(x, size =\n    >> NCOL(x), diag.only = FALSE), with the relevant part of La_chol2inv()\n    >> becoming approximately:\n    >> if (only_diag) {\n    >> F77_CALL(dtrtri)(\"U\", \"N\", &sz, REAL(ans), &sz, &info\n    >> FCONE FCONE);\n    >> } else{\n    >> F77_CALL(dpotri(\"U\", &sz, REAL(ans), &sz. &info FCONE);\n    >> }\n    >> \n    >> if (only_diag) {\n    >> SEXP d = PROTECT(allocVector(REALSXP, sz)); nprot++;\n    >> BLAS_INT inc = (BLAS_INT) sz;\n    >> for (int i = 0; i < sz; i++) {\n    >> BLAS_INT len = (BLAS_INT) (sz - i);\n    >> double *x = REAL(ans) + i + SZ * i;\n    >> REAL(d)[i] = F77_CALL(ddot)(&len, x, &inc, x, &inc);\n    >> }\n    >> ans = d;\n    >> } else {\n    >> for (int j = 0; j < sz; j++)\n    >> for (int i = j + 1; i < sz; i++)\n    >> REAL(ans)[i + j * SZ] = REAL(ans)[j + i * SZ];\n    >> }\n    >> \n    >> On my computer (current R-devel build/Windows/LAPACK 3.12.1), this cut the\n    >> duration of the operation almost in half (~1.8x faster) in my application\n    >> and in some quick benchmarking. It returns identical results to\n    >> diag(chol2inv(U)) from my testing.\n    >> \n    >> Would such an option be of interest? I would be happy to provide a small\n    >> patch + test.\n    >> \n    >> Best,\n    >> Adam B?gh Marstrand-J?rgensen",
+      "body_snippet": ">>>>> J C Nash \n>>>>>     on Fri, 18 Sep 2026 10:22:48 -0400 writes:\n\n    > I suspect (though am open to correction) that specialized\n    > patches like this add work for R-core to maintain without\n  ",
+      "thread_id": "thread-6050540c2396",
+      "thread_depth": 2,
+      "month": "2026-09"
+    },
+    {
+      "id": "msg-0a3df6684793",
+      "message_id": "<CADkg1x3XC5My06NeH1ubsZvxgGmpX7R_wkDhAYOQUkk-WTPzpA@mail.gmail.com>",
+      "from_name": "Adam marstrand",
+      "from_email_hash": "6195d23704fc57b276416324202b8e7d2bf387ebf4c400c13687e80813708087",
+      "date": "2026-09-19T20:14:37Z",
+      "subject": "[Rd] Proposal for diagonal-only chol2inv option",
+      "subject_clean": "Proposal for diagonal-only chol2inv option",
+      "in_reply_to": "<27310.45708.950326.922972@stat.math.ethz.ch>",
+      "references": [
+        "<CADkg1x2YwD_w35WX-Eggq1vsnwvedSMnmXsret9qXdy=Gii_0g@mail.gmail.com>",
+        "<19e29edc-639e-4a78-b6fc-4f553833db11@gmail.com>",
+        "<fake-VM-id.1e3e174566aff84270ce64b2535f7cea@talos.iv>",
+        "<27310.45708.950326.922972@stat.math.ethz.ch>"
+      ],
+      "body_plain": "Thank you for the positive response! I have created a Bugzilla report with\nthe (now correctly indented) minimal patch, a small regression test and\ndocumentation.\n\nBest,\nAdam\n\nDen l?r. 19. sep. 2026 kl. 18.04 skrev Martin Maechler <\nmaechler at stat.math.ethz.ch>:\n\n> >>>>> J C Nash\n> >>>>>     on Fri, 18 Sep 2026 10:22:48 -0400 writes:\n>\n>     > I suspect (though am open to correction) that specialized\n>     > patches like this add work for R-core to maintain without\n>     > providing enough general benefit to make that of value.\n>\n>     > On the other hand, I believe is extremely worthwhile to\n>     > document how such speedups are obtained, and to provide\n>     > the resulting improved code, perhaps as a small package or\n>     > study in something like Github. Therefore I urge you to\n>     > write up what you do, and further to try to obtain\n>     > comparison results on different systems to ensure results\n>     > are portable. I'll offer, on an \"as able to do so\" basis\n>     > to run some tests on Linux systems if you do something\n>     > along this line.\n>\n>     > While my experiences doing such specializations are now\n>     > almost a decade old, I'll suggest that it is worth finding\n>     > what \"pieces\" are best pushed into Fortran or other\n>     > compiled or similarly fast code. I've been surprised on\n>     > occasions. Moreover, sometimes quite small chunks are the\n>     > key to efficiency.\n>\n>     > Best wishes for success,\n>     > John Nash\n>\n> Thank you, Adam and John.\n>\n> Indeed, Adam's proposal already uses fast C, calling BLAS etc.\n>\n> John is right that we R-core are often reluctant to accept\n> \"border line\" useful code to be added to the base source code,\n> as indeed we (and our successors in the future) will have to\n> keep maintaining it.\n>\n> Adam's proposed changes seem not very large;\n> (and if they were properly indented they would be considerably\n>  more readable !)\n>\n> As maintainer of the Matrix package, I'm  sympathetic\n> to ideas of nice algorithmic improvements of relatively common(*)\n> matrix operations, as this one.\n>\n> *) I found  'diag(chol2inv(' in 36 files in CRAN packages (via\n>     GH search language:r org:cran)\n>\n> In that sense, I recommend  Adam to go ahead and ask for an R\n> Bugzilla account wih which he then could open a \"WISHLIST\"\n> issue, and provide a (minimal!) patch, as well.\n>\n> Martin\n>\n>\n>     > On 2026-09-18 10:03, Adam marstrand wrote:\n>     >> Dear R-devel,\n>     >>\n>     >> I have a use-case where diag(chol2inv(U)) is required for many\n> millions of\n>     >> dense Cholesky factors. Currently, chol2inv() calls Lapack's\n> DPOTRI, which\n>     >> forms the complete inverse although only the diagonal may be needed.\n>     >>\n>     >> After DTRTRI(\"U\", \"N\", ...), each diagonal element of the inverse\n> is the\n>     >> squared 2-norm of one row of the inverted upper-triangular factor\n> and can\n>     >> therefore be obtained simply through using BLAS DDOT. This makes\n> the work\n>     >> after the triangular inversion quadratic instead of running the\n> full DLAUUM\n>     >> product.\n>     >>\n>     >> It should be rather simple to implement, for example as chol2inv(x,\n> size =\n>     >> NCOL(x), diag.only = FALSE), with the relevant part of La_chol2inv()\n>     >> becoming approximately:\n>     >> if (only_diag) {\n>     >> F77_CALL(dtrtri)(\"U\", \"N\", &sz, REAL(ans), &sz, &info\n>     >> FCONE FCONE);\n>     >> } else{\n>     >> F77_CALL(dpotri(\"U\", &sz, REAL(ans), &sz. &info FCONE);\n>     >> }\n>     >>\n>     >> if (only_diag) {\n>     >> SEXP d = PROTECT(allocVector(REALSXP, sz)); nprot++;\n>     >> BLAS_INT inc = (BLAS_INT) sz;\n>     >> for (int i = 0; i < sz; i++) {\n>     >> BLAS_INT len = (BLAS_INT) (sz - i);\n>     >> double *x = REAL(ans) + i + SZ * i;\n>     >> REAL(d)[i] = F77_CALL(ddot)(&len, x, &inc, x, &inc);\n>     >> }\n>     >> ans = d;\n>     >> } else {\n>     >> for (int j = 0; j < sz; j++)\n>     >> for (int i = j + 1; i < sz; i++)\n>     >> REAL(ans)[i + j * SZ] = REAL(ans)[j + i * SZ];\n>     >> }\n>     >>\n>     >> On my computer (current R-devel build/Windows/LAPACK 3.12.1), this\n> cut the\n>     >> duration of the operation almost in half (~1.8x faster) in my\n> application\n>     >> and in some quick benchmarking. It returns identical results to\n>     >> diag(chol2inv(U)) from my testing.\n>     >>\n>     >> Would such an option be of interest? I would be happy to provide a\n> small\n>     >> patch + test.\n>     >>\n>     >> Best,\n>     >> Adam B?gh Marstrand-J?rgensen\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thank you for the positive response! I have created a Bugzilla report with\nthe (now correctly indented) minimal patch, a small regression test and\ndocumentation.\n\nBest,\nAdam\n\nDen l?r. 19. sep. 2026 kl",
+      "thread_id": "thread-6050540c2396",
+      "thread_depth": 3,
+      "month": "2026-09"
     }
   ],
   "threads": [
@@ -760,13 +800,14 @@
     {
       "id": "thread-6050540c2396",
       "subject": "Proposal for diagonal-only chol2inv option",
-      "message_count": 2,
+      "message_count": 4,
       "participants": [
         "Adam marstrand",
-        "J C Nash"
+        "J C Nash",
+        "Martin Maechler"
       ],
       "started": "2026-09-18T14:03:35Z",
-      "last_reply": "2026-09-18T14:22:48Z",
+      "last_reply": "2026-09-19T20:14:37Z",
       "root_message_id": "msg-6050540c2396"
     }
   ]
