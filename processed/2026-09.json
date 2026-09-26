@@ -660,6 +660,49 @@
       "thread_id": "thread-6050540c2396",
       "thread_depth": 3,
       "month": "2026-09"
+    },
+    {
+      "id": "msg-9f4dd8a0d20d",
+      "message_id": "<27318.8658.877435.979739@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-09-25T07:25:06Z",
+      "subject": "[Rd] Proposal for diagonal-only chol2inv option",
+      "subject_clean": "Proposal for diagonal-only chol2inv option",
+      "in_reply_to": "<fake-VM-id.fc0933f87e79a560051faf48f5cf9e68@talos.iv>",
+      "references": [
+        "<CADkg1x2YwD_w35WX-Eggq1vsnwvedSMnmXsret9qXdy=Gii_0g@mail.gmail.com>",
+        "<19e29edc-639e-4a78-b6fc-4f553833db11@gmail.com>",
+        "<27310.45708.950326.922972@stat.math.ethz.ch>",
+        "<PH8PR01MB999692D0226BE30CC7A0FD6D04F2842@PH8PR01MB999692.prod.exchangelabs.com>"
+      ],
+      "body_plain": ">>>>> Ravi Varadhan \n>>>>>     on Mon, 21 Sep 2026 22:09:17 +0000 writes:\n\n    > The code snippet provided by Adam works correctly when size = ncol(x), the default.  However, it would not work if the user wanted the diagonal of Cholesky inverse of a submatrix (size < ncol(x)).  I edited it slightly to handle this more general case.\n    > if (only_diag) {\n    > F77_CALL(dtrtri)(\"U\", \"N\", &sz, REAL(ans), &n, &info\n    > FCONE FCONE);\n    > } else {\n    > F77_CALL(dpotri)(\"U\", &sz, REAL(ans), &n, &info FCONE);\n    > }\n    > if (only_diag) {\n    > SEXP d = PROTECT(allocVector(REALSXP, sz)); nprot++;\n    > BLAS_INT inc = (BLAS_INT) n;\n    > for (int i = 0; i < sz; i++) {\n    > BLAS_INT len = (BLAS_INT) (sz - i);\n    > double *x = REAL(ans) + i + (size_t) n* i;\n    > REAL(d)[i] = F77_CALL(ddot)(&len, x, &inc, x, &inc);\n    > }\n    > ans = d;\n    > } else {\n    > for (int j = 0; j < sz; j++)\n    > for (int i = j + 1; i < sz; i++)\n    > REAL(ans)[i + (size_t) n * j] = REAL(ans)[j + (size_t) n * i];\n    > }\n\n    > Ravi\n\nThank you, Ravi, for mentioning the  size = <n> option, also in\nconjunction with the newly proposed  `diag.only = TRUE` option\n(which I had already added to the R sources (\"R-devel\") a couple\nof hours before your e-mail came in [r90579 | maechler |\n2026-09-21 18:08:09 +0200].\n\nBut I've checked now somewhat systematically, and not seen any\nreason to change, as it seems the code we got from Adam is also\nworking fine for  size < ncol(x).\n(and now actually I'm even guessing your code would *not* work correctly\n in all cases .. or if it would it would allocate more memory\n than necessary (in the case size < n)).\n\nI've committed these checks as equality assertions using\n stopifnot() at the end of  help(chol2inv) now,  i.e., \nfile src/library/base/man/chol2inv.Rd  in svn rev 90588.\n\nMartin\n \n\n  [.........................]\n  [.........................]",
+      "body_snippet": ">>>>> Ravi Varadhan \n>>>>>     on Mon, 21 Sep 2026 22:09:17 +0000 writes:\n\n    > The code snippet provided by Adam works correctly when size = ncol(x), the default.  However, it would not work if the ",
+      "thread_id": "thread-6050540c2396",
+      "thread_depth": 4,
+      "month": "2026-09"
+    },
+    {
+      "id": "msg-1c132e4f5bd7",
+      "message_id": "<PH8PR01MB999692870AAEE0B9433CACD12FF2802@PH8PR01MB999692.prod.exchangelabs.com>",
+      "from_name": "Ravi Varadhan",
+      "from_email_hash": "e29065f0ed01d24d142abdfc5db43f0fbc0a52a9d70244c81382700b6ce4b7f2",
+      "date": "2026-09-25T15:53:53Z",
+      "subject": "[Rd] Proposal for diagonal-only chol2inv option",
+      "subject_clean": "Proposal for diagonal-only chol2inv option",
+      "in_reply_to": "<27318.8658.877435.979739@stat.math.ethz.ch>",
+      "references": [
+        "<CADkg1x2YwD_w35WX-Eggq1vsnwvedSMnmXsret9qXdy=Gii_0g@mail.gmail.com>",
+        "<19e29edc-639e-4a78-b6fc-4f553833db11@gmail.com>",
+        "<27310.45708.950326.922972@stat.math.ethz.ch>",
+        "<PH8PR01MB999692D0226BE30CC7A0FD6D04F2842@PH8PR01MB999692.prod.exchangelabs.com>",
+        "<27318.8658.877435.979739@stat.math.ethz.ch>"
+      ],
+      "body_plain": "Hi Martin,\n\nYou are correct. I just realized that because the output matrix ans is allocated as an sz x sz matrix (rather than retaining the original n x n dimensions), using n as the leading dimension in my edited code causes out-of-bounds memory access when size < ncol(x).\n\nAdam's original code correctly uses sz for both the LAPACK leading dimension and the pointer arithmetic, so it handles the submatrix case perfectly without any issues.\n\nThanks for double-checking and catching my mistake! \n\nRavi\n\n-----Original Message-----\nFrom: Martin Maechler <maechler at stat.math.ethz.ch> \nSent: Friday, September 25, 2026 3:25 AM\nTo: Ravi Varadhan <ravi.varadhan at jhu.edu>\nCc: J C Nash <profjcnash at gmail.com>; Martin Maechler <maechler at stat.math.ethz.ch>; Adam marstrand <adamboegh at gmail.com>; r-devel at r-project.org\nSubject: Re: [Rd] Proposal for diagonal-only chol2inv option\n\n\n      External Email - Use Caution\n\n\n\n>>>>> Ravi Varadhan\n>>>>>     on Mon, 21 Sep 2026 22:09:17 +0000 writes:\n\n    > The code snippet provided by Adam works correctly when size = ncol(x), the default.  However, it would not work if the user wanted the diagonal of Cholesky inverse of a submatrix (size < ncol(x)).  I edited it slightly to handle this more general case.\n    > if (only_diag) {\n    > F77_CALL(dtrtri)(\"U\", \"N\", &sz, REAL(ans), &n, &info\n    > FCONE FCONE);\n    > } else {\n    > F77_CALL(dpotri)(\"U\", &sz, REAL(ans), &n, &info FCONE);\n    > }\n    > if (only_diag) {\n    > SEXP d = PROTECT(allocVector(REALSXP, sz)); nprot++;\n    > BLAS_INT inc = (BLAS_INT) n;\n    > for (int i = 0; i < sz; i++) {\n    > BLAS_INT len = (BLAS_INT) (sz - i);\n    > double *x = REAL(ans) + i + (size_t) n* i;\n    > REAL(d)[i] = F77_CALL(ddot)(&len, x, &inc, x, &inc);\n    > }\n    > ans = d;\n    > } else {\n    > for (int j = 0; j < sz; j++)\n    > for (int i = j + 1; i < sz; i++)\n    > REAL(ans)[i + (size_t) n * j] = REAL(ans)[j + (size_t) n * i];\n    > }\n\n    > Ravi\n\nThank you, Ravi, for mentioning the  size = <n> option, also in conjunction with the newly proposed  `diag.only = TRUE` option (which I had already added to the R sources (\"R-devel\") a couple of hours before your e-mail came in [r90579 | maechler |\n2026-09-21 18:08:09 +0200].\n\nBut I've checked now somewhat systematically, and not seen any reason to change, as it seems the code we got from Adam is also working fine for  size < ncol(x).\n(and now actually I'm even guessing your code would *not* work correctly  in all cases .. or if it would it would allocate more memory  than necessary (in the case size < n)).\n\nI've committed these checks as equality assertions using\n stopifnot() at the end of  help(chol2inv) now,  i.e., file src/library/base/man/chol2inv.Rd  in svn rev 90588.\n\nMartin\n\n\n  [.........................]\n  [.........................]",
+      "body_snippet": "Hi Martin,\n\nYou are correct. I just realized that because the output matrix ans is allocated as an sz x sz matrix (rather than retaining the original n x n dimensions), using n as the leading dimensio",
+      "thread_id": "thread-6050540c2396",
+      "thread_depth": 5,
+      "month": "2026-09"
     }
   ],
   "threads": [
@@ -820,7 +863,7 @@
     {
       "id": "thread-6050540c2396",
       "subject": "Proposal for diagonal-only chol2inv option",
-      "message_count": 5,
+      "message_count": 7,
       "participants": [
         "Adam marstrand",
         "J C Nash",
@@ -828,7 +871,7 @@
         "Ravi Varadhan"
       ],
       "started": "2026-09-18T14:03:35Z",
-      "last_reply": "2026-09-21T22:09:17Z",
+      "last_reply": "2026-09-25T15:53:53Z",
       "root_message_id": "msg-6050540c2396"
     }
   ]
