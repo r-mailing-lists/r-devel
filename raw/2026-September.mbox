@@ -2502,3 +2502,92 @@ Martin
   [.........................]
 
 
+From bbo|ker @end|ng |rom gm@||@com  Sun Sep 27 18:54:48 2026
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 27 Sep 2026 12:54:48 -0400
+Subject: [Rd] X11/view bug introduced in r90379
+Message-ID: <195608d0-7974-4a7a-a74c-8a1457a5689d@mcmaster.ca>
+
+  r90379 (ripley, 2026-08-08, "avoid [-Wunused-but-set-global] warnings 
+from clang 23") causes View() to crash, trivially, on my machine with 
+(partial) sessionInfo():
+
+R Under development (unstable) (2026-09-11 r90524)
+Platform: x86_64-pc-linux-gnu
+Running under: Pop!_OS 22.04 LTS
+
+locale:
+  [1] LC_CTYPE=en_CA.UTF-8       LC_NUMERIC=C
+
+   The patch below fixes this for me, although I can't say if it is the 
+best solution/has no other side effects ...
+
+   I can submit this as a bug report if that's preferred.
+
+   cheers
+     Ben Bolker
+
+----
+
+    From a fresh install/R session:
+
+> View(mtcars)
+
+  *** caught segfault ***
+address (nil), cause 'memory not mapped'
+
+Traceback:
+  1: View(mtcars)
+
+Possible actions:
+1: abort (with core dump, if enabled)
+2: normal R exit
+3: exit R without saving workspace
+4: exit R saving workspace
+
+   Claude's diagnosis and patch (lightly edited by me):
+
+The commit commented out the line in src/modules/X11/dataentry.c that 
+fills in the fs_list font list. It was treated as dead code because its 
+return value, font_set_cnt, was never used. But the next line still 
+reads fs_list[0]:
+
+// src/modules/X11/dataentry.c:1966-1971 (at r90590)
+       XFontSetExtents *extent = XExtentsOfFontSet(font_set);
+//      char **ml;
+       ...
+//    font_set_cnt = XFontsOfFontSet(font_set, &fs_list, &ml);
+       DE->text_offset = 2 + fs_list[0]->max_bounds.descent;
+
+fs_list is a static pointer that is never assigned now, so it is NULL. 
+fs_list[0] then dereferences a null pointer and R crashes. This code 
+only runs in a multibyte locale (if(mbcslocale)), and your session uses 
+LANG=en_CA.UTF-8, so any View() of a data frame hits it.
+
+Fix: put back the call but ignore its return value, which still avoids 
+the compiler warning:
+
+       char **ml;
+       ...
+       XFontsOfFontSet(font_set, &fs_list, &ml);
+       DE->text_offset = 2 + fs_list[0]->max_bounds.descent;
+
+Index: src/modules/X11/dataentry.c
+===================================================================
+--- src/modules/X11/dataentry.c	(revision 90590)
++++ src/modules/X11/dataentry.c	(working copy)
+@@ -1964,10 +1964,10 @@
+      DE->box_w = twidth + 4;
+      if(mbcslocale) {
+  	XFontSetExtents *extent = XExtentsOfFontSet(font_set);
+-//      char **ml;
++	char **ml;
+  	DE->box_h = (extent->max_logical_extent.height)
+  	    + (extent->max_logical_extent.height / 5) + 4;
+-//	font_set_cnt = XFontsOfFontSet(font_set, &fs_list, &ml);
++	XFontsOfFontSet(font_set, &fs_list, &ml);
+  	DE->text_offset = 2 + fs_list[0]->max_bounds.descent;
+      } else {
+  	DE->box_h = DE->font_info->max_bounds.ascent
+
+

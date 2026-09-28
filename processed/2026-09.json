@@ -703,6 +703,22 @@
       "thread_id": "thread-6050540c2396",
       "thread_depth": 5,
       "month": "2026-09"
+    },
+    {
+      "id": "msg-f1bd99852931",
+      "message_id": "<195608d0-7974-4a7a-a74c-8a1457a5689d@mcmaster.ca>",
+      "from_name": "Ben Bolker",
+      "from_email_hash": "058f22460bce77c55c3340fec40d01e374409ed76ec5a897b62075a27eb9734c",
+      "date": "2026-09-27T16:54:48Z",
+      "subject": "[Rd] X11/view bug introduced in r90379",
+      "subject_clean": "X11/view bug introduced in r90379",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "r90379 (ripley, 2026-08-08, \"avoid [-Wunused-but-set-global] warnings \nfrom clang 23\") causes View() to crash, trivially, on my machine with \n(partial) sessionInfo():\n\nR Under development (unstable) (2026-09-11 r90524)\nPlatform: x86_64-pc-linux-gnu\nRunning under: Pop!_OS 22.04 LTS\n\nlocale:\n  [1] LC_CTYPE=en_CA.UTF-8       LC_NUMERIC=C\n\n   The patch below fixes this for me, although I can't say if it is the \nbest solution/has no other side effects ...\n\n   I can submit this as a bug report if that's preferred.\n\n   cheers\n     Ben Bolker\n\n----\n\n    From a fresh install/R session:\n\n> View(mtcars)\n\n  *** caught segfault ***\naddress (nil), cause 'memory not mapped'\n\nTraceback:\n  1: View(mtcars)\n\nPossible actions:\n1: abort (with core dump, if enabled)\n2: normal R exit\n3: exit R without saving workspace\n4: exit R saving workspace\n\n   Claude's diagnosis and patch (lightly edited by me):\n\nThe commit commented out the line in src/modules/X11/dataentry.c that \nfills in the fs_list font list. It was treated as dead code because its \nreturn value, font_set_cnt, was never used. But the next line still \nreads fs_list[0]:\n\n// src/modules/X11/dataentry.c:1966-1971 (at r90590)\n       XFontSetExtents *extent = XExtentsOfFontSet(font_set);\n//      char **ml;\n       ...\n//    font_set_cnt = XFontsOfFontSet(font_set, &fs_list, &ml);\n       DE->text_offset = 2 + fs_list[0]->max_bounds.descent;\n\nfs_list is a static pointer that is never assigned now, so it is NULL. \nfs_list[0] then dereferences a null pointer and R crashes. This code \nonly runs in a multibyte locale (if(mbcslocale)), and your session uses \nLANG=en_CA.UTF-8, so any View() of a data frame hits it.\n\nFix: put back the call but ignore its return value, which still avoids \nthe compiler warning:\n\n       char **ml;\n       ...\n       XFontsOfFontSet(font_set, &fs_list, &ml);\n       DE->text_offset = 2 + fs_list[0]->max_bounds.descent;\n\nIndex: src/modules/X11/dataentry.c\n===================================================================\n--- src/modules/X11/dataentry.c\t(revision 90590)\n+++ src/modules/X11/dataentry.c\t(working copy)\n@@ -1964,10 +1964,10 @@\n      DE->box_w = twidth + 4;\n      if(mbcslocale) {\n  \tXFontSetExtents *extent = XExtentsOfFontSet(font_set);\n-//      char **ml;\n+\tchar **ml;\n  \tDE->box_h = (extent->max_logical_extent.height)\n  \t    + (extent->max_logical_extent.height / 5) + 4;\n-//\tfont_set_cnt = XFontsOfFontSet(font_set, &fs_list, &ml);\n+\tXFontsOfFontSet(font_set, &fs_list, &ml);\n  \tDE->text_offset = 2 + fs_list[0]->max_bounds.descent;\n      } else {\n  \tDE->box_h = DE->font_info->max_bounds.ascent",
+      "body_snippet": "r90379 (ripley, 2026-08-08, \"avoid [-Wunused-but-set-global] warnings \nfrom clang 23\") causes View() to crash, trivially, on my machine with \n(partial) sessionInfo():\n\nR Under development (unstable) (",
+      "thread_id": "thread-f1bd99852931",
+      "thread_depth": 0,
+      "month": "2026-09"
     }
   ],
   "threads": [
@@ -873,6 +889,17 @@
       "started": "2026-09-18T14:03:35Z",
       "last_reply": "2026-09-25T15:53:53Z",
       "root_message_id": "msg-6050540c2396"
+    },
+    {
+      "id": "thread-f1bd99852931",
+      "subject": "X11/view bug introduced in r90379",
+      "message_count": 1,
+      "participants": [
+        "Ben Bolker"
+      ],
+      "started": "2026-09-27T16:54:48Z",
+      "last_reply": "2026-09-27T16:54:48Z",
+      "root_message_id": "msg-f1bd99852931"
     }
   ]
 }
