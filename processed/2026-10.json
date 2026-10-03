@@ -1,0 +1,63 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2026-10",
+  "messages": [
+    {
+      "id": "msg-78b40c49a454",
+      "message_id": "<c7f0c87ddf974915a2c4c8be1ee38358@ap-hm.fr>",
+      "from_name": "SOEIRO Thomas",
+      "from_email_hash": "67c37f931ad974ace75d6cfc8005929e67dca65bfe3dc22b5e366ffc14cb5b8c",
+      "date": "2026-10-02T21:03:32Z",
+      "subject": "[Rd] Treat multiline expressions as a single block in R Console history #1666",
+      "subject_clean": "Treat multiline expressions as a single block in R Console history #1666",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Dear all,\n\n\nWhen copy-pasting a multiline expression into R in a console, the expression is treated as a single block in the history on Linux, but not on Windows.\n\n\nFor example, when copy-pasting\n\n\nc(\n\n  1,\n\n  2\n\n)\n\n\ninto R then pressing enter arrow up, I get the entiere expression on Linux, but only `)` on Windows.\n\n\nIs it expected? Can it be improved? If so, is it suitable for a Bugzilla wishlist item?\n\n\nThanks,\n\nThomas",
+      "body_snippet": "Dear all,\n\n\nWhen copy-pasting a multiline expression into R in a console, the expression is treated as a single block in the history on Linux, but not on Windows.\n\n\nFor example, when copy-pasting\n\n\nc(",
+      "thread_id": "thread-78b40c49a454",
+      "thread_depth": 0,
+      "month": "2026-10"
+    },
+    {
+      "id": "msg-e6a05789c78e",
+      "message_id": "<CAPj8-CPVPqWK0zYjtwLeF72Sw64ULL55xfMFOkH3TbATXoAfkA@mail.gmail.com>",
+      "from_name": "Ahmed S. Jabbar",
+      "from_email_hash": "46a8f7557d585c60d9ce50385e51d9c2189ba96cba691526e6d11a9d18306a56",
+      "date": "2026-10-02T23:03:46Z",
+      "subject": "[Rd] [PATCH] PR#19144: wilcox.test / .psignrank upper tail precision and out-of-domain fix",
+      "subject_clean": "[PATCH] PR#19144: wilcox.test / .psignrank upper tail precision and out-of-domain fix",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Dear R-devel team,\n\nI would like to provide an analysis, a minimal patch, and regression tests\nfor PR#19144 <https://bugs.r-project.org/show_bug.cgi?id=19144>\n\n\nThe issue is that wilcox.test(exact = TRUE) can return a negative p-value\nin an extreme-tail case.\n\nDiagnosis\nThe issue arises in .psignrank() in src/library/stats/R/wilcox.test.R. When\nzeros or ties are present, .psignrank() obtains a discrete probability mass\nvector d from .dsignrank(). The probabilities are computed using\nfloating-point arithmetic, so their sum can differ slightly from one. For\nexample, in the n = 100 reproducer, I obtain:\n    sum(d) = 1.0000000000000038\non x86_64.\n\nFor an observation near the upper end of the support, the current\nimplementation computes the lower-tail probability as:\n    sum(d[s < e + 1e-08])\nand obtains the upper tail by complementing this value:\n    1 - y\n\nIn the reproducing case, the cumulative sum is slightly greater than one,\nso the complement becomes:\n    -3.774758283725532e-15\nand the corresponding two-sided p-value is consequently negative as well.\n\nMore generally, when the cumulative probability is close to one, forming a\nsmall tail probability by subtraction can also lead to substantial loss of\nrelative precision.\n\nProposed fix\nInstead of obtaining the upper tail by complementing the lower-tail sum,\nthe proposed change sums the probability masses belonging directly to the\nrequested tail:\n\nIndex: src/library/stats/R/wilcox.test.R\n===================================================================\n--- src/library/stats/R/wilcox.test.R (revision 87400)\n+++ src/library/stats/R/wilcox.test.R (working copy)\n@@ -1101,13 +1101,12 @@\n              seq.int(0, n * (n + 1)) / 2\n     ## Density\n     d <- .dsignrank(s, n, z)\n-    y[i] <- vapply(q[i],\n-                   function(e) {\n-                       ## NOTE: C code in src/nmath uses a fuzz of 1e-7.\n-                       sum(d[s < e + 1e-8])\n-                   },\n-                   0)\n-    if(lower.tail) y else 1 - y\n+    if(lower.tail) {\n+        y[i] <- vapply(q[i], function(e) sum(d[s < e + 1e-8]), 0)\n+    } else {\n+        y[i] <- vapply(q[i], function(e) sum(d[s > e - 1e-8]), 0)\n+    }\n+    y\n }\n\n .qsignrank <-\n\n\n===================================================================\nThis avoids the subtraction of two nearly equal floating-point quantities\nwhen the upper tail is requested.\n\nVerification\nI tested the change using the reproducer from PR#19144 and additional cases\ninvolving zeros and ties.\n\nFor the n = 100 reproducer, with rank sum q = 4755, an independently\ncomputed integer generating-polynomial dynamic-programming calculation\ngives the exact upper-tail probability:\n    819334086710 / 2^99 = 1.292681258640963e-18.\n\nWith the proposed change, .psignrank() returns:\n    1.292681258640968e-18\nfor this tail, corresponding to a relative error of approximately 3.9e-15.\n\nThe patch also removes the negative result in the original reproducing case\nwithout requiring clipping or other post-hoc correction of the probability.\n\nThe accompanying regression tests cover:\n- the original PR#19144 reproducer;\n- p-value domain checks;\n- comparison with the independently computed exact combinatorial reference;\n- tail monotonicity; and\n- additional cases involving zeros and ties.\n\nI have attached the following files:\n- wilcox_bug19144.patch ? minimal patch against the R sources;\n- reg-tests-wilcox.R ? regression tests for the reported issue and the\nnumerical behavior described above.\n\nI would appreciate any comments on the diagnosis, the proposed\nimplementation, or the form and placement of the regression tests.\n\nBest regards,\n\n--\nAhmed Sattar Jabbar\nDepartment of Statistics | Mustansiriyah University\nBaghdad, Iraq\n\nEmail:  ahmed.state.me at gmail.com\nORCID:  https://orcid.org/0009-0006-4614-735X\nGitHub: https://github.com/amjed-droid",
+      "body_snippet": "Dear R-devel team,\n\nI would like to provide an analysis, a minimal patch, and regression tests\nfor PR#19144 <https://bugs.r-project.org/show_bug.cgi?id=19144>\n\n\nThe issue is that wilcox.test(exact = T",
+      "thread_id": "thread-e6a05789c78e",
+      "thread_depth": 0,
+      "month": "2026-10"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-78b40c49a454",
+      "subject": "Treat multiline expressions as a single block in R Console history #1666",
+      "message_count": 1,
+      "participants": [
+        "SOEIRO Thomas"
+      ],
+      "started": "2026-10-02T21:03:32Z",
+      "last_reply": "2026-10-02T21:03:32Z",
+      "root_message_id": "msg-78b40c49a454"
+    },
+    {
+      "id": "thread-e6a05789c78e",
+      "subject": "[PATCH] PR#19144: wilcox.test / .psignrank upper tail precision and out-of-domain fix",
+      "message_count": 1,
+      "participants": [
+        "Ahmed S. Jabbar"
+      ],
+      "started": "2026-10-02T23:03:46Z",
+      "last_reply": "2026-10-02T23:03:46Z",
+      "root_message_id": "msg-e6a05789c78e"
+    }
+  ]
+}

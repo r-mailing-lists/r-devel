@@ -1,0 +1,153 @@
+From Thom@@@SOEIRO @end|ng |rom @p-hm@|r  Fri Oct  2 23:03:32 2026
+From: Thom@@@SOEIRO @end|ng |rom @p-hm@|r (SOEIRO Thomas)
+Date: Fri, 2 Oct 2026 21:03:32 +0000
+Subject: [Rd] Treat multiline expressions as a single block in R Console
+ history #1666
+Message-ID: <c7f0c87ddf974915a2c4c8be1ee38358@ap-hm.fr>
+
+Dear all,
+
+
+When copy-pasting a multiline expression into R in a console, the expression is treated as a single block in the history on Linux, but not on Windows.
+
+
+For example, when copy-pasting
+
+
+c(
+
+  1,
+
+  2
+
+)
+
+
+into R then pressing enter arrow up, I get the entiere expression on Linux, but only `)` on Windows.
+
+
+Is it expected? Can it be improved? If so, is it suitable for a Bugzilla wishlist item?
+
+
+Thanks,
+
+Thomas
+
+
+From @hmed@@t@te@me @end|ng |rom gm@||@com  Sat Oct  3 01:03:46 2026
+From: @hmed@@t@te@me @end|ng |rom gm@||@com (Ahmed S. Jabbar)
+Date: Sat, 3 Oct 2026 02:03:46 +0300
+Subject: [Rd] [PATCH] PR#19144: wilcox.test / .psignrank upper tail
+ precision and out-of-domain fix
+Message-ID: <CAPj8-CPVPqWK0zYjtwLeF72Sw64ULL55xfMFOkH3TbATXoAfkA@mail.gmail.com>
+
+Dear R-devel team,
+
+I would like to provide an analysis, a minimal patch, and regression tests
+for PR#19144 <https://bugs.r-project.org/show_bug.cgi?id=19144>
+
+
+The issue is that wilcox.test(exact = TRUE) can return a negative p-value
+in an extreme-tail case.
+
+Diagnosis
+The issue arises in .psignrank() in src/library/stats/R/wilcox.test.R. When
+zeros or ties are present, .psignrank() obtains a discrete probability mass
+vector d from .dsignrank(). The probabilities are computed using
+floating-point arithmetic, so their sum can differ slightly from one. For
+example, in the n = 100 reproducer, I obtain:
+    sum(d) = 1.0000000000000038
+on x86_64.
+
+For an observation near the upper end of the support, the current
+implementation computes the lower-tail probability as:
+    sum(d[s < e + 1e-08])
+and obtains the upper tail by complementing this value:
+    1 - y
+
+In the reproducing case, the cumulative sum is slightly greater than one,
+so the complement becomes:
+    -3.774758283725532e-15
+and the corresponding two-sided p-value is consequently negative as well.
+
+More generally, when the cumulative probability is close to one, forming a
+small tail probability by subtraction can also lead to substantial loss of
+relative precision.
+
+Proposed fix
+Instead of obtaining the upper tail by complementing the lower-tail sum,
+the proposed change sums the probability masses belonging directly to the
+requested tail:
+
+Index: src/library/stats/R/wilcox.test.R
+===================================================================
+--- src/library/stats/R/wilcox.test.R (revision 87400)
++++ src/library/stats/R/wilcox.test.R (working copy)
+@@ -1101,13 +1101,12 @@
+              seq.int(0, n * (n + 1)) / 2
+     ## Density
+     d <- .dsignrank(s, n, z)
+-    y[i] <- vapply(q[i],
+-                   function(e) {
+-                       ## NOTE: C code in src/nmath uses a fuzz of 1e-7.
+-                       sum(d[s < e + 1e-8])
+-                   },
+-                   0)
+-    if(lower.tail) y else 1 - y
++    if(lower.tail) {
++        y[i] <- vapply(q[i], function(e) sum(d[s < e + 1e-8]), 0)
++    } else {
++        y[i] <- vapply(q[i], function(e) sum(d[s > e - 1e-8]), 0)
++    }
++    y
+ }
+
+ .qsignrank <-
+
+
+===================================================================
+This avoids the subtraction of two nearly equal floating-point quantities
+when the upper tail is requested.
+
+Verification
+I tested the change using the reproducer from PR#19144 and additional cases
+involving zeros and ties.
+
+For the n = 100 reproducer, with rank sum q = 4755, an independently
+computed integer generating-polynomial dynamic-programming calculation
+gives the exact upper-tail probability:
+    819334086710 / 2^99 = 1.292681258640963e-18.
+
+With the proposed change, .psignrank() returns:
+    1.292681258640968e-18
+for this tail, corresponding to a relative error of approximately 3.9e-15.
+
+The patch also removes the negative result in the original reproducing case
+without requiring clipping or other post-hoc correction of the probability.
+
+The accompanying regression tests cover:
+- the original PR#19144 reproducer;
+- p-value domain checks;
+- comparison with the independently computed exact combinatorial reference;
+- tail monotonicity; and
+- additional cases involving zeros and ties.
+
+I have attached the following files:
+- wilcox_bug19144.patch ? minimal patch against the R sources;
+- reg-tests-wilcox.R ? regression tests for the reported issue and the
+numerical behavior described above.
+
+I would appreciate any comments on the diagnosis, the proposed
+implementation, or the form and placement of the regression tests.
+
+Best regards,
+
+--
+Ahmed Sattar Jabbar
+Department of Statistics | Mustansiriyah University
+Baghdad, Iraq
+
+Email:  ahmed.state.me at gmail.com
+ORCID:  https://orcid.org/0009-0006-4614-735X
+GitHub: https://github.com/amjed-droid
+
