@@ -34,18 +34,58 @@
       "thread_id": "thread-e6a05789c78e",
       "thread_depth": 0,
       "month": "2026-10"
+    },
+    {
+      "id": "msg-189e6dc5fdd1",
+      "message_id": "<436AF763-F8D1-40F1-A027-2F392CB77FB0@pat-s.me>",
+      "from_name": "Patrick Schratz",
+      "from_email_hash": "720a1f4094cc514cb169fa8873c2560f7de1053b609e52a62adeb1c35e56dde8",
+      "date": "2026-10-03T09:56:13Z",
+      "subject": "[Rd]  [PATCH] Include Linux distribution identifiers in the default HTTP User-Agent",
+      "subject_clean": "[PATCH] Include Linux distribution identifiers in the default HTTP User-Agent",
+      "in_reply_to": "<88E9917B-0DA6-44AB-BFD5-231FC29139B2@R-project.org>",
+      "references": [
+        "<DB4F7DF2-739C-455A-BEB3-6D652B15B120@pat-s.me>",
+        "<6B2E4A44-19A3-4721-8DFB-5D47D86FC0E7@r-project.org>",
+        "<D69A4384-9BFD-42BA-9642-501B5BF132FF@pat-s.me>",
+        "<88E9917B-0DA6-44AB-BFD5-231FC29139B2@R-project.org>"
+      ],
+      "body_plain": "Simon,\n\nthanks for the reply, and no worries about the delay.\n\nYou are right that the current User-Agent is documented, and calling it a bug was wrong on my part. The libcurl point is also fair: my patch would have dropped `libcurl/<version>` from the header.\n\nI have since looked at the custom binary types added in 4.6.0 (r89368-r89372 and r89499). I will add the `bin/linux/<build>/contrib/<x.y>` layout to cran.rpkgs.com, so an R build with `R_PLATFORM_PKGTYPE` set gets binaries with no further setup. It **does not cover** the case I care about most, though:\n\n1. `R_PLATFORM_PKGTYPE` has to be set by whoever builds or ships R. On Linux that means distribution packagers, people building from source, rig, and most Docker and CI images. None of them set it today AFAIK. When it is unset, R 4.6 requests `src/contrib` just like 4.5.\n\n2. It cannot become a default in R. If R derived `pkgType` from os-release, every Linux user with the default type `\"both\"` would also request `bin/linux/<build>/contrib/<x.y>` from CRAN, which has no such directories. With cloud.r-project.org and R 4.6.1, `install.packages(\"cli\")` then prints this on every call:\n\n```\nWarning: unable to access index for repository https://cloud.r-project.org/bin/linux/x86_64-ubuntu-noble/contrib/4.6:\nPackage which is only available in source form, and may need compilation of C/C++/Fortran: 'cli'\n```\n\n3. R cannot check Linux binary compatibility from the platform information alone. The `Built` check from r89499 compares only the CPU and linux vs. non-linux, so in R 4.6.1 the following returns `TRUE`, i.e. a glibc binary passes on Alpine:\n\n```r\nutils:::.is.built.compatible(\"R 4.6.1; x86_64-pc-linux-gnu; 2026-09-01 10:00:00 UTC; unix\", platform = \"x86_64-pc-linux-musl\")\n```\n\nI am not asking for a stricter check. It just means the repository has to pick the right binary, and for that it needs to know the system it is running on.\n\nIn R 4.6.1, `--vanilla` and the default libcurl method, a request for `PACKAGES` carries only\n\n```\nUser-Agent: libcurl/8.22.0\n```\n\nso the server sees neither the R version nor the platform. Every Linux binary repository I know of works around this with a per-distribution URL, an `HTTPUserAgent` line in `Rprofile.site`, or both; Posit Package Manager [documents such a snippet](https://docs.posit.co/rspm/admin/serving-binaries.html#binary-user-agents), and rocker adds it in [`setup_R.sh`](https://github.com/rocker-org/rocker-versioned2/blob/2b8857e9bf3f87bb248d3d803bd3f32ff4d31ab0/scripts/setup_R.sh#L36-L40). Posit's own R builds have gone further [since 2019](https://github.com/rstudio/r-builds/commit/a54183792753d4df38db27dabdfb4455f78a7f3d): rstudio/r-builds appends the os-release `ID` and `VERSION_ID` to `HTTPUserAgent` in the system Rprofile, so even `R --vanilla` sends `R/4.6.1 (ubuntu-24.04) R (...)`The information is already being sent, but only from builds whose maintainers patched it in, each in its own format. **That is what I would like to fix in R itself**: the same repos setting, e.g. in an `renv.lock` or a CI matrix, should work on any Linux system without client-side configuration.\n\nA revised proposal that leaves everything existing untouched:\n\n- The User-Agent stays exactly as it is, including the `R (` rule in `libcurl.c`.\n- On Linux, the libcurl method sends **one additional header**, built from `R.version`, the `ID` and `VERSION_ID` fields of os-release, and `gnu_get_libc_version()` (just `musl` on musl, which has no version API). Values are restricted to `[A-Za-z0-9._-]`, as in the earlier patch. The header name is open to suggestions.\n- An option, plus an environment variable for site-wide setups, turns it off (not sure if this is ever needed).\n\nFor example:\n\n```\nR-Client: 4.6.1; x86_64-pc-linux-gnu; distro=ubuntu; version=24.04; libc=glibc-2.39\n```\n\nOn privacy, I think browsers are the wrong comparison here - package managers match better. `pip` sends the distribution and libc in its User-Agent:\n\n```\npip/26.2.1 {\"cpu\":\"x86_64\",\"distro\":{\"name\":\"AlmaLinux\",\"version\":\"10.2\",\"libc\":{\"lib\":\"glibc\",\"version\":\"2.39\"}},...}\n```\n\nand conda sends `Linux/<kernel> <distro>/<version> glibc/<version>`. PyPI uses this for its download statistics, while wheel selection happens on the client through platform tags. R has no such tags for Linux binaries, so the header would serve both purposes: statistics for CRAN and mirror operators, and correct binary selection for repositories that offer Linux binaries.\n\nIf R Core is open to this in principle, I will rework the patch along these lines.\n\nBest,\nPatrick\n\nP.S. While reading the 4.6.0 changes I noticed that r89370 changed the `install.packages.check.source` condition in `src/library/utils/R/packages2.R` to `grepl(\"^[[:lower::]]+[.]binary\", type)`, with an extra colon. In R 4.6.1 this returns `FALSE` for every type, including `\"win.binary\"` and `\"mac.binary\"`, so the source-version check that 4.5 did for Windows and macOS binaries is now skipped.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Simon,\n\nthanks for the reply, and no worries about the delay.\n\nYou are right that the current User-Agent is documented, and calling it a bug was wrong on my part. The libcurl point is also fair: my pa",
+      "thread_id": "thread-189e6dc5fdd1",
+      "thread_depth": 0,
+      "month": "2026-10"
+    },
+    {
+      "id": "msg-82c02605c731",
+      "message_id": "<CAP01uRmsxc_UL1FxGoxEs6M8smg_MAJWCYuMuF6P39GdfWDDVw@mail.gmail.com>",
+      "from_name": "Gabor Grothendieck",
+      "from_email_hash": "2470cc61688c301322ff3a85f3fd51ddba9f1112f88f535ec93c41ab610332d1",
+      "date": "2026-10-03T11:38:33Z",
+      "subject": "[Rd] Treat multiline expressions as a single block in R Console history #1666",
+      "subject_clean": "Treat multiline expressions as a single block in R Console history #1666",
+      "in_reply_to": "<c7f0c87ddf974915a2c4c8be1ee38358@ap-hm.fr>",
+      "references": [
+        "<c7f0c87ddf974915a2c4c8be1ee38358@ap-hm.fr>"
+      ],
+      "body_plain": "Put this function in your .Rprofile file:\n\ncompress_clipboard <- function(sep = \" \") {\n  readLines(\"clipboard\") |> paste(collapse = sep) |> writeClipboard()\n}\n\nand then run:\n\ncompress_clipboard()\n\nbefore pasting.  Depending on what is on the clipboard you may need to\nsupply a different sep argument.\n\nOn Fri, Oct 2, 2026 at 5:03?PM SOEIRO Thomas via R-devel\n<r-devel at r-project.org> wrote:\n>\n> Dear all,\n>\n>\n> When copy-pasting a multiline expression into R in a console, the expression is treated as a single block in the history on Linux, but not on Windows.\n>\n>\n> For example, when copy-pasting\n>\n>\n> c(\n>\n>   1,\n>\n>   2\n>\n> )\n>\n>\n> into R then pressing enter arrow up, I get the entiere expression on Linux, but only `)` on Windows.\n>\n>\n> Is it expected? Can it be improved? If so, is it suitable for a Bugzilla wishlist item?\n>\n>\n> Thanks,\n>\n> Thomas\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n\n-- \nStatistics & Software Consulting\nGKX Group, GKX Associates Inc.\ntel: 1-877-GKX-GROUP\nemail: ggrothendieck at gmail.com",
+      "body_snippet": "Put this function in your .Rprofile file:\n\ncompress_clipboard <- function(sep = \" \") {\n  readLines(\"clipboard\") |> paste(collapse = sep) |> writeClipboard()\n}\n\nand then run:\n\ncompress_clipboard()\n\nbef",
+      "thread_id": "thread-78b40c49a454",
+      "thread_depth": 1,
+      "month": "2026-10"
     }
   ],
   "threads": [
     {
       "id": "thread-78b40c49a454",
       "subject": "Treat multiline expressions as a single block in R Console history #1666",
-      "message_count": 1,
+      "message_count": 2,
       "participants": [
+        "Gabor Grothendieck",
         "SOEIRO Thomas"
       ],
       "started": "2026-10-02T21:03:32Z",
-      "last_reply": "2026-10-02T21:03:32Z",
+      "last_reply": "2026-10-03T11:38:33Z",
       "root_message_id": "msg-78b40c49a454"
     },
     {
@@ -58,6 +98,17 @@
       "started": "2026-10-02T23:03:46Z",
       "last_reply": "2026-10-02T23:03:46Z",
       "root_message_id": "msg-e6a05789c78e"
+    },
+    {
+      "id": "thread-189e6dc5fdd1",
+      "subject": "[PATCH] Include Linux distribution identifiers in the default HTTP User-Agent",
+      "message_count": 1,
+      "participants": [
+        "Patrick Schratz"
+      ],
+      "started": "2026-10-03T09:56:13Z",
+      "last_reply": "2026-10-03T09:56:13Z",
+      "root_message_id": "msg-189e6dc5fdd1"
     }
   ]
 }

@@ -151,3 +151,145 @@ Email:  ahmed.state.me at gmail.com
 ORCID:  https://orcid.org/0009-0006-4614-735X
 GitHub: https://github.com/amjed-droid
 
+From ggrothend|eck @end|ng |rom gm@||@com  Sat Oct  3 13:38:33 2026
+From: ggrothend|eck @end|ng |rom gm@||@com (Gabor Grothendieck)
+Date: Sat, 3 Oct 2026 07:38:33 -0400
+Subject: [Rd] Treat multiline expressions as a single block in R Console
+ history #1666
+In-Reply-To: <c7f0c87ddf974915a2c4c8be1ee38358@ap-hm.fr>
+References: <c7f0c87ddf974915a2c4c8be1ee38358@ap-hm.fr>
+Message-ID: <CAP01uRmsxc_UL1FxGoxEs6M8smg_MAJWCYuMuF6P39GdfWDDVw@mail.gmail.com>
+
+Put this function in your .Rprofile file:
+
+compress_clipboard <- function(sep = " ") {
+  readLines("clipboard") |> paste(collapse = sep) |> writeClipboard()
+}
+
+and then run:
+
+compress_clipboard()
+
+before pasting.  Depending on what is on the clipboard you may need to
+supply a different sep argument.
+
+On Fri, Oct 2, 2026 at 5:03?PM SOEIRO Thomas via R-devel
+<r-devel at r-project.org> wrote:
+>
+> Dear all,
+>
+>
+> When copy-pasting a multiline expression into R in a console, the expression is treated as a single block in the history on Linux, but not on Windows.
+>
+>
+> For example, when copy-pasting
+>
+>
+> c(
+>
+>   1,
+>
+>   2
+>
+> )
+>
+>
+> into R then pressing enter arrow up, I get the entiere expression on Linux, but only `)` on Windows.
+>
+>
+> Is it expected? Can it be improved? If so, is it suitable for a Bugzilla wishlist item?
+>
+>
+> Thanks,
+>
+> Thomas
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+
+From m@|| @end|ng |rom p@t-@@me  Sat Oct  3 11:56:13 2026
+From: m@|| @end|ng |rom p@t-@@me (Patrick Schratz)
+Date: Sat, 03 Oct 2026 11:56:13 +0200
+Subject: [Rd] 
+ [PATCH] Include Linux distribution identifiers in the default
+ HTTP User-Agent
+In-Reply-To: <88E9917B-0DA6-44AB-BFD5-231FC29139B2@R-project.org>
+References: <DB4F7DF2-739C-455A-BEB3-6D652B15B120@pat-s.me>
+ <6B2E4A44-19A3-4721-8DFB-5D47D86FC0E7@r-project.org>
+ <D69A4384-9BFD-42BA-9642-501B5BF132FF@pat-s.me>
+ <88E9917B-0DA6-44AB-BFD5-231FC29139B2@R-project.org>
+Message-ID: <436AF763-F8D1-40F1-A027-2F392CB77FB0@pat-s.me>
+
+Simon,
+
+thanks for the reply, and no worries about the delay.
+
+You are right that the current User-Agent is documented, and calling it a bug was wrong on my part. The libcurl point is also fair: my patch would have dropped `libcurl/<version>` from the header.
+
+I have since looked at the custom binary types added in 4.6.0 (r89368-r89372 and r89499). I will add the `bin/linux/<build>/contrib/<x.y>` layout to cran.rpkgs.com, so an R build with `R_PLATFORM_PKGTYPE` set gets binaries with no further setup. It **does not cover** the case I care about most, though:
+
+1. `R_PLATFORM_PKGTYPE` has to be set by whoever builds or ships R. On Linux that means distribution packagers, people building from source, rig, and most Docker and CI images. None of them set it today AFAIK. When it is unset, R 4.6 requests `src/contrib` just like 4.5.
+
+2. It cannot become a default in R. If R derived `pkgType` from os-release, every Linux user with the default type `"both"` would also request `bin/linux/<build>/contrib/<x.y>` from CRAN, which has no such directories. With cloud.r-project.org and R 4.6.1, `install.packages("cli")` then prints this on every call:
+
+```
+Warning: unable to access index for repository https://cloud.r-project.org/bin/linux/x86_64-ubuntu-noble/contrib/4.6:
+Package which is only available in source form, and may need compilation of C/C++/Fortran: 'cli'
+```
+
+3. R cannot check Linux binary compatibility from the platform information alone. The `Built` check from r89499 compares only the CPU and linux vs. non-linux, so in R 4.6.1 the following returns `TRUE`, i.e. a glibc binary passes on Alpine:
+
+```r
+utils:::.is.built.compatible("R 4.6.1; x86_64-pc-linux-gnu; 2026-09-01 10:00:00 UTC; unix", platform = "x86_64-pc-linux-musl")
+```
+
+I am not asking for a stricter check. It just means the repository has to pick the right binary, and for that it needs to know the system it is running on.
+
+In R 4.6.1, `--vanilla` and the default libcurl method, a request for `PACKAGES` carries only
+
+```
+User-Agent: libcurl/8.22.0
+```
+
+so the server sees neither the R version nor the platform. Every Linux binary repository I know of works around this with a per-distribution URL, an `HTTPUserAgent` line in `Rprofile.site`, or both; Posit Package Manager [documents such a snippet](https://docs.posit.co/rspm/admin/serving-binaries.html#binary-user-agents), and rocker adds it in [`setup_R.sh`](https://github.com/rocker-org/rocker-versioned2/blob/2b8857e9bf3f87bb248d3d803bd3f32ff4d31ab0/scripts/setup_R.sh#L36-L40). Posit's own R builds have gone further [since 2019](https://github.com/rstudio/r-builds/commit/a54183792753d4df38db27dabdfb4455f78a7f3d): rstudio/r-builds appends the os-release `ID` and `VERSION_ID` to `HTTPUserAgent` in the system Rprofile, so even `R --vanilla` sends `R/4.6.1 (ubuntu-24.04) R (...)`The information is already being sent, but only from builds whose maintainers patched it in, each in its own format. **That is what I would like to fix in R itself**: the same repos setting, e.g. in an `renv.lock` or a CI matrix, should work on any Linux system without client-side configuration.
+
+A revised proposal that leaves everything existing untouched:
+
+- The User-Agent stays exactly as it is, including the `R (` rule in `libcurl.c`.
+- On Linux, the libcurl method sends **one additional header**, built from `R.version`, the `ID` and `VERSION_ID` fields of os-release, and `gnu_get_libc_version()` (just `musl` on musl, which has no version API). Values are restricted to `[A-Za-z0-9._-]`, as in the earlier patch. The header name is open to suggestions.
+- An option, plus an environment variable for site-wide setups, turns it off (not sure if this is ever needed).
+
+For example:
+
+```
+R-Client: 4.6.1; x86_64-pc-linux-gnu; distro=ubuntu; version=24.04; libc=glibc-2.39
+```
+
+On privacy, I think browsers are the wrong comparison here - package managers match better. `pip` sends the distribution and libc in its User-Agent:
+
+```
+pip/26.2.1 {"cpu":"x86_64","distro":{"name":"AlmaLinux","version":"10.2","libc":{"lib":"glibc","version":"2.39"}},...}
+```
+
+and conda sends `Linux/<kernel> <distro>/<version> glibc/<version>`. PyPI uses this for its download statistics, while wheel selection happens on the client through platform tags. R has no such tags for Linux binaries, so the header would serve both purposes: statistics for CRAN and mirror operators, and correct binary selection for repositories that offer Linux binaries.
+
+If R Core is open to this in principle, I will rework the patch along these lines.
+
+Best,
+Patrick
+
+P.S. While reading the 4.6.0 changes I noticed that r89370 changed the `install.packages.check.source` condition in `src/library/utils/R/packages2.R` to `grepl("^[[:lower::]]+[.]binary", type)`, with an extra colon. In R 4.6.1 this returns `FALSE` for every type, including `"win.binary"` and `"mac.binary"`, so the source-version check that 4.5 did for Windows and macOS binaries is now skipped.
+
+	[[alternative HTML version deleted]]
+
+
