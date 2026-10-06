@@ -293,3 +293,164 @@ P.S. While reading the 4.6.0 changes I noticed that r89370 changed the `install.
 	[[alternative HTML version deleted]]
 
 
+From ty|ermw @end|ng |rom gm@||@com  Mon Oct  5 07:43:31 2026
+From: ty|ermw @end|ng |rom gm@||@com (Tyler)
+Date: Mon, 5 Oct 2026 01:43:31 -0400
+Subject: [Rd] Ncell GC trigger reaches SIZE_MAX after grow/shrink/regrow in
+ AdjustHeapSize
+Message-ID: <CAJhwqzTLir5B=kvp-DaCi1=PO9VH8uZ2m-WHmabaAVxDMBOsAQ@mail.gmail.com>
+
+Hello,
+
+I found a reproducible node-heap sizing bug in R 4.6.0 on arm64 macOS.
+After allocating and releasing a list, shrinking the heap with gc(), and
+allocating a smaller list, the Ncell GC trigger becomes approximately
+1.844674e19, although fewer than one million Ncells are live.
+
+I encountered this while importing a large 3D scene into R, where
+suspiciously high swap usage and memory pressure/compression prompted an
+investigation. The import creates many small R objects, so delayed
+node-triggered collection could let unreachable objects accumulate and
+increase memory pressure. The base-R example below reproduces
+the threshold failure without the scene or any contributed packages.
+
+This reproduces in a fresh vanilla session using only base R. I also checked
+the source at the installed build's reported SVN revision and stepped
+through the failing calculation in the installed libR with LLDB.
+
+Reproducible example
+----------
+
+Save the following as gc-trigger.R and run Rscript --vanilla gc-trigger.R:
+
+    large = lapply(seq_len(2000000L), as.double)
+    invisible(gc())
+    rm(large)
+    for (i in 1:16) {
+      invisible(gc())
+    }
+    small = lapply(seq_len(600000L), as.double)
+    print(gc())
+
+Output:
+
+              used (Mb)   gc trigger         (Mb) limit (Mb) max used  (Mb)
+    Ncells  963857 51.5 1.844674e+19 9.851624e+14         NA  2783848 148.7
+    Vcells 1863472 14.3 8.388608e+06 6.400000e+01      65536  5119567  39.1
+
+Expected: an ordinary node-heap threshold appropriate to this small live
+heap, rather than a threshold near the unsigned 64-bit maximum.
+
+No contributed packages are needed. I reproduced this with R_GC_MEM_GROW,
+R_NSIZE, R_VSIZE, R_MAX_VSIZE, R_MAX_NSIZE and R_GCTORTURE unset.
+
+Please use a fresh process for this example. It also reproduces in a fresh
+interactive R --vanilla terminal session, but may not reproduce in an
+existing session. The predictor runs only during the first 49 node-heap
+growth adjustments (adjust_count starts at 1 and the condition is < 50)
+Its saved live-node count and the current heap thresholds also depend
+on earlier allocations. Existing objects can therefore change whether this
+particular sequence triggers the failure.
+
+Source and runtime diagnosis
+----------------------------
+
+In src/main/memory.c at SVN r89956, AdjustHeapSize() keeps last_in_use from
+the previous early-growth adjustment. The shrink path does not update it.
+When another growth adjustment follows a sufficiently large decline in
+live nodes, line 1200 evaluates:
+
+    R_size_t next_in_use = R_NodesInUse + (R_NodesInUse - last_in_use);
+
+R_size_t is size_t (src/include/Defn.h:1043). At the failing adjustment in
+the installed binary, LLDB showed:
+
+    R_NSize before adjustment:  1241534
+    R_NodesInUse:                963857
+    last_in_use:               2304622
+
+The mathematical prediction is -376908. Unsigned arithmetic instead
+produces 18446744073709174708. At line 1204, dividing that by R_NGrowFrac
+(0.70) produces approximately 2.6352491533870252e19, which is outside the
+range of size_t before the cast back to R_size_t.
+
+The ARM64 instructions in this binary implement that conversion with
+FCVTZU. Stepping over it produced 0xffffffffffffffff (SIZE_MAX). The
+unlimited R_MaxNSize then permits the resulting threshold. Continuing
+execution produces the gc() output above.
+
+The unsigned wrap is defined arithmetic, but the subsequent out-of-range
+floating-to-integer conversion is undefined in C. A standalone extraction
+of the arithmetic with these observed values also triggers Clang's
+-fsanitize=float-cast-overflow. Other architectures/compilers may therefore
+show a different symptom.
+
+Revision-specific sources:
+
+    https://svn.r-project.org/R/!svn/rvr/89956/trunk/src/main/memory.c
+    https://svn.r-project.org/R/!svn/rvr/89956/trunk/src/include/Defn.h
+
+The complete AdjustHeapSize() function is also unchanged in the trunk
+source snapshot I inspected at Git mirror commit
+d75f6a2224865f9ac0bee065de99af817a3a65e6:
+
+    https://github.com/wch/r-source/blob/d75f6a2224865f9ac0bee065de99af817a3a65e6/src/main/memory.c#L1179-L1236
+
+I have not built or run that trunk snapshot.
+
+Workaround and tested fix
+------------------------
+
+In a separate fresh session, setting mem.maxNSize(5e6) before the reproducer
+prevents the enormous trigger; my run ends with an Ncell trigger of
+1,244,355. A finite maximum of 1e9 also worked in earlier tests. This avoids
+accepting the erroneous growth request but it doesn't repair the arithmetic.
+
+I built matched unpatched and patched copies of R 4.6.0 from the release
+tarball. Its memory.c matches SVN r89956. Both builds use Apple clang 16
+and GNU Fortran 14.2 on arm64 macOS, with identical configure options
+apart from their isolated paths. The patch makes three changes:
+
+  1. Treat decreasing live-node usage as zero predicted incremental growth.
+  2. Compute the extrapolated threshold in double and require it to be
+     strictly below (double) R_SIZE_T_MAX before converting to R_size_t.
+  3. Check change <= R_MaxNSize - R_NSize, with R_NSize <= R_MaxNSize,
+     rather than adding change before checking the limit.
+
+In fresh vanilla processes, without a finite node limit:
+
+                        Live Ncells       Ncell GC trigger
+    Unpatched R              965367           1.844674e19
+    Patched R                965315              1531118
+
+The patched build also passes five repeated grow/shrink/regrow cycles
+(triggers approximately 1.47-1.78 million), steady growth through eight
+retained blocks, and five cycles with a finite five-million-node limit.
+The unpatched build fails the unbounded cycle test on its first round.
+An extraction of the patched function passes sanitizer tests for the
+observed history, finite limits, steady growth, out-of-range prediction
+and addition overflow.
+
+R's core basic/development checks passed in both builds.
+
+Based on these results, I recommend the guarded predictor and limit check,
+plus a fresh-process regression test: running the reproducer late in an
+existing test session may miss the early-growth window. My tests only
+confirmed the reproduciber is fixed on this platform.
+
+Environment
+-----------
+
+    R version 4.6.0 (2026-04-24), SVN revision 89956
+    Platform: aarch64-apple-darwin23
+    macOS Sequoia 15.7.3
+    Attached packages: stats, graphics, grDevices, utils, datasets,
+                       methods, base
+
+Tyler Morgan-Wall
+
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: node-growth.patch.txt
+URL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20261005/2c89ded0/attachment.txt>
+
