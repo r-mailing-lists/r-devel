@@ -454,6 +454,24 @@
       "thread_id": "thread-3e046cc6dc06",
       "thread_depth": 2,
       "month": "2026-07"
+    },
+    {
+      "id": "msg-d9d9b8392370",
+      "message_id": "<80b7e6a5-6972-455b-bef6-318ebf435a3d@gmail.com>",
+      "from_name": "Rui Barradas",
+      "from_email_hash": "a4adc0dbbb884730ac1f9626468de48fdf2c67b863a86697ed3baad16d5bb209",
+      "date": "2026-07-31T08:20:29Z",
+      "subject": "[Rd] Fwd:  Bug report: mean(..., trim) silently applies integer truncation when k = trim * n is non-integer",
+      "subject_clean": "Bug report: mean(..., trim) silently applies integer truncation when k = trim * n is non-integer",
+      "in_reply_to": "<CAFma-WM-mzSuHaYbEZEQ=XxBdpmytrWPTzvCUW3AM=gG7ZhPNg@mail.gmail.com>",
+      "references": [
+        "<CAFma-WM-mzSuHaYbEZEQ=XxBdpmytrWPTzvCUW3AM=gG7ZhPNg@mail.gmail.com>"
+      ],
+      "body_plain": "Hello,\n\nThough I agree with what Ravi and Gabriel have said, I believe the OP \nmight have a point.\n\nInline.\n\n\n\n-------- Mensagem reencaminhada --------\nAssunto: \t[Rd] Bug report: mean(..., trim) silently applies integer \ntruncation when k = trim * n is non-integer\nData: \tThu, 30 Jul 2026 14:09:05 -0500\nDe: \tJUAN CARLOS GAVIRIA CHAVERRA via R-devel <r-devel at r-project.org>\nResponder-Para: \tJUAN CARLOS GAVIRIA CHAVERRA <jcarlos.gaviria at udea.edu.co>\nPara: \tr-devel at r-project.org\n\n\n\nSubject: Bug report: mean(..., trim) silently applies integer truncation\nwhen k = trim * n is non-integer\n\nDear R Core Team,\n\nI am writing to report a structural limitation in the mean(..., trim)\nfunction in base R that has gone undetected for over three decades and\naffects the overwhelming majority of practical uses of trimmed mean\ncomputation.\n\n--- NARRATIVE JUSTIFICATION ---\n\nFor more than three decades, researchers in econometrics, finance, public\nhealth, environmental sciences and many other fields have trusted that\nmean(..., trim = 0.05) applies exactly 5% trimming to their data. This\nimplicit trust is precisely what makes the integer truncation problem so\nconsequential: it affects any combination of n and trim that produces a\nnon-integer k = trim * n, which represents the overwhelming majority of\npractical uses.\n\nThe problem has two manifestations. When k < 1 (Type A), R reduces k to\nzero and returns the arithmetic mean, completely ignoring the requested\ntrimming without any warning. When k > 1 but non-integer (Type B), R trims\nfewer observations than requested, with losses reaching 33% of the nominal\nvalue, also without any warning.\n\nThe scope extends beyond direct users: packages such as WRS2 (hundreds of\nthousands of downloads) use mean(x, tr) internally, propagating the\ndistortion silently to confidence intervals and hypothesis tests.\n\nWe are not requesting a change in the existing algorithm. We are requesting\ntransparency: a warning when the effective trimming differs from the\nrequested trimming, preserving complete backward compatibility.\n\n\nThere are base functions whose documentation mentions coercion to \ninteger by truncation.\n From ?dim section Arguments\n\n > value\n > for the default method, either NULL or a numeric vector, which is \ncoerced to integer (by truncation).\n\n\nAnd from ?mean, section Value\n\n > If trim is non-zero, a symmetrically trimmed mean is computed with a \nfraction of trim observations deleted from each end before the mean is \ncomputed.\n\n\nA warning is too much, it would seem there was something wrong or \nworrying going on, when there isn't. But the documentation could include \nthat the trimmed fraction is coerced to integer and how it is done.\nMaybe\n\n > If trim is non-zero, a symmetrically trimmed mean is computed with a \nfraction of trim observations deleted from each end before the mean is \ncomputed. The fraction is coerced to integer (by truncation).\n\n\nHope this helps,\n\nRui Barradas\n\n\nThe existence of sgmean as a separate package (CRAN v0.1.1) should not be\ninterpreted as a permanent solution. sgmean and mean(..., trim) produce\nidentical results whenever k = trim * n is an exact integer. The only\ndifference is that sgmean also handles non-integer k correctly. Directing\nusers to install a separate package to obtain the result that base R's own\nmean() function should produce is not a solution ? it is a transfer of\nresponsibility. The R Core Team has the unique opportunity to resolve this\nat the root, ensuring that every R user benefits from correct trimmed mean\ncomputation.\n\n--- REPRODUCIBLE EXAMPLE ---\n\nx <- c(850, 920, 980, 1050, 1120, 1180, 1250,\n1320, 1400, 1480, 1550, 1700, 1850, 2100, 8500)\n\n# TYPE A: k < 1\ncat('k requested:', 0.05 * 15, '| k applied:', floor(0.05 * 15), '\\n')\n# k requested: 0.75 | k applied: 0\nmean(x) # [1] 1816.667\nmean(x, trim = 0.05) # [1] 1816.667 -- SAME: no trimming applied\n# Expected (Statgraphics): 1499.074\n\n# TYPE B: k > 1, non-integer\ncat('k requested:', 0.10 * 15, '| k applied:', floor(0.10 * 15), '| Loss:\n33.3%\\n')\nmean(x, trim = 0.10) # [1] 1376.923\n# Expected (Statgraphics): 1365.833\n\n--- CROSS-PLATFORM EVIDENCE ---\n\nThis bug exists identically in Python's scipy.stats.trim_mean, confirming\nthat integer truncation in trimmed mean computation is a systematic\nlimitation shared across the two most widely used scientific computing\nenvironments in the world.\n\nSoftware | Type A (k=0.75) | Type B (k=1.50)\nR base mean(...,trim) | 1816.667 (wrong)| 1376.923 (wrong)\nPython trim_mean | 1816.667 (wrong)| 1376.923 (wrong)\nStatgraphics | 1499.074 (correct) | 1365.833 (correct)\nsgmean CRAN v0.1.1 | 1499.074 (correct) | 1365.833 (correct)\n\n--- PROPOSED SOLUTION ---\n\nMinimum fix: add a warning in mean.default() when k = trim * n is\nnon-integer:\n\nif (k != floor(k)) {\nif (floor(k) == 0L) {\nwarning(paste0('trim * length(x) = ', k, ' < 1. ',\n'No trimming applied (effective trim = 0%). ',\n'Consider sgmean::sgmean() for proportional trimming.'))\n} else {\nwarning(paste0('trim * length(x) = ', k, ' is not an integer. ',\n'Effective trimming: ', round(floor(k)/length(x)*100,1), '% ',\n'(requested: ', trim*100, '%, loss: ',\nround((k-floor(k))/k*100,1), '%).'))\n}\n}\n\n--- AVAILABLE SOLUTION ---\n\nA corrected implementation is available on CRAN:\ninstall.packages('sgmean')\nDOI: https://doi.org/10.32614/CRAN.package.sgmean\nGitHub: https://github.com/jcarlosgaviria/sgmean\n\n--- R VERSION ---\n\nR version 4.5.3 (2026-03-11 ucrt)\nPlatform: x86_64-w64-mingw32/x64\n\nBest regards,\n\nJuan C. Gaviria-Chaverra\nALIADO-Analytics and Research for Decision Making\nDepartment of Industrial Engineering, Universidad de Antioquia\nMedellin, Colombia\njcarlos.gaviria at udea.edu.co\nORCID: 0009-0008-9403-416X\nGitHub: https://github.com/jcarlosgaviria\n\n-- \n\n\n\"La informaci?n aqu? contenida es para uso exclusivo de la persona o entidad de destino. Est? estrictamente prohibida su utilizaci?n, copia, descarga, distribuci?n, modificaci?n y/o reproducci?n total o parcial, sin el permiso expreso de Universidad de Antioquia, pues su contenido puede ser de car?cter confidencial y/o contener material privilegiado. Si usted recibi? esta informaci?n por error, por favor contacte en forma inmediata a quien la envi? y borre este material de su computador.?Universidad de Antioquia?no es?responsable por la informaci?n contenida en esta comunicaci?n, el directo responsable es quien la firma o el autor de la misma.\"\n\n______________________________________________\nR-devel at r-project.org mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\nThough I agree with what Ravi and Gabriel have said, I believe the OP \nmight have a point.\n\nInline.\n\n\n\n-------- Mensagem reencaminhada --------\nAssunto: \t[Rd] Bug report: mean(..., trim) silen",
+      "thread_id": "thread-3e046cc6dc06",
+      "thread_depth": 1,
+      "month": "2026-07"
     }
   ],
   "threads": [
@@ -589,14 +607,15 @@
     {
       "id": "thread-3e046cc6dc06",
       "subject": "Bug report: mean(..., trim) silently applies integer truncation when k = trim * n is non-integer",
-      "message_count": 3,
+      "message_count": 4,
       "participants": [
         "Gabriel Becker",
         "JUAN CARLOS GAVIRIA CHAVERRA",
-        "Ravi Varadhan"
+        "Ravi Varadhan",
+        "Rui Barradas"
       ],
       "started": "2026-07-30T19:09:05Z",
-      "last_reply": "2026-07-31T00:04:54Z",
+      "last_reply": "2026-07-31T08:20:29Z",
       "root_message_id": "msg-3e046cc6dc06"
     }
   ]

@@ -5075,3 +5075,314 @@ On 2026-04-29 20:40, andrew--- via R-devel wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-devel
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Apr 30 11:42:56 2026
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 30 Apr 2026 05:42:56 -0400
+Subject: [Rd] Using {} for NULL
+Message-ID: <717a3cb8-2ba7-4e96-bc32-a60558b666b7@gmail.com>
+
+The news item for a recent R-devel bug fix says this:
+
+  - ?cut(1:11, {})? now signals an error for the invalid ?breaks?, 
+fixing PR#19057, thanks to Kevin Ushey.
+
+When I read that, I wondered why {} was used.  Does it give some weird 
+exotic object?  No, its value is NULL, which was used in the referenced 
+bug report.
+
+So my question is:  why use {} instead of NULL in an expression?  I 
+don't think there are any efficiency advantages.
+
+Duncan Murdoch
+
+
+From cybergeorge2020 @end|ng |rom gm@||@com  Thu Apr 30 19:44:14 2026
+From: cybergeorge2020 @end|ng |rom gm@||@com (Tomek Gieorgijewski)
+Date: Thu, 30 Apr 2026 19:44:14 +0200
+Subject: [Rd] Feature request: Allow comma after last element in a list
+In-Reply-To: <29231881-3A6B-449D-A31A-686FDBAF8782@gmail.com>
+References: <29231881-3A6B-449D-A31A-686FDBAF8782@gmail.com>
+Message-ID: <CAFGdzpof=ywrQLcUi5YhX01FPTjy1Rf9+CUcriVS5JCfi2vtnw@mail.gmail.com>
+
+Hi Manfred!
+
+As I can see that you already maintain the habit to have one element per
+line,
+I would like to propose that you incorporate some editing scripts in your
+editor
+to help ease your frustration.
+I believe trying to change R parser will only add more of that feeling :)
+I don't know your editor but if it's vim, I can propose this edit to .vimrc
+file:
+" ----
+function! ListCommas() range
+       if a:firstline < a:lastline
+           " Add commas at the end from first to second to last line if
+there's no comma yet
+           execute a:firstline . "," . (a:lastline - 1) . 's/[^,]$/&,/e'
+       endif
+        " Delete comma from last line (if matched)
+       execute a:lastline . 's/,$//e'
+   endfunction
+
+   vnoremap <leader>, :call ListCommas()<CR>
+" ---
+
+So, now if you rerun vim on your file you can swap, add, delete lines from
+the list as you wish,
+and at the end you can highlight all elements lines of your list in visual
+mode and execute ListCommas
+function on those lines with <leader>, shortcut.
+
+Of course only if you maintain your structure of element per line and
+trailing parenthesis at a seperate line.
+
+I'm sure VS Code, Emacs and some other editors have similar abilities to
+help you.
+Unfortunately I don't know of any such possibility in RStudio.
+
+regards,
+Tomek.
+
+pt., 24 kwi 2026 o 13:35 Manfred Kooistra <manfred.kooistra at gmail.com>
+napisa?(a):
+
+> I've always been irritated that R doesn't allow a comma after the last
+> element in a "list":
+>
+> > a <- c(
+> +     1,
+> +     2,
+> +     3
+> + )
+> > a
+> [1] 1 2 3
+> > b <- c(
+> +     1,
+> +     2,
+> +     3,
+> + )
+> Error in c(1, 2, 3, ) : argument 4 is empty
+>
+> This makes updating lists unnecessarily cumbersome, which I find I
+> frequently do, either when I test code and want to run it with lists of
+> varying elements or varying orders of elements or when I maintain lists
+> manually over time and have to add or delete elements from them.
+>
+> Is there a reason for this behavior in R and might it not be a good idea
+> to change it?
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Apr 30 21:24:38 2026
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 30 Apr 2026 15:24:38 -0400
+Subject: [Rd] Feature request: Allow comma after last element in a list
+In-Reply-To: <CAFGdzpof=ywrQLcUi5YhX01FPTjy1Rf9+CUcriVS5JCfi2vtnw@mail.gmail.com>
+References: <29231881-3A6B-449D-A31A-686FDBAF8782@gmail.com>
+ <CAFGdzpof=ywrQLcUi5YhX01FPTjy1Rf9+CUcriVS5JCfi2vtnw@mail.gmail.com>
+Message-ID: <53eb96a2-45ea-4f20-8444-914aa9d8b2ec@gmail.com>
+
+
+This is a great suggestion.  BTW, I think it would be possible to do 
+this in RStudio as well.  See their Addins page here: 
+https://rstudio.github.io/rstudioaddins/ .
+
+Duncan Murdoch
+
+On 2026-04-30 1:44 p.m., Tomek Gieorgijewski wrote:
+> Hi Manfred!
+> 
+> As I can see that you already maintain the habit to have one element per
+> line,
+> I would like to propose that you incorporate some editing scripts in your
+> editor
+> to help ease your frustration.
+> I believe trying to change R parser will only add more of that feeling :)
+> I don't know your editor but if it's vim, I can propose this edit to .vimrc
+> file:
+> " ----
+> function! ListCommas() range
+>         if a:firstline < a:lastline
+>             " Add commas at the end from first to second to last line if
+> there's no comma yet
+>             execute a:firstline . "," . (a:lastline - 1) . 's/[^,]$/&,/e'
+>         endif
+>          " Delete comma from last line (if matched)
+>         execute a:lastline . 's/,$//e'
+>     endfunction
+> 
+>     vnoremap <leader>, :call ListCommas()<CR>
+> " ---
+> 
+> So, now if you rerun vim on your file you can swap, add, delete lines from
+> the list as you wish,
+> and at the end you can highlight all elements lines of your list in visual
+> mode and execute ListCommas
+> function on those lines with <leader>, shortcut.
+> 
+> Of course only if you maintain your structure of element per line and
+> trailing parenthesis at a seperate line.
+> 
+> I'm sure VS Code, Emacs and some other editors have similar abilities to
+> help you.
+> Unfortunately I don't know of any such possibility in RStudio.
+> 
+> regards,
+> Tomek.
+> 
+> pt., 24 kwi 2026 o 13:35 Manfred Kooistra <manfred.kooistra at gmail.com>
+> napisa?(a):
+> 
+>> I've always been irritated that R doesn't allow a comma after the last
+>> element in a "list":
+>>
+>>> a <- c(
+>> +     1,
+>> +     2,
+>> +     3
+>> + )
+>>> a
+>> [1] 1 2 3
+>>> b <- c(
+>> +     1,
+>> +     2,
+>> +     3,
+>> + )
+>> Error in c(1, 2, 3, ) : argument 4 is empty
+>>
+>> This makes updating lists unnecessarily cumbersome, which I find I
+>> frequently do, either when I test code and want to run it with lists of
+>> varying elements or varying orders of elements or when I maintain lists
+>> manually over time and have to add or delete elements from them.
+>>
+>> Is there a reason for this behavior in R and might it not be a good idea
+>> to change it?
+>> ______________________________________________
+>> R-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From cybergeorge2020 @end|ng |rom gm@||@com  Thu Apr 30 21:36:10 2026
+From: cybergeorge2020 @end|ng |rom gm@||@com (Tomek Gieorgijewski)
+Date: Thu, 30 Apr 2026 21:36:10 +0200
+Subject: [Rd] Feature request: Allow comma after last element in a list
+In-Reply-To: <53eb96a2-45ea-4f20-8444-914aa9d8b2ec@gmail.com>
+References: <29231881-3A6B-449D-A31A-686FDBAF8782@gmail.com>
+ <CAFGdzpof=ywrQLcUi5YhX01FPTjy1Rf9+CUcriVS5JCfi2vtnw@mail.gmail.com>
+ <53eb96a2-45ea-4f20-8444-914aa9d8b2ec@gmail.com>
+Message-ID: <CAFGdzprE-WOGr4ogUytysjAhXZxh0SVsLW1bLq+QBAB_uyYHSA@mail.gmail.com>
+
+Thank you for the link - definitely worth trying!
+
+T.
+
+czw., 30 kwi 2026 o 21:24 Duncan Murdoch <murdoch.duncan at gmail.com>
+napisa?(a):
+
+>
+> This is a great suggestion.  BTW, I think it would be possible to do
+> this in RStudio as well.  See their Addins page here:
+> https://rstudio.github.io/rstudioaddins/ .
+>
+> Duncan Murdoch
+>
+> On 2026-04-30 1:44 p.m., Tomek Gieorgijewski wrote:
+> > Hi Manfred!
+> >
+> > As I can see that you already maintain the habit to have one element per
+> > line,
+> > I would like to propose that you incorporate some editing scripts in your
+> > editor
+> > to help ease your frustration.
+> > I believe trying to change R parser will only add more of that feeling :)
+> > I don't know your editor but if it's vim, I can propose this edit to
+> .vimrc
+> > file:
+> > " ----
+> > function! ListCommas() range
+> >         if a:firstline < a:lastline
+> >             " Add commas at the end from first to second to last line if
+> > there's no comma yet
+> >             execute a:firstline . "," . (a:lastline - 1) . 's/[^,]$/&,/e'
+> >         endif
+> >          " Delete comma from last line (if matched)
+> >         execute a:lastline . 's/,$//e'
+> >     endfunction
+> >
+> >     vnoremap <leader>, :call ListCommas()<CR>
+> > " ---
+> >
+> > So, now if you rerun vim on your file you can swap, add, delete lines
+> from
+> > the list as you wish,
+> > and at the end you can highlight all elements lines of your list in
+> visual
+> > mode and execute ListCommas
+> > function on those lines with <leader>, shortcut.
+> >
+> > Of course only if you maintain your structure of element per line and
+> > trailing parenthesis at a seperate line.
+> >
+> > I'm sure VS Code, Emacs and some other editors have similar abilities to
+> > help you.
+> > Unfortunately I don't know of any such possibility in RStudio.
+> >
+> > regards,
+> > Tomek.
+> >
+> > pt., 24 kwi 2026 o 13:35 Manfred Kooistra <manfred.kooistra at gmail.com>
+> > napisa?(a):
+> >
+> >> I've always been irritated that R doesn't allow a comma after the last
+> >> element in a "list":
+> >>
+> >>> a <- c(
+> >> +     1,
+> >> +     2,
+> >> +     3
+> >> + )
+> >>> a
+> >> [1] 1 2 3
+> >>> b <- c(
+> >> +     1,
+> >> +     2,
+> >> +     3,
+> >> + )
+> >> Error in c(1, 2, 3, ) : argument 4 is empty
+> >>
+> >> This makes updating lists unnecessarily cumbersome, which I find I
+> >> frequently do, either when I test code and want to run it with lists of
+> >> varying elements or varying orders of elements or when I maintain lists
+> >> manually over time and have to add or delete elements from them.
+> >>
+> >> Is there a reason for this behavior in R and might it not be a good idea
+> >> to change it?
+> >> ______________________________________________
+> >> R-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-devel
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+>
+
+	[[alternative HTML version deleted]]
+
+

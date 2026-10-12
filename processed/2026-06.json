@@ -567,6 +567,26 @@
       "thread_id": "thread-298f925cb57f",
       "thread_depth": 2,
       "month": "2026-06"
+    },
+    {
+      "id": "msg-0cd91e2ec2a0",
+      "message_id": "<CAPRVBcxXMCF_yqwfgRc7Sf91ohFasTsokaOFPfJveHfCbYEkfA@mail.gmail.com>",
+      "from_name": "Michael Chirico",
+      "from_email_hash": "c7ae14eea7523abfb41c3b0b883332081fc591538823e9bc107ad314c96d8583",
+      "date": "2026-06-30T19:21:13Z",
+      "subject": "[Rd] [External] Avoiding overflow in integer multiplication by using 64-bit multiplication?",
+      "subject_clean": "[External] Avoiding overflow in integer multiplication by using 64-bit multiplication?",
+      "in_reply_to": "<7cfdd7a4-4207-4807-a454-8dcb65c57863@icloud.com>",
+      "references": [
+        "<CAPRVBcyPVbhcKj-6EObXYK9tw-JmCFVepa7WyYgWHbBLVSGJ8g@mail.gmail.com>",
+        "<03B91138-1348-49FD-8F38-9ECF72F5E920@uiowa.edu>",
+        "<7cfdd7a4-4207-4807-a454-8dcb65c57863@icloud.com>"
+      ],
+      "body_plain": "Thanks Luke & Brian for the suggested refinements.\n\nLet's continue in Buganizer, where I provide some assembly output\nmotivating why we should expect 'double' to be slower:\n\nhttps://bugs.r-project.org/show_bug.cgi?id=19096\n\nOn Mon, Jun 29, 2026 at 2:57?AM Prof Brian Ripley <ripleybd at icloud.com> wrote:\n>\n> On 27/06/2026 16:35, Tierney, Luke via R-devel wrote:\n> > I?m pretty sure that at the time this code was written, when R was used almost exclusively on 32-bit hardware, this was the option that performed best across a range of platforms. Also this pre-dated having int64_t available, so reliably getting a 64-bit integer variable across all platforms might have been challenging.\n>\n> It was (and not all platforms had a complete C99 compiler).  Further, my\n> memory is that int64_t was made optional in C11 (it certainly is in\n> current C17/23).  Consider int_least64_t or int_fast64_t instead.\n>\n> > You could look at using __builtin_mul_overflow() when available to see if that helps. I suspect it doesn?t by enough to warrant the hassle of configure checks, but might be worth a try.\n> >\n> > Best,\n> >\n> > luke\n> >\n> >> On Jun 26, 2026, at 5:49?PM, Michael Chirico <michaelchirico4 at gmail.com> wrote:\n> >>\n> >> Hi all,\n> >>\n> >> I submit myself humbly before you trying to understand something very\n> >> basic in low-level R.\n> >>\n> >> The routine R_integer_times [1] is used to multiply two integers. It\n> >> works by multiplying the two integers _as integers_, then only\n> >> afterwards comparing the result of multiplying them _as doubles_, and\n> >> giving NA+warning if they don't match. Implicitly, it relies on x*y\n> >> wrapping around if x*y doesn't fit in 'int', however, strictly\n> >> speaking this is relying on UB. The comment acknowledges this, but\n> >> doesn't explain why we rely on it.\n> >>\n> >> We can trigger this easily: 2L * .Machine$integer.max\n> >>\n> >> This implementation has been around in R for many years. Why? Isn't it\n> >> preferable to use a 64-bit type to compute the multiplication? Even on\n> >> 32-bit platforms it should be faster than the conversion to double\n> >> that's done now. I feel I must be missing something.\n> >>\n> >> This patch survives 'make check':\n> >>\n> >> Index: src/main/arithmetic.c\n> >> ===================================================================\n> >> --- src/main/arithmetic.c       (revision 90193)\n> >> +++ src/main/arithmetic.c       (working copy)\n> >> @@ -348,15 +348,14 @@\n> >>      return x - y;\n> >> }\n> >>\n> >> -#define GOODIPROD(x, y, z) ((double) (x) * (double) (y) == (z))\n> >> static R_INLINE int R_integer_times(int x, int y, bool *pnaflag)\n> >> {\n> >>      if (x == NA_INTEGER || y == NA_INTEGER)\n> >>         return NA_INTEGER;\n> >>      else {\n> >> -       int z = x * y;  // UBSAN will warn if this overflows (happens in bda)\n> >> -       if (GOODIPROD(x, y, z) && z != NA_INTEGER)\n> >> -           return z;\n> >> +       int64_t z = (int64_t)x * (int64_t)y;\n> >> +       if (z <= R_INT_MAX && z >= R_INT_MIN)\n> >> +           return (int)z;\n> >>         else {\n> >>             if (pnaflag != NULL)\n> >>                 *pnaflag = true;\n> >>\n> >> And this script shows the 30% performance improvement:\n>\n> This likely depends on the hardware and the compiler, both unstated.\n>\n> >> x <- y <- rep(10000L, 5e7)\n> >> system.time(for(i in 1:100) x * y)\n> >> # current trunk\n> >> #   user  system elapsed\n> >> # 13.631   1.056  14.691\n> >> # with patch\n> >> #   user  system elapsed\n> >> #  9.231   1.207  10.445\n> >>\n> >> Mike C\n> >>\n> >> [1] https://github.com/r-devel/r-svn/blob/4fa83d820f50676eef08c38fff0cdd6bfc10f5e5/src/main/arithmetic.c#L351-L366\n>\n> Please refer to the actual R sources.\n>\n> --\n> Brian D. Ripley,                  ripleybd at icloud.com\n> Emeritus Professor of Applied Statistics, University of Oxford",
+      "body_snippet": "Thanks Luke & Brian for the suggested refinements.\n\nLet's continue in Buganizer, where I provide some assembly output\nmotivating why we should expect 'double' to be slower:\n\nhttps://bugs.r-project.org",
+      "thread_id": "thread-298f925cb57f",
+      "thread_depth": 3,
+      "month": "2026-06"
     }
   ],
   "threads": [
@@ -723,14 +743,14 @@
     {
       "id": "thread-298f925cb57f",
       "subject": "Avoiding overflow in integer multiplication by using 64-bit multiplication?",
-      "message_count": 3,
+      "message_count": 4,
       "participants": [
         "Michael Chirico",
         "Prof Brian Ripley",
         "Tierney, Luke"
       ],
       "started": "2026-06-26T22:49:58Z",
-      "last_reply": "2026-06-29T09:57:50Z",
+      "last_reply": "2026-06-30T19:21:13Z",
       "root_message_id": "msg-298f925cb57f"
     }
   ]
