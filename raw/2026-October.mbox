@@ -628,3 +628,178 @@ Thompson Rivers University
 	[[alternative HTML version deleted]]
 
 
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Thu Oct 15 04:25:02 2026
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Wed, 14 Oct 2026 19:25:02 -0700
+Subject: [Rd] install.packages("Bessel"): 'byte-compile and prepare package
+ for lazy loading' step outputs numeric vectors?!?
+Message-ID: <CAFDcVCQ8ZN20-R2VcqE-i_10+Gh5+xTvc_8UTsdOr58nd51oJg@mail.gmail.com>
+
+What's up with:
+
+** byte-compile and prepare package for lazy loading
+ [1] 0.5     1       -1      2       -5      14      -42     132
+-429    1430    -4862   16796   -58786  208012  -742900
+c(0, 1, -1, 2, -5, 14, -42, 132, -429, 1430, -4862, 16796, -58786,
+208012, -742900)
+
+in:
+
+> install.packages("Bessel", repos = "https://cloud.r-project.org")
+Installing package into
+'/home/hb/R/ubuntu24_04-x86_64-pc-linux-gnu-library/4.6-CBI-gcc13'
+(as 'lib' is unspecified)
+trying URL 'https://cloud.r-project.org/src/contrib/Bessel_0.7-1.tar.gz'
+Content type 'application/x-gzip' length 193731 bytes (189 KB)
+==================================================
+downloaded 189 KB
+
+* installing *source* package ?Bessel? ...
+** this is package ?Bessel? version ?0.7-1?
+** package ?Bessel? successfully unpacked and MD5 sums checked
+** using staged installation
+** libs
+using C compiler: ?gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0?
+using Fortran compiler: ?GNU Fortran (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0?
+gfortran  -fpic  -g -O2  -c IncompleteBessel.f -o IncompleteBessel.o
+gcc -std=gnu2x -I"/home/hb/shared/software/CBI/_ubuntu24_04/R-4.6.1-gcc13/lib/R/include"
+-DNDEBUG   -I/usr/local/include    -fpic  -g -O2  -c init.c -o init.o
+gcc -std=gnu2x -I"/home/hb/shared/software/CBI/_ubuntu24_04/R-4.6.1-gcc13/lib/R/include"
+-DNDEBUG   -I/usr/local/include    -fpic  -g -O2  -c zbsubs.c -o
+zbsubs.o
+gcc -std=gnu2x -shared
+-L/home/hb/shared/software/CBI/_ubuntu24_04/R-4.6.1-gcc13/lib/R/lib
+-L/usr/local/lib -o Bessel.so IncompleteBessel.o init.o zbsubs.o
+-lgfortran -lm -lquadmath
+-L/home/hb/shared/software/CBI/_ubuntu24_04/R-4.6.1-gcc13/lib/R/lib
+-lR
+installing to /home/hb/R/ubuntu24_04-x86_64-pc-linux-gnu-library/4.6-CBI-gcc13/00LOCK-Bessel/00new/Bessel/libs
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+ [1] 0.5     1       -1      2       -5      14      -42     132
+-429    1430    -4862   16796   -58786  208012  -742900
+c(0, 1, -1, 2, -5, 14, -42, 132, -429, 1430, -4862, 16796, -58786,
+208012, -742900)
+** help
+*** installing help indices
+** building package indices
+** installing vignettes
+** testing if installed package can be loaded from temporary location
+** checking absolute paths in shared objects and dynamic libraries
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (Bessel)
+
+I get this with R 4.6.1 on Ubuntu 24.04 and on Rocky 9.
+
+/Henrik
+
+
+From edd @end|ng |rom deb|@n@org  Thu Oct 15 04:32:40 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 14 Oct 2026 21:32:40 -0500
+Subject: [Rd] 
+ install.packages("Bessel"): 'byte-compile and prepare package
+ for lazy loading' step outputs numeric vectors?!?
+In-Reply-To: <CAFDcVCQ8ZN20-R2VcqE-i_10+Gh5+xTvc_8UTsdOr58nd51oJg@mail.gmail.com>
+References: <CAFDcVCQ8ZN20-R2VcqE-i_10+Gh5+xTvc_8UTsdOr58nd51oJg@mail.gmail.com>
+Message-ID: <27344.15176.316736.680464@paul.eddelbuettel.com>
+
+
+On 14 October 2026 at 19:25, Henrik Bengtsson wrote:
+| What's up with:
+| 
+| ** byte-compile and prepare package for lazy loading
+|  [1] 0.5     1       -1      2       -5      14      -42     132
+| -429    1430    -4862   16796   -58786  208012  -742900
+| c(0, 1, -1, 2, -5, 14, -42, 132, -429, 1430, -4862, 16796, -58786,
+| 208012, -742900)
+| 
+| in:
+| 
+| > install.packages("Bessel", repos = "https://cloud.r-project.org")
+| Installing package into
+| '/home/hb/R/ubuntu24_04-x86_64-pc-linux-gnu-library/4.6-CBI-gcc13'
+| (as 'lib' is unspecified)
+| trying URL 'https://cloud.r-project.org/src/contrib/Bessel_0.7-1.tar.gz'
+| Content type 'application/x-gzip' length 193731 bytes (189 KB)
+| ==================================================
+| downloaded 189 KB
+| 
+| * installing *source* package ?Bessel? ...
+| ** this is package ?Bessel? version ?0.7-1?
+| ** package ?Bessel? successfully unpacked and MD5 sums checked
+| ** using staged installation
+| ** libs
+| using C compiler: ?gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0?
+| using Fortran compiler: ?GNU Fortran (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0?
+| gfortran  -fpic  -g -O2  -c IncompleteBessel.f -o IncompleteBessel.o
+| gcc -std=gnu2x -I"/home/hb/shared/software/CBI/_ubuntu24_04/R-4.6.1-gcc13/lib/R/include"
+| -DNDEBUG   -I/usr/local/include    -fpic  -g -O2  -c init.c -o init.o
+| gcc -std=gnu2x -I"/home/hb/shared/software/CBI/_ubuntu24_04/R-4.6.1-gcc13/lib/R/include"
+| -DNDEBUG   -I/usr/local/include    -fpic  -g -O2  -c zbsubs.c -o
+| zbsubs.o
+| gcc -std=gnu2x -shared
+| -L/home/hb/shared/software/CBI/_ubuntu24_04/R-4.6.1-gcc13/lib/R/lib
+| -L/usr/local/lib -o Bessel.so IncompleteBessel.o init.o zbsubs.o
+| -lgfortran -lm -lquadmath
+| -L/home/hb/shared/software/CBI/_ubuntu24_04/R-4.6.1-gcc13/lib/R/lib
+| -lR
+| installing to /home/hb/R/ubuntu24_04-x86_64-pc-linux-gnu-library/4.6-CBI-gcc13/00LOCK-Bessel/00new/Bessel/libs
+| ** R
+| ** inst
+| ** byte-compile and prepare package for lazy loading
+|  [1] 0.5     1       -1      2       -5      14      -42     132
+| -429    1430    -4862   16796   -58786  208012  -742900
+| c(0, 1, -1, 2, -5, 14, -42, 132, -429, 1430, -4862, 16796, -58786,
+| 208012, -742900)
+| ** help
+| *** installing help indices
+| ** building package indices
+| ** installing vignettes
+| ** testing if installed package can be loaded from temporary location
+| ** checking absolute paths in shared objects and dynamic libraries
+| ** testing if installed package can be loaded from final location
+| ** testing if installed package keeps a record of temporary installation path
+| * DONE (Bessel)
+| 
+| I get this with R 4.6.1 on Ubuntu 24.04 and on Rocky 9.
+
+Might be more a question for the maintainer (CC'ed) than for R-devel?
+
+This silences it, was easy enough to find just by looking for a print():
+
+edd at paul:/tmp/r$ diff -ru Bessel.orig/ Bessel
+diff -ru Bessel.orig/R/lsum.R Bessel/R/lsum.R
+--- Bessel.orig/R/lsum.R        2026-09-27 02:18:26.000000000 -0500
++++ Bessel/R/lsum.R     2026-10-14 21:30:21.551083644 -0500
+@@ -73,10 +73,10 @@
+ ## NB: Binomial series of (1+u)^(1/2), exact coefficients  c_j / 2^(2j-1) :
+ {
+     k <- 0:14
+-    print(quote=FALSE, width=130, # + rm space
+-          chk <- formatC(ck <- choose(1/2, k) * 2^(2*k-1), width=1, format="fg"))
++    #print(quote=FALSE, width=130, # + rm space
++          chk <- formatC(ck <- choose(1/2, k) * 2^(2*k-1), width=1, format="fg")#)
+     ## 0.5   1    -1   2    -5   14   -42  132  -429  1430  -4862  16796  -58786 208012 -742900
+-    dput(round(ck)) # loses the 0.5
++    #dput(round(ck)) # loses the 0.5
+     ## c(0, 1, -1, 2, -5, 14, -42, 132, -429, 1430, -4862, 16796, -58786, 208012, -742900)
+     ## correct :
+     ckT <- c(0.5, 1, -1, 2, -5, 14, -42, 132, -429, 1430, -4862, 16796, -58786, 208012, -742900)
+edd at paul:/tmp/r$ 
+
+Dirk
+
+| 
+| /Henrik
+| 
+| ______________________________________________
+| R-devel at r-project.org mailing list
+| https://stat.ethz.ch/mailman/listinfo/r-devel
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
