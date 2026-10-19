@@ -673,11 +673,14 @@
       "subject_clean": "Optimization in R",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070805/aae0cff5/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070805/aae0cff5/attachment.pl",
+      "body_plain": "Hi guys,\n\nI ran into the same problem and solved it by changing one line in Andrew's\nMakefile:\n\ninstead of:\ngsl.so: vector.o multimin.o\n    gcc -g -Wall -shared $^ -lgsl -o $@\n\nuse:\ngsl.so: vector.o multimin.o\n    gcc -g -Wall -shared $^  -o $@ -lgsl -lgslcblas -lm\n\nChristophe\n\n\nThanks for the functions!\n>\n> I tried installing the multimin function. To get it to compile, I needed\n> to change the Makefile to reflect my path and by adding the flags fPIC\n> in response to the error: \"/usr/bin/ld: vector.o: relocation R_X86_64_32\n> against `a local symbol' can not be used when making a shared object;\n> recompile with -fPIC\"\n>\n> However, I get the following running test.R:\n>\n> Error in dyn.load(x, as.logical(local), as.logical(now)) :\n>        unable to load shared library '/home/mmorales/Desktop\n> /multimin/gsl.so':\n>  /usr/lib64/libgsl.so.0: undefined symbol: cblas_ctrmv\n>\n> I'm running R-2.5.1 compiled for x86_64 with a custom built ATLAS.\n>\n\n\n-- \nA Master Carpenter has many tools and is expert with most of them. If you\nonly know how to use a hammer, every problem starts to look like a nail.\nStay away from that trap.\nRichard B Johnson.\n--\n\nChristophe Pouzat\nLaboratoire de Physiologie Cerebrale\nCNRS UMR 8118\nUFR biomedicale de l'Universite Paris V\n45, rue des Saints Peres\n75006 PARIS\nFrance\n\ntel: +33 (0)1 42 86 38 28\nfax: +33 (0)1 42 86 38 30\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi guys,\n\nI ran into the same problem and solved it by changing one line in Andrew's\nMakefile:\n\ninstead of:\ngsl.so: vector.o multimin.o\n    gcc -g -Wall -shared $^ -lgsl -o $@\n\nuse:\ngsl.so: vector.o m",
       "thread_id": "thread-206b39779a0f",
       "thread_depth": 0,
-      "month": "2007-08"
+      "month": "2007-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20070805/aae0cff5/attachment.pl"
+      ]
     },
     {
       "id": "msg-9234a5117002",
@@ -1178,11 +1181,14 @@
       "subject_clean": "Automatic implementation of \"trivial\" constraints in optimization",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070807/ef07c2f1/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070807/ef07c2f1/attachment.pl",
+      "body_plain": "Hi all,\n\nI am wondering if anyone has implemented (or at least tried to) an automatic\nreparametrization in order to satisfy \"trivial\" constraints (in the sense of\nDennis & Schnabel, 1983) in optimization problems.\nTo be perhaps clearer let us consider a simple bi-exponential model for some\nrecorded signal (sorry for the LaTex notations I hope they aren't too\nconfusing):\n$s(t) = A (p_{fast} \\exp(-\\frac{t}{t_{fast}}) + p_{slow}\n\\exp(-\\frac{t}{t_{slow}}) $\nwhere we would have: $t_{fast} > 0$ and $t_{slow} > 0$ , $0 < p_{fast},\np_{slow} < 1$ and $p_{fast}+p_{slow}=1$. In addition we could want to\nenforce $A>0$, say, because our signal corresponds physically to a\nconcentration and for ease of interpretation having $t_{fast} < t_{slow}$\nwould not hurt. We could then reparametrize our problem with:\n$A = \\exp (\\alpha)$\n$t_{fast} = \\exp (\\tau_{fast})$\n$t_{slow} = t_{fast} + \\exp (\\tau_{slow})$\n$p_{fast} = 0.5 + 0.5 \\frac{\\pi_{fast}}{\\sqrt{1+\\pi_{fast}^2}}$\n$p_{slow} = 1 - p_{fast}$\nand the four parameters: $\\alpha, \\tau_{fast}, \\tau_{slow}, \\pi_{fast}$\nwould be unconstrained.\nOne could then think of allowing \"optim\" users to specify more general\nboundaries (\"lower\", \"upper\") which would be used to generate a parameter\ntransformation function. This function, say u2c (for \"unconstrained to\nconstrained\"),  would take a vector of parameters as one of its arguments\nand would return another vector (perhaps of a longer length). Then optim\nwould internaly optimize f(u2c(p)) instead of f. Clearly more sophisticated\nconstraint specifications (than \"lower\" and \"upper\") would be required, like\na way to declare that some parameters form a simplex or that others are\nencoding a variance-covariance matrix (in the latter case the pdLogChol\nfunction of nlme already provides the reparametrization if I'm not wrong).\n\nAssuming that such a functionality does not exist yet in R (if it does,\nsorry to have missed it) do you guys think that:\n1) it's not necessary because users can take care of it for themselves\n2) it would be complicated and not general enough\n3) it would be worth trying\n\nThanks for your opinions,\n\nChristophe\n\n-- \nA Master Carpenter has many tools and is expert with most of them. If you\nonly know how to use a hammer, every problem starts to look like a nail.\nStay away from that trap.\nRichard B Johnson.\n--\n\nChristophe Pouzat\nLaboratoire de Physiologie Cerebrale\nCNRS UMR 8118\nUFR biomedicale de l'Universite Paris V\n45, rue des Saints Peres\n75006 PARIS\nFrance\n\ntel: +33 (0)1 42 86 38 28\nfax: +33 (0)1 42 86 38 30\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi all,\n\nI am wondering if anyone has implemented (or at least tried to) an automatic\nreparametrization in order to satisfy \"trivial\" constraints (in the sense of\nDennis & Schnabel, 1983) in optimizat",
       "thread_id": "thread-2377f403d95d",
       "thread_depth": 0,
-      "month": "2007-08"
+      "month": "2007-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20070807/ef07c2f1/attachment.pl"
+      ]
     },
     {
       "id": "msg-0a48eb3a5c4b",
@@ -1960,11 +1966,14 @@
       "references": [
         "<59d7961d0708131045x7feeeab5i4edf107350fbefdb@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070813/39a7081a/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070813/39a7081a/attachment.pl",
+      "body_plain": "I don't know of one.\n\nIdeally, instead of a specifc function anyNA()  function, any() could be\nperhaps be extended to any(x, FUN) where FUN returns a logical for an\nelement of x, and implemented to find the 1st instance as you suggest.\n\nMike\n\nOn 8/13/07, Henrik Bengtsson <hb at stat.berkeley.edu> wrote:\n>\n> Hi,\n>\n> is there a hasNA() / an anyNA() function in R?  Of course,\n>\n> hasNA <- function(x) {\n>   any(is.na(x));\n> }\n>\n> would do, but that would scan all elements in 'x' and then do the\n> test.  I'm looking for a more efficient implementation that returns\n> TRUE at the first NA, e.g.\n>\n> hasNA <- function(x) {\n>   for (kk in seq(along=x)) {\n>     if (is.na(x[kk]))\n>       return(TRUE);\n>   }\n>   FALSE;\n> }\n>\n> Cheers\n>\n> Henrik\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I don't know of one.\n\nIdeally, instead of a specifc function anyNA()  function, any() could be\nperhaps be extended to any(x, FUN) where FUN returns a logical for an\nelement of x, and implemented to fi",
       "thread_id": "thread-4cc75f4515a6",
       "thread_depth": 1,
-      "month": "2007-08"
+      "month": "2007-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20070813/39a7081a/attachment.pl"
+      ]
     },
     {
       "id": "msg-c5475ae35921",
@@ -2568,11 +2577,14 @@
       "subject_clean": "Advice on parsing / overriding function calls",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070816/f47c10b4/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070816/f47c10b4/attachment.pl",
+      "body_plain": "Hi,\n\nI am trying to tighten file I/O security on a process that passes a\nuser-supplied script to R CMD Batch.  Broadly speaking, I'd like to restrict\nI/O to a designated path on the file system. Right now, I'm trying to\naddress this in the R environment by forcing the script to use modified\nversions of scan, read.table, sys.load.image, etc.\n\nI can run a replace string on the user-supplied script so that, for example,\n\"scan(\" is replaced by \"safe.scan(\"\n\ne.g.\n\n> SafePath <- function(file)\n{fp<-strsplit(file,\"/\");paste(\"safepath\",fp[[1]][length(fp[[1]])],sep=\"/\")}\n> SafePath(\"/etc/passwd\")\n[1] \"safepath/passwd\"\n\n>  Safe.scan <- function(file, ...) scan(SafePath(file),...)\n> Safe.scan(\"/etc/passwd\",what=\"\",sep=\"\\n\")\nError in file(file, \"r\") : unable to open connection\nIn addition: Warning message:\ncannot open file 'safepath/passwd', reason 'No such file or directory'\n\nI'd appreciate any critique of this approach.  Is there something more\neffective or elegant?\n\nRegards,\nMike\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\n\nI am trying to tighten file I/O security on a process that passes a\nuser-supplied script to R CMD Batch.  Broadly speaking, I'd like to restrict\nI/O to a designated path on the file system. Right",
       "thread_id": "thread-52117f8fcc42",
       "thread_depth": 0,
-      "month": "2007-08"
+      "month": "2007-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20070816/f47c10b4/attachment.pl"
+      ]
     },
     {
       "id": "msg-52f785617d3f",
@@ -2639,11 +2651,14 @@
         "<b02e8b330708160144idf261f4xf0944feb36cbbed3@mail.gmail.com>",
         "<f8e6ff050708160550t1e7ad0a7he0479efcdc3a575@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070816/d300b4d2/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070816/d300b4d2/attachment.pl",
+      "body_plain": "Thanks for your note Hadley,\n\nI would like to defend against a broad range of malicious activity, but the\nfocus of this module is to restrict file I/O to a specific area on the file\nsystem.  I agree that's it's impossible to prevent, but I'm trying to\nincrease the difficulty level.\n\nThe user is inhibited from installing or loading packages, calling eval, or\nany file I/O functions directly. Their script is checked to against a\nrelatively long list of banned commands.  I'm intending to run this check after\nswapping calls to I/O functions to my safer versions. I think it would be\neasy for the script to remove or modify my replacement functions, but not so\neasy to modify them to something harmful.\n\nI really do appreciate the critique, but I'm especially looking for advice\nto improve on this.\n\nRegards,\n\nMike\n\nOn 8/16/07, hadley wickham <h.wickham at gmail.com> wrote:\n>\n> What are you trying to defend against?  A serious attacker could still\n> use rm/assign/get/eval/... to circumvent your replaced functions.  I\n> think it would be very difficult (if not impossible) to prevent this\n> from happening), especially if the user can load packages.\n>\n> Hadley\n>\n> On 8/16/07, Michael Cassin <michael at cassin.name> wrote:\n> > Hi,\n> >\n> > I am trying to tighten file I/O security on a process that passes a\n> > user-supplied script to R CMD Batch.  Broadly speaking, I'd like to\n> restrict\n> > I/O to a designated path on the file system. Right now, I'm trying to\n> > address this in the R environment by forcing the script to use modified\n> > versions of scan, read.table, sys.load.image, etc.\n> >\n> > I can run a replace string on the user-supplied script so that, for\n> example,\n> > \"scan(\" is replaced by \"safe.scan(\"\n> >\n> > e.g.\n> >\n> > > SafePath <- function(file)\n> >\n> {fp<-strsplit(file,\"/\");paste(\"safepath\",fp[[1]][length(fp[[1]])],sep=\"/\")}\n> > > SafePath(\"/etc/passwd\")\n> > [1] \"safepath/passwd\"\n> >\n> > >  Safe.scan <- function(file, ...) scan(SafePath(file),...)\n> > > Safe.scan(\"/etc/passwd\",what=\"\",sep=\"\\n\")\n> > Error in file(file, \"r\") : unable to open connection\n> > In addition: Warning message:\n> > cannot open file 'safepath/passwd', reason 'No such file or directory'\n> >\n> > I'd appreciate any critique of this approach.  Is there something more\n> > effective or elegant?\n> >\n> > Regards,\n> > Mike\n> >\n> >         [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n>\n>\n> --\n> http://had.co.nz/\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thanks for your note Hadley,\n\nI would like to defend against a broad range of malicious activity, but the\nfocus of this module is to restrict file I/O to a specific area on the file\nsystem.  I agree t",
       "thread_id": "thread-52117f8fcc42",
       "thread_depth": 2,
-      "month": "2007-08"
+      "month": "2007-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20070816/d300b4d2/attachment.pl"
+      ]
     },
     {
       "id": "msg-d77cfefc0f37",
@@ -2760,11 +2775,14 @@
         "<6100AC6F-81EA-47E1-920B-BE915E22939E@r-project.org>",
         "<Pine.LNX.4.64.0708161714000.31515@gannet.stats.ox.ac.uk>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070816/c5f34112/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070816/c5f34112/attachment.pl",
+      "body_plain": "Thanks everyone for these comments, they're great.  I see the exposure\npoints and your collective comments have given me a lot to think about.\n\nEventually, I will need a \"sandbox\" solution.  I think I'll be needing help,\nand if there are any freelancers interested in discussing offline, please\ncontact me. Hopefully that doesn't violate posting guidelines ;)\n\nThanks again, all.\n\nBest regards, Mike\n\n\nOn 8/16/07, Prof Brian Ripley <ripley at stats.ox.ac.uk> wrote:\n>\n> On Thu, 16 Aug 2007, Simon Urbanek wrote:\n>\n> > Thinking along these lines, we actually have a mechanism for\n> > replacing the system call (it's used by the Mac GUI to allow root\n> > calls) and one could think of expanding this to all critical\n> > operations. Clearly, there are issues (speed for example), but it\n> > would be nice to have a 'fortified' version of R that allows turing\n> > on restrictions. I don't think it's easy, but given the rising demand\n> > (at least in my perception), it would be interesting to see how far\n> > we can get.\n> >\n> > Re filtering strings in commands - I don't think this will work,\n> > because you can compute on the language, so you can construct\n> > arbitrary calls without using the names in verbatim, so it is\n> > possible to circumvent such filters fairly easily.\n>\n> Exactly.  All I would need is access to a file() connection, and I could\n> easily do that in such a way that 'file' never appeared in the script.\n> And I've thought of half a dozen backdoors that have not been mentioned in\n> this thread.\n>\n> I am not sure there is really much point in trying to fortify R, when\n> that's the OS's job and it may well be better to run R in a suitable\n> sandbox.  Certainly I think that is the solution for web services.\n>\n> One area where it may be necessary is embedded applications.  Certainly if\n> R is embedded into the same process (which is how R as an shlib or DLL is\n> usually used) then you may want the main application to have privileges\n> you do not give to the embedded R.  But using a separate process (e.g. via\n> Rserve) may be more secure.\n>\n> >\n> > Cheers,\n> > Simon\n> >\n> > On Aug 16, 2007, at 9:23 AM, Hin-Tak Leung wrote:\n> >\n> >> Well, I think there are some serious use e.g. offering a web server\n> >> for script uploaded then downloading the Rout result back...\n> >>\n> >> The issue is more about whether he wants to limit *all* file system\n> >> access or just limiting to certain areas. For the former,\n> >> I would set up a chroot jail and run R from within; for the latter,\n> >> I would probably do something with LD_LIBRARY_PRELOAD to override\n> >> all the file system accessing functions in libc directly, really.\n> >> That would fix the problem with system(rm) and some such, I think,\n> >> because if your entire R process and any sub-process R launches has no\n> >> access to the genuine libc fwrite/fread/etc functions you cannot do\n> >> any demage, right?\n> >> Both are tricky and take time to do (the chroot jail a bit easier,\n> >> actually...), but quite do-able.\n> >>\n> >> It depends on (1) how paranoid you are, (2) how much trouble you\n> >> want to\n> >> have for yourself to achieve those restrictions...\n> >>\n> >> hadley wickham wrote:\n> >>> What are you trying to defend against?  A serious attacker could\n> >>> still\n> >>> use rm/assign/get/eval/... to circumvent your replaced functions.  I\n> >>> think it would be very difficult (if not impossible) to prevent this\n> >>> from happening), especially if the user can load packages.\n> >>>\n> >>> Hadley\n> >>>\n> >>> On 8/16/07, Michael Cassin <michael at cassin.name> wrote:\n> >>>> Hi,\n> >>>>\n> >>>> I am trying to tighten file I/O security on a process that passes a\n> >>>> user-supplied script to R CMD Batch.  Broadly speaking, I'd like\n> >>>> to restrict\n> >>>> I/O to a designated path on the file system. Right now, I'm\n> >>>> trying to\n> >>>> address this in the R environment by forcing the script to use\n> >>>> modified\n> >>>> versions of scan, read.table, sys.load.image, etc.\n> >>>>\n> >>>> I can run a replace string on the user-supplied script so that,\n> >>>> for example,\n> >>>> \"scan(\" is replaced by \"safe.scan(\"\n> >>>>\n> >>>> e.g.\n> >>>>\n> >>>>> SafePath <- function(file)\n> >>>> {fp<-strsplit(file,\"/\");paste(\"safepath\",fp[[1]][length(fp\n> >>>> [[1]])],sep=\"/\")}\n> >>>>> SafePath(\"/etc/passwd\")\n> >>>> [1] \"safepath/passwd\"\n> >>>>\n> >>>>>  Safe.scan <- function(file, ...) scan(SafePath(file),...)\n> >>>>> Safe.scan(\"/etc/passwd\",what=\"\",sep=\"\\n\")\n> >>>> Error in file(file, \"r\") : unable to open connection\n> >>>> In addition: Warning message:\n> >>>> cannot open file 'safepath/passwd', reason 'No such file or\n> >>>> directory'\n> >>>>\n> >>>> I'd appreciate any critique of this approach.  Is there something\n> >>>> more\n> >>>> effective or elegant?\n> >>>>\n> >>>> Regards,\n> >>>> Mike\n>\n> --\n> Brian D. Ripley,                  ripley at stats.ox.ac.uk\n> Professor of Applied Statistics,  http://www.stats.ox.ac.uk/~ripley/\n> University of Oxford,             Tel:  +44 1865 272861 (self)\n> 1 South Parks Road,                     +44 1865 272866 (PA)\n> Oxford OX1 3TG, UK                Fax:  +44 1865 272595\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thanks everyone for these comments, they're great.  I see the exposure\npoints and your collective comments have given me a lot to think about.\n\nEventually, I will need a \"sandbox\" solution.  I think I",
       "thread_id": "thread-52117f8fcc42",
       "thread_depth": 5,
-      "month": "2007-08"
+      "month": "2007-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20070816/c5f34112/attachment.pl"
+      ]
     },
     {
       "id": "msg-a8c02215eb60",
@@ -4236,11 +4254,14 @@
       "subject_clean": "[OT] How many useRs?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070827/6e038322/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20070827/6e038322/attachment.pl",
+      "body_plain": "I figured the devel list would have people on it who might know the\nanswer to this....\n\n \n\nIs there a reliable (for some definition of reliable) estimate of how\nmany people use R or have downloaded it? Say an order of magnitude\nestimate? I would like to mention this in the introduction to a paper\nI'm writing where I encourage R's use.\n\n \n\nThanks for any help.\n\n \n\n-Andy\n\n \n\n \n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I figured the devel list would have people on it who might know the\nanswer to this....\n\n \n\nIs there a reliable (for some definition of reliable) estimate of how\nmany people use R or have downloaded it",
       "thread_id": "thread-f846972b9034",
       "thread_depth": 0,
-      "month": "2007-08"
+      "month": "2007-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20070827/6e038322/attachment.pl"
+      ]
     },
     {
       "id": "msg-9d73c6c50da8",

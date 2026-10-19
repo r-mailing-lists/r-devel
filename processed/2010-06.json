@@ -126,11 +126,14 @@
         "<AANLkTikz-B62AkrSGKjNez2EyZK-P6VA2vJr7w5GpEub@mail.gmail.com>",
         "<AANLkTimJ13JJhKe7tfSnolJBE8mExDDi5aGXj-6povEX@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100602/920108ba/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100602/920108ba/attachment.pl>",
+      "body_plain": "Hi\n\nThis problem is fixed. I was running an older kernel 2.6.28. I upgraded to\n2.6.32-5 Debian Sid/Squeeze and now the performance is similar.\n\nRegards\n\nAbhijit Bera\n\nOn Wed, May 19, 2010 at 6:49 PM, Carlos J. Gil Bellosta <\ncgb at datanalytics.com> wrote:\n\n> Dear Abhijit,\n>\n> If you think that table.CAPM is the culprit, you could run the call to\n> such function in R on both platforms using Rprof to check which part\n> of the function is producing the bottleneck.\n>\n> Best regards,\n>\n> Carlos J. Gil Bellosta\n> http://www.datanalytics.com\n>\n>\n> 2010/5/19 Abhijit Bera <abhibera at gmail.com>:\n> > Update: it appears that the time taken isn't so much on the Data\n> conversion.\n> > The maximum time taken is in CAPM calculation. :( Anyone know why the\n> CAPM\n> > calculation would be faster on Windows?\n> >\n> > On Wed, May 19, 2010 at 5:51 PM, Abhijit Bera <abhibera at gmail.com>\n> wrote:\n> >\n> >> Hi\n> >>\n> >> This is my function. It serves an HTML page after the calculations. I'm\n> >> connecting to a MSSQL DB using pyodbc.\n> >>\n> >>     def CAPM(self,client):\n> >>\n> >>         r=self.r\n> >>\n> >>         cds=\"1590\"\n> >>         bm=\"20559\"\n> >>\n> >>         d1 = []\n> >>         v1 = []\n> >>         v2 = []\n> >>\n> >>\n> >>         print\"Parsing GET Params\"\n> >>\n> >>         params=client.g[1].split(\"&\")\n> >>\n> >>         for items in params:\n> >>             item=items.split(\"=\")\n> >>\n> >>             if(item[0]==\"cds\"):\n> >>                 cds=unquote(item[1])\n> >>             elif(item[0]==\"bm\"):\n> >>                 bm=unquote(item[1])\n> >>\n> >>         print \"cds: %s bm: %s\" % (cds,bm)\n> >>\n> >>         print \"Fetching data\"\n> >>\n> >>         t3=datetime.now()\n> >>\n> >>         for row in self.cursor.execute(\"select * from (select * from (\n> >> select co_code,dlyprice_date,dlyprice_close from feed_dlyprice P where\n> >> co_code in (%s,%s) ) DataTable PIVOT ( max(dlyprice_close) FOR co_code\n> IN\n> >> ([%s],[%s])  )PivotTable ) a order by dlyprice_date\" %(cds,bm,cds,bm)):\n> >>             d1.append(str(row[0]))\n> >>             v1.append(row[1])\n> >>             v2.append(row[2])\n> >>\n> >>         t4=datetime.now()\n> >>\n> >>         t1=datetime.now()\n> >>\n> >>         print \"Calculating\"\n> >>\n> >>         d1.pop(0)\n> >>         d1vec = robjects.StrVector(d1)\n> >>         v1vec = robjects.FloatVector(v1)\n> >>         v2vec = robjects.FloatVector(v2)\n> >>\n> >>         r1 = r('Return.calculate(%s)' %v1vec.r_repr())\n> >>         r2 = r('Return.calculate(%s)' %v2vec.r_repr())\n> >>\n> >>         tl = robjects.rlc.TaggedList([r1,r2],tags=('Geo','Nifty'))\n> >>         df = robjects.DataFrame(tl)\n> >>\n> >>         ts2 = r.timeSeries(df,d1vec)\n> >>         tsa = r.timeSeries(r1,d1vec)\n> >>         tsb = r.timeSeries(r2,d1vec)\n> >>\n> >>         robjects.globalenv[\"ta\"] = tsa\n> >>         robjects.globalenv[\"tb\"] = tsb\n> >>         robjects.globalenv[\"t2\"] = ts2\n> >>         a = r('table.CAPM(ta,tb)')\n> >>\n> >>         t2=datetime.now()\n> >>\n> >>\n> >>         page=\"<html><title>CAPM</title><body>Result:<br>%s<br>Time taken\n> by\n> >> DB:%s<br>Time taken by R:%s<br>Total time elapsed:%s<br></body></html>\"\n> >> %(str(a),str(t4-t3),str(t2-t1),str(t2-t3))\n> >>         print \"Serving page:\"\n> >>         #print page\n> >>\n> >>         self.serveResource(page,\"text\",client)\n> >>\n> >>\n> >>\n> >> On Linux\n> >> Time taken by DB:0:00:00.024165\n> >> Time taken by R:0:00:05.572084\n> >> Total time elapsed:0:00:05.596288\n> >>\n> >> On Windows\n> >> Time taken by DB:0:00:00.112000\n> >> Time taken by R:0:00:02.355000\n> >> Total time elapsed:0:00:02.467000\n> >>\n> >> Why is there such a huge difference in the time taken by R on the two\n> >> platforms? Am I doing something wrong? It's my first Rpy2 code so I\n> guess\n> >> it's badly written.\n> >>\n> >> I'm loading the following libraries:\n> >> 'PerformanceAnalytics','timeSeries','fPortfolio','fPortfolioBacktest'\n> >>\n> >> I'm using Rpy2 2.1.0 and R 2.11\n> >>\n> >> Regards\n> >>\n> >> Abhijit Bera\n> >>\n> >>\n> >>\n> >>\n> >>\n> >\n> >        [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi\n\nThis problem is fixed. I was running an older kernel 2.6.28. I upgraded to\n2.6.32-5 Debian Sid/Squeeze and now the performance is similar.\n\nRegards\n\nAbhijit Bera\n\nOn Wed, May 19, 2010 at 6:49 PM, ",
       "thread_id": "thread-60b0cd5c8371",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100602/920108ba/attachment.pl"
+      ]
     },
     {
       "id": "msg-eccf86927541",
@@ -380,11 +383,14 @@
       "subject_clean": "vignettes processed twice under Windows?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100604/4247e318/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100604/4247e318/attachment.pl>",
+      "body_plain": "When I try to build vignettes for a package under Windows the package shared\nlibrary is built twice, first presumably to generate the vignette, and then\nto\ngenerate the package binary. But the library building steps are of course\nthe same.\n\nIs this a known issue or is there a way to get it to build the library only\nonce?\n\nIf I have already processed the vignettes and use the --no-vignettes option\nthen\nthere is no problem, it builds the library once and uses the PDF files that\nare there.\n\nThanks for any pointers.\n\nDominick\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "When I try to build vignettes for a package under Windows the package shared\nlibrary is built twice, first presumably to generate the vignette, and then\nto\ngenerate the package binary. But the library",
       "thread_id": "thread-95f6e86cfe72",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100604/4247e318/attachment.pl"
+      ]
     },
     {
       "id": "msg-8b47e9fedb19",
@@ -489,11 +495,14 @@
       "subject_clean": "Suggested change to build.pl",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100604/7891841e/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100604/7891841e/attachment.pl>",
+      "body_plain": "Under Linux the cleanup script (if it exists) is run at the end, before\nthe package archive is created, and this prevents intermediate files\nthat are no longer needed from being written to the archive.\n\nUnfortunately, this does not happen under Windows when there\nis a cleanup.win. That is, cleanup.win is not run before the\narchive is created.\n\nHere is the code in build.pl that checks for cleanup and runs\nit before building the archive:\n\nif(!$WINDOWS && -x \"./cleanup\") {\n    $log->message(\"running cleanup\");\n    R_system(\"./cleanup\");\n }\n\nBut the case where $WINDOWS is true is never\naddressed.\n\nThe problem can be resolved by adding:\n\nif($WINDOWS && -e \"./cleanup.win\") {\n     $log->message(\"running cleanup.win\");\n     R_system(\"./cleanup.win\")\n}\n\nDoes this make sense?\n\nThanks,\nDominick\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Under Linux the cleanup script (if it exists) is run at the end, before\nthe package archive is created, and this prevents intermediate files\nthat are no longer needed from being written to the archive",
       "thread_id": "thread-a8bf9ef22f0e",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100604/7891841e/attachment.pl"
+      ]
     },
     {
       "id": "msg-3f49c3990315",
@@ -869,11 +878,14 @@
       "subject_clean": "Extract/format/show for S4 objects (Johann Hibschman)",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100609/b18c570a/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100609/b18c570a/attachment.pl>",
+      "body_plain": "Johann,\n\nFollowing up on Gabor's reply, the mondate package (new on CRAN last week)\nwill accomplish your needs.\n\n>I'm trying to make an integer-backed quarter (as in fraction of year)\n>class, but I can't quite it to work.  I want integer-backed so I don't\n>have to worry about floating-point effects when doing math, and so that\n>I can use it as in data.table.\n\nmondate represents a date internally as a numeric, not an integer, but the\ninteger part corresponds to months, not years, so a zero fractional part of\na mondate corresponds to a \"complete month.\" Every third whole number,\ntherefore, would correspond to a complete quarter. Arithmetic in months (or\nquarters by dividing by 3) returns a numeric with a \"timeunits\" attribute.\nmondate's can be stored in a data.frame.\n\n> (A<-mondate.ymd(2010,3*(1:4)))  # display format is \"U.S.\", my location\nmondate: timeunits=\"months\"\n[1] 03/31/2010 06/30/2010 09/30/2010 12/31/2010\n> diff(A)                                 # 3 months apart\n[1] 3 3 3\n> A-mondate(\"12/31/2009\")     #  months since the end of last year; date\ninput format also works for my location\n[1]  3  6  9 12\nattr(,\"timeunits\")\n[1] \"months\"\n> c((A-mondate(\"12/31/2009\"))/3) # divide by 3 and remove the attribute and\nyou have quarters\n[1] 1 2 3 4\n> data.frame(QtrEnd=A, Amount=rep(1000,4))\n      QtrEnd Amount\n1 03/31/2010   1000\n2 06/30/2010   1000\n3 09/30/2010   1000\n4 12/31/2010   1000\n\nIf the date you are subtracting off is somewhere in the fourth quarter of\n2009 but you still want to treat it as being representative of the fourth\nquarter, the floor function will remove the fractional part of the\ndifference in quarters (I will enter November 1st in non-US format):\n> floor(c((A-mondate(\"2009-11-1\"))/3))\n[1] 1 2 3 4\n\n>First of all, is there a good reference for this anywhere?  All of the\n>S4 tutorials that I've found have been too high-level, and I can't find\n>any examples of implementing extract.  In S3, I can use [.Date as my\n>example, but I can't find the equivalent for S4.\n\nSee the source code for an S4 \"[\" method. I was unable to convert all S3\nmethods to S4, so you will see that some S3 methods remain (e.g.,\nas.data.frame.mondate); S3methods=TRUE in the class definition as a result.\n\nI wrote this package to solve essentially your problem. If it falls short\nfor you somehow, please me know.\nThanks,\n- Dan Murphy\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Johann,\n\nFollowing up on Gabor's reply, the mondate package (new on CRAN last week)\nwill accomplish your needs.\n\n>I'm trying to make an integer-backed quarter (as in fraction of year)\n>class, but I ca",
       "thread_id": "thread-c87f65af7c2f",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100609/b18c570a/attachment.pl"
+      ]
     },
     {
       "id": "msg-5a379e70a1c0",
@@ -901,11 +913,14 @@
       "subject_clean": "Solaris / CC builds",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100609/31696532/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100609/31696532/attachment.pl>",
+      "body_plain": "Hello,\n\nI'm trying to figure our why my package (cxxPack) fails to build\nunder Solaris using CC on CRAN, and I wonder if somebody can\ncomment?\n\nIf I try to build R on a Solaris SPARC box that has CC the\nR configure script uses gcc/g++ instead of CC, yet CC seems\nto be used for the CRAN builds.\n\nHow does one tall configure to setup for using CC?\n\nThanks,\nDominick\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\nI'm trying to figure our why my package (cxxPack) fails to build\nunder Solaris using CC on CRAN, and I wonder if somebody can\ncomment?\n\nIf I try to build R on a Solaris SPARC box that has CC t",
       "thread_id": "thread-06f1e13046b6",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100609/31696532/attachment.pl"
+      ]
     },
     {
       "id": "msg-66553ae8f958",
@@ -1058,11 +1073,14 @@
       "subject_clean": "OWL ontologies in R?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100610/7486b0a5/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100610/7486b0a5/attachment.pl>",
+      "body_plain": "Are there any R packages to import and use Web Ontology Language (OWL)\nontologies (represented in OWL/RDF or other form)?\n\nThanks,\n\n             -s\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Are there any R packages to import and use Web Ontology Language (OWL)\nontologies (represented in OWL/RDF or other form)?\n\nThanks,\n\n             -s\n\n\t[[alternative HTML version deleted]]",
       "thread_id": "thread-cb77d07047ef",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100610/7486b0a5/attachment.pl"
+      ]
     },
     {
       "id": "msg-14de5d533691",
@@ -1126,11 +1144,14 @@
       "references": [
         "<AANLkTilSTkPkJt2rjOzfrXwjM9Q9ssvsd70TE85mg9VY@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100611/f7cc5994/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100611/f7cc5994/attachment.pl>",
+      "body_plain": "The Rredland package available through Bioconductor (www.bioconductor.org)\nwill parse and do limited\nmodeling of RDF; some OWL examples are in the vignette.  Some years ago a\npackage called Rswub\nincluded an interface to Jena, but became stale.  Developments in R-java\ninterfaces since then might make an\neffect R-Jena interface relatively easy to create and maintain.\n\nIt has been noted that Rredland's dependence on Berkeley db is a potential\nnuisance for installation; since\nRredland was released, a SQLite back end has been introduced for\nredland/librdf but I have not had the\nopportunity to add code to capitalize on this.  Patches welcome.\n\nOn Thu, Jun 10, 2010 at 3:45 PM, Stavros Macrakis <macrakis at alum.mit.edu>wrote:\n\n> Are there any R packages to import and use Web Ontology Language (OWL)\n> ontologies (represented in OWL/RDF or other form)?\n>\n> Thanks,\n>\n>             -s\n>\n>        [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "The Rredland package available through Bioconductor (www.bioconductor.org)\nwill parse and do limited\nmodeling of RDF; some OWL examples are in the vignette.  Some years ago a\npackage called Rswub\nincl",
       "thread_id": "thread-cb77d07047ef",
       "thread_depth": 1,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100611/f7cc5994/attachment.pl"
+      ]
     },
     {
       "id": "msg-500844a7e1dc",
@@ -1161,11 +1182,14 @@
       "subject_clean": "support for radix order() over entire range of integers",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100611/760d8ec8/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100611/760d8ec8/attachment.pl>",
+      "body_plain": "Hi,\n\nIs there any good reason not to allow radix sorting via order() over the\nentire range of R (32bit) integers, instead of setting a hard limit at\n100,000? Many machines have plenty of memory to support this. Seems like it\nis just a matter of dynamic allocating the bucket array instead of the\ncurrent static allocation.\n\nThis would really help with e.g. sorting positions in the genome.\n\nI'm happy to submit a patch if this sounds sensible.\n\nThanks,\nMichael\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\n\nIs there any good reason not to allow radix sorting via order() over the\nentire range of R (32bit) integers, instead of setting a hard limit at\n100,000? Many machines have plenty of memory to sup",
       "thread_id": "thread-659463d2b38a",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100611/760d8ec8/attachment.pl"
+      ]
     },
     {
       "id": "msg-6b85642547e0",
@@ -1300,11 +1324,14 @@
       "subject_clean": "Solaris build problem",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100614/9fec2166/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100614/9fec2166/attachment.pl>",
+      "body_plain": "Hello,\n\nI have package that builds fine under all OS's at CRAN except Solaris, and\nthe Solaris problem occurs at vignette processing time: the library\ncommand fails. So, if a package Foo has a vignette is there a problem\nif an R code chunk runs library(Foo) from within a code chunk in\nthe vignette under Solaris?\n\nThanks,\nDominick\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\nI have package that builds fine under all OS's at CRAN except Solaris, and\nthe Solaris problem occurs at vignette processing time: the library\ncommand fails. So, if a package Foo has a vignett",
       "thread_id": "thread-0f1bbdfe281b",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100614/9fec2166/attachment.pl"
+      ]
     },
     {
       "id": "msg-7ce34cb5c741",
@@ -1337,11 +1364,14 @@
         "<AANLkTimNqAaT6xNep_oFb3Q6UXw4y-AwYKRsaz0AiHoL@mail.gmail.com>",
         "<alpine.LFD.2.00.1006141423540.31984@localhost>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100614/630d2aa7/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100614/630d2aa7/attachment.pl>",
+      "body_plain": "I guess I should have been more explicit, here is the error as it appears\nin CRAN logs for package cxxPack:\n\nchecking package vignettes in 'inst/doc' ... WARNING\nError in loadNamespace(name) : there is no package called 'cxxPack'\nCalls: ::: ... tryCatch -> tryCatchList -> tryCatchOne -> <Anonymous>\nExecution halted\nError in loadNamespace(name) : there is no package called 'cxxPack'\nCalls: ::: ... tryCatch -> tryCatchList -> tryCatchOne -> <Anonymous>\nExecution halted\n\"testDotproduct.cpp\", line 1: Error: Could not open include\nfile<cxxPack.hpp>.\n\"testDotproduct.cpp\", line 2: Error: RcppExport is not defined.\n[clip]\n\nIt appears that the failure occurs at the very beginning of the vignette\nwhere library(cxxPack) is called, since the other errors (not able to find\nheader files) would be expected after this error.\n\nCould this be related to the parallel make problem that sometimes\noccurs under Windows? There a bug in GNU make causes one package\nto corrupt the environment of another.\n\nThanks,\nDominick\n\nOn Mon, Jun 14, 2010 at 9:24 AM, Prof Brian Ripley <ripley at stats.ox.ac.uk>wrote:\n\n> On Mon, 14 Jun 2010, Dominick Samperi wrote:\n>\n>  Hello,\n>>\n>> I have package that builds fine under all OS's at CRAN except Solaris, and\n>> the Solaris problem occurs at vignette processing time: the library\n>> command fails. So, if a package Foo has a vignette is there a problem\n>> if an R code chunk runs library(Foo) from within a code chunk in\n>> the vignette under Solaris?\n>>\n>\n> Many other packages do it ...\n>\n>\n>> Thanks,\n>> Dominick\n>>\n>>\n>>\n>>\n> --\n> Brian D. Ripley,                  ripley at stats.ox.ac.uk\n> Professor of Applied Statistics,  http://www.stats.ox.ac.uk/~ripley/<http://www.stats.ox.ac.uk/%7Eripley/>\n> University of Oxford,             Tel:  +44 1865 272861 (self)\n> 1 South Parks Road,                     +44 1865 272866 (PA)\n> Oxford OX1 3TG, UK                Fax:  +44 1865 272595\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I guess I should have been more explicit, here is the error as it appears\nin CRAN logs for package cxxPack:\n\nchecking package vignettes in 'inst/doc' ... WARNING\nError in loadNamespace(name) : there i",
       "thread_id": "thread-0f1bbdfe281b",
       "thread_depth": 2,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100614/630d2aa7/attachment.pl"
+      ]
     },
     {
       "id": "msg-70f0462c5470",
@@ -1500,11 +1530,14 @@
         "<alpine.LFD.2.00.1006141542300.21982@gannet.stats.ox.ac.uk>",
         "<alpine.LFD.2.00.1006141619590.23482@gannet.stats.ox.ac.uk>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100614/16e030b8/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100614/16e030b8/attachment.pl>",
+      "body_plain": "On Mon, Jun 14, 2010 at 11:23 AM, Prof Brian Ripley\n<ripley at stats.ox.ac.uk>wrote:\n\n> On Mon, 14 Jun 2010, Prof Brian Ripley wrote:\n>\n>  At one level the answer is easy: cxxPack was not installed at system level\n>> when that check was run, and I presume it was installed on the other build\n>> systems.\n>>\n>> However, the vignette checker should be able to find the package from the\n>> copy installed for checking, so I need to dig deeper to find out why that\n>> did not happen.\n>>\n>\n> And it because you have an inst/doc/Makefile that does not arrange to do\n> so.  R_LIBS should be set appropriately at that point, but since you are not\n> using --vanilla to run R (unlike R CMD check), it is overridden by other\n> settings.\n>\n\nBut you said nothing about Solaris here. Why doesn't the problem arise with\nother OS's?\n\nIf I could setup an environment like the one used for Solaris I could test\nout issues like this\n(and reduce r-devel traffic).\n\nThanks,\nDominick\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Mon, Jun 14, 2010 at 11:23 AM, Prof Brian Ripley\n<ripley at stats.ox.ac.uk>wrote:\n\n> On Mon, 14 Jun 2010, Prof Brian Ripley wrote:\n>\n>  At one level the answer is easy: cxxPack was not installed at",
       "thread_id": "thread-0f1bbdfe281b",
       "thread_depth": 5,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100614/16e030b8/attachment.pl"
+      ]
     },
     {
       "id": "msg-1b24b9154cf5",
@@ -1591,11 +1624,14 @@
       "subject_clean": "GUI's and R background processes",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100615/bd32149c/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100615/bd32149c/attachment.pl>",
+      "body_plain": "Hello,\n\nI am new to R and have created an application using R 2.10, with a graphical UI using TclTk 8.5, running on windows 7, quad core machine.\nThe intention of the application is to launch calculations and display results on a graphical dashboard.\n\nI've reached a roadblock, and I need to confirm that the following CANNOT be done. I've been trying to find a mechanism for doing the following:\n\n1. From the dashboard, start a huge calculation (i.e. call a function) that take at least 30 seconds to run, but without tying up the other dashboard features\n2. Dashboard can detect when the calculation is finished\n3. Dashboard can display incremental results as the calculation runs (i.e. status/progress)\n\nThe requirement is to kickoff 4 calculations (#1), but I don't want the user to wait for the others to finish.\nThe calculations are not dependent. I just need to display results.\n\nI've been reading that threading in R is not an option. I tried using the multicore package, but that is still synchronous. I looked at multicore, fork(), addTaskCallback(), and TclTk threading, and none of these seem like an option.\n\nIs there a way to launch multiple R scripts from controller that can communicate back and forth? I believe this means that the separate processes are able to communicate.\n\nI certainly appreciate any direction you can provide. I really want to find some good news to tell the boss, though, since we went down this path before realizing the limitations.\n\nThanks very much,\n\nAnne\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\nI am new to R and have created an application using R 2.10, with a graphical UI using TclTk 8.5, running on windows 7, quad core machine.\nThe intention of the application is to launch calculat",
       "thread_id": "thread-c4895a64ca88",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100615/bd32149c/attachment.pl"
+      ]
     },
     {
       "id": "msg-95f9d7003fb8",
@@ -1832,11 +1868,14 @@
       "subject_clean": "R CMD check error in v2.12.0",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100616/1cd165a8/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100616/1cd165a8/attachment.pl>",
+      "body_plain": "I have received the following error for my package oro.nifti under \"CRAN\nchecks\" for r-devel-linux-ix86; i.e.,\n\n\nhttp://www.r-project.org/nosvn/R.check/r-devel-linux-ix86/oro.nifti-00check.html\n\n   - using R version 2.12.0 Under development (unstable) (2010-06-12 r52259)\n\n   - using platform: i686-pc-linux-gnu (32-bit)\n   - using session charset: UTF-8\n   - checking for file ‘oro.nifti/DESCRIPTION’ ... OK\n   - this is package ‘oro.nifti’ version ‘0.1.4’\n   - checking package name space information ... OK\n   - checking package dependencies ... OK\n   - checking if this is a source package ... OK\n   - checking for executable files ... OK\n   - checking whether package ‘oro.nifti’ can be installed ... OK\n   - checking package directory ... OK\n   - checking for portable file names ... OK\n   - checking for sufficient/correct file permissions ... OK\n   - checking DESCRIPTION meta-information ... OK\n   - checking top-level files ... OK\n   - checking index information ... OK\n   - checking package subdirectories ... OK\n   - checking R files for non-ASCII characters ... OK\n   - checking R files for syntax errors ... OK\n   - checking whether the package can be loaded ... OK\n   - checking whether the package can be loaded with stated dependencies ...\n   OK\n   - checking whether the package can be unloaded cleanly ... OK\n   - checking whether the name space can be loaded with stated dependencies\n   ... OK\n   - checking whether the name space can be unloaded cleanly ... OK\n   - checking for unstated dependencies in R code ... OK\n   - checking S3 generic/method consistency ... OK\n   - checking replacement functions ... OK\n   - checking foreign function calls ... OK\n   - checking R code for possible problems ... OK\n   - checking Rd files ... OK\n   - checking Rd metadata ... OK\n   - checking Rd cross-references ... OK\n   - checking for missing documentation entries ... OK\n   - checking for code/documentation mismatches ... OK\n   - checking Rd \\usage sections ... OK\n   - checking Rd contents ... OK\n   - checking examples ... ERROR\n   Running examples in ‘oro.nifti-Ex.R’ failed\n   The error most likely occurred in:\n\n   > ### Name: writeNIfTI\n   > ### Title: writeNIfTI\n   > ### Aliases: writeNIfTI\n   > ### Keywords: file\n   >\n   > ### ** Examples\n   >\n   > norm <- dnorm(seq(-5, 5, length=32), sd=2)\n   > norm <- (norm-min(norm)) / max(norm-min(norm))\n   > img <- outer(outer(norm, norm), norm)\n   > img <- round(255 * img)\n   > img[17:32,,] <- 255 - img[17:32,,]\n   > img.nifti <- nifti(img) # create NIfTI object\n   >\n   > writeNIfTI(img.nifti, \"test-nifti-image-uint8\", verbose=TRUE)\n   niftiExtension detected!\n   niftiAuditTrail detected!\n   vox_offset = 1392\n   *writing niftiExtension(s) at byte = 6.803919e+17 # <- LARGE NUMBER!\n   writing data at byte = 6.803919e+17 # <- LARGE NUMBER!*\n   > ## These files should be viewable in, for example, FSLview\n   > ## Make sure you adjust the min/max values for proper visualization\n   > data <- readNIfTI(\"test-nifti-image-uint8\", verbose=TRUE)\n   fname = test-nifti-image-uint8\n   files = test-nifti-image-uint8.nii.gz\n   nii = test-nifti-image-uint8.nii.gz\n   vox_offset = 1392\n   niftiExtension detected!\n   Error in read.nifti.content(fname, gzipped = TRUE, verbose = verbose, :\n   -- extension size (esize) has overshot voxel offset --\n   Calls: readNIfTI -> read.nifti.content\n   Execution halted\n\nPlease draw your attention to the two lines annotated above.  The line of\ncode that \"looks a bit odd\" above is\n\n       cat(\"  writing niftiExtension(s) at byte =\", seek(fid), fill=TRUE)\n\n...where fid is a call to file()... and this large number is causing the\nsubsequent read function to fail.\n\nMy questions are:\n\n   - Why would this error occur in 32-bit linux only for R 2.12.0?\n   - How can I test any fixes to this error given I am not running R in\n   32-bit linux?\n\nAny suggestions would be welcome.\n\nThank-you,\n\nBrandon\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I have received the following error for my package oro.nifti under \"CRAN\nchecks\" for r-devel-linux-ix86; i.e.,\n\n\nhttp://www.r-project.org/nosvn/R.check/r-devel-linux-ix86/oro.nifti-00check.html\n\n   - ",
       "thread_id": "thread-29bc2bddec0d",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100616/1cd165a8/attachment.pl"
+      ]
     },
     {
       "id": "msg-aed68b65dd8a",
@@ -2035,11 +2074,14 @@
         "<AANLkTimtGcfzKshfvQsRBNGAqfxfiZkrabf0loOVtc1V@mail.gmail.com>",
         "<4C19E971.7000807@pburns.seanet.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100617/b6294c77/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100617/b6294c77/attachment.pl>",
+      "body_plain": "On Thu, Jun 17, 2010 at 5:22 AM, Patrick Burns <pburns at pburns.seanet.com>wrote:\n\n> I agree with Hadley, and add that trying\n> to have an example be both an example and\n> a test may not be good for the example\n> aspect either.\n>\n> Examples should make people who are ignorant\n> of the function twig as to how the function\n> works.  Creating good examples is hard.\n>\n> Problems that really test the software are\n> unlikely to serve as a good example.  Good\n> examples are unlikely to seriously test the\n> code.  (But you do want the examples to run,\n> it is seriously bad advertising when they\n> don't.)\n>\n> Pat\n\n\nCreating good examples is hard, but so is creating a research\ncompendium following the ideas of Reproducible Research of\nDonoho and others at Stanford, called Literate Statistical\nPractice in the statistical community. The tools are there in\nR for this purpose (vignettes, etc.) but they seem to be rarely\nused for this purpose.\n\nOne reason examples are hard is that they are often isolated\nfrom the research itself, and hard to understand out of context.\nThe notion of a Research Compendium that includes this\ncontext might help.\n\nBut this requires a fair amount of work, and I don't think it is\ncurrently rewarded in the publication process (Journals do not\nrequire it).\n\nThe creation of a research compendium can be viewed as\na form of unit testing, and the fact that R has powerful tools\nthat support this process (Sweave) could be viewed as one of\nits outstanding features (relating these comments back to\nthe topic of this thread).\n\nA list of references on Reproducible Research and LSP\ncan be found in the package cxxPack. A template for creating\na compendium can also be found there.\n\nDominick\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Thu, Jun 17, 2010 at 5:22 AM, Patrick Burns <pburns at pburns.seanet.com>wrote:\n\n> I agree with Hadley, and add that trying\n> to have an example be both an example and\n> a test may not be good for ",
       "thread_id": "thread-f3d96d01990d",
       "thread_depth": 5,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100617/b6294c77/attachment.pl"
+      ]
     },
     {
       "id": "msg-99b4bfdd6333",
@@ -2137,11 +2179,14 @@
         "<AANLkTimzwzW_k58juurZ11GszYxsnV_fW32prr9K4oHa@mail.gmail.com>",
         "<AANLkTinkQrmlJrKAsmX9UFmSFPZtOZHi7V_eFKMautge@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100617/539ecce3/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100617/539ecce3/attachment.pl>",
+      "body_plain": "On Thu, Jun 17, 2010 at 9:23 AM, Hadley Wickham <hadley at rice.edu> wrote:\n\n> > The creation of a research compendium can be viewed as\n> > a form of unit testing, and the fact that R has powerful tools\n> > that support this process (Sweave) could be viewed as one of\n> > its outstanding features (relating these comments back to\n> > the topic of this thread).\n>\n> If anything, a research compendium would be an integration test, not a\n> compendium.  And many programming languages have something similar to\n> sweave.\n>\n>\nYes, but I think this is where \"R CMD check\" shines (and also shows its\nlimitations). Many languages include optional or advisory features, like\nadding\ndocumentation to source code! But R CMD check gently nudges packages\ndevelopers to actually add documentation for every R function, and the\ndocumentation format is well-defined, etc. Unfortunately, it says nothing\nabout modules written in other languages.\n\nOn your comment about integration testing, I use vignettes to keep track of\nthe mathematics of models that I build, along with quick tests of these\nmodels,\nsomewhat like a Mathematica notebook. This can be viewed as a form of\n\"literate unit testing.\"\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Thu, Jun 17, 2010 at 9:23 AM, Hadley Wickham <hadley at rice.edu> wrote:\n\n> > The creation of a research compendium can be viewed as\n> > a form of unit testing, and the fact that R has powerful too",
       "thread_id": "thread-f3d96d01990d",
       "thread_depth": 7,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100617/539ecce3/attachment.pl"
+      ]
     },
     {
       "id": "msg-e4a7404a8a65",
@@ -2204,11 +2249,14 @@
         "<AANLkTimzwzW_k58juurZ11GszYxsnV_fW32prr9K4oHa@mail.gmail.com>",
         "<AANLkTilEVr2gPM4gKBp5pkYDISnAI9OwvAnjar1-HYdN@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100617/33873f2a/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100617/33873f2a/attachment.pl>",
+      "body_plain": "On Thu, Jun 17, 2010 at 5:01 PM, Vincenzo Carey <carey.vj at gmail.com> wrote:\n\n>\n> \"Rare\" is vague.  Almost every software package in the Bioconductor\n> repository has a vignette; the informal advice to contributors is that\n> the vignette should take the reader through all the steps of a\n> substantively interesting analysis with motivating/explanatory prose\n> and executable code.  Many analysis processes rely on effective\n> interoperability with independently maintained packages; thus the\n> nightly building of all vignettes in Bioconductor serves to not only\n> to provide some evidence of package soundness but also some degree of\n> notification of decays of interoperability.  The main Bioconductor\n> monograph, and the case studies book are both executable documents,\n> written with Sweave.  I would imagine that a number of other UseR\n> titles were composed in this way.\n>\n\nThanks for the pointers. I'm a bit confused by the relationship between\nCRAN and Bioconductor? I have seem some packages removed from\nCRAN and moved to Bioconductor, for example. I think Bioconductor\nfocuses on genetics and related statistical problems, but there also\nseems to be separate processes, separate repositories, etc., and it\nincludes packages that are not specific to the biological sciences.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Thu, Jun 17, 2010 at 5:01 PM, Vincenzo Carey <carey.vj at gmail.com> wrote:\n\n>\n> \"Rare\" is vague.  Almost every software package in the Bioconductor\n> repository has a vignette; the informal advice",
       "thread_id": "thread-f3d96d01990d",
       "thread_depth": 7,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100617/33873f2a/attachment.pl"
+      ]
     },
     {
       "id": "msg-71ec3dd1a768",
@@ -2238,11 +2286,14 @@
       "subject_clean": "C Interface",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100618/968272f5/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100618/968272f5/attachment.pl>",
+      "body_plain": "Greetings,\n\nI am trying to call simple C-code from R.\nI am on Windows XP with RTools installed.\n\nThe C-function is\n\n#include <R.h>\n#include <Rinternals.h>\n#include <Rmath.h>\n#include <Rdefines.h>\n\n// prevent name mangling\nextern \"C\" {\n\nSEXP __cdecl test(SEXP s){\n\n  SEXP result;\n  PROTECT(result = NEW_NUMERIC(1));\n  double* ptr=NUMERIC_POINTER(result);\n  double t = *REAL(s);\n  double u = t-floor(t)-0.5;\n  if(u>0) *ptr=-1+4*u; else *ptr=-1-4*u;\n  Rprintf(\"The value is %f\", *ptr);\n  UNPROTECT(1);\n  return result;\n}\n\n};\n\nIt is compiled with\n\nR CMD SHLIB OrthoFunctions.c\n\nwith flag\n\nMAKEFLAGS=\"CC=g++\"\n\n\nHowever when I call this code from R with\n\ntest <- function(t){\n  .Call(\"test\",t)\n}\ndyn.load(\"./OrthoFunctions.dll\")\ntest(0)\ndyn.unload(\"./OrthoFunctions.dll\")\n\nthen R crashes.\n\nIf I compile with the default flags (no extern \"C\", no __cdecl) I get an\nerror message about an undefined reference to \"__gxx_personality_v0\":\n\nC:\\...>R CMD SHLIB OrthoFunctions.c\nC:/Programme/R/R-2.10.1/etc/Makeconf:151: warning: overriding commands for\ntarget `.c.o'\nC:/Programme/R/R-2.10.1/etc/Makeconf:142: warning: ignoring old commands for\ntarget `.c.o'\nC:/Programme/R/R-2.10.1/etc/Makeconf:159: warning: overriding commands for\ntarget `.c.d'\nC:/Programme/R/R-2.10.1/etc/Makeconf:144: warning: ignoring old commands for\ntarget `.c.d'\nC:/Programme/R/R-2.10.1/etc/Makeconf:169: warning: overriding commands for\ntarget `.m.o'\nC:/Programme/R/R-2.10.1/etc/Makeconf:162: warning: ignoring old commands for\ntarget `.m.o'\ng++ -I\"C:/Programme/R/R-2.10.1/include\"        -O2 -Wall  -c\nOrthoFunctions.c -o OrthoFunctions.o\ngcc -shared -s -o OrthoFunctions.dll tmp.def OrthoFunctions.o\n-LC:/Programme/R/R-2.10.1/bin -lR\nOrthoFunctions.o:OrthoFunctions.c:(.eh_frame+0x11): undefined reference to\n`__gxx_personality_v0'\ncollect2: ld returned 1 exit status\n\n\n\nI have a vague idea of the issue of calling conventions and was hoping that\nthe __cdecl\nspecifier would force the appropriate convention.\nI also have Cygwin installed as part of the Python(x,y) distribution but I\nam assuming that\nR CMD SHLIB source.c\ncalls the right compiler.\n\nWhat could the problem be?\n\nMany thanks,\n\n\nMichael\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Greetings,\n\nI am trying to call simple C-code from R.\nI am on Windows XP with RTools installed.\n\nThe C-function is\n\n#include <R.h>\n#include <Rinternals.h>\n#include <Rmath.h>\n#include <Rdefines.h>\n\n// ",
       "thread_id": "thread-f1c75e93f080",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100618/968272f5/attachment.pl"
+      ]
     },
     {
       "id": "msg-97ef9ca95c43",
@@ -2310,11 +2361,14 @@
       "references": [
         "<4C1BDC89.50003@r-enthusiasts.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100618/663a8909/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100618/663a8909/attachment.pl>",
+      "body_plain": "The help page says:\n\n\"For ‘nchar’, an integer vector giving the sizes of each\n     element, currently always ‘2’ for missing values (for\n     ‘NA’).\"\n\n\n\n\nOn Fri, Jun 18, 2010 at 5:52 PM, Romain Francois\n<romain at r-enthusiasts.com>wrote:\n\n> Hello,\n>\n> Is this expected ?\n>\n> > nchar( c( \"\", NA ) )\n> [1] 0 2\n>\n> Should not the second one be NA ?\n>\n> Romain\n>\n> --\n> Romain Francois\n> Professional R Enthusiast\n> +33(0) 6 28 91 30 30\n> http://romainfrancois.blog.free.fr\n> |- http://bit.ly/98Uf7u : Rcpp 0.8.1\n> |- http://bit.ly/c6YnCi : graph gallery collage\n> `- http://bit.ly/bZ7ltC : inline 0.3.5\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \nHenrique Dallazuanna\nCuritiba-Paraná-Brasil\n25° 25' 40\" S 49° 16' 22\" O\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "The help page says:\n\n\"For ‘nchar’, an integer vector giving the sizes of each\n     element, currently always ‘2’ for missing values (for\n     ‘NA’).\"\n\n\n\n\nOn Fri, Jun 18, 2010 at 5:52 PM, Romain Franco",
       "thread_id": "thread-7aa0f0962b5b",
       "thread_depth": 1,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100618/663a8909/attachment.pl"
+      ]
     },
     {
       "id": "msg-0114fe52df1d",
@@ -2418,11 +2472,14 @@
       "subject_clean": "C Interface",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100619/b1cdabcc/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100619/b1cdabcc/attachment.pl>",
+      "body_plain": "Thanks for all replies.\nI'll use inlining until I have figured out how to build a proper package.\n\nMichael\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thanks for all replies.\nI'll use inlining until I have figured out how to build a proper package.\n\nMichael\n\n\t[[alternative HTML version deleted]]",
       "thread_id": "thread-5c003a81ec36",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100619/b1cdabcc/attachment.pl"
+      ]
     },
     {
       "id": "msg-acb6c0c43d0e",
@@ -2523,11 +2580,14 @@
       "subject_clean": "How to debug: Cons memory exhausted",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100620/d8c5dbce/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100620/d8c5dbce/attachment.pl>",
+      "body_plain": "Hello,\nI get an error when binary structures from a pipe\n\n'Error: cons memory exhausted (limit reached?)' (but R does not crash)\n\nThis is probably due to some bug in my code, but occurs after reading\nabout 85K pairs of RAWSXP objects (each < 20 bytes).\n\nI do not have any explicit calls to malloc/calloc\n\nI'm going through my code and have inserted the (brute force) printf\nstatements\nmy question is: Does anybody have an advice on debugging this particular\nerror?\n\nAny help will be appreciated\nRegards\nSaptarshi\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\nI get an error when binary structures from a pipe\n\n'Error: cons memory exhausted (limit reached?)' (but R does not crash)\n\nThis is probably due to some bug in my code, but occurs after reading\n",
       "thread_id": "thread-6d3e85be4e0a",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100620/d8c5dbce/attachment.pl"
+      ]
     },
     {
       "id": "msg-57916d6a3476",
@@ -2711,11 +2771,14 @@
       "subject_clean": "Scrolling a tkcanvas non-starter",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100622/016fd9c6/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100622/016fd9c6/attachment.pl>",
+      "body_plain": "Hello,\n\nIs it possible to scroll a canvas that has a column of listboxes in it? Does scrolling only work with listboxes and text widgets?\nThe following code displays the scrollbar, but\n - it has no thumb \n - does not respond to mouse clicks. \n - the vertical height of the tkcanvas (i.e. column1) is unconstrained. It's lower edge is out of view, and the lower button on the scrollbar is out of view.\nI expected the scrollbar and canvas to have a height of 200 pixels and to be able to use the scrollbar to bring different listboxes into view.\n\nI created this from examples on the forum, but other than that, I cannot find any documentation or online help in this area.\n\ntt <- tktoplevel() # Create a new toplevel window\ntkwm.geometry(tt, \"700x600\")\ntkwm.geometry(tt,\"+5+5\")\n...\nyscr <- tkscrollbar(tt,orient=\"vertical\",\n command=function(...)\n tkyview(column1,...) )\n\ncolumn1 = tkcanvas(tt, height=200, yscrollcommand = function(...) tkset(yscr, ...))\ndivBandListbox1 = tklistbox(column1, width=65, height=15, selectmode=\"single\")\n\ndivBandListbox2 = tklistbox(column1, width=65,height=15, selectmode=\"single\")\ndivBandListbox3 = tklistbox(column1, width=65,height=15, selectmode=\"single\")\n\ntkgrid(column1,yscr,sticky=\"ew\")\ntkgrid.configure(yscr, sticky=\"ns\")\n\n-- also tried these steps for configuring the canvas --\n\n#column1 = tkcanvas(tt, height=200, yscrollcommand = function(...) tkset(yscr, ...))\ncolumn1 = tkcanvas(tt, height=200)\ntkconfigure(column1, yscrollcommand = function(...) tkset(yscr, ...))\n\n\nThanks very much. I appreciate any insight into this, or if R/tcltk is not supposed to be used this way.\nMy system is msWindow 7, R2.10.0, tcltk 8.5.\n\nAnne George\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\nIs it possible to scroll a canvas that has a column of listboxes in it? Does scrolling only work with listboxes and text widgets?\nThe following code displays the scrollbar, but\n - it has no th",
       "thread_id": "thread-a8b2004a80e2",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100622/016fd9c6/attachment.pl"
+      ]
     },
     {
       "id": "msg-3bd8e4f15122",
@@ -2727,11 +2790,14 @@
       "subject_clean": "seek() and gzfile() on 32-bit R2.12.0 in linux",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100622/9ad3e3f3/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100622/9ad3e3f3/attachment.pl>",
+      "body_plain": "I have installed both 32-bit and 64-bit versions of R2.12.0 (2010-06-15\nr52300) on my Ubuntu 10.04 64-bit system.  I observe the following behavior\nwhen running the examples from base::connections.  There appears to be a\nproblem with seek() on a .gz file when using a 32-bit installation of\nR2.12.0, but the problem doesn't appear in the 64-bit installation.  I\nrealize that seek() has been difficult in the past, and I don't want to open\nold wounds, but is this a known problem?  Is this easily fixable?  I have a\npackage that relies on seek() when accessing gzipped files.\n\nUsing the 32-bit installation...\n\n*> zz <- file(\"ex.data\", \"w\")  # open an output file connection\n>      cat(\"TITLE extra line\", \"2 3 5 7\", \"\", \"11 13 17\", file = zz, sep =\n\"\\n\")\n>      cat(\"One more line\\n\", file = zz)\n>      close(zz)\n> blah = file(\"ex.data\", \"r\")\n> seek(blah)\n[1] 0\n>\n> zz <- gzfile(\"ex.gz\", \"w\")  # compressed file\n>      cat(\"TITLE extra line\", \"2 3 5 7\", \"\", \"11 13 17\", file = zz, sep =\n\"\\n\")\n>      close(zz)\n> blah = file(\"ex.gz\", \"r\")\n> seek(blah)\n[1] 7.80707e+17\n>\n> zz <- bzfile(\"ex.bz2\", \"w\")  # bzip2-ed file\n>      cat(\"TITLE extra line\", \"2 3 5 7\", \"\", \"11 13 17\", file = zz, sep =\n\"\\n\")\n>      close(zz)\n> blah = file(\"ex.bz2\", \"r\")\n> seek(blah)\nError in seek.connection(blah) : 'seek' not enabled for this connection\n>*\n\nUsing the 64-bit installation...\n\n*> zz <- file(\"ex.data\", \"w\")  # open an output file connection\n> cat(\"TITLE extra line\", \"2 3 5 7\", \"\", \"11 13 17\", file = zz, sep = \"\\n\")\n> cat(\"One more line\\n\", file = zz)\n> close(zz)\n> blah = file(\"ex.data\", \"r\")\n> seek(blah)\n[1] 0\n>\n> zz <- gzfile(\"ex.gz\", \"w\")  # compressed file\n> cat(\"TITLE extra line\", \"2 3 5 7\", \"\", \"11 13 17\", file = zz, sep = \"\\n\")\n> close(zz)\n> blah = file(\"ex.gz\", \"r\")\n> seek(blah)\n[1] 0\n>\n> zz <- bzfile(\"ex.bz2\", \"w\")  # bzip2-ed file\n> cat(\"TITLE extra line\", \"2 3 5 7\", \"\", \"11 13 17\", file = zz, sep = \"\\n\")\n> close(zz)\n> blah = file(\"ex.bz2\", \"r\")\n> seek(blah)\nError in seek.connection(blah) : 'seek' not enabled for this connection\n> *\n\nthanks,\n\nBrandon\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I have installed both 32-bit and 64-bit versions of R2.12.0 (2010-06-15\nr52300) on my Ubuntu 10.04 64-bit system.  I observe the following behavior\nwhen running the examples from base::connections.  T",
       "thread_id": "thread-3bd8e4f15122",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100622/9ad3e3f3/attachment.pl"
+      ]
     },
     {
       "id": "msg-2f7fadadf7bf",
@@ -2856,11 +2922,14 @@
       "subject_clean": "format: different S4 behavior in a package",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100623/9038724f/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100623/9038724f/attachment.pl>",
+      "body_plain": "R-Devel-ers:\n\nI have an S4 method that simply formats an object:\n\nsetGeneric(\"formatMe\", function(x) standardGeneric(\"formatMe\"))\nsetMethod(\"formatMe\", \"ANY\", function(x) format(x))\n\nIf I issue the above in an R session, then define an S4 class with its own\nformat method, I get the desired result:\n\n> setClass(\"A\",contains=\"numeric\")\n[1] \"A\"\n> setMethod(\"format\",\"A\", function(x, ...) \"Hey Jude\")\nCreating a new generic function for \"format\" in \".GlobalEnv\"\n[1] \"format\"\n> a<-new(\"A\",1968)\n> formatMe(a)\n[1] \"Hey Jude\"\n\n\nHowever, if I put the two \"formatMe\" definitions into a package (\"Test\"), I\ndo not get the desired result.\n<start new R session>\n\n> library(Test)\n> setClass(\"A\",contains=\"numeric\")\n[1] \"A\"\n> setMethod(\"format\",\"A\", function(x, ...) \"Hey Jude\")\nCreating a new generic function for \"format\" in \".GlobalEnv\"\n[1] \"format\"\n> a<-new(\"A\",1968)\n> formatMe(a)\n[1] \"1968\"\n\n\nThe \"disconnect\" does not occur, however, if the S4 format method is an S3\nincarnation:\n\n> setClass(\"B\",contains=\"numeric\",S3methods=TRUE)\n[1] \"B\"\n> format.B <- function(x, ...) \"Don't make it bad\"\n> b<-new(\"B\",1968)\n> formatMe(b)\n[1] \"Don't make it bad\"\n\nCould the problem be in Test's NAMESPACE file? There is only one line:\nexportMethods(formatMe)\n\nHere is Test's DESCRIPTION file:\nPackage: Test\nType: Package\nTitle: Testing format\nVersion: 1.0\nDate: 2010-06-22\nAuthor: Dan Murphy\nMaintainer: Dan Murphy <snipped>\nDepends: methods\nDescription: Does format in a package work with S4 format method?\nLicense: GPL (>= 2)\nLazyLoad: yes\n\n(I would send the Help file, but I don't think that is the problem.)\n\nI am using version 2.11.1 on a Windows Vista machine.\n\nAny guidance would be appreciated. Thank you\n\nDan Murphy\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "R-Devel-ers:\n\nI have an S4 method that simply formats an object:\n\nsetGeneric(\"formatMe\", function(x) standardGeneric(\"formatMe\"))\nsetMethod(\"formatMe\", \"ANY\", function(x) format(x))\n\nIf I issue the ab",
       "thread_id": "thread-4df8cfb2489f",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100623/9038724f/attachment.pl"
+      ]
     },
     {
       "id": "msg-a147d9d80b53",
@@ -2966,11 +3035,14 @@
         "<AANLkTinVWv3MMb1KcHkNTuEA_W8utTYkItRw3whz1Lkc@mail.gmail.com>",
         "<4C21FAD5.6050806@fhcrc.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100623/bfbae7f6/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100623/bfbae7f6/attachment.pl>",
+      "body_plain": "Thank you, Martin. That worked. And fyi 'export(format)' alone was not\nsufficient.\nBest,\nDan\n\nOn Wed, Jun 23, 2010 at 5:15 AM, Martin Morgan <mtmorgan at fhcrc.org> wrote:\n\n> On 06/23/2010 12:16 AM, Daniel Murphy wrote:\n> > R-Devel-ers:\n> >\n> > I have an S4 method that simply formats an object:\n> >\n> > setGeneric(\"formatMe\", function(x) standardGeneric(\"formatMe\"))\n> > setMethod(\"formatMe\", \"ANY\", function(x) format(x))\n> >\n> > If I issue the above in an R session, then define an S4 class with its\n> own\n> > format method, I get the desired result:\n> >\n> >> setClass(\"A\",contains=\"numeric\")\n> > [1] \"A\"\n> >> setMethod(\"format\",\"A\", function(x, ...) \"Hey Jude\")\n> > Creating a new generic function for \"format\" in \".GlobalEnv\"\n> > [1] \"format\"\n> >> a<-new(\"A\",1968)\n> >> formatMe(a)\n> > [1] \"Hey Jude\"\n> >\n> >\n> > However, if I put the two \"formatMe\" definitions into a package (\"Test\"),\n> I\n> > do not get the desired result.\n> > <start new R session>\n> >\n> >> library(Test)\n> >> setClass(\"A\",contains=\"numeric\")\n> > [1] \"A\"\n> >> setMethod(\"format\",\"A\", function(x, ...) \"Hey Jude\")\n> > Creating a new generic function for \"format\" in \".GlobalEnv\"\n>\n> This is the clue -- you're creating a new S4 generic, so there's a\n> base::format, and a .GlobalEnv::format. Test::formatMe respects its name\n> space, and sees base::format.\n>\n> In the S3 case, base::format is already an S3 generic, and you're just\n> adding a method, so there's only base::format for everyone to find.\n>\n> In Test, you could setGeneric(format) and then export(format). It might\n> also be enough to just export(format); I'm not sure.\n>\n> Martin\n>\n> > [1] \"format\"\n> >> a<-new(\"A\",1968)\n> >> formatMe(a)\n> > [1] \"1968\"\n> >\n> >\n> > The \"disconnect\" does not occur, however, if the S4 format method is an\n> S3\n> > incarnation:\n> >\n> >> setClass(\"B\",contains=\"numeric\",S3methods=TRUE)\n> > [1] \"B\"\n> >> format.B <- function(x, ...) \"Don't make it bad\"\n> >> b<-new(\"B\",1968)\n> >> formatMe(b)\n> > [1] \"Don't make it bad\"\n> >\n> > Could the problem be in Test's NAMESPACE file? There is only one line:\n> > exportMethods(formatMe)\n> >\n> > Here is Test's DESCRIPTION file:\n> > Package: Test\n> > Type: Package\n> > Title: Testing format\n> > Version: 1.0\n> > Date: 2010-06-22\n> > Author: Dan Murphy\n> > Maintainer: Dan Murphy <snipped>\n> > Depends: methods\n> > Description: Does format in a package work with S4 format method?\n> > License: GPL (>= 2)\n> > LazyLoad: yes\n> >\n> > (I would send the Help file, but I don't think that is the problem.)\n> >\n> > I am using version 2.11.1 on a Windows Vista machine.\n> >\n> > Any guidance would be appreciated. Thank you\n> >\n> > Dan Murphy\n> >\n> >       [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>\n> --\n> Martin Morgan\n> Computational Biology / Fred Hutchinson Cancer Research Center\n> 1100 Fairview Ave. N.\n> PO Box 19024 Seattle, WA 98109\n>\n> Location: Arnold Building M1 B861\n> Phone: (206) 667-2793\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thank you, Martin. That worked. And fyi 'export(format)' alone was not\nsufficient.\nBest,\nDan\n\nOn Wed, Jun 23, 2010 at 5:15 AM, Martin Morgan <mtmorgan at fhcrc.org> wrote:\n\n> On 06/23/2010 12:16 AM, D",
       "thread_id": "thread-4df8cfb2489f",
       "thread_depth": 2,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100623/bfbae7f6/attachment.pl"
+      ]
     },
     {
       "id": "msg-cf2895f79f4b",
@@ -3406,11 +3478,14 @@
       "subject_clean": "Problem with dyn.load() under Windows 64bit at CRAN",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100630/8c036ff0/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100630/8c036ff0/attachment.pl>",
+      "body_plain": "The package cxxPack builds without problems at CRAN under all OS's except\nWindows 64bit, and in the case of Windows 64bit there is a problem in a\ncall to dyn.load(). This call happens while processing the package vignette,\nand the odd thing about this is that there are several calls to dyn.load()\nthat\nwork fine before the one that fails.\n\nThis seems to suggest that Windows 64bit is imposing some kind of\nresource constraint that limits the number of shared libs that can be\nloaded at one time.\n\nAnother odd thing about this is that everything worked under Windows 64bit\nbefore the changes were made to serialize the build of packages that\ndepend on each other.\n\nAny ideas?\n\nThanks,\nDominick\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "The package cxxPack builds without problems at CRAN under all OS's except\nWindows 64bit, and in the case of Windows 64bit there is a problem in a\ncall to dyn.load(). This call happens while processing",
       "thread_id": "thread-278fa32eadc9",
       "thread_depth": 0,
-      "month": "2010-06"
+      "month": "2010-06",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100630/8c036ff0/attachment.pl"
+      ]
     },
     {
       "id": "msg-f5cf388389a7",

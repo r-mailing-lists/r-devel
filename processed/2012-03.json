@@ -176,11 +176,14 @@
         "<CAErODj-KZo+Am6a30pnVrPC-STw++500=QOi-rZaMsXYWzeX+Q@mail.gmail.com>",
         "<20120217230633.GA19243@cs.cas.cz>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120302/2a54e4ce/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120302/2a54e4ce/attachment.pl>",
+      "body_plain": "> Some of the random number generators allow as a seed a vector,\n> not only a single number. This can simplify generating the seeds.\n> There can be one seed for each of the 1000 runs and then,\n> the rows of the seed matrix can be\n>\n>  c(seed1, 1), c(seed1, 2), ...\n>  c(seed2, 1), c(seed2, 2), ...\n>  c(seed3, 1), c(seed3, 2), ...\n>  ...\n>\n> There could be even only one seed and the matrix can be generated as\n>\n>  c(seed, 1, 1), c(seed, 1, 2), ...\n>  c(seed, 2, 1), c(seed, 2, 2), ...\n>  c(seed, 3, 1), c(seed, 3, 2), ...\n>\n> If the initialization using the vector c(seed, i, j) is done\n> with a good quality hash function, the runs will be independent.\n>\n> What is your opinion on this?\n>\n> An advantage of seeding with a vector is also that there can\n> be significantly more initial states of the generator among\n> which we select by the seed than 2^32, which is the maximum\n> for a single integer seed.\n>\n>\n\nHello,\nI would be also in favor for using multiple seeds based on (seed,\ntask_number) for convenience (i.e. avoiding storing the seeds)\nand with the possibility of having a dynamic number of tasks, but I am mot\nsure it is theoretically correct.\nBut I can refer you to this article:\nhttp://www.agner.org/random/ran-instructions.pdf , section 6.1\nwhere the author states:\n\nFor example, if we make 100 streams of 10^10 random numbers each from an\n> SFMT\n> generator with cycle length ρ = 2^11213, we have a probability of overlap\n> p ≈ 10^3362.\n>\n\nWhat do you think ? I am very concerned by the correctness of this approach\nso would appreciate any advice on that matter.\n\nThanks\nKarl\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "> Some of the random number generators allow as a seed a vector,\n> not only a single number. This can simplify generating the seeds.\n> There can be one seed for each of the 1000 runs and then,\n> the r",
       "thread_id": "thread-ece981470399",
       "thread_depth": 0,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120302/2a54e4ce/attachment.pl"
+      ]
     },
     {
       "id": "msg-949b19b31243",
@@ -192,11 +195,14 @@
       "subject_clean": "c/c++ Random Number Generators Benchmarks using OpenMP",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120302/541bdd43/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120302/541bdd43/attachment.pl>",
+      "body_plain": "Dear R gurus,\n\nI am interested in permutations-based cpu-intensive methods so I had to pay\na little attention to Random Number Generators (RNG).\nFor my needs, RNGs have to:\n   1) be fast. I profiled my algorithms, and for some the bottleneck was\nthe RNG.\n   2) be scalable. Meaning that I want the RNG to remain fast as I add\nthreads.\n   3) offer a long cycle length. Some basic generators have a cycle length\nso low that in a few seconds you can finish it, making further computations\nuseless and redundant\n   4) be able to give reproducible results independent of the number of\nthreads used, i.e. I want my program to give the very same exact results\nusing one or 10 threads\n   ( 4) \"be good\" of course )\n\nI found an implementation that seems to meet my criterion and made a\npreliminary package to test it.\nIn the meantime Petr Savicky contacted saying he was about to release a\nsimilar package called rngOpenMP.\n\nSo I decided to perform some quick benchmarks. The benchmark code is\navailable as a R package \"rngBenchmarks\" here:\nhttps://r-forge.r-project.org/scm/viewvc.php/pkg/?root=gwas-bin-tests\nbut it depends on some unpublished package, like rngOpenMP, and my\npreliminary package, yet available from the same URL.\n\nAs a benchmark I implemented a Monte-Carlo computation of PI.\nI tried to use the exact same computation method, using a template argument\nfor the RNG, and providing wrappers for the\ndifferent available RNGs, except for the rngOpenMP that is not\ninstantiable, so I adapted specifically the code.\n\nI included in the benchmark:\n -  the c implementation used by the R package Rlecuyer\n - the (GNU) random_r RNG available on GNU/linux systems and that is\nreentrant\n - my RcppRandomSFMT,wrapping a modified version of the SIMD-oriented Fast\nMersenne Twister (SFMT) Random Number Generator\n    provided by http://www.agner.org/random Randomc\n - rngOpenMP\nI tried to include the rsprng RNG, but could not manage to use it in my\ncode.\n\n\nMy conclusions:\n  - all the implementations work, meaning that the computed values converge\ntowards PI with the number of iterations\n  - all the implementations are scalable.\n  - RcppRandomSFMT and random_r are an order of magnitude faster than\nrlecuyer and rngOpenMP\n  - actually RcppRandomSFMT and random_r have very similar performance.\n\nThe problem with random_r is that its cycle length according to my manpage\nis ~ 3E10, enabling for instance only 3 millions permutations of a vector\nof 10,000 elements,\nto be compared with\n\nLeaving the RcppRandomSFMT as best candidate. This implementation also\nallows multiple seeds, solving my requisite number 4, reproducible results\nindependent of the number of threads, if I use as second seed the task\nidentifier.\n\nOf course I am probably biased, so please tell me if you have some better\nideas of benchmarks, tests of correctness, if you'd like some other\nimplementations to be included.\n\nPeople interested in this topic couldcontact me in order that we\ncollaboratively propose an implementation suiting all needs.\n\nThanks,\n\nKarl Forner\n\nAnnex:\n\nI ran the benchmarks on a linux Intel(R) Xeon(R) with 2 cpus of 4 cores\neach ( CPU  E5520  @ 2.27GHz).\n\n        type threads     n        error    time time_per_chunk\n1     lecuyer       1 1e+07 2.105472e-04   1.538     0.00153800\n2     lecuyer       1 1e+08 4.441492e-05  15.265     0.00152650\n3     lecuyer       1 1e+09 2.026819e-05 153.209     0.00153209\n4     lecuyer       2 1e+07 3.182633e-04   0.821     0.00082100\n5     lecuyer       2 1e+08 7.375036e-05   7.751     0.00077510\n6     lecuyer       2 1e+09 9.290323e-06  76.476     0.00076476\n7     lecuyer       4 1e+07 9.630351e-05   0.401     0.00040100\n8     lecuyer       4 1e+08 1.263486e-05   3.887     0.00038870\n9     lecuyer       4 1e+09 1.151515e-06  38.618     0.00038618\n10    lecuyer       8 1e+07 1.239703e-05   0.241     0.00024100\n11    lecuyer       8 1e+08 7.894518e-05   2.133     0.00021330\n12    lecuyer       8 1e+09 6.782041e-06  20.420     0.00020420\n13   random_r       1 1e+07 7.898746e-05   0.137     0.00013700\n14   random_r       1 1e+08 4.748343e-05   1.290     0.00012900\n15   random_r       1 1e+09 1.685692e-05  12.844     0.00012844\n16   random_r       2 1e+07 4.757590e-06   0.095     0.00009500\n17   random_r       2 1e+08 7.389450e-05   0.663     0.00006630\n18   random_r       2 1e+09 2.913732e-05   6.469     0.00006469\n19   random_r       4 1e+07 1.664590e-04   0.037     0.00003700\n20   random_r       4 1e+08 1.138106e-04   0.330     0.00003300\n21   random_r       4 1e+09 3.734717e-05   3.209     0.00003209\n22   random_r       8 1e+07 1.034678e-04   0.051     0.00005100\n23   random_r       8 1e+08 4.733472e-05   0.167     0.00001670\n24   random_r       8 1e+09 1.985413e-05   1.694     0.00001694\n25 rng_openmp       1 1e+07 2.097492e-04   1.231     0.00123100\n26 rng_openmp       1 1e+08 7.580436e-05  12.155     0.00121550\n27 rng_openmp       1 1e+09 2.772810e-05 120.712     0.00120712\n28 rng_openmp       2 1e+07 6.870833e-05   0.609     0.00060900\n29 rng_openmp       2 1e+08 1.071006e-04   6.095     0.00060950\n30 rng_openmp       2 1e+09 4.296624e-05  61.426     0.00061426\n31 rng_openmp       4 1e+07 3.000218e-04   0.312     0.00031200\n32 rng_openmp       4 1e+08 6.313562e-05   3.066     0.00030660\n33 rng_openmp       4 1e+09 1.436418e-05  30.441     0.00030441\n34 rng_openmp       8 1e+07 2.767216e-04   0.191     0.00019100\n35 rng_openmp       8 1e+08 9.341252e-06   1.614     0.00016140\n36 rng_openmp       8 1e+09 6.874726e-06  16.121     0.00016121\n37       sfmt       1 1e+07 2.313942e-04   0.114     0.00011400\n38       sfmt       1 1e+08 1.485365e-06   1.186     0.00011860\n39       sfmt       1 1e+09 1.083604e-05  11.417     0.00011417\n40       sfmt       2 1e+07 1.898866e-04   0.062     0.00006200\n41       sfmt       2 1e+08 2.627199e-06   0.573     0.00005730\n42       sfmt       2 1e+09 1.295063e-05   5.779     0.00005779\n43       sfmt       4 1e+07 1.691328e-04   0.033     0.00003300\n44       sfmt       4 1e+08 4.942283e-05   0.315     0.00003150\n45       sfmt       4 1e+09 1.232928e-05   2.871     0.00002871\n46       sfmt       8 1e+07 1.001232e-04   0.022     0.00002200\n47       sfmt       8 1e+08 3.991173e-05   0.149     0.00001490\n48       sfmt       8 1e+09 5.775921e-06   1.550     0.00001550\n\n         type threads     n        error    time time_div_threads\n1     lecuyer       8 1e+07 6.628918e-05   0.269         0.033625\n2     lecuyer       8 1e+08 8.265030e-05   2.033         0.254125\n3     lecuyer       8 1e+09 6.422987e-06  20.684         2.585500\n4     lecuyer       8 1e+10 1.785588e-06 203.427        25.428375\n5    random_r       8 1e+07 2.349934e-04   0.017         0.002125\n6    random_r       8 1e+08 6.640785e-05   0.172         0.021500\n7    random_r       8 1e+09 2.074285e-05   1.701         0.212625\n8    random_r       8 1e+10 2.084929e-05  17.145         2.143125\n9  rng_openmp       8 1e+07 2.737931e-04   0.159         0.019875\n10 rng_openmp       8 1e+08 7.173399e-07   1.624         0.203000\n11 rng_openmp       8 1e+09 7.219774e-06  16.097         2.012125\n12 rng_openmp       8 1e+10 4.310556e-06 161.093        20.136625\n13       sfmt       8 1e+07 1.332275e-04   0.015         0.001875\n14       sfmt       8 1e+08 4.277652e-05   0.149         0.018625\n15       sfmt       8 1e+09 3.728551e-06   1.501         0.187625\n16       sfmt       8 1e+10 6.365431e-06  15.041         1.880125\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear R gurus,\n\nI am interested in permutations-based cpu-intensive methods so I had to pay\na little attention to Random Number Generators (RNG).\nFor my needs, RNGs have to:\n   1) be fast. I profiled m",
       "thread_id": "thread-949b19b31243",
       "thread_depth": 0,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120302/541bdd43/attachment.pl"
+      ]
     },
     {
       "id": "msg-3178b863073d",
@@ -253,11 +259,14 @@
         "<CAMd4_AdVia=Ur530VEyqUxH9vf52E6-SyzgakGZm9K1ncD2GYg@mail.gmail.com>",
         "<20120302112441.GA28122@cs.cas.cz>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120302/0e40e822/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120302/0e40e822/attachment.pl>",
+      "body_plain": "Thanks for your quick reply.\n\nAbout the rngSetSeed package: is it usable at c/c++ level ?\n\nThe same can be said about initializations. Initialization is a random\n> number generator, whose output is used as the initial state of some\n> other generator. There is no proof that a particular initialization cannot\n> be distinguished from truly random numbers in a mathematical sense for\n> the same reason as above.\n>\n> A possible strategy is to use a cryptographically strong hash function\n> for the initialization. This means to transform the seed to the initial\n> state of the generator using a function, for which we have a good\n> guarantee that it produces output, which is computationally hard to\n> distinguish from truly random numbers. For this purpose, i suggest\n> to use the package rngSetSeed provided currently at\n>\n>  http://www.cs.cas.cz/~savicky/randomNumbers/\n>\n> It is based on AES and Fortuna similarly as \"randaes\", but these\n> components are used only for the initialization of Mersenne-Twister.\n> When the generator is initialized, then it runs on its usual speed.\n>\n> In the notation of\n>\n>  http://www.agner.org/random/ran-instructions.pdf\n>\n> using rngSetSeed for initialization of Mersenne-Twister is Method 4\n> in Section 6.1.\n>\n\n\nHmm I had not paid attention to the last paragraph:\n\n> The seeding procedure used in the\n> present software use*s a separate random number* generator of a different\n> design in order to\n> avoid any interference. An extra feature is the RandomInitByArray function\n> which makes\n> it possible to initialize the random number generator with multiple seeds.\n> We can make sure\n> that the streams have different starting points by using the thread id as\n> one of the seeds.\n>\n\nSo it means that I am already using this solution ! (in the RcppRandomSFTM,\nsee other post).\nand that I should be reasonably safe.\n\n\n>\n> I appreciate comments.\n>\n> Petr Savicky.\n>\n> P.S. I included some more comments on the relationship of provably good\n> random number generators and P ?= NP question to the end of the page\n>\n>  http://www.cs.cas.cz/~savicky/randomNumbers/\n\n\nSorry but it's too involved for me.\n\n\n>\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thanks for your quick reply.\n\nAbout the rngSetSeed package: is it usable at c/c++ level ?\n\nThe same can be said about initializations. Initialization is a random\n> number generator, whose output is us",
       "thread_id": "thread-ece981470399",
       "thread_depth": 2,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120302/0e40e822/attachment.pl"
+      ]
     },
     {
       "id": "msg-ab176219e639",
@@ -345,11 +354,14 @@
       "subject_clean": "print method for summary adds trailing zero",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120302/83fd6072/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120302/83fd6072/attachment.pl>",
+      "body_plain": "Dear R-devel\n\nThought I better report this. An example is shown below.\n\n> vec <- rnorm(100)+10.5\n> ss <- summary(vec)\n> print(ss)\n   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.\n  8.433   9.886  10.450  10.560  11.300  12.720\n> for(kk in 1:length(ss)) print(ss[[kk]])\n[1] 8.433\n[1] 9.886\n[1] 10.45\n[1] 10.56\n[1] 11.3\n[1] 12.72\n> print(mean(vec))\n[1] 10.56399\n\nNote the difference between 10.56399 and 10.560.\nIt may confuse users that the number of significant digits is smaller than the number of digits shown by the print of a summary object (at least it confused me).\n\nYours\nOle F. Christensen\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear R-devel\n\nThought I better report this. An example is shown below.\n\n> vec <- rnorm(100)+10.5\n> ss <- summary(vec)\n> print(ss)\n   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.\n  8.433   9.886  10.45",
       "thread_id": "thread-4ced67cb67c6",
       "thread_depth": 0,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120302/83fd6072/attachment.pl"
+      ]
     },
     {
       "id": "msg-c397fab5667e",
@@ -1642,11 +1654,14 @@
       "references": [
         "<2357666E-86E2-4805-AD50-010588BE11B7@ebi.ac.uk>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120308/2c1217cc/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120308/2c1217cc/attachment.pl>",
+      "body_plain": "First, I can confirm this problem exists today, and can now vaguely \nrecall seeing it in previous version of R.\n > sessionInfo()\nR version 2.14.1 (2011-12-22)\nPlatform: x86_64-pc-mingw32/x64 (64-bit)\n\nThere is a bigger problem with heatmap.2 in the gplots package.  Using \n\"symm=TRUE\" with no other arguments causes it to *fail *to print one of \nthe dendrograms:\n > library(gplots)\n > cU <- cor(USJudgeRatings)\n > heatmap.2(cU, symm = TRUE)\nWarning message:\nIn heatmap.2(cU, symm = TRUE) :\n   Discrepancy: Colv is FALSE, while dendrogram is `row'. Omitting \ncolumn dendogram.\n\nIn order to get the column dendrogram displayed using heatmap.2, you \nmust use \"symm=TRUE, Colv=TRUE\".  So this *succeeds*:\n >  heatmap.2(cU, symm = TRUE, Colv=TRUE)\n\nTo make things worse, heatmap.2 *sometimes *gets the direction of the \ncolumn colors wrong.  If you omit \"Colv=TRUE\", it leaves out the column \ndendrogram and gets one set of colors wrong.  That, is, the following \ncommand *fails* in two ways:\n > sideCols <- rainbow(ncol(cU))\n > heatmap.2(cU, symm = TRUE, distfun = function(c) as.dist(1 - c),\n        ColSideColors=sideCols, RowSideColors=sideCols)\n\nIf you include \"Colv=TRUE\", then it prints the dendrogram and gets both \nsets of colorbars correct.  So the following command *succeeds*:\n > heatmap.2(cU, symm = TRUE, Colv=TRUE, distfun = function(c) as.dist(1 \n- c),\n+        ColSideColors=sideCols, RowSideColors=sideCols)\n\nIt is a separate esthetic question as to which diagonal axis should be \nused for symmetry. When it works in heatmap.2, the \"origin\" is at the \nbottom left.  Since the dendrograms are printed on the top and left, \nhowever, the symmetry would be easier to see/confirm if the origin were \nput at the top left. One might be tempted to fit this by using \n\"revC=TRUE\".  However, this command *fails* because it gets the colorbar \nwrong:\n > heatmap.2(cU, symm = TRUE, Colv=TRUE, revC=TRUE,\n           distfun = function(c) as.dist(1 - c),\n           ColSideColors=sideCols, RowSideColors=sideCols)\n\nI am occasionally of the opinion that both \"heatmap\" and \"heatmap.2\" are \ntoo complex to be used reliably by mortals....\n     Kevin\n\nOn 2/28/2012 4:04 AM, Pär Engström wrote:\n> Hello,\n>\n> I have come across some unexpected behaviour of the function heatmap in the stats package. This looks like a bug to me, but I might have misunderstood something.\n>\n> When calling the function in symmetric mode, the ColSideColors are plotted correctly, but RowSideColors appear in reverse order. This code (modified from the example on the help page) demonstrates the problem:\n>\n> cU<- cor(USJudgeRatings)\n> sideCols<- rainbow(ncol(cU))\n> heatmap(cU, symm = TRUE, distfun = function(c) as.dist(1 - c),\n>         ColSideColors=sideCols, RowSideColors=sideCols)\n>\n> Reversing the RowSideColors argument does not solve the problem:\n>\n> heatmap(cU, symm = TRUE, distfun = function(c) as.dist(1 - c),\n>         ColSideColors=sideCols, RowSideColors=rev(sideCols))\n>\n> I had a look at the the function code and found that this change fixes the problem:\n>\n> Replace\n>\n>         image(rbind(1L:nr), col = RowSideColors[rowInd], axes = FALSE)\n>\n> with\n>\n>         image(rbind(if(revC) nr:1L else 1L:nr), col = RowSideColors[rowInd], axes = FALSE)\n>\n> I am using the current version of R for Mac OS X:\n>\n>> sessionInfo()\n> R version 2.14.1 (2011-12-22)\n> Platform: x86_64-apple-darwin9.8.0/x86_64 (64-bit)\n>\n> locale:\n> [1] en_GB.UTF-8/en_GB.UTF-8/en_GB.UTF-8/C/en_GB.UTF-8/en_GB.UTF-8\n>\n> attached base packages:\n> [1] stats     graphics  grDevices utils     datasets  methods   base\n>\n>\n> Regards,\n>\n> Pär Engström\n>\n> Postdoctoral Fellow\n> EMBL European Bioinformatics Institute\n> Wellcome Trust Genome Campus\n> Hinxton, Cambridge, UK\n>\n>\n>\n> \t[[alternative HTML version deleted]]\n>\n>\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "First, I can confirm this problem exists today, and can now vaguely \nrecall seeing it in previous version of R.\n > sessionInfo()\nR version 2.14.1 (2011-12-22)\nPlatform: x86_64-pc-mingw32/x64 (64-bit)\n",
       "thread_id": "thread-648e869e907e",
       "thread_depth": 0,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120308/2c1217cc/attachment.pl"
+      ]
     },
     {
       "id": "msg-f0922701eae4",
@@ -1809,11 +1824,14 @@
       "subject_clean": "How to get R to connect to a Unix domain (AF_LOCAL or AF_UNIX) socket?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120308/39d4ae19/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120308/39d4ae19/attachment.pl>",
+      "body_plain": "Hello,\n\nI need to interface R to another program that can\ncommunicate over a Unix domain socket. This is a filesystem-based\nsocket, not a port-based socket (i.e., a AF_LOCAL or AF_UNIX socket, not\na AF_INET TCP/IP socket).\n\nI am aware that R can connect to a\nTCP/IP AF_INET socket. I am also aware that I can do some script-fu to\nconnect the two different types of sockets using solutions like socat. I\n  am hoping that in the vast R world there is something that can just let\n  me use the existing file socket directly, but I have been unable to\nfind anything to date.\n\nAny tips would be greatly appreciated. Thanks in advance!\n\nCheers,\n\n~Tomer\n\n-- \nTomer Altman\ntaltman at ai.sri.com\n(650)859-2692\nhttp://www.ai.sri.com/people/taltman\n\nBioinformatics Research Group\nArtificial Intelligence Center\nSRI, International\n\nhttp://bioinformatics.ai.sri.com/\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\nI need to interface R to another program that can\ncommunicate over a Unix domain socket. This is a filesystem-based\nsocket, not a port-based socket (i.e., a AF_LOCAL or AF_UNIX socket, not\na A",
       "thread_id": "thread-9b8645c953ba",
       "thread_depth": 0,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120308/39d4ae19/attachment.pl"
+      ]
     },
     {
       "id": "msg-c9e75f383187",
@@ -1828,11 +1846,14 @@
         "<2357666E-86E2-4805-AD50-010588BE11B7@ebi.ac.uk>",
         "<4F58EBEC.6000004@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120309/76e24f9e/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120309/76e24f9e/attachment.pl>",
+      "body_plain": "Thanks Kevin, I experienced the same problems with heatmap.2, and therefore resorted to heatmap. For heatmap, the code change I suggested below fixes the problem with side color ordering as far as I can tell, and lets one create a symmetric heatmap with the origin at the top left (which I agree makes it easier to read). Unless this code change breaks something else, it would be nice if it could be incorporated into R.\n\nPär\n\nOn 8 Mar 2012, at 17:27, Kevin R. Coombes wrote:\n\n> First, I can confirm this problem exists today, and can now vaguely recall seeing it in previous version of R.\n> > sessionInfo()\n> R version 2.14.1 (2011-12-22)\n> Platform: x86_64-pc-mingw32/x64 (64-bit)\n> \n> There is a bigger problem with heatmap.2 in the gplots package.  Using \"symm=TRUE\" with no other arguments causes it to fail to print one of the dendrograms:\n> > library(gplots)\n> > cU <- cor(USJudgeRatings)\n> > heatmap.2(cU, symm = TRUE)\n> Warning message:\n> In heatmap.2(cU, symm = TRUE) :\n>   Discrepancy: Colv is FALSE, while dendrogram is `row'. Omitting column dendogram.\n> \n> In order to get the column dendrogram displayed using heatmap.2, you must use \"symm=TRUE, Colv=TRUE\".  So this succeeds:\n> >  heatmap.2(cU, symm = TRUE, Colv=TRUE)\n> \n> To make things worse, heatmap.2 sometimes gets the direction of the column colors wrong.  If you omit \"Colv=TRUE\", it leaves out the column dendrogram and gets one set of colors wrong.  That, is, the following command fails in two ways:\n> > sideCols <- rainbow(ncol(cU))\n> > heatmap.2(cU, symm = TRUE, distfun = function(c) as.dist(1 - c),\n>        ColSideColors=sideCols, RowSideColors=sideCols)\n> \n> If you include \"Colv=TRUE\", then it prints the dendrogram and gets both sets of colorbars correct.  So the following command succeeds:\n> > heatmap.2(cU, symm = TRUE, Colv=TRUE, distfun = function(c) as.dist(1 - c),\n> +        ColSideColors=sideCols, RowSideColors=sideCols)\n> \n> It is a separate esthetic question as to which diagonal axis should be used for symmetry. When it works in heatmap.2, the \"origin\" is at the bottom left.  Since the dendrograms are printed on the top and left, however, the symmetry would be easier to see/confirm if the origin were put at the top left. One might be tempted to fit this by using \"revC=TRUE\".  However, this command fails because it gets the colorbar wrong:\n> > heatmap.2(cU, symm = TRUE, Colv=TRUE, revC=TRUE,\n>           distfun = function(c) as.dist(1 - c),\n>           ColSideColors=sideCols, RowSideColors=sideCols)\n> \n> I am occasionally of the opinion that both \"heatmap\" and \"heatmap.2\" are too complex to be used reliably by mortals....\n>     Kevin\n> \n> On 2/28/2012 4:04 AM, Pär Engström wrote:\n>> \n>> Hello,\n>> \n>> I have come across some unexpected behaviour of the function heatmap in the stats package. This looks like a bug to me, but I might have misunderstood something.\n>> \n>> When calling the function in symmetric mode, the ColSideColors are plotted correctly, but RowSideColors appear in reverse order. This code (modified from the example on the help page) demonstrates the problem:\n>> \n>> cU <- cor(USJudgeRatings)\n>> sideCols <- rainbow(ncol(cU))\n>> heatmap(cU, symm = TRUE, distfun = function(c) as.dist(1 - c),\n>>        ColSideColors=sideCols, RowSideColors=sideCols)\n>> \n>> Reversing the RowSideColors argument does not solve the problem:\n>> \n>> heatmap(cU, symm = TRUE, distfun = function(c) as.dist(1 - c),\n>>        ColSideColors=sideCols, RowSideColors=rev(sideCols))\n>> \n>> I had a look at the the function code and found that this change fixes the problem:\n>> \n>> Replace\n>> \n>>        image(rbind(1L:nr), col = RowSideColors[rowInd], axes = FALSE)\n>> \n>> with\n>> \n>>        image(rbind(if(revC) nr:1L else 1L:nr), col = RowSideColors[rowInd], axes = FALSE)\n>> \n>> I am using the current version of R for Mac OS X:\n>> \n>>> sessionInfo()\n>> R version 2.14.1 (2011-12-22)\n>> Platform: x86_64-apple-darwin9.8.0/x86_64 (64-bit)\n>> \n>> locale:\n>> [1] en_GB.UTF-8/en_GB.UTF-8/en_GB.UTF-8/C/en_GB.UTF-8/en_GB.UTF-8\n>> \n>> attached base packages:\n>> [1] stats     graphics  grDevices utils     datasets  methods   base    \n>> \n>> \n>> Regards,\n>> \n>> Pär Engström\n>> \n>> Postdoctoral Fellow\n>> EMBL European Bioinformatics Institute\n>> Wellcome Trust Genome Campus\n>> Hinxton, Cambridge, UK\n>> \n>> \n>> \n>> \t[[alternative HTML version deleted]]\n>> \n>> \n>> \n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thanks Kevin, I experienced the same problems with heatmap.2, and therefore resorted to heatmap. For heatmap, the code change I suggested below fixes the problem with side color ordering as far as I c",
       "thread_id": "thread-648e869e907e",
       "thread_depth": 1,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120309/76e24f9e/attachment.pl"
+      ]
     },
     {
       "id": "msg-8c1fb67501ee",
@@ -1958,11 +1979,14 @@
         "<CADUbQ5jZEM1bV+xBdjgF8HxOTM7SGy3zkvefZZ4nKWQGVwQNtw@mail.gmail.com>",
         "<CALLn38Pmn8ZTYCc17R0QVjjLsQzo0jJOLinjZFzkhRhvDRVWwg@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120310/60c885e5/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120310/60c885e5/attachment.pl>",
+      "body_plain": "On Fri, Mar 9, 2012 at 8:39 AM, Justin Talbot <jtalbot at cs.stanford.edu>wrote:\n\n>\n> > Another possibility is to implement R/S on top of an optimized virtual\n> > machine like the JVM, LLVM, etc.\n> >\n>\n>\n>\nSomebody is pursuing that already: https://code.google.com/p/renjin/\n\n\nAntonio\n\nThe RHadoop project, https://github.com/RevolutionAnalytics/RHadoop\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Fri, Mar 9, 2012 at 8:39 AM, Justin Talbot <jtalbot at cs.stanford.edu>wrote:\n\n>\n> > Another possibility is to implement R/S on top of an optimized virtual\n> > machine like the JVM, LLVM, etc.\n> >\n",
       "thread_id": "thread-f0922701eae4",
       "thread_depth": 3,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120310/60c885e5/attachment.pl"
+      ]
     },
     {
       "id": "msg-622520033bfd",
@@ -2513,11 +2537,14 @@
       "subject_clean": "Segfault while calling fexact in C",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120316/dec5ad8b/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120316/dec5ad8b/attachment.pl>",
+      "body_plain": "Hi folks,\nI'm trying to call an R function (fisher.test) in my program for like a\nbillion times! Though my program is in Python and I feel that using rpy2 to\ninterface R to python doesn't give me satisfactory performance. So I looked\ninto R code and found out that fisher.test is actually a wrapper around\nanother function called fexact which is implemented in C. Using Cython I\nmanaged to directly call the function and get the desired results.\nBut the weird problem is that after calling the function for like 4000\ntimes (with same parameters) a segmentation fault occurs! Eliminating the\npossibility that my interfacing code has any problem, I wrote a piece of\ncode in C to call the fexact multiple times:\n\nint main(){\n    int nr = 3, nc = 2;\n    int x[6] = {3, 1, 5, 1, 3, 6};\n    double expect = -1, percnt = 100, emin = 0, prt = 1;\n    double p;\n    int workspace = 200000, mult = 30;\n    int i;\n    for (i=0; i<100000; i++){\n        fexact(&nr, &nc, x, &nr, &expect,\n            &percnt, &emin, &prt, &p, &workspace, &mult);\n        printf(\"%d %f\\n\", i, p);\n    }\n    return 0;\n}\n\nI statically linked the program to libRmath, which I don't suppose has\nanything to do with problem. I also dynamically linked to libRmath.so which\nyielded the same problem.\n\nnima at nima-laptop:~/BioProject/fet$ gcc -I/usr/share/R/include -lm fexact.c\n/usr/lib/libRmath.a\n\nnima at nima-laptop:~/BioProject/fet$ ./a.out\n0 0.408431\n1 0.408431\n2 0.408431\n3 0.408431\n4 0.408431\n....\n....\n4003 0.408431\n4004 0.408431\n4005 0.408431\nSegmentation fault\n\nAny help would be highly appreciated :)\n\n*-- **Nima Mohammadi*\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi folks,\nI'm trying to call an R function (fisher.test) in my program for like a\nbillion times! Though my program is in Python and I feel that using rpy2 to\ninterface R to python doesn't give me sati",
       "thread_id": "thread-b46f75fb8de4",
       "thread_depth": 0,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120316/dec5ad8b/attachment.pl"
+      ]
     },
     {
       "id": "msg-07c8a7f13d16",
@@ -2571,11 +2598,14 @@
         "<CAPpMX7Ro2aspvKUP2yOWXUzJ9XedLKs8kmeB8A_-Zhb057deUg@mail.gmail.com>",
         "<4F632CC4.3040601@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120316/527f21d1/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120316/527f21d1/attachment.pl>",
+      "body_plain": "On Fri, Mar 16, 2012 at 3:36 PM, Duncan Murdoch <murdoch.duncan at gmail.com>wrote:\n\n> I don't think fexact is mentioned in Rmath.h, so it's not a function\n> designed to be called from a standalone program.\n>\n> Duncan Murdoch\n>\n>\nWell, Searching the net, I found out that some else has already un-R-ifyied\nthe fexact.c code. Replacing his code turned out to work OK. So thanks\nanyway.\n\nBTW, here's the link to the code:\n\nhttp://apophenia.git.sourceforge.net/git/gitweb.cgi?p=apophenia/apophenia;a=blob_plain;f=apop_fexact.c;hb=3d3be80fdf2179122bb2bd1fb65b2d72ebf5adc8\n\n*-- **Nima Mohammadi*\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Fri, Mar 16, 2012 at 3:36 PM, Duncan Murdoch <murdoch.duncan at gmail.com>wrote:\n\n> I don't think fexact is mentioned in Rmath.h, so it's not a function\n> designed to be called from a standalone pr",
       "thread_id": "thread-b46f75fb8de4",
       "thread_depth": 2,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120316/527f21d1/attachment.pl"
+      ]
     },
     {
       "id": "msg-10a7441c3491",
@@ -2621,11 +2651,14 @@
       "subject_clean": "How to install sqldf to R with version 2.10?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120317/cf905da1/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120317/cf905da1/attachment.pl>",
+      "body_plain": "Hi,\nHow to install sqldf to R with version 2.10? I used the R in the cluster of\nuniversity and there seems no way to update the R version to 2.14. However,\nI do need sqldf. I tried to install and there is the problem of namespace.\nHow could I solve the problem of namespace and run sqldf on R with version\n2.10? Thank you!\n\n\nBest,\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\nHow to install sqldf to R with version 2.10? I used the R in the cluster of\nuniversity and there seems no way to update the R version to 2.14. However,\nI do need sqldf. I tried to install and ther",
       "thread_id": "thread-2c7f9dfbbe4b",
       "thread_depth": 0,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120317/cf905da1/attachment.pl"
+      ]
     },
     {
       "id": "msg-971ba1312e92",
@@ -2795,11 +2828,14 @@
         "<76F908AE-7BB0-40B8-A198-0BEA6EB18F53@gmail.com>",
         "<CANF72pOnJSrAgTcu0FfHS=qD0zAwDHgGBh_qoAsinLv_4QHNaw@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120317/44d9f267/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120317/44d9f267/attachment.pl>",
+      "body_plain": "use the gsl package for Kummer's hypergeometric and others.\n\nyou might find implementing the distributions in C or C++ worthwhile for\nspeed.\n\nthanks for doing this, by the way.\n\n\n\nOn Sat, Mar 17, 2012 at 11:38 AM, Joan Maspons <j.maspons at creaf.uab.cat>wrote:\n\n> Hello,\n>\n>\n> El 16 de març de 2012 20:34, Christophe Dutang <dutangc at gmail.com> ha\n> escrit:\n> > Hi,\n> >\n> > Please look at the distribution task view (\n> http://cran.r-project.org/web/views/Distributions.html) and the package\n> gamlss.dist.\n>\n> Thanks for the tip. There are Beta binomial functions but they don't\n> have the number of trials parameter so I supose it's a Beta Bernoulli\n> distribution.\n>\n> >\n> > Regards\n> >\n> > Christophe\n> >\n> > --\n> > Christophe Dutang\n> > Ph.D. student at ISFA, Lyon, France\n> > website: http://dutangc.free.fr\n> >\n> > Le 16 mars 2012 à 18:41, Joan Maspons a écrit :\n> >\n> >> Hi,\n> >> I need Beta binomial and Beta negative binomial functions ...\n> >>\n> >> Can I implement these new functions inside stats\n> >> package following the\n> >> same patterns as other probability distributions?\n> >>\n> >> Yours,\n> >> --\n> >> Joan Maspons\n>\n> I have implemented a prototype of the beta negative binomial:\n>\n> FindParamBetaDist<- function(mu, sigma){ #\n> return(data.frame(a=shape1,b=shape2))\n> # mu<- a/(a+b)          [mean]\n> # sigma<- ab/((a+b)^2 (a+b+1))  [variance]\n> # Maxima: solve([mu= a/(a+b) , sigma= a*b/((a+b)^2 * (a+b+1))], [a,b]);\n>  a<-  -(mu * sigma + mu^3 - mu^2) / sigma\n>  b<- ((mu-1) * sigma + mu^3 - 2 * mu^2 + mu) / sigma\n>  if (a <= 0 | b <= 0) return (NA)\n>  return (data.frame(a,b))\n> }\n>\n> #Rmpfr::pochMpfr()?\n> pochhammer<- function (x, n){\n>    return (gamma(x+n)/gamma(x))\n> }\n>\n> # PMF:\n> # P (X = x) = ((alpha)_n (n)_x (beta)_x)/(x! (alpha+beta)_n\n> (n+alpha+beta)_x) |  for  | x>=0\n> # (a)_b Pochhammer symbol\n> dbetanbinom<- function(x, size, mu, sigma){\n>    param<- FindParamBetaDist(mu, sigma)\n>    if (is.na(sum(param))) return (NA) #invalid Beta parameters\n>    if (length(which(x<0))) res<- 0\n>    else\n>        res<- (pochhammer(param$a, size) * pochhammer(size, x) *\n> pochhammer(param$b, x)\n>            / (factorial(x) * pochhammer(param$a + param$b, size)\n>            * pochhammer(size + param$a + param$b, x)))\n>    return (res)\n> }\n>\n> curve(dbetanbinom(x, size=12, mu=0.75, sigma=.1), from=0, to=24, n=25,\n> type=\"p\")\n>\n> # CDF:\n> # P (X<=x) = 1-(Gamma(n+floor(x)+1) beta(n+alpha, beta+floor(x)+1)\n> #            genhypergeo(1, n+floor(x)+1, beta+floor(x)+1;floor(x)+2,\n> n+alpha+beta+floor(x)+1;1))\n> #            /(Gamma(n) beta(alpha, beta) Gamma(floor(x)+2)) |  for  | x>=0\n> pbetanbinom<- function(q, size, mu, sigma){\n>    require(hypergeo)\n>    param<- FindParamBetaDist(mu, sigma)\n>    if (is.na(sum(param))) return (NA) #invalid Beta parameters\n>    res<- numeric(length(q))\n>    for (i in 1:length(q)){\n>        if (q[i]<0) res[i]<- 0\n>        else res[i]<- (1-(gamma(size+floor(q[i])+1) *\n> beta(size+param$a, param$b+floor(q[i])+1)\n>        * genhypergeo(c(1, 1+size+floor(q[i]), 1+param$b+floor(q[i])),\n> c(2+floor(q[i]),1+size+param$a+param$b+floor(q[i])), 1))\n>        / (beta(param$a, param$b) * gamma(size) * gamma(2+floor(q[i]))))\n>    }\n>    return (res)\n> }\n>\n> ## genhypergeo not converge. Increase iterations or tolerance?\n> pbetanbinom(0:10x, size=20, mu=0.75, sigma=0.03)\n>\n> I have to investigate\n> http://mathworld.wolfram.com/GeneralizedHypergeometricFunction.html\n> Any tip on how to solve the problem?\n>\n>\n> --\n> Joan Maspons\n> CREAF (Centre de Recerca Ecològica i Aplicacions Forestals)\n> Universitat Autònoma de Barcelona, 08193 Bellaterra (Barcelona), Catalonia\n> Tel +34 93 581 2915            j.maspons at creaf.uab.cat\n> http://www.creaf.uab.cat\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \n*A model is a lie that helps you see the truth.*\n*\n*\nHoward Skipper<http://cancerres.aacrjournals.org/content/31/9/1173.full.pdf>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "use the gsl package for Kummer's hypergeometric and others.\n\nyou might find implementing the distributions in C or C++ worthwhile for\nspeed.\n\nthanks for doing this, by the way.\n\n\n\nOn Sat, Mar 17, 2012",
       "thread_id": "thread-10a7441c3491",
       "thread_depth": 3,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120317/44d9f267/attachment.pl"
+      ]
     },
     {
       "id": "msg-33cab85368fd",
@@ -2882,11 +2918,14 @@
       "subject_clean": "Namespace dependency not required",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120318/8c68651e/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120318/8c68651e/attachment.pl>",
+      "body_plain": "Hi,\n\nI am working at adding namespace to my packages, carefully following the \ndoc \"Writing R extensions\" and some threads on the web. However I cannot \nfind clear explanation about how to best deal with the import or \nimportFrom functions in the name space. To make it short:\n\nTo declare dependencies in the description file either after Depends: \n(packages including functions that are called from a package function) \nor after Suggests: (packages that are called eg from the doucmentation \nexamples), works well. In this case one does not need to declare import \nin the namespace file.\n\nHowever, declaring dependencies sometimes for using only one function in \na given package looks a bit over the top, and I though I could use \nimportFrom in the namespace to deal with that. So removing the \ncorresponding declaration in Depends (description file) and declaring \neg  importFrom(splancs, inout) in the namespace always led to:\n\n* checking package dependencies ... ERROR\nNamespace dependency not required: 'splancs'\n\nSame thing with import(sp). I have the same trouble if I do not remove \nthe declarations in Depends.\n\nSo, I can hardly follow the meaning of the \"Writing R extension\" doc:\n\nPackages implicitly import the base namespace. Variables exported from \nother packages with namespaces need to be imported explicitly using the \ndirectives |import| and |importFrom|. The |import| directive imports all \nexported variables from the specified package(s). Thus the directives\n\n      import(foo, bar)\n\nspecifies that all exported variables in the packages *foo* and *bar* \nare to be imported. If only some of the exported variables from a \npackage are needed, then they can be imported using |importFrom|. The \ndirective\n\n      importFrom(foo, f, g)\n\nspecifies that the exported variables |f| and |g| of the package *foo* \nare to be imported.\n\nCan anybody tell us the conditions for which import and importFrom \ncommands should be used in the NAMESPACE rather than in the Depends and \nSuggests declarations of the description file, and the conditions of \ntheir applicability (without error message... eg with a working example) ?\n\n\n\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\n\nI am working at adding namespace to my packages, carefully following the \ndoc \"Writing R extensions\" and some threads on the web. However I cannot \nfind clear explanation about how to best deal w",
       "thread_id": "thread-4a05204410cb",
       "thread_depth": 0,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120318/8c68651e/attachment.pl"
+      ]
     },
     {
       "id": "msg-26568029d4ed",
@@ -3138,11 +3177,14 @@
         "<4F64BB31.7060609@statistik.tu-dortmund.de>",
         "<CAHA9McMGy0U9B_8x=RSBfjCCUMsuEhUUxB03wdtfTRBGAFsJtA@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120318/ff8b545c/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120318/ff8b545c/attachment.pl>",
+      "body_plain": "On Sun, Mar 18, 2012 at 12:48 PM, Steve Lianoglou <\nmailinglist.honeypot at gmail.com> wrote:\n\n> Hi Uwe,\n>\n> 2012/3/17 Uwe Ligges <ligges at statistik.tu-dortmund.de>:\n> >\n> >\n> > On 15.03.2012 22:48, Matthew Dowle wrote:\n> >>\n> >>\n> >> Anyone?\n> >>\n> >>> Is it intended that the first suffix can no longer be blank? Seems to\n> be\n> >>> caused by a bug fix to merge in R 2.15.0.\n> >\n> >\n> >\n> > Right, the user is now protected against confusing himself by using names\n> > that were not unique before the merge.\n>\n> ... now I'm confused :-)\n>\n> If the user explicitly asks for a NULL/0/empty/whatever suffix,\n> they're not really going to be confusing themselves, right?\n>\n\nIf the user asks for a blank suffix and you still give back \".x\" or \".y\"\n as a suffix, then yes that is confusing.\n\n\n> I actually feel like I do this often, where \"this\" is explicitly\n> asking to not add a suffix to one group of columns ... I do confuse\n> myself every and now and again, but not in this context, yet.\n>\n> I can see that *this* confusing case is now handled w/ this change\n> (which wasn't before):\n>\n> ## I'm using R-devel compiled back in November, 2011 (r57571)\n> R> d1 <- data.frame(a=letters[1:10], b=rnorm(10), b.x=tail(letters, 10))\n> R> d2 <- data.frame(a=letters[1:10], b=101:110)\n> R> merge(d1, d2, by='a', suffixes=c('.x', '.y'))\n>   a         b.x b.x b.y\n> 1  a -1.52250626   q 101\n> 2  b -0.99865341   r 102\n> ... ## Let's call this \"exhibit A\"\n>\n> But if I do this:\n> R> merge(d1, d2, by='a', suffixes=c(\"\", \".y\"))\n>\n> I totally expect:\n>\n>   a           b b.x b.y\n> 1  a -1.52250626   q 101\n> 2  b -0.99865341   r 102\n> ## Let's call this \"exhibit B\"\n\n...\n>\n> and not (using R-2.15.0 beta) (exhibit B):\n>\n> Error in merge.data.frame(d1, d2, by = \"a\", suffixes = c(\"\", \".y\")) :\n>  there is already a column named 'b'\n>\n\nAs a user I would expect that the rule for column names produced by \"merge\"\nwould be simple: the output column name is the concatenation of the input\ncolumn name and the corresponding suffix. When I use 'merge\" I don't expect\na more complicated behavior that somehow still uses '.x' even though I\nasked it not to, as in your second example. So I would say that the new\nbehavior is more consistent.\n\nWhen I write functions that use \"merge\" on general data frames, I can\nanticipate and use the simpler rule, but it is difficult to anticipate the\nresults of the more complicated rule in a way that my subsequent lines of\ncode will work.\n\nIf the inputs I give to merge are inconsistent with the simple rule I would\nmuch rather have an exception (highlighting exactly where my code has gone\nwrong) than a surprising column name change (which makes my code\nmysteriously fail ten or a hundred lines later).\n\nPeter\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Sun, Mar 18, 2012 at 12:48 PM, Steve Lianoglou <\nmailinglist.honeypot at gmail.com> wrote:\n\n> Hi Uwe,\n>\n> 2012/3/17 Uwe Ligges <ligges at statistik.tu-dortmund.de>:\n> >\n> >\n> > On 15.03.2012 22:48,",
       "thread_id": "thread-81358356fd89",
       "thread_depth": 4,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120318/ff8b545c/attachment.pl"
+      ]
     },
     {
       "id": "msg-c51b881d38fc",
@@ -3183,11 +3225,14 @@
         "<CAJoaRhY3wsaGZBxmg4MtTV8dCKAuFx020ejKunjc15fWSBrzFQ@mail.gmail.com>",
         "<CAHA9McNLrTLN4bBpWRQDFU4vJD6s+kFcuCCfYJqQzs7GzeXOsA@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120318/4620bf15/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120318/4620bf15/attachment.pl>",
+      "body_plain": "On Sun, Mar 18, 2012 at 1:50 PM, Steve Lianoglou <\nmailinglist.honeypot at gmail.com> wrote:\n\n> Hi,\n>\n> I'm not sure I follow ... I think we're in total agreement, but it\n> sounds like you're suggesting we aren't.\n>\n\nI think we are in agreement. I misread your \"exhibit B\" on the first go and\nmissed that b.x was coming from d1. Let's see:\n\nR> d1 <- data.frame(a=letters[1:10], b=rnorm(10), b.x=tail(letters, 10))\nR> d2 <- data.frame(a=letters[1:10], b=101:110)\nR> merge(d1, d2, by=\"a\", suffixes=c(\"\", \"y\"))\n\nThe output columns I expect from this are \"a\", \"b\" (from d1), \"b.x\" (from\nd1) and \"b.y\" (from d2). Since all these names are unique, in my view\nmerge() should not complain on this case.\n\nPeter\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Sun, Mar 18, 2012 at 1:50 PM, Steve Lianoglou <\nmailinglist.honeypot at gmail.com> wrote:\n\n> Hi,\n>\n> I'm not sure I follow ... I think we're in total agreement, but it\n> sounds like you're suggesti",
       "thread_id": "thread-81358356fd89",
       "thread_depth": 6,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120318/4620bf15/attachment.pl"
+      ]
     },
     {
       "id": "msg-c7409939556d",
@@ -4187,11 +4232,14 @@
       "references": [
         "<4F6AB543.10603@prodsyse.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120321/f77743da/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120321/f77743da/attachment.pl>",
+      "body_plain": "My guess would be that it's a matter of having swap space be a dedicated\npartition or fixed-size file (Linux, usually) versus swapping to a regular\nfile that grows as needed (Windows and OS X, usually.) So if you\ndefragmented your drive and set Windows to have a fixedsize swap file, it\nwould probably behave more like your Linux machine.\n\nPeter\n\nOn Wed, Mar 21, 2012 at 10:14 PM, Spencer Graves <\nspencer.graves at prodsyse.com> wrote:\n\n> I computed \"system.time(diag(30000))\" with R 2.12.0 on Fedora 13 Linux\n> with 4 GB RAM and with R 2.14.1 on Windows 7 with 8 GB RAM:\n>\n>\n> Linux (4 GB RAM):  0, 0.21, 0.21 -- a fifth of a second\n>\n>\n> Windows 7 (8 GB RAM):  11.37 7.47 93.19 -- over 1.5 minutes.  Moreover,\n> during most of that time, I could not switch windows or get any response\n> from the system.  When I first encountered this, I thought Windows was hung\n> permanently and the only way out was a hard reset and reboot.\n>\n>\n>      On both systems, diag(30000) generated, \"Error:  cannot allocate\n> vector of size ___ Gb\", with \"___\" = 3.4 for Linux with 4 GB RAM and 6.7\n> for Windows with 8 GB RAM.  Linux with half the RAM and an older version of\n> R was done with this in 0.21 seconds.  Windows 7 went into suspension for\n> over 93 seconds -- 1.5 minutes before giving an error message.\n>\n>\n>       I don't know how easy this would be to fix under Windows, but I felt\n> a need to report it.\n>\n>\n>      Best Wishes,\n>      Spencer\n>\n>\n> --\n> Spencer Graves, PE, PhD\n> President and Chief Technology Officer\n> Structure Inspection and Monitoring, Inc.\n> 751 Emerson Ct.\n> San José, CA 95126\n> ph:  408-655-4567\n> web:  www.structuremonitoring.com\n>\n> ______________________________**________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/**listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "My guess would be that it's a matter of having swap space be a dedicated\npartition or fixed-size file (Linux, usually) versus swapping to a regular\nfile that grows as needed (Windows and OS X, usually",
       "thread_id": "thread-1c0fef616856",
       "thread_depth": 1,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120321/f77743da/attachment.pl"
+      ]
     },
     {
       "id": "msg-9c2c7424887d",
@@ -4263,11 +4311,14 @@
       "references": [
         "<mailman.29.1332414009.26932.r-devel@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120322/5231db82/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120322/5231db82/attachment.pl>",
+      "body_plain": ">>>   strongly disagree. I'm appalled to see that sentence here.\n>> >  \n>> >  Come on!\n>> >  \n>>> >>  The overhead is significant for any large vector and it is in particular unnecessary since in .C you have to allocate*and copy*  space even for results (twice!). Also it is very error-prone, because you have no information about the length of vectors so it's easy to run out of bounds and there is no way to check. IMHO .C should not be used for any code written in this century (the only exception may be if you are passing no data, e.g. if all you do is to pass a flag and expect no result, you can get away with it even if it is more dangerous). It is a legacy interface that dates way back and is essentially just re-named .Fortran interface. Again, I would strongly recommend the use of .Call in any recent code because it is safer and more efficient (if you don't care about either attribute, well, feel free ;)).\n>> >  \n>> >  So aleph will not support the .C interface? ;-)\n>> >  \n> It will look at the timestamp of the source file and delete the package if it is not before 1980 ;). Otherwise it will send a request for punch cards with \".C is deprecated, please upgrade to .Call\" stamped out :P At that point I'll be flaming about using the native Aleph interface and not the R compatibility layer ;)\n>\n> Cheers,\n> S\nI'll dissent -- I don't think .C is inherently any more dangerous than \n.Call and prefer it's simplicity in many cases.  Calling C at all is \nwhat is inherently dangerous -- I can reference beyond the end of a \nvector, write over objects that should be read only, and branch to \nrandom places using either interface.  If you are dealing with large \nobjects and worry about memory efficiency then .Call puts more tools at \nyour disposal and is worth the effort.  However, I did not find the \n.Call interface at all easy to use at first and we should keep that in \nmind before getting too pompous in our lectures to the \"sinners of .C\".  \n(Mostly because the things I needed to know are scattered about in \nmultiple places.)\n\nI might have to ask for an exemption on that timestamp -- the first bits \nof the survival package only reach back to 1986.  And I've had to change \nsource code systems multiple times which plays hob with the file times, \nthough I did try to preserve the changelog history to forstall some \nfuture litigious soul who claims they wrote it first  (sccs -> rcs -> \ncvs -> svn -> mercurial).   :-)\n\nTerry T\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": ">>>   strongly disagree. I'm appalled to see that sentence here.\n>> >  \n>> >  Come on!\n>> >  \n>>> >>  The overhead is significant for any large vector and it is in particular unnecessary since in .C y",
       "thread_id": "thread-7d4baea0c1d3",
       "thread_depth": 0,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120322/5231db82/attachment.pl"
+      ]
     },
     {
       "id": "msg-185153a2f691",
@@ -4282,11 +4333,14 @@
         "<mailman.29.1332414009.26932.r-devel@r-project.org>",
         "<4F6B2CE9.2090600@mayo.edu>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120322/8b88d372/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120322/8b88d372/attachment.pl>",
+      "body_plain": "On Mar 22, 2012, at 9:45 AM, Terry Therneau <therneau at mayo.edu> wrote:\n\n> \n>> \n>>> \n>>>>  strongly disagree. I'm appalled to see that sentence here.\n>>> > \n>>> > Come on!\n>>> > \n>>>> >> The overhead is significant for any large vector and it is in particular unnecessary since in .C you have to allocate *and copy* space even for results (twice!). Also it is very error-prone, because you have no information about the length of vectors so it's easy to run out of bounds and there is no way to check. IMHO .C should not be used for any code written in this century (the only exception may be if you are passing no data, e.g. if all you do is to pass a flag and expect no result, you can get away with it even if it is more dangerous). It is a legacy interface that dates way back and is essentially just re-named .Fortran interface. Again, I would strongly recommend the use of .Call in any recent code because it is safer and more efficient (if you don't care about either attribute, well, feel free ;)).\n>>> > \n>>> > So aleph will not support the .C interface? ;-)\n>>> > \n>> It will look at the timestamp of the source file and delete the package if it is not before 1980 ;). Otherwise it will send a request for punch cards with \".C is deprecated, please upgrade to .Call\" stamped out :P At that point I'll be flaming about using the native Aleph interface and not the R compatibility layer ;)\n>> \n>> Cheers,\n>> S\n> I'll dissent -- I don't think .C is inherently any more dangerous than .Call and prefer it's simplicity in many cases.  Calling C at all is what is inherently dangerous -- I can reference beyond the end of a vector, write over objects that should be read only, and branch to random places using either interface. \n\nYou can always do so deliberately, but with .C you have no way of preventing it since you don't even know what is the length! That is certainly far more dangerous than .Call where you can simply loop over the length, check that the lengths are compatible etc. Also for types like strings .C is a minefield that is hard to not blow up whereas .Call it is even more safe than scalar arrays. You can do none of that with .C which relies entirely on conventions with no recorded semantics.\n\n\n> If you are dealing with large objects and worry about memory efficiency then .Call puts more tools at your disposal and is worth the effort.  However, I did not find the .Call interface at all easy to use at first\n\nI guess this depends on the developer and is certainly a factor. Personally, I find the subset of the R API needed for .Call fairly small and intuitive (in particular when you are just writing a safer replacement for .C), but I'm obviously biased. Maybe in a separate thread we could discuss this - I'd be happy to write a ref card or cheat sheet if I find out what people find challenging on .Call. Nonetheless, my point is that it is more than worth investing the effort both in safety and performance.\n\n\n> and we should keep that in mind before getting too pompous in our lectures to the \"sinners of .C\".  (Mostly because the things I needed to know are scattered about in multiple places.)\n> \n> I might have to ask for an exemption on that timestamp -- the first bits of the survival package only reach back to 1986.  And I've had to change source code systems multiple times which plays hob with the file times, though I did try to preserve the changelog history to forstall some future litigious soul who claims they wrote it first  (sccs -> rcs -> cvs -> svn -> mercurial).   :-)\n> \n\n;) Maybe the rule should be based on the date of the first appearance of the package, fair enough :)\n\nCheers,\nSimon\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Mar 22, 2012, at 9:45 AM, Terry Therneau <therneau at mayo.edu> wrote:\n\n> \n>> \n>>> \n>>>>  strongly disagree. I'm appalled to see that sentence here.\n>>> > \n>>> > Come on!\n>>> > \n>>>> >> The overhea",
       "thread_id": "thread-7d4baea0c1d3",
       "thread_depth": 1,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120322/8b88d372/attachment.pl"
+      ]
     },
     {
       "id": "msg-7e4e389f95eb",
@@ -4339,11 +4393,14 @@
       "subject_clean": "Serializing many small objects efficiently",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120322/e52c82d4/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120322/e52c82d4/attachment.pl>",
+      "body_plain": "Hi,\nsorry if this question is trivial or unclear, this is my first venture into\nmixed C/R programming (I am reasonably experienced in each separately).\nI am trying to write a serialization function for a format called\ntypedbytes, which is used as an interchange format in Hadoop circles. Since\nI would need to serialize according to the internal R format many small R\nobjects I looked at the c interface\n\nvoid R_Serialize(SEXP s, R_outpstream_t ops);\nSEXP R_Unserialize(R_inpstream_t ips);\n\nIf I look at the source for e.g. unserialize is see a\n\n .Call(\"R_unserialize\", connection, refhook, PACKAGE = \"base\")\n\nwhich, despite the name of the second argument, accepts as 'connection' a\nraw vector. Is there any way to call that function from C -- without\ncalling the R function? Failing that, from what I've read I gather that it\nis not possible to get a C stream from a connection, so unless I am wrong\nusing R_serialize directly is not possible. If all else fails I would have\nprobably to use a hack requiring knowledge of the serialization format,\nwhich I'd much rather avoid. Suggestions? Thanks\n\n\nAntonio\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\nsorry if this question is trivial or unclear, this is my first venture into\nmixed C/R programming (I am reasonably experienced in each separately).\nI am trying to write a serialization function fo",
       "thread_id": "thread-dae9d5ee79de",
       "thread_depth": 0,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120322/e52c82d4/attachment.pl"
+      ]
     },
     {
       "id": "msg-68a4f1d577e5",
@@ -4359,11 +4416,14 @@
         "<4F6B2CE9.2090600@mayo.edu>",
         "<2933F897-6D3D-4DC0-AD38-2C73C8F01A4E@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120322/06065c74/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120322/06065c74/attachment.pl>",
+      "body_plain": "On 03/22/2012 09:38 AM, Simon Urbanek wrote:\n>\n> On Mar 22, 2012, at 9:45 AM, Terry Therneau <therneau at mayo.edu \n> <mailto:therneau at mayo.edu>> wrote:\n>\n>>\n>>>>>   strongly disagree. I'm appalled to see that sentence here.\n>>>> >  \n>>>> >  Come on!\n>>>> >  \n>>>>> >>  The overhead is significant for any large vector and it is in particular unnecessary since in .C you have to allocate*and copy*  space even for results (twice!). Also it is very error-prone, because you have no information about the length of vectors so it's easy to run out of bounds and there is no way to check. IMHO .C should not be used for any code written in this century (the only exception may be if you are passing no data, e.g. if all you do is to pass a flag and expect no result, you can get away with it even if it is more dangerous). It is a legacy interface that dates way back and is essentially just re-named .Fortran interface. Again, I would strongly recommend the use of .Call in any recent code because it is safer and more efficient (if you don't care about either attribute, well, feel free ;)).\n>>>> >  \n>>>> >  So aleph will not support the .C interface? ;-)\n>>>> >  \n>>> It will look at the timestamp of the source file and delete the package if it is not before 1980 ;). Otherwise it will send a request for punch cards with \".C is deprecated, please upgrade to .Call\" stamped out :P At that point I'll be flaming about using the native Aleph interface and not the R compatibility layer ;)\n>>>\n>>> Cheers,\n>>> S\n>> I'll dissent -- I don't think .C is inherently any more dangerous \n>> than .Call and prefer it's simplicity in many cases.  Calling C at \n>> all is what is inherently dangerous -- I can reference beyond the end \n>> of a vector, write over objects that should be read only, and branch \n>> to random places using either interface.\n>\n> You can always do so deliberately, but with .C you have no way of \n> preventing it since you don't even know what is the length! That is \n> certainly far more dangerous than .Call where you can simply loop over \n> the length, check that the lengths are compatible etc. Also for types \n> like strings .C is a minefield that is hard to not blow up whereas \n> .Call it is even more safe than scalar arrays. You can do none of that \n> with .C which relies entirely on conventions with no recorded semantics.\n>\nI've overrun arrays in both .C and .Call routines, and I assure you that \nit was never deliberate.  Very effective at crashing R with strange \nerror messages though.\nI will have .C(\"somefun\", as.integer(length(x)), x), the .Call version \nwill skip the second argument and add a line in the C code; no real \ndifference from my point of view.  ( Though the spelling is harder to \nremember in .Call.  Does R core use dice to decide which things are \nupper, lower, and mixed case: LENGTH, asInteger, ncols?)   R strings are \na PITA in C and I mostly avoid them so have no arguments about C vs Call \nthere.\nMuch of the survival library is .C for historical reasons of course, but \nI think it shows that you can be safe in C; though you can't be sloppy.\n>\n>> If you are dealing with large objects and worry about memory \n>> efficiency then .Call puts more tools at your disposal and is worth \n>> the effort.  However, I did not find the .Call interface at all easy \n>> to use at first\n>\n> I guess this depends on the developer and is certainly a factor. \n> Personally, I find the subset of the R API needed for .Call fairly \n> small and intuitive (in particular when you are just writing a safer \n> replacement for .C), but I'm obviously biased. Maybe in a separate \n> thread we could discuss this - I'd be happy to write a ref card or \n> cheat sheet if I find out what people find challenging on .Call. \n> Nonetheless, my point is that it is more than worth investing the \n> effort both in safety and performance.\n>\nI'm giving a short course at UseR on the design of the survival packages \nwhich promises a document \"containing all the details\", currently being \nwritten.  It has examples of .Call with discussion of what each action \nis doing.  The final result will  certainly be added to the survival \npackage; hopefully it will be useful enough to earn a place on the CRAN \ndocumentation page as well.\n>\n>> and we should keep that in mind before getting too pompous in our \n>> lectures to the \"sinners of .C\".  (Mostly because the things I needed \n>> to know are scattered about in multiple places.)\n>>\n>> I might have to ask for an exemption on that timestamp -- the first \n>> bits of the survival package only reach back to 1986.  And I've had \n>> to change source code systems multiple times which plays hob with the \n>> file times, though I did try to preserve the changelog history to \n>> forstall some future litigious soul who claims they wrote it first  \n>> (sccs -> rcs -> cvs -> svn -> mercurial).   :-)\n>>\n>\n> ;) Maybe the rule should be based on the date of the first appearance \n> of the package, fair enough :)\n>\n> Cheers,\n> Simon\n\nI think (but not sure) that the first version to get outside our local \ngroup was around 1989.\nTerry\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On 03/22/2012 09:38 AM, Simon Urbanek wrote:\n>\n> On Mar 22, 2012, at 9:45 AM, Terry Therneau <therneau at mayo.edu \n> <mailto:therneau at mayo.edu>> wrote:\n>\n>>\n>>>>>   strongly disagree. I'm appalled",
       "thread_id": "thread-7d4baea0c1d3",
       "thread_depth": 2,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120322/06065c74/attachment.pl"
+      ]
     },
     {
       "id": "msg-bd99a1ef77a3",
@@ -4639,11 +4699,14 @@
       "subject_clean": "Smalltalk binding to R",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120324/e86b6448/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120324/e86b6448/attachment.pl>",
+      "body_plain": "Hi - any person interested in building a binding between Smalltalk and R,\nplease contact myself or Hernan.\n\nThis could be done as the Google Summer of Code (GSoC).\n\nhttp://www.google-melange.com/gsoc/homepage/google/gsoc2012\nhttp://gsoc2012.esug.org/projects/r-statistics\n\nFor those who don't know Smalltalk it is an Object Oriented language that\nwas created back in the '80s in the Xerox Parc research center. Although it\nnever achieved high popularity it remains strong in some niche areas and\ngrowing in popularity thanks to a very cool Web development framework.\n\nSmalltalk has only one disadvantage: once you try it, you don't want to\nleave it!\n\nPlease, join us in helping connect the world of Smalltalk and all the\namazing R libraries.\n\n- Francisco\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi - any person interested in building a binding between Smalltalk and R,\nplease contact myself or Hernan.\n\nThis could be done as the Google Summer of Code (GSoC).\n\nhttp://www.google-melange.com/gsoc/",
       "thread_id": "thread-0c387abaf9c5",
       "thread_depth": 0,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120324/e86b6448/attachment.pl"
+      ]
     },
     {
       "id": "msg-4da9693a87a9",
@@ -5477,11 +5540,14 @@
         "<1332839689109-4508319.post@n4.nabble.com>",
         "<CAMi=pg7+yvBZDC7F3UpSrupUDej8JGfN4KCQF-mZQVAYDM=0oA@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120327/34acb802/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120327/34acb802/attachment.pl>",
+      "body_plain": "there's also Rgraphviz, although with 30,000+ edges it may not survive\n*this* graph :-)\n\n\nOn Tue, Mar 27, 2012 at 4:11 AM, Whit Armstrong <armstrong.whit at gmail.com>wrote:\n\n> if you don't mind going outside of R to create it, then check out\n> Graphviz: http://www.graphviz.org/Gallery.php\n>\n> you may have to reformat your data a little, but this tool is great\n> for drawing graphs.\n>\n> -Whit\n>\n>\n> On Tue, Mar 27, 2012 at 5:14 AM, MSousa <ricardosousa2000 at clix.pt> wrote:\n> > Good morning,\n> >\n> >\n> > I'm trying to draw a graph, and I'm using the following code.\n> >\n> > test.matrix<-read.table(\"~/Desktop/Results/testgephi.csv\", header = T,\n> > sep=\",\")\n> > colnames(test.matrix) <- gsub(\"X\", \"\", colnames(test.matrix))\n> > #drop first column\n> > drops <- c(\"\")\n> > test.matrix<-test.matrix[,!(names(test.matrix) %in% drops)]\n> > test.matrix\n> > test.matrix<-data.matrix(test.matrix)\n> > am.graph<-new(\"graphAM\", adjMat=test.matrix, edgemode=\"directed\")\n> > am.graph\n> > plot(am.graph, attrs = list(node = list(fillcolor = \"lightblue\"),edge =\n> > list(arrowsize=0.5)))\n> >\n> >\n> > The file testgephi.csv is following.\n> > \"\",\"1\",\"2\",\"3\",\"4\",\"5\"\n> > \"1\",393,55,66,44,88\n> > \"2\",44,23,47,57,89\n> > \"3\",57,87,98,456,43\n> > \"4\",77,767,86,32,77\n> > \"5\",43,88,23,76,46\n> >\n> >  In the example graph of the drawing works well, the problem is when I'm\n> > trying to draw the graph from a file wih A graphAM graph with directed\n> edges\n> > Number of Nodes = 217\n> > Number of Edges = 32804\n> >\n> > is there any package or tool that can draw a structure like this\n> >\n> >\n> >   Thanks\n> >\n> >\n> > --\n> > View this message in context:\n> http://r.789695.n4.nabble.com/drawing-the-graph-with-many-nodes-tp4508319p4508319.html\n> > Sent from the R devel mailing list archive at Nabble.com.\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \n*A model is a lie that helps you see the truth.*\n*\n*\nHoward Skipper<http://cancerres.aacrjournals.org/content/31/9/1173.full.pdf>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "there's also Rgraphviz, although with 30,000+ edges it may not survive\n*this* graph :-)\n\n\nOn Tue, Mar 27, 2012 at 4:11 AM, Whit Armstrong <armstrong.whit at gmail.com>wrote:\n\n> if you don't mind going",
       "thread_id": "thread-d512e3d00585",
       "thread_depth": 2,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120327/34acb802/attachment.pl"
+      ]
     },
     {
       "id": "msg-cd82b04aa6e5",
@@ -5755,11 +5821,14 @@
         "<4F720E1C.2000906@gmail.com>",
         "<CANROs4eNL32zQvYK-+=hEjpO1nLP=y4Eq=E24qpEm9fAokUL6A@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120328/16326046/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120328/16326046/attachment.pl>",
+      "body_plain": "> From: xie at yihui.name\n> Date: Tue, 27 Mar 2012 16:40:04 -0500\n> To: r-devel at r-project.org\n> Subject: Re: [Rd] CRAN policies\n> \n> I have been wondering if it is possible to automate the checking\n> process to reduce human efforts, e.g. automatically check the packages\n> submitted to FTP, and send the package maintainer an email in case of\n> warnings or errors (otherwise just move it to CRAN); package\n> maintainers can appeal for a manual check by CRAN maintainers in case\n> of false positives. As a package author, I really hate to bother CRAN\n> maintainers each time I upload a new version and it passes R CMD check\n> successfully, in which case I should have received an automatic email\n> instead of Kurt's \"hand-writing\" \"thanks, on CRAN now\". Frankly\n> speaking, it makes me feel guilty sometimes to update my packages,\n> thinking of other 3700 packages on CRAN and how much time you CRAN\n> maintainers are spending on checking the packages.\n> \n\n\nIndeed it is a good summary of how I felt for so long and in particular my recent experience, which involved Kurt, Brian,  and Uwe.\n\n\n\nI think win-builder certainly helps, but it is feasible with a Linux counterpart \"to have a final say\"?\n\n\n\n> I do not know how many package authors actually read this mailing\n> list, so these policies may not really reach some authors at all.\n> \nCertainly more colleagues read the list than  have been revealed by the postings.\n\nKind regards,\n\n\n\n\n\nJing Hua\n\n\n\n> Regards,\n> Yihui\n> --\n> Yihui Xie <xieyihui at gmail.com>\n> Phone: 515-294-2465 Web: http://yihui.name\n> Department of Statistics, Iowa State University\n> 2215 Snedecor Hall, Ames, IA\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n \t\t \t   \t\t  \n\t[[alternative HTML version deleted]]",
+      "body_snippet": "> From: xie at yihui.name\n> Date: Tue, 27 Mar 2012 16:40:04 -0500\n> To: r-devel at r-project.org\n> Subject: Re: [Rd] CRAN policies\n> \n> I have been wondering if it is possible to automate the checking",
       "thread_id": "thread-2e865041922b",
       "thread_depth": 8,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120328/16326046/attachment.pl"
+      ]
     },
     {
       "id": "msg-06c660d82089",
@@ -5922,11 +5991,14 @@
       "subject_clean": "How to create arbitrary number of loops",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120328/cce9ae82/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120328/cce9ae82/attachment.pl>",
+      "body_plain": "Dear R users,\n\nI'm wondering how I can generate an arbitrary number of loops in R.\nFor instance, I can generate two \"for\" loops to get ICC among any two-way combination among 10 variables. Here is the code\n\nn<-10\nfor (i in 1:(n-1))\n{\nfor (j in (i+1):n)\n{\nicc(cbind(DATA[,i],DATA[,j]))\n}\n}\nIf I need three-way combination, then a code with three \"for\" loops will be:\nn<-10\nfor (i in 1:(n-2))\n{\nfor (j in (i+1):(n-1))\n{\nfor (k in (j+1):n)\n{\nicc(cbind(DATA[,i],DATA[,j],DATA[,k]))\n}\n}\n}\nBut how can I write a code if I need all m=2, 3, 4,... loops for arbitrary m-way combinations?\nThanks!\nDaisy\n\n________________________________\nElectronic mail from Children's Mercy Hospitals and Clinics. This communication is intended only for the use of the addressee. It may contain information that is privileged or confidential under applicable law. If you are not the intended recipient or the agent of the recipient, you are hereby notified that any dissemination, copy or disclosure of this communication is strictly prohibited. If you have received this communication in error, please immediately forward the message to Children's Mercy Hospital's Information Security Officer via return electronic mail at informationsecurityofficer at cmh.edu and expunge this communication without making any copies. Thank you for your cooperation.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear R users,\n\nI'm wondering how I can generate an arbitrary number of loops in R.\nFor instance, I can generate two \"for\" loops to get ICC among any two-way combination among 10 variables. Here is the",
       "thread_id": "thread-0664d7558bcd",
       "thread_depth": 0,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120328/cce9ae82/attachment.pl"
+      ]
     },
     {
       "id": "msg-fe30e888cd80",
@@ -6181,11 +6253,14 @@
       "references": [
         "<1F3EE502B66950448F4408BD16CBFDEF750B616F@CMHMAIL0.CMH.Internal>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120329/847aa254/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120329/847aa254/attachment.pl>",
+      "body_plain": "On Wed, Mar 28, 2012 at 5:34 PM, Dai, Hongying, <hdai at cmh.edu> wrote:\n\n> Dear R users,\n>\n> I'm wondering how I can generate an arbitrary number of loops in R.\n> For instance, I can generate two \"for\" loops to get ICC among any two-way\n> combination among 10 variables. Here is the code\n>\n> n<-10\n> for (i in 1:(n-1))\n> {\n> for (j in (i+1):n)\n> {\n> icc(cbind(DATA[,i],DATA[,j]))\n> }\n> }\n> If I need three-way combination, then a code with three \"for\" loops will\n> be:\n> n<-10\n> for (i in 1:(n-2))\n> {\n> for (j in (i+1):(n-1))\n> {\n> for (k in (j+1):n)\n> {\n> icc(cbind(DATA[,i],DATA[,j],DATA[,k]))\n> }\n> }\n> }\n> But how can I write a code if I need all m=2, 3, 4,... loops for arbitrary\n> m-way combinations?\n> Thanks!\n> Daisy\n>\n\nFor your specific specific case,\n\n    combn(10, m, function(v) icc(DATA[,v]))\n\nMy 'v' is your c(i,j) or c(i,j,k), etc.\n\nIn general, Sarah is right, recursion gives the neater code, and this\ndiscussion probably doesn't belong here.\n\nIt can be achieved without recursion; I'd gladly share code that does the\nequivalent of combn (which is what Daisy is asking for) both ways.  I wrote\nit many years ago in C, and the non-recursive code is probably the only\ntime I used the 'goto' statement :-)\n\n/Christian\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Wed, Mar 28, 2012 at 5:34 PM, Dai, Hongying, <hdai at cmh.edu> wrote:\n\n> Dear R users,\n>\n> I'm wondering how I can generate an arbitrary number of loops in R.\n> For instance, I can generate two \"fo",
       "thread_id": "thread-0664d7558bcd",
       "thread_depth": 1,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120329/847aa254/attachment.pl"
+      ]
     },
     {
       "id": "msg-245787b64cbf",
@@ -6517,11 +6592,14 @@
         "<CABdHhvGp4f6KAqa5ba8xB-JH0sh0y87J+xRZeTW9DSwzowpV2g@mail.gmail.com>",
         "<3D59DF35E7CF3E42BA70C23BD5CBE6A85F820247B0@exvic-mbx04.nexus.csiro.au>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120330/de0e2830/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120330/de0e2830/attachment.pl>",
+      "body_plain": "I'll echo Mark's concerns.  R _used_ to be a language for \"turning ideas\ninto software quickly\".  Now it is more like \"prototyping ideas in software\nquickly\", and then spend a substantial amount of time trying to follow\nadministrative rules to package the code.  Quality has its costs.\n\nMany of the code checks I find quite useful, but the \"no visible binding\"\none generates lots of nuisance notes for me.  I must have a similar coding\nstyle to Mark.\n\nKevin\n\n\nOn Thu, Mar 29, 2012 at 8:29 PM, <Mark.Bravington at csiro.au> wrote:\n\n> I'm concerned this thread is heading the wrong way, towards techno-fixes\n> for imaginary problems. R package-building is already encumbered with a\n> huge set of complicated rules, and more instructions/rules eg for metadata\n> would make things worse not better.\n>\n> RCMD CHECK on the 'mvbutils' package generates over 300 Notes about \"no\n> visible binding...\", which inevitably I just ignore. They arise because\n> RCMD CHECK is too \"stupid\" to understand one of my preferred coding idioms\n> (I'm not going to explain what-- that's beside the point). And RCMD CHECK\n> always will be too \"stupid\" to understand everything that a rich language\n> like R might quite reasonably cause experienced coders to do.\n>\n> It should not be CRAN's business how I write my code, or even whether my\n> code does what it is supposed to. It might be CRAN's business to try to\n> work out whether my code breaks CRAN's policies, eg by causing R to crash\n> horribly-- that's presumably what Warnings are for (but see below). And\n> maybe there could be circumstances where an automatic check might be\n> \"worried\" enough to alert the CRANia and require manual explanation and\n> emails etc from a developer, but even that seems doomed given the growing\n> deluge of packages.\n>\n> RCMD CHECK currently functions both as a \"sanitizer\" for CRAN, and as a\n> developer-tool. But the fact that the one programl does both things seems\n> accidental to me, and I think this dual-use is muddying the discussion.\n> There's a big distinction between (i) code-checks that developers\n> themselves might or might not find useful-- which should be left to the\n> developer, and will vary from person to person-- and (ii) code-checks that\n> CRAN enforces for its own peace-of-mind. Maybe it's convenient to have both\n> functions in the same place, and it'd be fine to use Notes for one and\n> Warnings for the other, but the different purposes should surely be kept\n> clear.\n>\n> Personally, in building over 10 packages (only 2 on CRAN), I haven't found\n> RCMD CHECK to be of any use, except for the code-documentation and\n> example-running bits. I know other people have different opinions, but\n> that's the point: one-size-does-not-fit-all when it comes to coding tools.\n>\n> And wrto the Warnings themselves: I feel compelled to point out that it's\n> logically impossible to fully check whether R code will do bad things. One\n> has to wonder at what point adding new checks becomes futile or\n> counterproductive. There must be over 2000 people who have written CRAN\n> packages by now; every extra check and non-back-compatible additional\n> requirement runs the risk of generating false-negatives and incurring many\n> extra person-hours to \"fix\" non-problems. Plus someone needs to document\n> and explain the check (adding to the rule mountain), plus there is the time\n> spent in discussions like this..!\n>\n> Mark\n>\n> Mark Bravington\n> CSIRO CMIS\n> Marine Lab\n> Hobart\n> Australia\n> ________________________________________\n> From: r-devel-bounces at r-project.org [r-devel-bounces at r-project.org] On\n> Behalf Of Hadley Wickham [hadley at rice.edu]\n> Sent: 30 March 2012 07:42\n> To: William Dunlap\n> Cc: r-devel at stat.math.ethz.ch; Spencer Graves\n> Subject: Re: [Rd] CRAN policies\n>\n> > Most of that stuff is already in codetools, at least when it is checking\n> functions\n> > with checkUsage().  E.g., arguments of ~ are not checked.  The  expr\n> argument\n> > to with() will not be checked if you add  skipWith=FALSE to the call to\n> checkUsage.\n> >\n> >  > library(codetools)\n> >\n> >  > checkUsage(function(dataFrame) with(dataFrame, {Num/Den ; Resp ~\n> Pred}))\n> >  <anonymous>: no visible binding for global variable 'Num' (:1)\n> >  <anonymous>: no visible binding for global variable 'Den' (:1)\n> >\n> >  > checkUsage(function(dataFrame) with(dataFrame, {Num/Den ; Resp ~\n> Pred}), skipWith=TRUE)\n> >\n> >  > checkUsage(function(dataFrame) with(DataFrame, {Num/Den ; Resp ~\n> Pred}), skipWith=TRUE)\n> >  <anonymous>: no visible binding for global variable 'DataFrame'\n> >\n> > The only part that I don't see is the mechanism to add code-walker\n> functions to\n> > the environment in codetools that has the standard list of them for\n> functions with\n> > nonstandard evaluation:\n> >  > objects(codetools:::collectUsageHandlers, all=TRUE)\n> >   [1] \"$\"             \"$<-\"           \".Internal\"\n> >   [4] \"::\"            \":::\"           \"@\"\n> >   [7] \"@<-\"           \"{\"             \"~\"\n> >  [10] \"<-\"            \"<<-\"           \"=\"\n> >  [13] \"assign\"        \"binomial\"      \"bquote\"\n> >  [16] \"data\"          \"detach\"        \"expression\"\n> >  [19] \"for\"           \"function\"      \"Gamma\"\n> >  [22] \"gaussian\"      \"if\"            \"library\"\n> >  [25] \"local\"         \"poisson\"       \"quasi\"\n> >  [28] \"quasibinomial\" \"quasipoisson\"  \"quote\"\n> >  [31] \"Quote\"         \"require\"       \"substitute\"\n> >  [34] \"with\"\n>\n> It seems like we really need a standard way to add metadata to functions:\n>\n> attr(with, \"special_args\") <- \"expr\"\n> attr(lm, \"special_args\") <- c(\"formula\", \"weights\", \"subset\")\n>\n> This would be useful because it could automatically contribute to the\n> documentation.\n>\n> Similarly,\n>\n> attr(my.new.method, \"s3method\") <- c(\"my.new\", \"method\")\n>\n> could be useful.\n>\n> Hadley\n>\n>\n> --\n> Assistant Professor / Dobelman Family Junior Chair\n> Department of Statistics / Rice University\n> http://had.co.nz/\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \nKevin Wright\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I'll echo Mark's concerns.  R _used_ to be a language for \"turning ideas\ninto software quickly\".  Now it is more like \"prototyping ideas in software\nquickly\", and then spend a substantial amount of ti",
       "thread_id": "thread-6bd236810587",
       "thread_depth": 8,
-      "month": "2012-03"
+      "month": "2012-03",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120330/de0e2830/attachment.pl"
+      ]
     },
     {
       "id": "msg-6ea42a1302db",

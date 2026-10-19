@@ -104,11 +104,14 @@
       "subject_clean": "License for Rembedded.h",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100803/f12be45c/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100803/f12be45c/attachment.pl>",
+      "body_plain": "Possibly more of a legal question than a technical development question, but here goes.\n\n\n\nIn the doc\\COPYRIGHTS file it is made clear that the intention is that you can write R packages and distribute them under licenses not compatible with GPL, by making the relevant header files available under the LGPL. This was an explicit change that was made in February 2001, and allows for DLLs that require the API header files for compilation and are linked against R.dll to not be \"infected\" with the GPL.\n\nHowever the Rembedded.h header file isn't included in the list in the doc\\COPYRIGHTS file, and the copyright statement in the Rembedded.h header file lists the GPL and not the LGPL as the relevant license.\n\nSo it doesn't look like it is allowed that I be able to use the R invocation API to launch R and embed it in my product (such as a new GUI, or integration with another product) and ship that product under a license not compatible with GPL? Is this correct? Or is it the intention that I be able to write a commercial front-end of some kind for R?\n\n\n\nThanks!\n\n\n\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Possibly more of a legal question than a technical development question, but here goes.\n\n\n\nIn the doc\\COPYRIGHTS file it is made clear that the intention is that you can write R packages and distribut",
       "thread_id": "thread-53f68b854b26",
       "thread_depth": 0,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100803/f12be45c/attachment.pl"
+      ]
     },
     {
       "id": "msg-d3531983164c",
@@ -499,11 +502,14 @@
       "subject_clean": "rbind on data.frame that contains a column that is also a data.frame",
       "in_reply_to": "<1281046907919-2315682.post@n4.nabble.com>",
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100806/6792a305/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100806/6792a305/attachment.pl>",
+      "body_plain": "OK...I'll put in my 2 cents worth. \n\nIt seems to me that the problem is with this line:\n\nb$a=a , where \"s\" is something other than a vector with\nlength equal to nrow(b).\n\nI had no idea that a dataframe could hold a dataframe. It is not just\nrbind(b,b) that fails, apply(b,1,sum) fails and so does plot(b). I'll \nbet other R commands fail as well.\n\nMy point of view is that a dataframe is a list of vectors\nof equal length and various types (this is not exactly what the help\npage says, but it is what it suggests to me). \n\nHum, I wonder how much code is based on the idea that a dataframe can hold \na\ndataframe. 15 years of using R just isn't enough! But, I can say that not \none\nline of code I've written expects a dataframe to hold a dataframe.\n\n> Hi,\n\n> The following was already a topic on r-help, but after understanding \nwhat is\n> going on, I think it fits better in r-devel.\n\n> The problem is this:\n> When a data.frame has another data.frame in it, rbind doesn't work well.\n> Here is an example:\n> --\n> > a=data.frame(x=1:10,y=1:10)\n> > b=data.frame(z=1:10)\n> > b$a=a\n> > b\n> z a.x a.y\n> 1   1   1   1\n> 2   2   2   2\n> 3   3   3   3\n> 4   4   4   4\n> 5   5   5   5\n> 6   6   6   6\n> 7   7   7   7\n> 8   8   8   8\n> 9   9   9   9\n> 10 10  10  10\n> > rbind(b,b)\n> Error in `row.names<-.data.frame`(`*tmp*`, value = c(\"1\", \"2\", \"3\", \"4\", \n :\n> duplicate 'row.names' are not allowed\n> In addition: Warning message:\n> non-unique values when setting 'row.names': ?1?, ?10?, ?2?, ?3?, ?4?, \n?5?,\n> ?6?, ?7?, ?8?, ?9?\n> --\n\n> \n> Looking at the code of rbind.data.frame, the error comes from the\n> lines:\n> --\n> xij <- xi[[j]]\n> if (has.dim[jj]) {\n> value[[jj]][ri, ] <- xij\n> rownames(value[[jj]])[ri] <- rownames(xij)   # <--  problem is here\n> }\n> --\n> if the rownames() line is dropped, all works well. What this line\n> tries to do is to join the rownames of internal elements of the\n> data.frames I try to rbind. So the result, in my case should have a\n> column 'a', whose rownames are the rownames of the original column 'a'. \nIt\n> isn't totally clear to me why this is needed. When would a data.frame\n> have different rownames on the inside vs. the outside?\n\n> Notice also that rbind takes into account whether the rownames of the\n> data.frames to be joined are simply 1:n, or they are something else.\n> If they are 1:n, then the result will have rownames 1:(n+m). If not,\n> then the rownames might be kept.\n\n> I think, more consistent would be to replace the lines above with\n> something like:\n> if (has.dim[jj]) {\n> value[[jj]][ri, ] <- xij\n> rnj = rownames(value[[jj]])\n> rnj[ri] = rownames(xij)\n> rnj = make.unique(as.character(unlist(rnj)), sep = \"\")\n> rownames(value[[jj]]) <- rnj\n> }\n\n> In this case, the rownames of inside elements will also be joined, but\n> in case they overlap, they will be made unique - just as they are for\n> the overall result of rbind. A side effect here would be that the\n> rownames of matrices will also be made unique, which till now didn't\n> happen, and which also doesn't happen when one rbinds matrices that\n> have rownames. So it would be better to test above if we are dealing\n> with a matrix or a data.frame.\n\n> But most people don't have different rownames inside and outside.\n> Maybe it would be best to add a flag as to whether you care or don't\n> care about the rownames of internal data.frames...\n\n> But maybe data.frames aren't meant to contain other data.frames?\n\n> If instead I do\n> b=data.frame( z=1:10, a=a)\n> then rbind(b,b) works well. In this case the data.frame was converted to \nits\n> columns. Maybe\n> b$a = a\n> should do the same?\n\n> Michael\n> --\n> View this message in context: http://r.789695.n4.nabble.com/rbind-\n> on-data-frame-that-contains-a-column-that-is-also-a-data-frame-\n> tp2315682p2315682.html\n> Sent from the R devel mailing list archive at Nabble.com.\n\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "OK...I'll put in my 2 cents worth. \n\nIt seems to me that the problem is with this line:\n\nb$a=a , where \"s\" is something other than a vector with\nlength equal to nrow(b).\n\nI had no idea that a datafram",
       "thread_id": "thread-f632cdd28ab2",
       "thread_depth": 1,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100806/6792a305/attachment.pl"
+      ]
     },
     {
       "id": "msg-3a7b677f044a",
@@ -958,11 +964,14 @@
         "<COL117-W30C37D77057267045E331EC0A00@phx.gbl>",
         "<4C629AB7.60906@sciviews.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100811/556ac792/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100811/556ac792/attachment.pl>",
+      "body_plain": "Dear DevelopeRs,\n\nWe are performing some analysis/simulation involving dense genetic data with plspm. Owing to the high collinearity of the neighboring SNPs (independent variables) the function would fail frequently if bootstrap option is used. In some cases I can catch this as error via options(error=expression()) but not so when R prompts \"Error during wrapup: Bootstrapping failed\". Is it possible to catch that?\n\nMany thanks for your help,\n\n\nJinghua\n \t\t \t   \t\t  \n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear DevelopeRs,\n\nWe are performing some analysis/simulation involving dense genetic data with plspm. Owing to the high collinearity of the neighboring SNPs (independent variables) the function would ",
       "thread_id": "thread-cbdcdb1fbfc1",
       "thread_depth": 1,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100811/556ac792/attachment.pl"
+      ]
     },
     {
       "id": "msg-8a86e18fad5a",
@@ -1215,11 +1224,14 @@
       "subject_clean": "Disable interaction in R to use with Rserve",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100815/afe232f0/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100815/afe232f0/attachment.pl>",
+      "body_plain": "Is there a way to disable interactive behavior in R (?interactive), but\nwithout it affecting the default error handling and reporting? This would be\nneeded to use Rserve without any interruption. The problem is that the\nRserve expects every eval either to return or return an error. The\nconnection gets stuck whenever R wants to display some kind of prompt.\n\nFor example, when the user runs install.packages for the first time and\ndoesn't supply the repos argument, R displays a list of CRAN mirrors. When\nthis happens, Rserve does not return; it just waits there, and the Rserv\nconnection becomes unattainable.\n\nAs a possible solution, we tried to disable R interactive mode (see\n?interactive). The CRAN package 'interactivity' provides a function to\ntoggle C level global variable R_Interactive. However, setting interactive\nmode to false, also results in that R exits the R session on every error.\nThis is not what we want, we would like to keep the R sesion alive and leave\nthe R error handling unaffected, and only suppress any prompts or dialogs\nthat prevent the call from returning.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Is there a way to disable interactive behavior in R (?interactive), but\nwithout it affecting the default error handling and reporting? This would be\nneeded to use Rserve without any interruption. The ",
       "thread_id": "thread-7612735783c6",
       "thread_depth": 0,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100815/afe232f0/attachment.pl"
+      ]
     },
     {
       "id": "msg-2259ca703152",
@@ -1356,11 +1368,14 @@
       "subject_clean": "DetachedEval Issues",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100817/1aee0f0f/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100817/1aee0f0f/attachment.pl>",
+      "body_plain": "Hello everyone,\nI have been attempting to make use of the newly implemented detachedEval functionality and I am having a few teething issues.\nMy code works fine when tested with both the Client and the Server on a single machine, but issues arise when I run them separately.Possibly because the local / local connection is running voer a Unix socket rather than tcp proper?\nRsession* theSession;theSession = rc->detachedEval(\"source(\\\"hdlc_processing.r\\\")\");delete rc;\nrc = new Rconnection(theSession);rc->connect();\n\nOwing to firewall issues I am having to make use of an ssh tunnel for the connection, hence the manual override of the port number.Thus I am in fact using this:\nRsession* testSession = new Rsession(theSession->host(),6311,theSession->key());rc = new Rconnection(testSession);rc->connect();\nThis results in the following being outputted on the Rserve debug side.\nsession: resuming session, waiting for connections.connection accepted.sending ID string.\nheader read result: 16DUMP [16]: 31 be 18 07 15 57 93 6f 9d a3 53 56 99 f4 3b 7fdiscarding buffer because too big (awaiting 1871927061 bytes)\nAny help would be greatly appreciated.\nThank You\nMartin Kerr\n \t\t \t   \t\t  \n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello everyone,\nI have been attempting to make use of the newly implemented detachedEval functionality and I am having a few teething issues.\nMy code works fine when tested with both the Client and th",
       "thread_id": "thread-18cdf6a1bdd2",
       "thread_depth": 0,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100817/1aee0f0f/attachment.pl"
+      ]
     },
     {
       "id": "msg-38c5c3c262c0",
@@ -1391,11 +1406,14 @@
       "subject_clean": "Problems building own package (Error: \"package has been build before R-2.10.0\")",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100817/0a034d94/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100817/0a034d94/attachment.pl>",
+      "body_plain": "Dear List,\n\n \n\nI’m doing my first baby steps towards developing own R Packages and ran into\nthe following problem:\n\n \n\nR CMD check mypackage works fine (no errors, no warnings)\n\nR CMD build mypackage works fine (no errors, no warnings)\n\nR CMD INSTALL –library=”C:\\R\\R-2.11.1\\library”\n“something\\mypackage\\mypackage_1.0.tar.gz” works fine (no errors, no\nwarnings)\n\n \n\nHowever, when I try loading the package in an R-Session (version 2.11.1) via\n“library(mypackage)”, R complains about the package being build before\nversion R-2.10.0 and tells me to rebuild it.\n\n \n\nCould this possibly be due to the fact that I have multiple R versions\ninstalled (this also includes the most recent one, though)? \n\n \n\nTo provide you with some details:\n\n-          Running Windows XP\n\n-          All of my R versions are under “C:\\R” (versions 2.9.2, 2.10.1,\n2.11.1).\n\n-          I installed Rtools (version 2.1.2) to “C:\\Rtools” and pointed it\nto “C:\\R” (as this was the default) to interact with R (should this maybe\nhave been “C:\\R\\R-2.11.1”?). I also installed everything else necessary to\nbuild packages (Inno Setup etc.).\n\n-          My PATH is set up as explained in R-Admin manual. Also, the only\nR version stated there is “C:\\R\\R-2.11.1\\bin;”.\n\n-          I updated the DESCRIPTION file and specified all .Rd files\ncorrectly.\n\n \n\nAny idea what I’m doing wrong?\n\n \n\nThanks a ton,\n\nJanko\n\n \n\n  _____  \n\n \n\nJanko Thyson\n <mailto:holger.koemm at ku-eichstaett.de> janko.thyson at ku-eichstaett.de\n\nCatholic University of Eichstätt-Ingolstadt\nIngolstadt School of Management\nStatistics and Quantitative Methods\nAuf der Schanz 49\nD-85049 Ingolstadt\n\n <http://www.wfi.edu/lsqm> www.wfi.edu/lsqm\n\nFon:  +49 841 937-1923\nFax:  +49 841 937-1965\n\nThis e-mail and any attachment is for authorized use by the intended\nrecipient(s) only. It may contain proprietary material, confidential\ninformation and/or be subject to legal privilege. It should not be\ncopied, disclosed to, retained or used by any other party.\nIf you are not an intended recipient then please promptly delete this\ne-mail and any attachment and all copies and inform the sender.\n\n \n\n  _____  \n\n \n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear List,\n\n \n\nI’m doing my first baby steps towards developing own R Packages and ran into\nthe following problem:\n\n \n\nR CMD check mypackage works fine (no errors, no warnings)\n\nR CMD build mypackage ",
       "thread_id": "thread-bc8a8a9df4ab",
       "thread_depth": 0,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100817/0a034d94/attachment.pl"
+      ]
     },
     {
       "id": "msg-57f0b29da973",
@@ -1821,11 +1839,14 @@
         "<AANLkTimDKD058Z+UQK2Z8EucsVsbE-T+dRe2h5EG-HYc@mail.gmail.com>",
         "<4C6CFD45.7050007@yandex.ru>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100819/c7425fa4/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100819/c7425fa4/attachment.pl>",
+      "body_plain": "2010/8/19 Vyacheslav Karamov <ubuntulist at yandex.ru>\n\n> Daniel Cegiełka пишет:\n>\n>> http://www.rforge.net/r2c/\n>>\n>> regards,\n>> daniel\n>>\n>>\n>> 2010/8/19 Vyacheslav Karamov <ubuntulist at yandex.ru <mailto:\n>> ubuntulist at yandex.ru>>\n>>\n>>\n>>    Hi All!\n>>\n>>    I'm new to R and I need to know is it possible for R to generate\n>>    C/C++ source code, Java byte code or native Win32 DLL like MatLab?\n>>\n>>    ---\n>>    WBR,\n>>    Vyacheslav.\n>>\n>>    ______________________________________________\n>>    R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list\n>>\n>>    https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>>\n>>  \"Currently it is very experimantal and limited, intended for experiments\n> with the language rather than real use\"\n\n\nприветствуй ;)\n\nexactly <http://www.dict.pl/dict?word=exactly&lang=PL>.. but Simon usually\nhas high quality of code.\nregards,\ndaniel\n\n\n\n>\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "2010/8/19 Vyacheslav Karamov <ubuntulist at yandex.ru>\n\n> Daniel Cegiełka пишет:\n>\n>> http://www.rforge.net/r2c/\n>>\n>> regards,\n>> daniel\n>>\n>>\n>> 2010/8/19 Vyacheslav Karamov <ubuntulist at yandex.ru",
       "thread_id": "thread-ed5fdb336256",
       "thread_depth": 1,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100819/c7425fa4/attachment.pl"
+      ]
     },
     {
       "id": "msg-fb6c54cce83a",
@@ -1864,11 +1885,14 @@
         "<AANLkTikMyRzcDHtCSb9f31v5wnN+FLrbQXAwRDg7ui1E@mail.gmail.com>",
         "<4C6D0BC2.7070906@yandex.ru>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100819/2f7e6231/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100819/2f7e6231/attachment.pl>",
+      "body_plain": "Is there any posibility to use R without installing?\n\n> I mean that I have my own application written in MS Visual C++ and I need\n> to use R script in this app. I can install R and use it via DCOM, but it's\n> not convenient for  the end users of my  program.\n>\n>\nDirk Eddelbuettel love R/C++ combination. Rinside could be usefull for you.\n\nhttp://dirk.eddelbuettel.com/code.html\n\nregards\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Is there any posibility to use R without installing?\n\n> I mean that I have my own application written in MS Visual C++ and I need\n> to use R script in this app. I can install R and use it via DCOM, bu",
       "thread_id": "thread-ed5fdb336256",
       "thread_depth": 3,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100819/2f7e6231/attachment.pl"
+      ]
     },
     {
       "id": "msg-c6107495dae4",
@@ -2928,11 +2952,14 @@
       "references": [
         "<4C6DC76B.7000303@structuremonitoring.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100820/17afcf43/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100820/17afcf43/attachment.pl>",
+      "body_plain": "Recently I was visiting with people about why commercial support is needed\nfor some people using R.  One person observed:\n\nWith commercial support, you have a person that you can call with questions\nand yell at.\nWith R mailing lists, you can ask questions and have people yell at YOU.\n\nThe atmosphere of the R-help and R-devel mailing lists is infamous.  Is this\na good reputation to have?  I'm doubtful that it is.\n\nSo, I support Spencer's suggestion for more civility.\n\nKevin Wright\n\n\nOn Thu, Aug 19, 2010 at 7:08 PM, Spencer Graves <\nspencer.graves at structuremonitoring.com> wrote:\n\n>  What do you think about adding a \"No RTFM\" policy to the R mailing lists?\n> Per, \"http://en.wikipedia.org/wiki/RTFM\":\n>\n>\n> The Ubuntu Forums and LinuxQuestions.org, for instance, have instituted \"no\n> RTFM\" policies to promote a welcoming atmosphere.[8][9].\n>\n> RTFM [and] \"Go look on google\" are two inappropriate responses to a\n> question. If you don't know the answer or don't wish to help, please say\n> nothing instead of brushing off someone's question. Politely showing someone\n> how you searched or obtained the answer to a question is acceptable, even\n> encouraged.\n> ...\n>\n> If you wish to remind a user to use search tools or other resources when\n> they have asked a question you feel is basic or common, please be very\n> polite. Any replies for help that contain language disrespectful towards the\n> user asking the question, i.e. \"STFU\" or \"RTFM\" are unacceptable and will\n> not be tolerated. —Ubuntu Forums\n>\n>\n> Gavin Simpson and I recently provided examples answering a question from\n> \"r.ookie\" that had previously elicited responses, \"\"You want us to read the\n> help page to you?\" and \"It yet again appears that you are asking us to read\n> the help pages for you.\"\n>\n>\n> I can appreciate the sentiment in fortunes('rtfm'). In this case, however,\n> \"r.ookie\" had RTFM (and said so), but evidently the manual was not\n> sufficiently clear.\n>\n>\n> Best Wishes,\n> Spencer Graves\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \nKevin Wright\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Recently I was visiting with people about why commercial support is needed\nfor some people using R.  One person observed:\n\nWith commercial support, you have a person that you can call with questions\na",
       "thread_id": "thread-7592b43fdfe4",
       "thread_depth": 1,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100820/17afcf43/attachment.pl"
+      ]
     },
     {
       "id": "msg-2489c22cf980",
@@ -3143,11 +3170,14 @@
         "<4C6DC76B.7000303@structuremonitoring.com>",
         "<AANLkTimdu2nXdwAdvYL5c1xw02XBz9DrE81j4b93xzpS@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100820/a410f4b7/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100820/a410f4b7/attachment.pl>",
+      "body_plain": "Hello,\n \n I have found the people associated with this list to be VERY helpful over the years. This is especially appreciated as, some of my answers have come from the same people who are busy improving R: a fascinating, potent set of software tools, excellently supported. In my humble opinion, the anti-thesis of a commercial for profit software analogue.\n \nGood Luck to you,\n \nJohn\n \nDate: Fri, 20 Aug 2010 13:06:05 -0500\nFrom: kw.stat at gmail.com\nTo: spencer.graves at structuremonitoring.com\nCC: r-devel at r-project.org\nSubject: Re: [Rd] No RTFM?\n\nRecently I was visiting with people about why commercial support is needed\nfor some people using R.  One person observed:\n \nWith commercial support, you have a person that you can call with questions\nand yell at.\nWith R mailing lists, you can ask questions and have people yell at YOU.\n \nThe atmosphere of the R-help and R-devel mailing lists is infamous.  Is this\na good reputation to have?  I'm doubtful that it is.\n \nSo, I support Spencer's suggestion for more civility.\n \nKevin Wright\n \n \nOn Thu, Aug 19, 2010 at 7:08 PM, Spencer Graves <\nspencer.graves at structuremonitoring.com> wrote:\n \n>  What do you think about adding a \"No RTFM\" policy to the R mailing lists?\n> Per, \"http://en.wikipedia.org/wiki/RTFM\":\n>\n>\n> The Ubuntu Forums and LinuxQuestions.org, for instance, have instituted \"no\n> RTFM\" policies to promote a welcoming atmosphere.[8][9].\n>\n> RTFM [and] \"Go look on google\" are two inappropriate responses to a\n> question. If you don't know the answer or don't wish to help, please say\n> nothing instead of brushing off someone's question. Politely showing someone\n> how you searched or obtained the answer to a question is acceptable, even\n> encouraged.\n> ...\n>\n> If you wish to remind a user to use search tools or other resources when\n> they have asked a question you feel is basic or common, please be very\n> polite. Any replies for help that contain language disrespectful towards the\n> user asking the question, i.e. \"STFU\" or \"RTFM\" are unacceptable and will\n> not be tolerated. —Ubuntu Forums\n>\n>\n> Gavin Simpson and I recently provided examples answering a question from\n> \"r.ookie\" that had previously elicited responses, \"\"You want us to read the\n> help page to you?\" and \"It yet again appears that you are asking us to read\n> the help pages for you.\"\n>\n>\n> I can appreciate the sentiment in fortunes('rtfm'). In this case, however,\n> \"r.ookie\" had RTFM (and said so), but evidently the manual was not\n> sufficiently clear.\n>\n>\n> Best Wishes,\n> Spencer Graves\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n \n \n \n-- \nKevin Wright\n \n\t[[alternative HTML version deleted]]\n \n\n______________________________________________ R-devel at r-project.org mailing list https://stat.ethz.ch/mailman/listinfo/r-devel \t\t \t   \t\t  \n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n \n I have found the people associated with this list to be VERY helpful over the years. This is especially appreciated as, some of my answers have come from the same people who are busy improvi",
       "thread_id": "thread-7592b43fdfe4",
       "thread_depth": 2,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100820/a410f4b7/attachment.pl"
+      ]
     },
     {
       "id": "msg-d466920a6636",
@@ -3221,11 +3251,14 @@
         "<AANLkTi=W0HUgzpxZLUCpgJSQ5PvcXp5s1BC2wLsg4=w1@mail.gmail.com>",
         "<AANLkTin+mW=DmKGb=2AMSrN652Z_CgWYrvksPWOjKOA3@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100821/193e13d9/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100821/193e13d9/attachment.pl>",
+      "body_plain": "Dear Gabor,\n\nI do not agree with your claim\n\n\"In the case of the R list there is a\nlarger potential demand for free help than resources to answer and\nwithout the usual monetary economics to allocate resources I believe\nthat the functional purpose of rudeness here is to ration those\nresources and minimize duplication of questions\"\n\nIn fact, apart from the fact that rudeness should never be justified,  I was\namazed at the amount of time dedicated by some people to give unhelpful\nreplies to dumb (and less dumb) questions (at least on R-devel). In my\nopinion this behaviour causes some damages to the whole R project for at\nleast two reasons:\n\n1. On the bug report side if you want to have a good percentage of true\npositive reports you should allow for a high percentage of false positive\nreports.  But if people are scared to post you will lose the true positive\ntogether with false ones.\n2. People that are potentially willing to contribute are discouraged to do\nit.\n\nKind regards\n\nSimone\n\nOn Fri, Aug 20, 2010 at 8:37 PM, Gabor Grothendieck <ggrothendieck at gmail.com\n> wrote:\n\n> On Fri, Aug 20, 2010 at 2:12 PM, Paul Johnson <pauljohn32 at gmail.com>\n> wrote:\n> > On Thu, Aug 19, 2010 at 7:08 PM, Spencer Graves\n> > <spencer.graves at structuremonitoring.com> wrote:\n> >>  What do you think about adding a \"No RTFM\" policy to the R mailing\n> lists?\n> >> Per, \"http://en.wikipedia.org/wiki/RTFM\":\n> >>\n> > I think this is a great suggestion.\n> >\n> > I notice the R mailing list already has a gesture in this direction:\n> > \"Rudeness and ad hominem comments are not acceptable. Brevity is OK.\"\n> >\n> > But the people who behave badly don't care about policies like this\n> > and they will keep doing what they do.\n>\n> Although it may seem hard to justify rudeness its often the case that\n> even the most bizarre behavior makes sense if you view it from the\n> perspective of that person.   In the case of the R list there is a\n> larger potential demand for free help than resources to answer and\n> without the usual monetary economics to allocate resources I believe\n> that the functional purpose of rudeness here is to ration those\n> resources and minimize duplication of questions.  If that is correct\n> one can predict that if civility were to become the norm on this list\n> then other rationing mechanisms would arise to replace it.\n>\n> For example, it might become the norm that most questions are not\n> answered or are answered less thoroughly or the list might be replaced\n> as the de facto goto medium for R questions by some other list or web\n> site so we have to be careful about unintended consequences.\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \n______________________________________________________\n\nSimone Giannerini\nDipartimento di Scienze Statistiche \"Paolo Fortunati\"\nUniversita' di Bologna\nVia delle belle arti 41 - 40126  Bologna,  ITALY\nTel: +39 051 2098262  Fax: +39 051 232153\nhttp://www2.stat.unibo.it/giannerini/\n______________________________________________________\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear Gabor,\n\nI do not agree with your claim\n\n\"In the case of the R list there is a\nlarger potential demand for free help than resources to answer and\nwithout the usual monetary economics to allocate r",
       "thread_id": "thread-2bb5aea855e6",
       "thread_depth": 2,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100821/193e13d9/attachment.pl"
+      ]
     },
     {
       "id": "msg-f8b7b314c885",
@@ -3327,11 +3360,14 @@
         "<AANLkTinfhu9njhJaoO02HO2XJZRczbXkWeRvFAJGHeOy@mail.gmail.com>",
         "<4C6FAD0C.6060908@structuremonitoring.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100821/46a46f91/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100821/46a46f91/attachment.pl>",
+      "body_plain": "I am reminded of a cartoon I saw recently in a urologists office that said:\n\"In this line of work, I see a lot of ass holes and pricks.\"\n\nThere is no shortage of people who are nasty, both among those who seek help\nand those who are able to give it, in any community.  I would say, though,\nthat instead of endorsing nastiness, for whatever reason, it ought to at\nleast be ignored, and would be better repudiated.  I can recall trying to\nteach elementary statistics to first year undergraduate students: and a\nparticular subset that was terrified of math to begin with.  They were under\nthe mistaken belief that they could function without any quantitative\ncapability.  While I disabused them of that delusion right quick, I found I\nhad to do that gently as they were so insecure that it would have been easy\nto crush their spirit to a point where they'd drop out of university\naltogether for lack of confidence.  Instead of being harsh with them, I had\nto gently bring them around, in some cases giving them early on assignments\nthat were mathematical but structured in such a way they didn't notice the\nmathematical nature of it until after the fact.  Invariably, they succeeded\nin these assignments and i was able to tell them something like: \"You see,\nyou told me you couldn't do math, but look what you have done.  This problem\nwas inherently mathematical.\"  THAT was a confidence builder.  Had I taken\nthe RTFM approach with those kids, the scientific community would have\nforever lost some bright minds long before they had begun to flourish.  At\nthat time, I found I also had to develop a skill in NOT laughing at\nquestions that struck me funny.  That happened frequently, simply because I\nwas dealing with kids so new to quantitative analyses that many of the\nquestions they asked were funny.  But I dared not laugh because I knew these\nstudents asking such questions were so insecure that they'd have been\ncrushed had I laughed.  eventually, by the time I was finished with them,\nthey had built their confidence levels and were also able to laugh at the\nquestion they'd asked initially, but it takes time to led a student to that\npoint.\n\nI can remember, when I first used a unix system many, many, many years ago,\nI encountered a problem and was told by the department's system\nadministrator to RTFM.  This was a guy who was paid to help staff and\nstudents to use the department's computing resources.  He was brilliant, but\nsorely lacking in interpersonal skills (except for when he had to deal with\nhis supervisor).  When I replied that I had, his response was that I must\ntherefore be too stupid to deserve to use the computer system.  I, however,\nam not the sort of individual that is so easily thwarted (I can't be\ninsulted because I am too stupid to understand the insult! ;-), and\neventually I became the \"go to guy\" when someone in my department had a\ncomputational problem.  But often I found I had to take longer to figure\nthings out on my own that I would have needed if I had access to someone who\nhad both the expertise I sought to develop in myself and the spirit of a\nreal educator.\n\nWhile it has been a while since I worked in an educational institution, I\nhave found that generally when students or junior programmers came asking\nquestions, it was MY fault.  Either the documentation or verbal direction\nI'd provided was inadequate, or I had made assumptions about their\nbackground that led me to expect too much of them.  Either they did not have\nthe mathematical background I'd assumed, or they didn't have the knowledge\nof programming that I'd assumed.  In many cases, these \"kids\" were so new to\na particular issue or subject, they would not have been able to produce a\nuseful query in Google if their life depended on it.  They could try to\nsubmit a query, but the signal to noise ratio would be so low there'd be no\nhope they'd live long enough to find the signal.\n\nPart of the problem of this particular medium is that you never know who the\nperson is that you are trying to help.  So, then, the documentation provided\nto all, and help in this sort of medium, ought to be constructed not only\nwith a view to helping peers use R, but also with a view to helping those\njust getting started.  There is a lot of R documentation that seems to be\nwritten by experts for experts (which is fine as far as it goes), but at a\nlevel that is far to advanced (either in programming or in statistics) to be\nuseful for beginners.  Maybe that warrants two or more sets of\ndocumentation, some of which are intended for users with different levels of\nexperience.  There are a number of ways that can be handled.  It is certain\nthat the FAQs that exist are not nearly comprehensive or detailed enough for\nall levels of users.  That said, the quality of documentation varies\nconsidrably among the different R packages I have examined, and I have found\nthat I have tended to rely most on those packages that are best documented.\n\nA different part of the problem is time management.  There is always too\nlittle time, but then, that is why people have to write useful documentation\neven when most of us hate writing that kind of documentation.  And\nexperience shows that documentation is never done, because questions asked\nabout it generally highlights deficiencies in the documentation we've\nproduced.  I recognize that it is hard to write good documentation when a\nkey step involves asking the question: \"What does this presentation assume\nin the background of the reader?\"  Followed by the question, \"How must it be\nchanged if the reader's background is inadequate for him or her to\nunderstand the document as currently constructed?\"  But this must be done if\none truly wants both to avoid answering similar questions time and again and\nto avoid driving away potential users/contributors.  My thesis supervisor\nonce told me I should try to write my thesis so that a fresh graduate from\nelementary school could understand it, and that if I did, I might produce\nsomething that a graduate from a liberal arts college may be able to\nunderstand, saying it was arrogant of me to assume my reader had skills\ncomparable to my own.   I know there are limits to how far you can take\nthis.  One can't address the infinite number of deficiencies that exist in\nelementary and secondary school education.  But if one takes the time to\nnurture even those who ask questions that some find too basic to warrant a\ngood answer, eventually those users will be both able and willing to help\nthose who follow, lightening the burden of those who are involved in further\ndevelopment.  And it gets more challenging as how do you write documentation\nfor Bayesian analysis that is useful for someone who knows just about\neverything there is to know about nonmetric multidimensional scaling in\nordination but so little about Bayesian analysis that he doesn't even know\nthe right questions to ask?\n\nI hope you find these few reflections useful in your deliberations on\nconstructing a useful policy in this matter.\n\nCheers,\n\nTed\n\nOn Sat, Aug 21, 2010 at 6:40 AM, Spencer Graves <\nspencer.graves at structuremonitoring.com> wrote:\n\n>  Hello, All:\n>\n>\n>      I think there is a logic to Gabor's perspective, especially regarding\n> unintended consequences.\n>\n>\n>      For example, if the as a result of changing policy, our most creative\n> and substantive contributors decide to reduce their level of contribution\n> and are not effectively replaced by others, then it would be a great loss\n> for humanity.\n>\n>\n>      This group, especially the R Core team and the R-devel community more\n> generally, has been incredibly productive.  The result is a substantive\n> contribution to humanity.  It would be a loss if any change reduced that.\n>  However, if rudeness is driving away potential contributors as was claimed,\n> then this community might be more productive with a \"no RTFM\" policy.\n>\n>\n>      I accept that the experience of the Ubuntu Forums and\n> LinuxQuestions.org may not be perfectly relevant to R, but I think they\n> could provide some insight:  I would expect them to have some of the same\n> \"rationing\" problems as experienced on the R help lists.\n>\n>\n>      The exchange that generated my original comment on this was a question\n> from \"r.ookie\" to R-Help.  I don't know why this person chose to hide their\n> real identity, but I was subsequently informed off line that the RTFM\n> comment I saw was a response to an apparently rude reply by \"r.ookie\" to a\n> previous suggestion by a regular contributor.  I still think a better\n> response is not to escalate:  Either ignore the post or say something like,\n> \"I don't understand your question.  Please provide a self-contained minimal\n> example as suggested in the Posting Guide ... .\"\n>\n>\n>      Best Wishes,\n>      Spencer\n>\n>\n>\n> On 8/21/2010 2:08 AM, Simone Giannerini wrote:\n>\n>> Dear Gabor,\n>>\n>> I do not agree with your claim\n>>\n>> \"In the case of the R list there is a\n>> larger potential demand for free help than resources to answer and\n>> without the usual monetary economics to allocate resources I believe\n>> that the functional purpose of rudeness here is to ration those\n>> resources and minimize duplication of questions\"\n>>\n>> In fact, apart from the fact that rudeness should never be justified,  I\n>> was\n>> amazed at the amount of time dedicated by some people to give unhelpful\n>> replies to dumb (and less dumb) questions (at least on R-devel). In my\n>> opinion this behaviour causes some damages to the whole R project for at\n>> least two reasons:\n>>\n>> 1. On the bug report side if you want to have a good percentage of true\n>> positive reports you should allow for a high percentage of false positive\n>> reports.  But if people are scared to post you will lose the true positive\n>> together with false ones.\n>> 2. People that are potentially willing to contribute are discouraged to do\n>> it.\n>>\n>> Kind regards\n>>\n>> Simone\n>>\n>> On Fri, Aug 20, 2010 at 8:37 PM, Gabor Grothendieck<\n>> ggrothendieck at gmail.com\n>>\n>>> wrote:\n>>> On Fri, Aug 20, 2010 at 2:12 PM, Paul Johnson<pauljohn32 at gmail.com>\n>>> wrote:\n>>>\n>>>> On Thu, Aug 19, 2010 at 7:08 PM, Spencer Graves\n>>>> <spencer.graves at structuremonitoring.com>  wrote:\n>>>>\n>>>>>  What do you think about adding a \"No RTFM\" policy to the R mailing\n>>>>>\n>>>> lists?\n>>>\n>>>> Per, \"http://en.wikipedia.org/wiki/RTFM\":\n>>>>>\n>>>>>  I think this is a great suggestion.\n>>>>\n>>>> I notice the R mailing list already has a gesture in this direction:\n>>>> \"Rudeness and ad hominem comments are not acceptable. Brevity is OK.\"\n>>>>\n>>>> But the people who behave badly don't care about policies like this\n>>>> and they will keep doing what they do.\n>>>>\n>>> Although it may seem hard to justify rudeness its often the case that\n>>> even the most bizarre behavior makes sense if you view it from the\n>>> perspective of that person.   In the case of the R list there is a\n>>> larger potential demand for free help than resources to answer and\n>>> without the usual monetary economics to allocate resources I believe\n>>> that the functional purpose of rudeness here is to ration those\n>>> resources and minimize duplication of questions.  If that is correct\n>>> one can predict that if civility were to become the norm on this list\n>>> then other rationing mechanisms would arise to replace it.\n>>>\n>>> For example, it might become the norm that most questions are not\n>>> answered or are answered less thoroughly or the list might be replaced\n>>> as the de facto goto medium for R questions by some other list or web\n>>> site so we have to be careful about unintended consequences.\n>>>\n>>> ______________________________________________\n>>> R-devel at r-project.org mailing list\n>>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>>\n>>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I am reminded of a cartoon I saw recently in a urologists office that said:\n\"In this line of work, I see a lot of ass holes and pricks.\"\n\nThere is no shortage of people who are nasty, both among those",
       "thread_id": "thread-2bb5aea855e6",
       "thread_depth": 4,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100821/46a46f91/attachment.pl"
+      ]
     },
     {
       "id": "msg-c5f962421153",
@@ -3359,11 +3395,14 @@
       "subject_clean": "How do you make a formal \"feature\" request?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100821/898cf4e3/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100821/898cf4e3/attachment.pl>",
+      "body_plain": "Who decides what features are in R and how they are implemented? If there is someone here who has that authority I have this request: \n\nA report() function analogous to the plot() function that makes it easy to generate a report from a table of data. This should not be in some auxiliary package, but part of the core R just like plot(). As a long time SAS user I cannot believe R does not have this. Please don't give me any crap about Sweave, LaTex, and the \"power\" of R to roll your own. You don't have to \"roll your own\" plot do you? Reports are no different. If you don't agree do not bother me. If you agree then please bring this request to the appropriate authorities for consideration or tell me how to do it.\n\nThanks.\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Who decides what features are in R and how they are implemented? If there is someone here who has that authority I have this request: \n\nA report() function analogous to the plot() function that makes ",
       "thread_id": "thread-89f501ae817b",
       "thread_depth": 0,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100821/898cf4e3/attachment.pl"
+      ]
     },
     {
       "id": "msg-e8cace9b02e8",
@@ -3750,11 +3789,14 @@
       "subject_clean": "Handle RAWSXP in inspect.c:typename()",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100822/dfd51a81/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100822/dfd51a81/attachment.pl>",
+      "body_plain": "Hi all\n\nI had written a gdb macro to dump the string representation of an SEXPREC\ntype when I realised everything I needed was in inspect.c already in the\ntypename() function. However, the typename function doesnt handle the RAWSXP\ntype, so if possible, could the following patch be applied (I've just put in\ninline as it is a trivial 1-liner)?\n\nIndex: src/main/inspect.c\n===================================================================\n--- src/main/inspect.c    (revision 52221)\n+++ src/main/inspect.c    (working copy)\n@@ -63,6 +63,7 @@\n     case EXTPTRSXP:    return \"EXTPTRSXP\";\n     case WEAKREFSXP:    return \"WEAKREFSXP\";\n     case S4SXP:        return \"S4SXP\";\n+    case RAWSXP:    return \"RAWSXP\";\n     default:\n     return \"<unknown>\";\n     }\n\n\nBest\n-- Rory\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi all\n\nI had written a gdb macro to dump the string representation of an SEXPREC\ntype when I realised everything I needed was in inspect.c already in the\ntypename() function. However, the typename fu",
       "thread_id": "thread-1213f15080c9",
       "thread_depth": 0,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100822/dfd51a81/attachment.pl"
+      ]
     },
     {
       "id": "msg-e12c8b9af14e",
@@ -4030,11 +4072,14 @@
       "subject_clean": "segfault in embedded r after call to repldlldo1",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100823/a02f6951/attachment.ksh>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100823/a02f6951/attachment.ksh>",
+      "body_plain": "-------- Original Message --------\nSubject: \tRe: [Rd] segfault in embedded r after call to repldlldo1\nDate: \tMon, 23 Aug 2010 12:46:07 +0200\nFrom: \tCarl Martin Grewe <grewe at zib.de>\nTo: \tSimon Urbanek <simon.urbanek at r-project.org>\n\n\n\nOn 08/20/2010 06:48 PM, Simon Urbanek wrote:\n>  On Aug 20, 2010, at 12:14 PM, Carl Martin Grewe wrote:\n>\n>\n>>  Dear R developers,\n>>\n>>  i've got a question concerning an embedded R instance. I called the initialization routines as seen in the \"writing extensions\" guide (Rf_initialize, setup_Rmainloop and R_ReplDLLinit). I also changed the function callback pointer of readconsole and writeconsoleex to my local functions.\n>>\n>>  when i call mainloop there is no problem and the commands are evaluated as expected. because i don't want R to run in an own thread and my app should keep the control i want to use repldlldo1. within the readconsole as long as i copy commandlines containing valid R commands function to R's buffer all things are fine. but when i copy a non valid command, R singals segfault after passing the error message, that the given object is not valid. this happens in call to eval(R_CurrentExpr, rho) in repldlldo1. i tried to comapare both ways (mainloop vs. repldlldo+repldllinit) but actually cannot find a significant difference.\n>>\n>>\n>  I fear we can't help you without a reproducible example. One thing to keep in mind is that R_ReplDLLinit uses setjmp to setup the top-level context so you have to make sure you're not using any local variables that could be on the stack from R_ReplDLLdo1 as it will get lost (and function calls of course).\n>\n>  Cheers,\n>  Simon\n>\n>\n\nHi Simon,\n\n\nthank you very much. after some problems with your answer first (not\nvery familiar with longjumps) and the assumption R would just return\nfrom R_ReplDLLdo1 after the errormessage i finally found the solution.\ncalling R_ReplDLLinit right before R_ReplDLLdo1did the trick for me.\nthink it's because R_ReplDLLinit just saves the callers context, like\nyou said, and comming back to this point after an errormessage. am i right?\n\ncheers,\nmartin\n\n>>  can anyone please help me with this problem, i'm stucked with this because i don't know the inside of R and the datastructures.\n>>\n>>\n>>  some additional information:\n>>  c++, runtime loaded libR, 64-bit linux, 2.11.1 release (but also happens with 2.10.1)\n>>\n>>  look farward to hearing from you.\n>>\n>>  thanks,\n>>  martin\n>>\n>>  ______________________________________________\n>>  R-devel at r-project.org mailing list\n>>  https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>>\n>>\n>\n\n\n-- \nCarl Martin Grewe\n\nEmail    : grewe at zib.de\nInternet : http://www.zib.de\nTel      : +49 30 841 85 352\nFax      : +49 30 841 85 107\n\nKonrad Zuse-Zentrum fuer Informationstechnik Berlin (ZIB)\nTakustr. 7\nD-14195 Berlin-Dahlem\nGermany\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "-------- Original Message --------\nSubject: \tRe: [Rd] segfault in embedded r after call to repldlldo1\nDate: \tMon, 23 Aug 2010 12:46:07 +0200\nFrom: \tCarl Martin Grewe <grewe at zib.de>\nTo: \tSimon Urban",
       "thread_id": "thread-35b5c03bdafc",
       "thread_depth": 0,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100823/a02f6951/attachment.ksh"
+      ]
     },
     {
       "id": "msg-084808590b41",
@@ -4312,11 +4357,14 @@
         "<AANLkTi=Xn0mJAjyPB-S4fcbWLwKOJirvAX_7DmUJTYwW@mail.gmail.com>",
         "<715DF39F-655E-43ED-8611-EBB2C901B61C@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100824/3b2c889a/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100824/3b2c889a/attachment.pl>",
+      "body_plain": "Hi Simon\n\nThanks a lot - thats fantastic.\n\nMany thanks for the quick response!\n\nCheers\n-- Rory\n\nOn Tue, Aug 24, 2010 at 3:12 AM, Simon Urbanek\n<simon.urbanek at r-project.org>wrote:\n\n>\n> On Aug 22, 2010, at 4:47 AM, Rory Winston wrote:\n>\n> > Hi all\n> >\n> > I had written a gdb macro to dump the string representation of an SEXPREC\n> > type when I realised everything I needed was in inspect.c already in the\n> > typename() function. However, the typename function doesnt handle the\n> RAWSXP\n> > type, so if possible, could the following patch be applied (I've just put\n> in\n> > inline as it is a trivial 1-liner)?\n> >\n>\n> ... it' just a part of the story - RAWSXPs are not handled at all - not\n> even in inspect itself (I'm not sure how I missed that ;)). I have added RAW\n> support to inspect in R-devel now.\n>\n> Thanks,\n> Simon\n>\n>\n> > Index: src/main/inspect.c\n> > ===================================================================\n> > --- src/main/inspect.c    (revision 52221)\n> > +++ src/main/inspect.c    (working copy)\n> > @@ -63,6 +63,7 @@\n> >     case EXTPTRSXP:    return \"EXTPTRSXP\";\n> >     case WEAKREFSXP:    return \"WEAKREFSXP\";\n> >     case S4SXP:        return \"S4SXP\";\n> > +    case RAWSXP:    return \"RAWSXP\";\n> >     default:\n> >     return \"<unknown>\";\n> >     }\n> >\n> >\n> > Best\n> > -- Rory\n> >\n> >       [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n> >\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi Simon\n\nThanks a lot - thats fantastic.\n\nMany thanks for the quick response!\n\nCheers\n-- Rory\n\nOn Tue, Aug 24, 2010 at 3:12 AM, Simon Urbanek\n<simon.urbanek at r-project.org>wrote:\n\n>\n> On Aug 22, 20",
       "thread_id": "thread-1213f15080c9",
       "thread_depth": 2,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100824/3b2c889a/attachment.pl"
+      ]
     },
     {
       "id": "msg-a09f9731c153",
@@ -5107,11 +5155,14 @@
         "<4C762B50.7000402@structuremonitoring.com>",
         "<AANLkTinaGmVB2wG2mdER-0OfWSX8ThZtAs6q++idENVv@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100826/344ce000/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100826/344ce000/attachment.pl>",
+      "body_plain": "On Aug 26, 2010, at 2:22 PM, Gabor Grothendieck wrote:\n>> \n> \n> I haven't tried it but I understand from the r-forge manual that it\n> now supports foreign subversion repositories.  One could host\n> software on googlecode or other free subversion repository and still\n> have it available through r-forge.  That way you could access the\n> software even if r-forge were down.\n> \n> If anyone gets this to work and can post detailed instructions it\n> would be helpful.\n\n\nThat's what I do with gridExtra, and it works well; the code is hosted on googlecode (which has nice wiki capabilities) and the binaries are built on r-forge. The only \"drawback\" is that your project activity on r-forge is not tracked (not that it matters to me). \nThe feature used to be available in the Admin tab of \"R packages\" for a given project, but today I cannot see the option anymore (the page is blank). I guess this is due to the changes to the website.\n\n\nbaptiste\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Aug 26, 2010, at 2:22 PM, Gabor Grothendieck wrote:\n>> \n> \n> I haven't tried it but I understand from the r-forge manual that it\n> now supports foreign subversion repositories.  One could host\n> so",
       "thread_id": "thread-dbd2f15e7722",
       "thread_depth": 2,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100826/344ce000/attachment.pl"
+      ]
     },
     {
       "id": "msg-b031820eb820",
@@ -5273,11 +5324,14 @@
       "subject_clean": "Is it safe not to coerce matrices with as.double() in .C()?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100827/bbba0937/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100827/bbba0937/attachment.pl>",
+      "body_plain": "I'd very much appreciate guidance on this.  A user reported that the\n as.double() coercion used inside the .C() call for a function in my \npackage (specifically, randomForest:::predict.randomForest()) is \ntaking up significant amount of time when called repeatedly, and\nRemoving some of these reduced run time by 30-40% in some cases.\nThese arguments are components of the fitted model (thus do not \nchange), and are matrices.  Some basic tests show no difference in\nThe result when the coercions are removed (other than faster run time).\nWhat I like to know is whether this is safe to do, or is it likely to\nlead\nto trouble in the future?\n\nBest,\nAndy\nNotice:  This e-mail message, together with any attachme...{{dropped:14}}",
+      "body_snippet": "I'd very much appreciate guidance on this.  A user reported that the\n as.double() coercion used inside the .C() call for a function in my \npackage (specifically, randomForest:::predict.randomForest())",
       "thread_id": "thread-66056c0c1351",
       "thread_depth": 0,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100827/bbba0937/attachment.pl"
+      ]
     },
     {
       "id": "msg-6e07b464e937",
@@ -5450,11 +5504,14 @@
       "subject_clean": "a small suggestion for improving the building of packages",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100829/9c6d58d0/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100829/9c6d58d0/attachment.pl>",
+      "body_plain": "All,\n\nI just finished the process of build a package for the first time and found\nit characteristically (for R) very straightforward and well documented.\n\nWhenever I deal with open source software I always endeavor to finish the\ntask I have in mind, and upon completing this, I then revisit all of the\nconfigurations, customizing as necessary to achieve my goals more fully.\n The ability to achieve some minimal level of functionality without the need\nfor much filling in of configuration files, etc., is, I feel, important to\nnot scaring off the less technically inclined such as myself.\n\nBased on this heuristic, it is my understanding that a few small suggestions\ncould make building a warning-free package as easy as running\npackage.skeleton(), then R CMD check, R CMD build:\n\n- Fill in default titles for each of the '*.Rd' files in /man\n- Take out the tildes in the 'examples' section of the '*-package.Rd' main\ndocumentation file for the package (it seems to confuse the latex compiler)\n- Put the lines '~~ Optionally other standard keywords, one per line, from\nfile KEYWORDS in ~~\n~~ the R documentation directory ~~' into the \\references{} section, there\nis presently a warning about all text needing to be in a section.\n\nThanks, as always, to everyone for their hard work to keep my statistical\ncomputing free and easy.\n\nBest,\n\nKyle\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "All,\n\nI just finished the process of build a package for the first time and found\nit characteristically (for R) very straightforward and well documented.\n\nWhenever I deal with open source software I a",
       "thread_id": "thread-ddc00c012cfa",
       "thread_depth": 0,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100829/9c6d58d0/attachment.pl"
+      ]
     },
     {
       "id": "msg-683edb161b90",
@@ -5737,11 +5794,14 @@
       "subject_clean": "R and Epi Info",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100831/fa489f09/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100831/fa489f09/attachment.pl>",
+      "body_plain": "Hello,\n   I was wondering who to contact to see about somehow interconnecting or integrating the programs R and Epi Info.  I have been involved in the development of Epi Info which is a software program developed by the Centers for Disease Control and Prevention (CDC) in Atlanta (www.cdc.gov/epiinfo<http://www.cdc.gov/epiinfo>).  Epi Info allows for creating data entry systems and performs certain epidemiologic and statistical analyses.  Currently Epi Info is in the public domain and I believe future versions will be open source.  It might be useful to pull together some of the Epi Info development team members and R team members to discuss how the programs might complement each other.  Note that I request this from my position at Emory University and this is not an official request from CDC.\n   Thanks, Kevin\n\n________________________________\nThis e-mail message (including any attachments) is for t...{{dropped:14}}",
+      "body_snippet": "Hello,\n   I was wondering who to contact to see about somehow interconnecting or integrating the programs R and Epi Info.  I have been involved in the development of Epi Info which is a software progr",
       "thread_id": "thread-1fefab38c0b2",
       "thread_depth": 0,
-      "month": "2010-08"
+      "month": "2010-08",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100831/fa489f09/attachment.pl"
+      ]
     },
     {
       "id": "msg-ec0587ff2db0",

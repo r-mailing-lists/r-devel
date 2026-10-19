@@ -80,11 +80,14 @@
         "<CAOQ5NydcoTxWRi1csjOXT7k2H58BqgtWE9CE6P1pBr+oGEEMxQ@mail.gmail.com>",
         "<53B163D8.7070006@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140701/6ac4e4ab/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140701/6ac4e4ab/attachment.pl>",
+      "body_plain": "On Mon, Jun 30, 2014 at 6:19 AM, Duncan Murdoch <murdoch.duncan at gmail.com>\nwrote:\n\n> On 30/06/2014 8:51 AM, Michael Lawrence wrote:\n>\n>> I think it's generally nice to be able to compute on the network of\n>> imported and exported symbols, and exportFrom() preserves the information\n>> that a symbol has been forwarded. But let's focus on the use case of\n>> documenting the symbol.\n>>\n>> First, from the user perspective: my understanding (without testing\n>> anything) is that with promptImport(), the call to help() will find two or\n>> more hits to the symbol, so the user has to choose from a menu or otherwise\n>> qualify the package.\n>>\n>\n> It depends how the user formulates it.  The usual ?foo will find at least\n> two hits.  But if a user qualifies it by saying ?pkg::foo,\n> they'll just get the redirect page.\n>\n> I think we need ?pkg::foo to do something, and this seemed easier than\n> inventing an invisible redirect.\n>\n>\n>  Choosing the man page for the re-exported symbol will bring up a page\n>> that just requests them to make an extra click. This seems like extra work\n>> for the user. One potential benefit is that the user will know that a\n>> re-export has occurred, but does the user care? Why not proceed directly to\n>> the actual documentation? The majority of users have no or little knowledge\n>> of namespaces.\n>>\n>\n> I think some users would like to know that pkg::foo is identical to\n> original::foo, so if we had the invisible redirect, I think the target page\n> should be modified to say \"redirected from ...\", just so the users were\n> sure they had come to the right place.\n>\n>\nThis is a good point. We could somehow add that message dynamically to the\ndisplayed help, or emit a message at the console.\n\n\n>\n>> From the developer perspective, promptImport() means that there is\n>> another man page to worry about, while exportFrom() would make it clear to\n>> developers reading the NAMESPACE that symbols are being simply forwarded,\n>> rather than re-defined.\n>>\n>\n> Those are both benefits of your approach, which I wouldn't object to if\n> you go ahead and do it subject to the qualifications above, and one other.\n>  How should existing redirects be handled?  If a package imports and\n> re-exports a symbol without change, should the author be\n> encouraged/required to use exportFrom?  If we do nothing, most people will\n> just do what they're currently doing, so maybe some sort of nag should be\n> added.  Package writers won't like that unless there's some obvious benefit\n> to the change.\n>\n>\nProbably just not having to redocument the symbol manually (i.e., passing\ncheck without a a warning, as there is now) will be a sufficient carrot.\n\n\n\n\n> Duncan\n>\n>\n>> Michael\n>>\n>>\n>>\n>> On Sun, Jun 29, 2014 at 12:43 PM, Duncan Murdoch <\n>> murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com>> wrote:\n>>\n>>     On 29/06/2014, 3:07 PM, Michael Lawrence wrote:\n>>     > While the change to the symbol lookup is generally useful (e.g., for\n>>     > finding S4 methods that become available whenever a package is\n>>     loaded),\n>>     > it seems that we ultimately want a mechanism by which a package\n>>     > namespace can formally declare that it is re-exporting a symbol from\n>>     > some package. Then, for example, the check mechanism can be made\n>>     smart\n>>     > enough to avoid throwing such warnings.\n>>     >\n>>     > I've developed a proof-of-concept exportFrom() namespace\n>>     directive. This\n>>     > is the syntax:\n>>     >\n>>     > exportFrom(utils, help)\n>>     >\n>>     > Then:\n>>     >\n>>     >> getNamespaceInfo(\"ReexportingPackage\", \"exports\")$help\n>>     > [1] \"help\"\n>>     > attr(,\"origin\")\n>>     > [1] \"utils\"\n>>     >\n>>     > Comments?\n>>\n>>     I don't see why this is needed.  What does it gain over\n>>     documenting that\n>>     the symbol \"help\" is just a copy of the one from utils?  As of this\n>>     morning, that's easy...\n>>\n>>     Duncan Murdoch\n>>\n>>     >\n>>     > Michael\n>>     >\n>>     >\n>>     > On Fri, Jun 27, 2014 at 8:32 PM, Yihui Xie <xie at yihui.name\n>>     <mailto:xie at yihui.name>\n>>     > <mailto:xie at yihui.name <mailto:xie at yihui.name>>> wrote:\n>>     >\n>>     >     Hi Duncan,\n>>     >\n>>     >     Again, thanks a lot for making this change (help requests\n>>     are tried\n>>     >     over all loaded instead of attached packages):\n>>     > https://github.com/wch/r-source/commit/21d2f7430b4 This makes what\n>> I\n>>     >     proposed last time possible now: if pkg B imports FUN from A and\n>>     >     re-exports it, ?FUN will work after B is attached because A\n>>     will also\n>>     >     be at least attached.\n>>     >\n>>     >     Then it will be perfect if `R CMD check` can stop warning\n>>     against the\n>>     >     missing documentation, which is not really missing.\n>>     >\n>>     >     Regards,\n>>     >     Yihui\n>>     >     --\n>>     >     Yihui Xie <xieyihui at gmail.com <mailto:xieyihui at gmail.com>\n>>     <mailto:xieyihui at gmail.com <mailto:xieyihui at gmail.com>>>\n>>\n>>     >     Web: http://yihui.name\n>>     >\n>>     >\n>>     >     On Fri, Jun 20, 2014 at 1:34 AM, Yihui Xie <xie at yihui.name\n>>     <mailto:xie at yihui.name>\n>>     >     <mailto:xie at yihui.name <mailto:xie at yihui.name>>> wrote:\n>>     >     > but note that you will have to document it even if it is a\n>>     function\n>>     >     > imported from another package... Perhaps help() should be\n>>     intelligent\n>>     >     > enough to link the documentation of `FUN` from package A\n>>     for package B\n>>     >     > when B imports `FUN` from A, and exports it in B's\n>>     NAMESPACE. The\n>>     >     > package name of A may be obtained from\n>>     >     > environmentName(environment(FUN)). At the moment, since R\n>>     CMD check\n>>     >     > will warn against the missing documentation of `FUN` in B,\n>>     I have to\n>>     >     > copy FUN.Rd from A to B in this case, which seems to be\n>>     inefficient\n>>     >     > and not a best way to maintain. Did I miss anything in the\n>>     R-exts\n>>     >     > manual?\n>>     >     >\n>>     >     > Regards,\n>>     >     > Yihui\n>>     >     > --\n>>     >     > Yihui Xie <xieyihui at gmail.com <mailto:xieyihui at gmail.com>\n>>     <mailto:xieyihui at gmail.com <mailto:xieyihui at gmail.com>>>\n>>\n>>     >     > Web: http://yihui.name\n>>     >     >\n>>     >     >\n>>     >     > On Fri, Jun 20, 2014 at 12:19 AM, Winston Chang\n>>     >     <winstonchang1 at gmail.com <mailto:winstonchang1 at gmail.com>\n>>     <mailto:winstonchang1 at gmail.com <mailto:winstonchang1 at gmail.com>>>\n>>\n>>     wrote:\n>>     >     >> On Thu, Jun 19, 2014 at 3:15 PM, Martyn Plummer\n>>     <plummerm at iarc.fr <mailto:plummerm at iarc.fr>\n>>     >     <mailto:plummerm at iarc.fr <mailto:plummerm at iarc.fr>>> wrote:\n>>     >     >>\n>>     >     >>>  Export filter in the NAMESPACE file *without copying\n>>     it* in the\n>>     >     R source\n>>     >     >>> code.\n>>     >     >>>\n>>     >     >>>\n>>     >     >> Ah, it works! Thank you!\n>>     >     >>\n>>     >\n>>     >     ______________________________________________\n>>     > R-devel at r-project.org <mailto:R-devel at r-project.org>\n>>     <mailto:R-devel at r-project.org <mailto:R-devel at r-project.org>>\n>>     mailing list\n>>     > https://stat.ethz.ch/mailman/listinfo/r-devel\n>>     >\n>>     >\n>>\n>>\n>>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Mon, Jun 30, 2014 at 6:19 AM, Duncan Murdoch <murdoch.duncan at gmail.com>\nwrote:\n\n> On 30/06/2014 8:51 AM, Michael Lawrence wrote:\n>\n>> I think it's generally nice to be able to compute on the net",
       "thread_id": "thread-b17fe9bd9152",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140701/6ac4e4ab/attachment.pl"
+      ]
     },
     {
       "id": "msg-a6466ddc78c3",
@@ -162,11 +165,14 @@
       "subject_clean": "Rtools -- compiling C dll for 64-bit",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140703/e837eece/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140703/e837eece/attachment.pl>",
+      "body_plain": "I've seen that many people have had trouble using Rtools for a 64-bit\ncompile of C functions. For some, a quick change in path statement seems to\ncorrects the problem; for others, apparently not. For me? I've been working\nat path statements and install/uninstall/reinstall of all sorts of things\nfor four hours now with no success. The 32-bit dll loads fine, but I need a\n64-bit version.\n\nIs there an option to tell the compiler with Rtools to use 64-bit? Or a way\nto kill off the 32-bit version on my machine so I don't need to worry about\nit?\n\nAny guidance would be greatly appreciated!\n\n-Dan\n\n\n\n-- \nDan Dalthorp, PhD\nStatistician\nUSGS Forest and Rangeland Ecosystem Science Center\nForest Sciences Lab, Rm 189\n3200 SW Jefferson Way\nCorvallis, OR 97331\nph: 541-750-0953\nddalthorp at usgs.gov\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I've seen that many people have had trouble using Rtools for a 64-bit\ncompile of C functions. For some, a quick change in path statement seems to\ncorrects the problem; for others, apparently not. For ",
       "thread_id": "thread-d8794e4dfea3",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140703/e837eece/attachment.pl"
+      ]
     },
     {
       "id": "msg-7e93a80234c5",
@@ -405,11 +411,14 @@
       "subject_clean": "a question about optim.R and optim.c in R",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140707/4b31a1fb/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140707/4b31a1fb/attachment.pl>",
+      "body_plain": "Hi, I am learning R by reading R source code. Here is one question I have\nabout the optim function in R.\n\nThe context : In the optim.R, after all the prep steps, the main function\ncall call is made via :\n\n.External2(C_optim, par, fn1, gr1, method, con, lower, upper).\n\nSo, it seems to me, to follow what is going on from here, that I should\nread the optim function in \\src\\library\\stats\\src\\optim.c\n\nwhere it has this signature :\n\nSEXP optim(SEXP call, SEXP op, SEXP args, SEXP rho)\n\nI am not sure I follow here : In the .External2 call, we have 7 parameters\n:  par, fn1, gr1, method, con, lower, upper; This does not seem to match\nthe signature of\n\nSEXP optim(SEXP call, SEXP op, SEXP args, SEXP rho)\n\nHowever, it seems (from the source code) that the 7 parameters are somehow\nembedded in the 'args' parameter. I am not sure what is going on...Am I\nmissing something?\n\nThanks much!!!\n\nBest,\n\nZhiyuan\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi, I am learning R by reading R source code. Here is one question I have\nabout the optim function in R.\n\nThe context : In the optim.R, after all the prep steps, the main function\ncall call is made vi",
       "thread_id": "thread-eddcc8a8c433",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140707/4b31a1fb/attachment.pl"
+      ]
     },
     {
       "id": "msg-1602beae9300",
@@ -457,11 +466,14 @@
       "subject_clean": "using R functions in a C loop",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140708/59e3fa25/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140708/59e3fa25/attachment.pl>",
+      "body_plain": "I would like to write a fast version of a function which contains slow\nloops that I cannot vectorize.\nI would like to rewrite it in C, but in the loops I need to call a few\n(two) R functions.\nWhich is the best way to do so? I have read that one can call a C library\nwhich import all the R functions (R.h, is it?). Is that efficient? I tried\nto have a look into the internal C code to find just the two functions I\nneed, but it is quite complicated and I did not succeeded.\nAny suggestion?\nThanks a lot, Enrico Bibbona\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I would like to write a fast version of a function which contains slow\nloops that I cannot vectorize.\nI would like to rewrite it in C, but in the loops I need to call a few\n(two) R functions.\nWhich is",
       "thread_id": "thread-3a3e892ca248",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140708/59e3fa25/attachment.pl"
+      ]
     },
     {
       "id": "msg-29a09ecdb85d",
@@ -475,11 +487,14 @@
       "references": [
         "<CAJrp0fESy67UWFw3-fiBC6ZRoi8x+00YEsgH+VA9Uc1ujOnjCA@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140708/cc7ab3e1/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140708/cc7ab3e1/attachment.pl>",
+      "body_plain": "Enrico,\nI was in a similar position with a small likelihood function which was not\nvectorizable (is that a word?) and in one morning I had a working function\nusing Rcpp which was 60 times faster than my reference function in R. I\n*strongly* recommend that you use C++ through the Rcpp interface which\nreally simplifies things, refer to\n\nhttp://adv-r.had.co.nz/Rcpp.html\nhttp://rcpp.org/\n\nOne possible suggestion for a tempate for your function might be found on\nhttp://gallery.rcpp.org/articles/gibbs-sampler/\n\nThe Rcpp-devel mailing group is very very helpful and responsive.\n\nKind regards,\nSean\n\n\n\nOn 8 July 2014 09:33, Enrico Bibbona <enrico.bibbona at gmail.com> wrote:\n\n> I would like to write a fast version of a function which contains slow\n> loops that I cannot vectorize.\n> I would like to rewrite it in C, but in the loops I need to call a few\n> (two) R functions.\n> Which is the best way to do so? I have read that one can call a C library\n> which import all the R functions (R.h, is it?). Is that efficient? I tried\n> to have a look into the internal C code to find just the two functions I\n> need, but it is quite complicated and I did not succeeded.\n> Any suggestion?\n> Thanks a lot, Enrico Bibbona\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Enrico,\nI was in a similar position with a small likelihood function which was not\nvectorizable (is that a word?) and in one morning I had a working function\nusing Rcpp which was 60 times faster than ",
       "thread_id": "thread-3a3e892ca248",
       "thread_depth": 1,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140708/cc7ab3e1/attachment.pl"
+      ]
     },
     {
       "id": "msg-82a19b8cc141",
@@ -583,11 +598,14 @@
       "references": [
         "<CAHuTOvr+S5cZ7VrymLgp3S-pLhBkUsHoPzifDWJs0NPMdVZk+Q@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140709/3965f4cf/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140709/3965f4cf/attachment.pl>",
+      "body_plain": "You might be interested in the BiocGenerics package from Bioconductor. It\ndefines a bunch of \"base\" generics, as well as some that are specific to\nBioc needs. Being Bioc-oriented, it's not really meant to be a base4, but\nit comes reasonably close, and it could serve as a jumping off point for a\nbase4, an expanded stats4, or whatever.\n\nMichael\n\n\nOn Sun, Jul 6, 2014 at 3:23 AM, Sven E. Templer <sven.templer at gmail.com>\nwrote:\n\n> Dear developers,\n>\n> the implementation of S4 generics for existing S3 ones in the base\n> package is concerned to be a threat to quick startup times [1]. But\n> since S4 is promoted, and S3/S4 interoperability a pain when package\n> developing [2], are there efforts to improve the situation? E.g. an S3\n> free system, etc.\n>\n> A good thing [2] is the package 'stats4', including some setGeneric\n> calls (e.g. for summary, plot, ...) which I can 'importFrom' to a\n> NAMESPACE. Nevertheless, functions as as.matrix, as. dist, merge,\n> duplicated, and for sure some others, are not available as S4\n> generics.\n> So my question is: will the base/graphics/... S3 generic definitions\n> for S4 methods be completely implemented in a future R release?\n> (E.g. in base4/stats4,/graphics4/... (by heritage [3]) or combined by\n> a single package such as genericS4)\n>\n> Sorry I couldn't get more information from the devel archive (or find\n> a solution/answer) since the same idea already has been mentioned in\n> 2007 [4]. Thank you for clarifying in advance.\n>\n> Sincerely,\n> Sven\n>\n> [1]\n> http://r.789695.n4.nabble.com/An-update-method-for-lists-td912749.html#a912756\n> [2] my opinion\n> [3]\n> http://r.789695.n4.nabble.com/improved-error-message-when-existing-implicit-S4-generic-is-not-imported-td4421688.html#a4436278\n> [4] http://developer.r-project.org/BDR_S4issues.txt\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "You might be interested in the BiocGenerics package from Bioconductor. It\ndefines a bunch of \"base\" generics, as well as some that are specific to\nBioc needs. Being Bioc-oriented, it's not really mean",
       "thread_id": "thread-b5c54743fd62",
       "thread_depth": 1,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140709/3965f4cf/attachment.pl"
+      ]
     },
     {
       "id": "msg-6fde6e7cb74c",
@@ -676,11 +694,14 @@
       "subject_clean": "reserving a package name",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140711/cfac9c6a/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140711/cfac9c6a/attachment.pl>",
+      "body_plain": "Dear All,\n\nWhile wanting to create a package using the name DDI (which stands for Data\nDocumentation Initiative), I sent an email to the DDI Alliance and ask if\nthey would mind, knowing they are now in the process of copyrighting this\nbrand.\n\nThe answer I got was negative (due to possible infringements on copyright\nissues), but they thanked me for raising this matter and now asking if a\npackage name can actually be reserved.\n\nAs far as I know, it works on a first come, first served basis, but I\nthink it is still worth asking.\nSince this is not an r-help issue, I have used this list instead.\n\nThanks in advance for any answer,\nAdrian\n\n\n-- \nAdrian Dusa\nUniversity of Bucharest\nRomanian Social Data Archive\nSos. Panduri nr.90\n050663 Bucharest sector 5\nRomania\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear All,\n\nWhile wanting to create a package using the name DDI (which stands for Data\nDocumentation Initiative), I sent an email to the DDI Alliance and ask if\nthey would mind, knowing they are now i",
       "thread_id": "thread-592186cc8c6f",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140711/cfac9c6a/attachment.pl"
+      ]
     },
     {
       "id": "msg-24eee83ef04d",
@@ -988,11 +1009,14 @@
       "references": [
         "<24045.1405278807@greg-minshalls-mbp.local>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140713/11eab1b5/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140713/11eab1b5/attachment.pl>",
+      "body_plain": "Several packages in Bioconductor (and possibly CRAN) uses\n  SystemRequirements\nin DESCRIPTION, but unless the user reads the DESCRIPTION file, this is for\nnaught.  Still useful to some people I think.\n\nBest,\nKasper\n\n\nOn Sun, Jul 13, 2014 at 9:13 PM, Greg Minshall <minshall at acm.org> wrote:\n\n> hi.  i'm working on a package which only works if one (or both) of two\n> libraries (Imlib2 and MagickWand) exist on the machine on which the\n> package is compiled and executed.  as currently written, the program\n> purposely generates an error at *compile* time if neither library is\n> available (thinking the earlier the user is notified, the less\n> frustrating).\n>\n> is there a way of specifying this dependency in, say, the DESCRIPTION\n> file?  (seems unlikely, as this is what the whole autotools/configure.ac\n> framework is supposed to deal with.)\n>\n> or, should i take out the compile time error (maybe replace my #error\n> with a #warning), and just generate at error at run time?  (this will\n> require me to figure out what that means for build tests/, but obviously\n> some sort of hack is doable.)\n>\n> cheers, Greg\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Several packages in Bioconductor (and possibly CRAN) uses\n  SystemRequirements\nin DESCRIPTION, but unless the user reads the DESCRIPTION file, this is for\nnaught.  Still useful to some people I think.",
       "thread_id": "thread-0975314e1f20",
       "thread_depth": 1,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140713/11eab1b5/attachment.pl"
+      ]
     },
     {
       "id": "msg-2e98cc101cad",
@@ -1004,11 +1028,14 @@
       "subject_clean": "Error in compactPDF/find_gs_cmd or documentation?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140714/62422396/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140714/62422396/attachment.pl>",
+      "body_plain": "I am using tools::compactPDF for reducing the size of some pdf-files \nwith GhostScript. I had some trouble in the beginning as the \ndocumentation seems not to match the usage of the function. For \nGhostScript, one has to set the argument gs_cmd, which has the following \ndescription:\ngs_cmd - Character string giving the path to the GhostScript executable, \nif that is to be used. On Windows this is the path to 'gswin32c.exe' or \n'gswin64c.exe'. If \"\", the function will try to find a platform-specific \npath to GhostScript.\n\nThe first part seems not to work as described. If gs_cmd is given, this \nis passed to find_gs_cmd. This function will then call:\nSys.which(gs_cmd)\nwhich rather takes the name of the executable as input. I guess either \nthe documentation should be changed to refer to the name of the \nGhostScript executable, or the function should be changed to use the \ngiven path.\n\nBest wishes,\nJon\n\n-- \nJon Olav Skøien\nJoint Research Centre - European Commission\nInstitute for Environment and Sustainability (IES)\nClimate Risk Management Unit\n\nDisclaimer: Views expressed in this email are those of the individual and do not necessarily represent official views of the European Commission.\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I am using tools::compactPDF for reducing the size of some pdf-files \nwith GhostScript. I had some trouble in the beginning as the \ndocumentation seems not to match the usage of the function. For \nGho",
       "thread_id": "thread-2e98cc101cad",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140714/62422396/attachment.pl"
+      ]
     },
     {
       "id": "msg-984860d07915",
@@ -1022,11 +1049,14 @@
       "references": [
         "<53C3984F.2070800@jrc.ec.europa.eu>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140714/304879b6/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140714/304879b6/attachment.pl>",
+      "body_plain": "Seems related to:\n\nhttps://stat.ethz.ch/pipermail/r-devel/2012-May/064213.html\n\nHenrik\nOn Jul 14, 2014 10:45 AM, \"Jon Olav Skoien\" <jon.skoien at jrc.ec.europa.eu>\nwrote:\n\n>\n> I am using tools::compactPDF for reducing the size of some pdf-files\n> with GhostScript. I had some trouble in the beginning as the\n> documentation seems not to match the usage of the function. For\n> GhostScript, one has to set the argument gs_cmd, which has the following\n> description:\n> gs_cmd - Character string giving the path to the GhostScript executable,\n> if that is to be used. On Windows this is the path to 'gswin32c.exe' or\n> 'gswin64c.exe'. If \"\", the function will try to find a platform-specific\n> path to GhostScript.\n>\n> The first part seems not to work as described. If gs_cmd is given, this\n> is passed to find_gs_cmd. This function will then call:\n> Sys.which(gs_cmd)\n> which rather takes the name of the executable as input. I guess either\n> the documentation should be changed to refer to the name of the\n> GhostScript executable, or the function should be changed to use the\n> given path.\n>\n> Best wishes,\n> Jon\n>\n> --\n> Jon Olav Skřien\n> Joint Research Centre - European Commission\n> Institute for Environment and Sustainability (IES)\n> Climate Risk Management Unit\n>\n> Disclaimer: Views expressed in this email are those of the individual and\n> do not necessarily represent official views of the European Commission.\n>\n>\n>\n>         [[alternative HTML version deleted]]\n>\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Seems related to:\n\nhttps://stat.ethz.ch/pipermail/r-devel/2012-May/064213.html\n\nHenrik\nOn Jul 14, 2014 10:45 AM, \"Jon Olav Skoien\" <jon.skoien at jrc.ec.europa.eu>\nwrote:\n\n>\n> I am using tools::compac",
       "thread_id": "thread-2e98cc101cad",
       "thread_depth": 1,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140714/304879b6/attachment.pl"
+      ]
     },
     {
       "id": "msg-017df22aec0d",
@@ -1171,11 +1201,14 @@
         "<24045.1405278807@greg-minshalls-mbp.local>",
         "<CAC2h7uvKRgrR_ax0TieWxNLYa3Zi7_2eG6JgDTd=N0UdiFTf1g@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140714/044d1590/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140714/044d1590/attachment.pl>",
+      "body_plain": "One idea is to wrap system libraries in R packages. This is what Martin did\nfor zlib with zlibbioc. That's feasible for a tiny library like zlib; for\nother things this approach would not be feasible. For imlib2 and\nimagemagick, it might be. Someone has to maintain it, and there would need\nto be careful consideration of licenses, but there are obvious gains from\nintegrating with the R package framework. Ideally, packages would share the\nsame system library package dependency.\n\n\n\n\nOn Sun, Jul 13, 2014 at 1:08 PM, Kasper Daniel Hansen <\nkasperdanielhansen at gmail.com> wrote:\n\n> Several packages in Bioconductor (and possibly CRAN) uses\n>   SystemRequirements\n> in DESCRIPTION, but unless the user reads the DESCRIPTION file, this is for\n> naught.  Still useful to some people I think.\n>\n> Best,\n> Kasper\n>\n>\n> On Sun, Jul 13, 2014 at 9:13 PM, Greg Minshall <minshall at acm.org> wrote:\n>\n> > hi.  i'm working on a package which only works if one (or both) of two\n> > libraries (Imlib2 and MagickWand) exist on the machine on which the\n> > package is compiled and executed.  as currently written, the program\n> > purposely generates an error at *compile* time if neither library is\n> > available (thinking the earlier the user is notified, the less\n> > frustrating).\n> >\n> > is there a way of specifying this dependency in, say, the DESCRIPTION\n> > file?  (seems unlikely, as this is what the whole autotools/configure.ac\n> > framework is supposed to deal with.)\n> >\n> > or, should i take out the compile time error (maybe replace my #error\n> > with a #warning), and just generate at error at run time?  (this will\n> > require me to figure out what that means for build tests/, but obviously\n> > some sort of hack is doable.)\n> >\n> > cheers, Greg\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "One idea is to wrap system libraries in R packages. This is what Martin did\nfor zlib with zlibbioc. That's feasible for a tiny library like zlib; for\nother things this approach would not be feasible. ",
       "thread_id": "thread-0975314e1f20",
       "thread_depth": 2,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140714/044d1590/attachment.pl"
+      ]
     },
     {
       "id": "msg-e8256ba74d74",
@@ -1187,11 +1220,14 @@
       "subject_clean": "Reducing RAM usage using UKSM",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140715/c2c50e2e/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140715/c2c50e2e/attachment.pl>",
+      "body_plain": "Greetings,\n\nWe've a fairly large dataset (around 60GB) to be loaded and crunched in\nreal time. The kind of data operations that will be performed on this data\nare simple read only aggregates after filtering the data.table instance\nbased on the parameters that will passed in real time. We need to have more\nthan one instance of such R process running to serve different testing\nenvironments (each testing environment has fairly identical dataset but do\nhave a *small amount of changes*). As we all know, data.table loads the\nentire dataset into memory for processing and hence we are facing a\nconstraint on number of such process that we could run on the machine. On a\n128GB RAM machine, we are coming up with ways in which we could reduce the\nmemory footprint so that we can try to spawn more instances and use the\nresources efficiently. One of the approaches we tried out was memory\nde-duplication using UKSM (\nhttp://kerneldedup.org/en/projects/uksm/introduction), given that we did\nhave few idle cpu cores. Outcome of the experiment was quite impressive,\nconsidering that the effort to set it up was quite less and the entire\napproach considers the application layer as a black box.\n\nQuick snapshot of the results:\n1 Instance (without UKSM): ~60GB RAM was being used\n1 Instance (with UKSM): ~53 GB RAM was being used\n\n2 Instance (without UKSM): ~125GB RAM was being used\n2 Instance (with UKSM): ~81 GB RAM was being used\n\nWe can see that around 44 GB of RAM was saved after UKSM merged similar\npages and all this for  a compromise of 1 CPU core on a 48 core machine. We\ndid not feel any noticeable degradation of performance because the data is\nrefreshed by a batch job only once (every morning); UKSM gets in at this\ntime and performs the same page merging and for the rest of day, its just\nread only analysis. The kind of queries we fire on the dataset at most\nscans 2-3GB of the entire dataset and hence the query subset spike was low\nas well.\n\nWe're interested in knowing if this is a plausible solution to this\nproblem? Any other points/solutions that we should be considering?\n\n-- \nThanks,\nM. Varadharajan\n\n------------------------------------------------\n\n\"Experience is what you get when you didn't get what you wanted\"\n               -By Prof. Randy Pausch in \"The Last Lecture\"\n\nMy Journal :- www.thinkasgeek.wordpress.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Greetings,\n\nWe've a fairly large dataset (around 60GB) to be loaded and crunched in\nreal time. The kind of data operations that will be performed on this data\nare simple read only aggregates after fil",
       "thread_id": "thread-e8256ba74d74",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140715/c2c50e2e/attachment.pl"
+      ]
     },
     {
       "id": "msg-653500788048",
@@ -1253,11 +1289,14 @@
       "subject_clean": "How to access a return value of a function that is being traced",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140715/f6025f33/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140715/f6025f33/attachment.pl>",
+      "body_plain": "Is there any way of accessing return value of a function that is being traced by a function specified as exit param to trace? \nThat sounds hard to understand, but I was not able to simplify the question without loosing the information. So here is a simple example. \n\nWe have a simple function \n\nadd10 <- function(a){ \n  a + 10 \n}\n\nAnd some function that we want to be called when call to add10 exits. \n\ntrace.exit() <- function(){ \n... \n}\n\nTracing is set up the following way. \n\ntrace(add10, exit=trace.exit)\n\nAnd we do a call to add10 \n\nadd10(5)\n\nAs I understand of right now, trace.exit will be called using on.exit through .doTrace after add10 finished executing. Is there any way to access return value of add10 inside trace.exit? \n\nThe reason for doing so is a wish to capture all calls to some function and return values they give. My intention is not to come up with decorator pattern, but to use existing tracing functionality. \n\nI've asked this question in StackOverflow also, but so far no answer (http://stackoverflow.com/questions/24687062/how-to-access-a-return-value-of-a-function-that-is-being-traced)\n\nThanks,\nRoman Tsegelskyi\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Is there any way of accessing return value of a function that is being traced by a function specified as exit param to trace? \nThat sounds hard to understand, but I was not able to simplify the questi",
       "thread_id": "thread-9767be0cf261",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140715/f6025f33/attachment.pl"
+      ]
     },
     {
       "id": "msg-4a87b9d9cdee",
@@ -1441,11 +1480,14 @@
       "subject_clean": "request of information about creating DLL from R to be used in other languages/programs",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140718/b3ad1503/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140718/b3ad1503/attachment.pl>",
+      "body_plain": "Hello\n\n \n\nMy question is the following. I have tried to find a similar subject in\narchives but not found (perhaps bad search!) and I tried R-help and I was\nadvised that R-devel would perhaps better for my question\n\n \n\nSo I wonder if it is possible to create a dll from a R code to use it in\nanother language/program.\n\nIndeed, one of my colleague wrote a R code combining some R functions to\ncreate a method of calculation.\n\nI would want to use this method in a program coded in Delphi.\n\n \n\nIs there possibilities to create a DLL from R code to be called in the\nDelphi program ?\n\nIt would allow us to avoid rewriting code and searching correspondence\nbetween R functions and Delphi program (or other types of tools as TPMath).\n\nIs it possible to call a dll form R whereas R is not installed on the\ncomputer?\n\n \n\nI hope to be clear in my demand an I hope you will be able to give me some\nindications or where to find it.\n\n \n\nBest regards\n\n \n\nLudovic Brossard\n\n \n\n \n\n \n\nLudovic BROSSARD\n\nUMR PEGASE (Physiologie, Environnement et Génétique pour l’Animal et les\nSystèmes d’Elevage)\n\nINRA – Agrocampus Ouest\n\nDomaine de la Prise, 35590 Saint-Gilles, France\n\nTél : 33 (0)2 23 48 70 57 . Fax : 33(0)2 23 48 50 80\n\n <http://www.rennes.inra.fr/pegase> www.rennes.inra.fr/pegase.  \n\n \n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello\n\n \n\nMy question is the following. I have tried to find a similar subject in\narchives but not found (perhaps bad search!) and I tried R-help and I was\nadvised that R-devel would perhaps better fo",
       "thread_id": "thread-4da12b231b99",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140718/b3ad1503/attachment.pl"
+      ]
     },
     {
       "id": "msg-e1de6ad688b2",
@@ -1478,11 +1520,14 @@
         "<002b01cfa29d$1d66df40$58349dc0$@rennes.inra.fr>",
         "<53C95856.5000209@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140718/14ec5ef8/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140718/14ec5ef8/attachment.pl>",
+      "body_plain": "Thanks for this answer.\nIf I have well understood, there is no way to create dll and call it\nwithout having R installed on the computer ?\nSorry if I am wrong i am not a specialist.\nthanks\n\nLudovic Brossard\n\n> On 18/07/2014, 10:29 AM, Ludovic Brossard wrote:\n>> Hello\n>>\n>> My question is the following. I have tried to find a similar subject in\n>> archives but not found (perhaps bad search!) and I tried R-help and I\nwas\n>> advised that R-devel would perhaps better for my question\n>>\n>> So I wonder if it is possible to create a dll from a R code to use it in\n>> another language/program.\n>>\n>> Indeed, one of my colleague wrote a R code combining some R functions to\n>> create a method of calculation.\n>>\n>> I would want to use this method in a program coded in Delphi.\n>>\n>> Is there possibilities to create a DLL from R code to be called in the\n>> Delphi program ?\n>>\n>> It would allow us to avoid rewriting code and searching correspondence\n>> between R functions and Delphi program (or other types of tools as\n>> TPMath).\n>>\n>> Is it possible to call a dll form R whereas R is not installed on the\n>> computer?\n>>\n>> I hope to be clear in my demand an I hope you will be able to give me\n>> some\n>> indications or where to find it.\n>\n> Most of this is possible, but not easy.  See chapter 8 of the \"Writing R\n> Extensions\" manual.  You are essentially writing a new \"front-end\" to R,\n> and it will require R to be installed for it to work.\n>\n> Many years ago I wrote instructions for using Delphi to create a DLL for\n> R to use, which is another approach you could try.  I've no idea how\n> obsolete those instructions are nowadays, but they might give you some\n> starting points:\n>\n>\nhttp://www.stats.uwo.ca/faculty/murdoch/software/compilingDLLs/pascal.html\n>\n> Duncan Murdoch\n>\n>> Best regards\n>>\n>> Ludovic Brossard\n>>\n>> Ludovic BROSSARD\n>>\n>> UMR PEGASE (Physiologie, Environnement et Génétique pour l’Animal et\nles\n>> Systèmes d’Elevage)\n>>\n>> INRA – Agrocampus Ouest\n>>\n>> Domaine de la Prise, 35590 Saint-Gilles, France\n>>\n>> Tél : 33 (0)2 23 48 70 57 . Fax : 33(0)2 23 48 50 80\n>>\n>> <http://www.rennes.inra.fr/pegase> www.rennes.inra.fr/pegase[1].\n>>\n>>         [[alternative HTML version deleted]]\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>  \n\n\n\nLiens:\n------\n[1] http://www.rennes.inra.fr/pegase\nLudovic Brossard\nINRA - UMR PEGASE\nDomaine de la Prise\n35590 SAINT GILLES\ntel : 02 23 48 70 57\nfax : 02 23 48 50 80\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thanks for this answer.\nIf I have well understood, there is no way to create dll and call it\nwithout having R installed on the computer ?\nSorry if I am wrong i am not a specialist.\nthanks\n\nLudovic Bro",
       "thread_id": "thread-4da12b231b99",
       "thread_depth": 2,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140718/14ec5ef8/attachment.pl"
+      ]
     },
     {
       "id": "msg-0a26411d9112",
@@ -1530,11 +1575,14 @@
       "subject_clean": "patch about mingwbuild 4.9.1",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140718/8a71ad1e/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140718/8a71ad1e/attachment.pl>",
+      "body_plain": "recently I used gcc 4.9.1 (http://sourceforge.net/projects/mingw-w64/files/Toolchains targetting Win64/Personal Builds/mingw-builds/)on windows to build R,but failed when link R.dll ,it report linker status 5. \nafter some digging, I found when use gcc 4.9.1 64 bit on windows there are lots of .refptr.*(* is r function name) in R.def, which lead build fail.so I add a simple path to src/gnuwin32/Makefile:\n\nIndex: Makefile\n===================================================================\n--- Makefile(版本 66200)\n+++ Makefile(工作副本)\n@@ -148,7 +148,7 @@\n ifeq \"$(WIN)\" \"64\"\n R.dll: $(OBJS) $(OBJS-EXTRA) $(MAINLIBS) $(EXTRALIBS) dllversion.o\n @$(ECHO) EXPORTS > R.def\n-@$(NM) $^ | $(SED) -n  $(SYMPAT) | LC_COLLATE=C $(SORT) | uniq > R0.def\n+@$(NM) $^ | $(SED) -n  $(SYMPAT) | LC_COLLATE=C $(SORT) | uniq |$(SED) '/.refptr./d' > R0.def\n @$(SED) -e's/@.*//' Rdll.hide | LC_COLLATE=C $(SORT) > R1.def\n @LC_COLLATE=C comm -23 R0.def R1.def >> R.def\n $(DLL) -shared $(DLLFLAGS) $($*-DLLFLAGS) -o $@ R.def $^ $($*-DLLLIBS) $(DLLLIBS)\n@@ -156,7 +156,7 @@\n else\n R.dll: $(OBJS) $(OBJS-EXTRA) $(MAINLIBS) $(EXTRALIBS) dllversion.o\n @$(ECHO) EXPORTS > R.def\n-@$(NM) $^ | $(SED) -n  $(SYMPAT) | LC_COLLATE=C $(SORT) | uniq > R0.def\n+@$(NM) $^ | $(SED) -n  $(SYMPAT) | LC_COLLATE=C $(SORT) | uniq |$(SED) '/.refptr./d' > R0.def\n @LC_COLLATE=C $(SORT) Rdll.hide > R1.def\n @LC_COLLATE=C comm -23 R0.def R1.def >> R.def\n $(DLL) -shared $(DLLFLAGS) $($*-DLLFLAGS) -o $@ R.def $^ $($*-DLLLIBS) $(DLLLIBS)\n\n\nYu Gong\n2014/07/18\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "recently I used gcc 4.9.1 (http://sourceforge.net/projects/mingw-w64/files/Toolchains targetting Win64/Personal Builds/mingw-builds/)on windows to build R,but failed when link R.dll ,it report linker ",
       "thread_id": "thread-c25c58bcd590",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140718/8a71ad1e/attachment.pl"
+      ]
     },
     {
       "id": "msg-3d9cae9b1407",
@@ -1588,11 +1636,14 @@
         "<1405752737.58864.YahooMailNeo@web162904.mail.bf1.yahoo.com>",
         "<53CBB774.3090407@stats.ox.ac.uk>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140720/9b3c02e4/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140720/9b3c02e4/attachment.pl>",
+      "body_plain": "thanks for you answer, I didn't realize mingw-w64 already change default code model. \nI found one more file also need change,otherwise package build will fail. the file is  share/make/winshlib.mk .\n\n\n  $(NM) $^ | $(SED) -n $(SYMPAT)|$(SED) -n '/.refptr./d'   | $(SED) -n 's/.refptr*//g'   >> tmp.def; \\\n\nYu Gong\nOn Sunday, July 20, 2014 8:35 PM, Prof Brian Ripley <ripley at stats.ox.ac.uk> wrote:\n \n\n\nI think you used the wrong code model: these come from defaulting to the \nmedium-code model intended for x64 Cygwin -- see \nhttps://gcc.gnu.org/ml/gcc-patches/2013-03/msg00858.html .\n\nAlso, please follow the posting guide and do not send HTML: your message \narrived rather garbled.\n\nI've added a more general way to achieve this in MkRules.dist in R-devel \nand R-patched.\n\nOn 19/07/2014 07:52, Yu Gong wrote:\n> recently I used gcc 4.9.1 (http://sourceforge.net/projects/mingw-w64/files/Toolchains targetting Win64/Personal Builds/mingw-builds/)on windows to build R,but failed when link R.dll ,it report linker status 5.Â\n> after some\n digging, I found when use gcc 4.9.1 64 bit on windows there are lots of .refptr.*(* is r function name) in R.def, which lead build fail.so I add a simple path to src/gnuwin32/Makefile:\n>\n> Index: Makefile\n> ===================================================================\n> --- Makefile(ç‰ˆæœ¬ 66200)\n> +++ Makefile(å·¥ä½œå‰¯æœ¬)\n> @@ -148,7 +148,7 @@\n> Â ifeq \"$(WIN)\" \"64\"\n> Â R.dll: $(OBJS) $(OBJS-EXTRA) $(MAINLIBS) $(EXTRALIBS) dllversion.o\n> Â @$(ECHO) EXPORTS > R.def\n> -@$(NM) $^ | $(SED) -n Â $(SYMPAT) | LC_COLLATE=C $(SORT) | uniq > R0.def\n> +@$(NM) $^ | $(SED) -n Â $(SYMPAT) | LC_COLLATE=C $(SORT) | uniq |$(SED) '/.refptr./d' > R0.def\n> Â @$(SED) -e's/@.*//' Rdll.hide | LC_COLLATE=C\n $(SORT) > R1.def\n> Â @LC_COLLATE=C comm -23 R0.def R1.def >> R.def\n> Â $(DLL) -shared $(DLLFLAGS) $($*-DLLFLAGS) -o $@ R.def $^ $($*-DLLLIBS) $(DLLLIBS)\n> @@ -156,7 +156,7 @@\n> Â else\n> Â R.dll: $(OBJS) $(OBJS-EXTRA) $(MAINLIBS) $(EXTRALIBS) dllversion.o\n> Â @$(ECHO) EXPORTS > R.def\n> -@$(NM) $^ | $(SED) -n Â $(SYMPAT) | LC_COLLATE=C $(SORT) | uniq > R0.def\n> +@$(NM) $^ | $(SED) -n Â $(SYMPAT) | LC_COLLATE=C $(SORT) | uniq |$(SED) '/.refptr./d' > R0.def\n> Â @LC_COLLATE=C $(SORT) Rdll.hide > R1.def\n> Â @LC_COLLATE=C comm -23 R0.def R1.def >> R.def\n> Â $(DLL) -shared $(DLLFLAGS) $($*-DLLFLAGS) -o $@ R.def $^ $($*-DLLLIBS) $(DLLLIBS)\n\n>\n>\n> Yu Gong\n> 2014/07/18\n>     [[alternative HTML version deleted]]\n>\n>\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n-- \nBrian D. Ripley,                  ripley at stats.ox.ac.uk\nProfessor of Applied Statistics,  http://www.stats.ox.ac.uk/~ripley/\nUniversity of Oxford,             Tel:  +44 1865 272861 (self)\n1 South Parks Road,                     +44 1865 272866 (PA)\nOxford OX1 3TG, UK                Fax:  +44 1865 272595\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "thanks for you answer, I didn't realize mingw-w64 already change default code model. \nI found one more file also need change,otherwise package build will fail. the file is  share/make/winshlib.mk .\n\n\n",
       "thread_id": "thread-c25c58bcd590",
       "thread_depth": 2,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140720/9b3c02e4/attachment.pl"
+      ]
     },
     {
       "id": "msg-6a7892472d17",
@@ -1620,11 +1671,14 @@
       "subject_clean": "Displaying database records returned from postgresql to R through Java",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140720/4143b05e/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140720/4143b05e/attachment.pl>",
+      "body_plain": "Hi All,\n\nI have a R script which returns a set of records from the postgresql to the\nJava program and I want to print those records in Java.My script is like\nthis:\n\n\nlibrary(RPostgreSQL)\n    fnct1 <- function()\n     {\n\n        drv <- dbDriver(\"PostgreSQL\")\n        r <- dbConnect(drv, host='local', port='1234',dbname='db',\nuser='user', password='pwd')\n        rs <- dbSendQuery(r,\"select * from table1 where colm1 = 'val1'\")\n        temp <- fetch(rs,n=-1)\n        return(temp)\n     }\n\n\nMy Java code is :\n\n    c.parseAndEval(\"try(source(\\\"scpt.R\\\"),silent=TRUE)\");\n    res =  c.parseAndEval(\"try(fnct1(), silent=TRUE)\");\n    System.out.println(\"table names are:\"+ res);\n\nWhen I am printing res above it is displaying\n\n`table names are:org.rosuda.REngine.REXPGenericVector at 681a9515+[1]named`\n\nas output. When I do something like `.asString()` or  inside the\n`System.out.println()` above then it throws error. How can I print or\naccess each record returned by R to Java?\n\n*NOTE:* When I am running the same script file from R itself then R is\ndisplaying some 10 records but when I am trying through Java then nothing\nis getting displayed\n\nRegards,\nJason\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi All,\n\nI have a R script which returns a set of records from the postgresql to the\nJava program and I want to print those records in Java.My script is like\nthis:\n\n\nlibrary(RPostgreSQL)\n    fnct1 <- ",
       "thread_id": "thread-844cd6b324c7",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140720/4143b05e/attachment.pl"
+      ]
     },
     {
       "id": "msg-780bdf5f35e7",
@@ -1704,11 +1758,14 @@
       "subject_clean": "create R package include Fortran source code.",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140721/3a958506/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140721/3a958506/attachment.pl>",
+      "body_plain": "Hello, all\n\nI am building a R package using Fortran source code. The Fortran code is a\nsubroutine. I can use \"R CMD SHLIB  bar.f -o bar.o\" to create the shared\nlibrary. For the R package, I put the fortran file in the src/ and I use R\ncode as follows:\n\n\".First.lib\"<-function(libname,pkgname){library.dynam(\"barpkg\",pkgname,libname)}\nbarfun<-function(n,x){\n  .Fortran(\"bar\",as.integer(n),as.double(x))\n}\npackage.skeleton(name=\"barpkg\",list=c(\"barfun\"))\n--------------------------------------------------------------------------\nI can build with \"R CMD build barpkg\", when I check the package with \"R CMD\ncheck barpkg\", there is an error,\n\n** R\n** preparing package for lazy loading\n** help\n*** installing help indices\n** building package indices\n** testing if installed package can be loaded\n*** arch - i386\nError in inDL(x, as.logical(local), as.logical(now), ...) :\n  unable to load shared object\n'c:/Users/emily/Desktop/rtest/barpkg.Rcheck/barpkg/libs/i386/bar.dll':\n  LoadLibrary failure:  %1 is not a valid Win32 application.\n\nError: loading failed\nExecution halted\n*** arch - x64\nERROR: loading failed for 'i386'\n\nI don't know how to fix this error. Can anyone help me with this?\n\nThanks.\n-Emily\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello, all\n\nI am building a R package using Fortran source code. The Fortran code is a\nsubroutine. I can use \"R CMD SHLIB  bar.f -o bar.o\" to create the shared\nlibrary. For the R package, I put the fo",
       "thread_id": "thread-dabeed81d347",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140721/3a958506/attachment.pl"
+      ]
     },
     {
       "id": "msg-36ff272535c5",
@@ -1720,11 +1777,14 @@
       "subject_clean": "Licence for datasets in a R-package",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140721/2e9c21f3/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140721/2e9c21f3/attachment.pl>",
+      "body_plain": "Dear List,\n\n   I am building a R package which collects ecological data about plant\nspecies from both remote (web) databases and locally stored rda files\n(datasets): these \"local rda files\" are derived from publicly available\ndatabases for which no \"official\" licenses are provided; I was told by the\ncreators of these databases that users can use such data provided that the\ncorrect bibliographic reference is always used (the package is already\nreminding the users about the correct citation(s) to use). I thought a\nCC-by licence would suit this need, thus I am posting here to ask if:\n\n     1) It is possible to distribute these datasets as rda files within my\npackage (which will be released as GPL=>2, thus two different licences will\nbe needed for the package)\n     2) If a CC-by licence for these datasets could be included in the\nDESCRIPTION file, using something like \"License: CC-by datasets.rda\" for\neach rda file (this is based on this stackoverflow thread\n<http://stackoverflow.com/a/4317300>, but CC-by is not among the LICENSES\ncited in http://www.r-project.org/Licenses/): I've already tried to do\nthis, but, as a consequence, the \"R check\" raises a warning.\n\n   I am aware that this is more a licensing issue then a programming\nproblem, but I went through the R FAQ, \"Writing R Extensions\" and R-devel\nbut was not able to sort this problem out (so, please ignore this post if\nyou find it OT).\n   I hope the question is not too messy (this is my first time on R-devel).\n   Many thanks for any help you may provide,\n\n\nGionata Bocci.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear List,\n\n   I am building a R package which collects ecological data about plant\nspecies from both remote (web) databases and locally stored rda files\n(datasets): these \"local rda files\" are derive",
       "thread_id": "thread-36ff272535c5",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140721/2e9c21f3/attachment.pl"
+      ]
     },
     {
       "id": "msg-5258af3d1685",
@@ -1835,11 +1895,14 @@
         "<CAOrAJHdo7jcKfP1cauZYx+JmiSsZ1sU1YcDuFX4sJVF8nCqGVA@mail.gmail.com>",
         "<53CD42EE.3030204@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140721/0ca050bb/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140721/0ca050bb/attachment.pl>",
+      "body_plain": "Thank you for your reply.\nFirst I try \"R CMD INSTALL barpkg\", then it gives similiar things:\n---------------------------------------------------------------------------------------------------------------------------------------------\n* installing *source* package 'barpkg' ...\n** libs\n\n*** arch - i386\ncygwin warning:\n  MS-DOS style path detected: C:/PROGRA~1/R/R-31~1.0/etc/i386/Makeconf\n  Preferred POSIX equivalent is:\n/cygdrive/c/PROGRA~1/R/R-31~1.0/etc/i386/Makeconf\n  CYGWIN environment variable option \"nodosfilewarning\" turns off this\nwarning.\n  Consult the user's guide for more details about POSIX paths:\n    http://cygwin.com/cygwin-ug-net/using.html#using-pathnames\ngfortran -m32     -O3  -mtune=core2 -c bar.f -o bar.o\ngcc -m32 -shared -s -static-libgcc -o barpkg.dll tmp.def bar.o\n-Ld:/RCompile/CRANpkg/extralibs64/local/lib/i386\n-Ld:/RCompile/CRANpkg/extralibs64/local/lib -lgfortran\n-LC:/PROGRA~1/R/R-31~1.0/bin/i386 -lR\ncygwin warning:\n  MS-DOS style path detected: C:/PROGRA~1/R/R-31~1.0/etc/i386/Makeconf\n  Preferred POSIX equivalent is:\n/cygdrive/c/PROGRA~1/R/R-31~1.0/etc/i386/Makeconf\n  CYGWIN environment variable option \"nodosfilewarning\" turns off this\nwarning.\n  Consult the user's guide for more details about POSIX paths:\n    http://cygwin.com/cygwin-ug-net/using.html#using-pathnames\ninstalling to C:/Users/emily/Desktop/rtest/barpkg.Rcheck/barpkg/libs/i386\n\n*** arch - x64\ncygwin warning:\n  MS-DOS style path detected: C:/PROGRA~1/R/R-31~1.0/etc/x64/Makeconf\n  Preferred POSIX equivalent is:\n/cygdrive/c/PROGRA~1/R/R-31~1.0/etc/x64/Makeconf\n  CYGWIN environment variable option \"nodosfilewarning\" turns off this\nwarning.\n  Consult the user's guide for more details about POSIX paths:\n    http://cygwin.com/cygwin-ug-net/using.html#using-pathnames\ngfortran -m64     -O2  -mtune=core2 -c bar.f -o bar.o\ngcc -m64 -shared -s -static-libgcc -o barpkg.dll tmp.def bar.o\n-Ld:/RCompile/CRANpkg/extralibs64/local/lib/x64\n-Ld:/RCompile/CRANpkg/extralibs64/local/lib -lgfortran\n-LC:/PROGRA~1/R/R-31~1.0/bin/x64 -lR\ncygwin warning:\n  MS-DOS style path detected: C:/PROGRA~1/R/R-31~1.0/etc/x64/Makeconf\n  Preferred POSIX equivalent is:\n/cygdrive/c/PROGRA~1/R/R-31~1.0/etc/x64/Makeconf\n  CYGWIN environment variable option \"nodosfilewarning\" turns off this\nwarning.\n  Consult the user's guide for more details about POSIX paths:\n    http://cygwin.com/cygwin-ug-net/using.html#using-pathnames\ninstalling to C:/Users/emily/Desktop/rtest/barpkg.Rcheck/barpkg/libs/x64\n** R\n** preparing package for lazy loading\n** help\n*** installing help indices\n** building package indices\n** testing if installed package can be loaded\n*** arch - i386\nError in inDL(x, as.logical(local), as.logical(now), ...) :\n  unable to load shared object\n'C:/Users/emily/Desktop/rtest/barpkg.Rcheck/barpkg/libs/i386/bar.dll':\n  LoadLibrary failure:  %1 is not a valid Win32 application.\n\nError: loading failed\nExecution halted\n*** arch - x64\nERROR: loading failed for 'i386'\n* removing 'C:/Users/emily/Desktop/rtest/barpkg.Rcheck/barpkg'\n----------------------------------------------------------------------------------------------------------------------------------------------------\n2) I don't know how to check the \"compile\" problem. I just try to\n\"dyn.load\" the shared object in /src-i386 and /src-x64 in the package, and\nthey both work well.\n\nI am guessing there is some error in the R language.\n\".First.lib\"<-function(libname,pkgname){library.dynam(\"barpkg\",pkgname,\nlibname)}\nbarfun<-function(n,x){\n   .Fortran(\"bar\",as.integer(n),as.double(x))\n}\npackage.skeleton(name=\"barpkg\",list=c(\"barfun\"))\n\nI am not sure about this part. Can anyone give me some suggestion?\nI appreciate that very much.\n\n-Emily\n\n\nOn Mon, Jul 21, 2014 at 11:42 AM, Duncan Murdoch <murdoch.duncan at gmail.com>\nwrote:\n\n> On 21/07/2014 12:10 PM, yiqun yang wrote:\n>\n>> Hello, all\n>>\n>> I am building a R package using Fortran source code. The Fortran code is a\n>> subroutine. I can use \"R CMD SHLIB  bar.f -o bar.o\" to create the shared\n>> library. For the R package, I put the fortran file in the src/ and I use R\n>> code as follows:\n>>\n>> \".First.lib\"<-function(libname,pkgname){library.dynam(\"barpkg\",pkgname,\n>> libname)}\n>> barfun<-function(n,x){\n>>    .Fortran(\"bar\",as.integer(n),as.double(x))\n>> }\n>> package.skeleton(name=\"barpkg\",list=c(\"barfun\"))\n>> ------------------------------------------------------------\n>> --------------\n>> I can build with \"R CMD build barpkg\", when I check the package with \"R\n>> CMD\n>> check barpkg\", there is an error,\n>>\n>> ** R\n>> ** preparing package for lazy loading\n>> ** help\n>> *** installing help indices\n>> ** building package indices\n>> ** testing if installed package can be loaded\n>> *** arch - i386\n>> Error in inDL(x, as.logical(local), as.logical(now), ...) :\n>>    unable to load shared object\n>> 'c:/Users/emily/Desktop/rtest/barpkg.Rcheck/barpkg/libs/i386/bar.dll':\n>>    LoadLibrary failure:  %1 is not a valid Win32 application.\n>>\n>\n> You will see more information in the files in the barpkg.Rcheck directory\n> created during the check.  You can see some of those messages on the screen\n> if you do an explicit INSTALL.\n>\n> I'd guess that the compile failed, but can't guess why.\n>\n> Duncan Murdoch\n>\n>\n>\n>> Error: loading failed\n>> Execution halted\n>> *** arch - x64\n>> ERROR: loading failed for 'i386'\n>>\n>> I don't know how to fix this error. Can anyone help me with this?\n>>\n>> Thanks.\n>> -Emily\n>>\n>>         [[alternative HTML version deleted]]\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thank you for your reply.\nFirst I try \"R CMD INSTALL barpkg\", then it gives similiar things:\n-----------------------------------------------------------------------------------------------------------",
       "thread_id": "thread-dabeed81d347",
       "thread_depth": 2,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140721/0ca050bb/attachment.pl"
+      ]
     },
     {
       "id": "msg-7f683af325c5",
@@ -1895,11 +1958,14 @@
         "<CAP01uR=CAuDOPZgNo=PvREB8PW-O0oUDqWznz1BJkyvHoOY+xA@mail.gmail.com>",
         "<CABtg=Km8=-ZFBhi1qMZzsucjFum9U9_k3HhkEAYspD0ezab+Zg@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/0f9eb1af/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/0f9eb1af/attachment.pl>",
+      "body_plain": "Thank you all very much for your (extremely) prompt reply.\nIf datasets' authors won't agree on releasing their data under GPL, I'll\nfollow G. Grothendieck suggestion and build a ad-hoc data-package.\nThanks,\n\nGionata.\n\n\n\n2014-07-21 20:04 GMT+02:00 Gábor Csárdi <csardi.gabor at gmail.com>:\n\n> On Mon, Jul 21, 2014 at 1:56 PM, Gabor Grothendieck\n> <ggrothendieck at gmail.com> wrote:\n> > On Mon, Jul 21, 2014 at 12:54 PM, Gábor Csárdi <csardi.gabor at gmail.com>\n> wrote:\n> >> In practice, CRAN maintainers do not allow multiple licenses for parts\n> >> of the same package. At least they did not for my package a couple of\n> >> months ago.\n> >>\n> >\n> > If that is the case then you could put your data files in a separate\n> > package from the code with one depending on the other.\n>\n> Yes, and sometimes this even makes sense, as the data does not change\n> often.\n>\n> This was, however, a package with several data sets, accompanying a\n> book. So this would have been quite cumbersome.\n>\n> Gabor\n>\n> >\n> > --\n> > Statistics & Software Consulting\n> > GKX Group, GKX Associates Inc.\n> > tel: 1-877-GKX-GROUP\n> > email: ggrothendieck at gmail.com\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thank you all very much for your (extremely) prompt reply.\nIf datasets' authors won't agree on releasing their data under GPL, I'll\nfollow G. Grothendieck suggestion and build a ad-hoc data-package.\nT",
       "thread_id": "thread-36ff272535c5",
       "thread_depth": 5,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/0f9eb1af/attachment.pl"
+      ]
     },
     {
       "id": "msg-9817b819fcb4",
@@ -1918,11 +1984,14 @@
         "<CABtg=Km8=-ZFBhi1qMZzsucjFum9U9_k3HhkEAYspD0ezab+Zg@mail.gmail.com>",
         "<CADGFu4_siRgo1zipNibqpuovDMeeAv7P=Wm_fg=832OyqmhWhw@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/750ab0fc/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/750ab0fc/attachment.pl>",
+      "body_plain": "For a data set that are available on the web, one can write a function \nto download it.  This can be done either because of license issues or \nbecause the database changes, and you might like to get the latest \nversion.  One example is fda::readHMD.  The Ecfun package contains many \nother examples.  The latter includes readCookPVI, \nreadFinancialCrisisFiles, readNIPA, readUShouse, readUSsenate, \nreadUSstateAbbreviations, and testURLs.\n\n\n       Hope this helps.\n       Spencer\n\n\nOn 7/22/2014 12:46 AM, Gionata Bocci wrote:\n> Thank you all very much for your (extremely) prompt reply.\n> If datasets' authors won't agree on releasing their data under GPL, I'll\n> follow G. Grothendieck suggestion and build a ad-hoc data-package.\n> Thanks,\n>\n> Gionata.\n>\n>\n>\n> 2014-07-21 20:04 GMT+02:00 Gábor Csárdi <csardi.gabor at gmail.com>:\n>\n>> On Mon, Jul 21, 2014 at 1:56 PM, Gabor Grothendieck\n>> <ggrothendieck at gmail.com> wrote:\n>>> On Mon, Jul 21, 2014 at 12:54 PM, Gábor Csárdi <csardi.gabor at gmail.com>\n>> wrote:\n>>>> In practice, CRAN maintainers do not allow multiple licenses for parts\n>>>> of the same package. At least they did not for my package a couple of\n>>>> months ago.\n>>>>\n>>> If that is the case then you could put your data files in a separate\n>>> package from the code with one depending on the other.\n>> Yes, and sometimes this even makes sense, as the data does not change\n>> often.\n>>\n>> This was, however, a package with several data sets, accompanying a\n>> book. So this would have been quite cumbersome.\n>>\n>> Gabor\n>>\n>>> --\n>>> Statistics & Software Consulting\n>>> GKX Group, GKX Associates Inc.\n>>> tel: 1-877-GKX-GROUP\n>>> email: ggrothendieck at gmail.com\n> \t[[alternative HTML version deleted]]\n>\n>\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "For a data set that are available on the web, one can write a function \nto download it.  This can be done either because of license issues or \nbecause the database changes, and you might like to get t",
       "thread_id": "thread-36ff272535c5",
       "thread_depth": 6,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/750ab0fc/attachment.pl"
+      ]
     },
     {
       "id": "msg-55f830727dee",
@@ -1950,11 +2019,14 @@
       "subject_clean": "Question: Publishing R/S objects with WebServices (SOAP/WSDL)",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/2b3f989e/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/2b3f989e/attachment.pl>",
+      "body_plain": "Hello,\n\nCan anyone tell me if there is a package which will allow me to write a\npackage in R, then publish the package using WebServices? The idea is that\nI want to be able to pass a data set into R, have R perform the\ncalculations, then send the result back to either a .Net application or a\nLIMS BASIC application.\n\nSo far I see many packages that allow R to consume WebServices, but I\nhaven't seen anything that allows you to publish a package as a WebService.\nOne company advertised a product for WebServices, but they are not using\nthe term in an industry standardized way - they are using it to mean, \"I\ncan publish my R results on the web and access them from the web.\" This is\nNOT what we are looking for. We want to use true Web Services using SOAP\nand WSDL.\n\nAny help would be much appreciated.\n\n-- \nKurt Schallitz\nSr. Software Developer [LIMS]\nFPPQI\nGenentech\n(650)-467-7304\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\nCan anyone tell me if there is a package which will allow me to write a\npackage in R, then publish the package using WebServices? The idea is that\nI want to be able to pass a data set into R, ",
       "thread_id": "thread-9d4617a0b522",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/2b3f989e/attachment.pl"
+      ]
     },
     {
       "id": "msg-82cb486aa3c6",
@@ -2004,11 +2076,14 @@
       "references": [
         "<53CE6DD3.7060901@tuwien.ac.at>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/0443ca54/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/0443ca54/attachment.pl>",
+      "body_plain": "On Windows, there is a separate file makevars.win (not makevars) that is \nused at compile/link time. \n See the R-exts manual, particularly section 5.8.2. \n\nHope that helps,   John\n\n ..............................................................\n John P. Nolan\n Math/Stat Department\n 227 Gray Hall,   American University\n 4400 Massachusetts Avenue, NW\n Washington, DC 20016-8050\n\n jpnolan at american.edu       voice: 202.885.3140 \n web: academic2.american.edu/~jpnolan\n ..............................................................\n\n\n\nFrom:   Alexander Braumann <alexander.braumann at tuwien.ac.at>\nTo:     <r-devel at r-project.org>, \nDate:   07/22/2014 09:59 AM\nSubject:        [Rd] Problems with building a private R-package with \nFortran source under Windows\nSent by:        r-devel-bounces at r-project.org\n\n\n\nHi,\n\nI recently managed to port the slicot library (http://slicot.org/) to R. \nI created a new package, put the fortran libs into the src directory \ntogether with a Makevars file that include the line:\n\nPKG_LIBS=$(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)\n\nR CMD check did run through on my ubuntu 14.04 64bit machine with 1 \nwarning and 4 notes.\n\nNow I wanted to create a Windows version of that package by simply \nsending it to http://win-builder.r-project.org/ and because I am not \ncapable of compiling on Windows.\n\nAs a respone I got the following error message:\n\n  installing *source* package 'slicot' ...\n** libs\n\n*** arch - i386\ngfortran      -O3  -mtune=core2 -c AB01MD.f -o AB01MD.o\ngfortran      -O3  -mtune=core2 -c AB01ND.f -o AB01ND.o\ngfortran      -O3  -mtune=core2 -c AB01OD.f -o AB01OD.o\n.\n.\n. (truncated)\n.\ngfortran      -O3  -mtune=core2 -c delctg.f -o delctg.o\ngfortran      -O3  -mtune=core2 -c select.f -o select.o\ngcc -shared -s -static-libgcc -o slicot.dll tmp.def AB01MD.o AB01ND.o \nAB01OD.o AB04MD.o AB05MD.o AB05ND.o\nAB05OD.o AB05PD.o AB05QD.o AB05RD.o AB05SD.o AB07MD.o AB07ND.o AB08MD.o \nAB08MZ.o AB08ND.o AB08NX.o AB08NZ.o\nAB09AD.o AB09AX.o AB09BD.o AB09BX.o AB09CD.o AB09CX.o AB09DD.o AB09ED.o \nAB09FD.o AB09GD.o AB09HD.o AB09HX.o\nAB09HY.o AB09ID.o AB09IX.o AB09IY.o AB09JD.o AB09JV.o AB09JW.o AB09JX.o \nAB09KD.o AB09KX.o AB09MD.o AB09ND.o AB13AD.o\nAB13AX.o AB13BD.o AB13CD.o AB13DD.o AB13DX.o AB13ED.o AB13FD.o AB13ID.o \nAB13MD.o AB8NXZ.o AG07BD.o AG08BD.o AG08BY.o\nAG08BZ.o AG8BYZ.o BB01AD.o BB02AD.o BB03AD.o BB04AD.o BD01AD.o BD02AD.o \nDE01OD.o DE01PD.o DF01MD.o DG01MD.o DG01ND.o\nDG01NY.o DG01OD.o DK01MD.o FB01QD.o FB01RD.o FB01SD.o FB01TD.o FB01VD.o \nFD01AD.o IB01AD.o IB01BD.o IB01CD.o IB01MD.o\nIB01MY.o IB01ND.o IB01OD.o IB01OY.o IB01PD.o IB01PX.o IB01PY.o IB01QD.o \nIB01RD.o IB03AD.o IB03BD.o MA01AD.o MA01BD.o\nMA01BZ.o MA01CD.o MA02AD.o MA02BD.o MA02BZ.o MA02CD.o MA02CZ.o MA02DD.o \nMA02ED.o MA02ES.o MA02EZ.o MA02FD.o MA02GD.o\nMA02GZ.o MA02HD.o MA02ID.o MA02IZ.o MA02JD.o MA02JZ.o MB01KD.o MB01LD.o \nMB01MD.o MB01ND.o MB01PD.o MB01QD.o MB01RD.o\nMB01RU.o MB01RW.o MB01RX.o MB01RY.o MB01SD.o MB01TD.o MB01UD.o MB01UW.o \nMB01UX.o MB01VD.o MB01WD.o MB01XD.o MB01XY.o MB01YD.o\nMB01ZD.o MB02CD.o MB02CU.o MB02CV.o MB02CX.o MB02CY.o MB02DD.o MB02ED.o \nMB02FD.o MB02GD.o MB02HD.o MB02ID.o MB02JD.o\nMB02JX.o MB02KD.o MB02MD.o MB02ND.o MB02NY.o MB02OD.o MB02PD.o MB02QD.o \nMB02QY.o MB02RD.o MB02RZ.o MB02SD.o MB02SZ.o\nMB02TD.o MB02TZ.o MB02UD.o MB02UU.o MB02UV.o MB02UW.o MB02VD.o MB02WD.o \nMB02XD.o MB02YD.o MB03AD.o MB03BA.o MB03BB.o\nMB03BC.o MB03BD.o MB03BE.o MB03BZ.o MB03CD.o MB03CZ.o MB03DD.o MB03DZ.o \nMB03ED.o MB03FD.o MB03FZ.o MB03GD.o MB03GZ.o\nMB03HD.o MB03HZ.o MB03ID.o MB03IZ.o MB03JD.o MB03JZ.o MB03KA.o MB03KB.o \nMB03KC.o MB03KD.o MB03KE.o MB03LD.o MB03LF.o\nMB03LZ.o MB03MD.o MB03MY.o MB03ND.o MB03NY.o MB03OD.o MB03OY.o MB03PD.o \nMB03PY.o MB03QD.o MB03QX.o MB03QY.o MB03RD.o\nMB03RX.o MB03RY.o MB03SD.o MB03TD.o MB03TS.o MB03UD.o MB03VD.o MB03VY.o \nMB03WA.o MB03WD.o MB03WX.o MB03XD.o MB03XP.o\nMB03XS.o MB03XU.o MB03XZ.o MB03YA.o MB03YD.o MB03YT.o MB03ZA.o MB03ZD.o \nMB04AD.o MB04AZ.o MB04BD.o MB04BZ.o MB04CD.o\nMB04DD.o MB04DI.o MB04DS.o MB04DY.o MB04DZ.o MB04ED.o MB04FD.o MB04GD.o \nMB04HD.o MB04ID.o MB04IY.o MB04IZ.o MB04JD.o\nMB04KD.o MB04LD.o MB04MD.o MB04ND.o MB04NY.o MB04OD.o MB04OW.o MB04OX.o \nMB04OY.o MB04PA.o MB04PB.o MB04PU.o MB04PY.o\nMB04QB.o MB04QC.o MB04QF.o MB04QS.o MB04QU.o MB04RB.o MB04RU.o MB04SU.o \nMB04TB.o MB04TS.o MB04TT.o MB04TU.o MB04TV.o\nMB04TW.o MB04TX.o MB04TY.o MB04UD.o MB04VD.o MB04VX.o MB04WD.o MB04WP.o \nMB04WR.o MB04WU.o MB04XD.o MB04XY.o MB04YD.o\nMB04YW.o MB04ZD.o MB05MD.o MB05MY.o MB05ND.o MB05OD.o MB05OY.o MB3OYZ.o \nMB3PYZ.o MC01MD.o MC01ND.o MC01OD.o MC01PD.o\nMC01PY.o MC01QD.o MC01RD.o MC01SD.o MC01SW.o MC01SX.o MC01SY.o MC01TD.o \nMC01VD.o MC01WD.o MC03MD.o MC03ND.o MC03NX.o\nMC03NY.o MD03AD.o MD03BA.o MD03BB.o MD03BD.o MD03BF.o MD03BX.o MD03BY.o \nNF01AD.o NF01AY.o NF01BA.o NF01BB.o NF01BD.o\nNF01BE.o NF01BF.o NF01BP.o NF01BQ.o NF01BR.o NF01BS.o NF01BU.o NF01BV.o \nNF01BW.o NF01BX.o NF01BY.o SB01BD.o SB01BX.o\nSB01BY.o SB01DD.o SB01FY.o SB01MD.o SB02CX.o SB02MD.o SB02MR.o SB02MS.o \nSB02MT.o SB02MU.o SB02MV.o SB02MW.o SB02ND.o\nSB02OD.o SB02OU.o SB02OV.o SB02OW.o SB02OX.o SB02OY.o SB02PD.o SB02QD.o \nSB02RD.o SB02RU.o SB02SD.o SB03MD.o SB03MU.o\nSB03MV.o SB03MW.o SB03MX.o SB03MY.o SB03OD.o SB03OR.o SB03OT.o SB03OU.o \nSB03OV.o SB03OY.o SB03PD.o SB03QD.o SB03QX.o\nSB03QY.o SB03RD.o SB03SD.o SB03SX.o SB03SY.o SB03TD.o SB03UD.o SB04MD.o \nSB04MR.o SB04MU.o SB04MW.o SB04MY.o SB04ND.o\nSB04NV.o SB04NW.o SB04NX.o SB04NY.o SB04OD.o SB04OW.o SB04PD.o SB04PX.o \nSB04PY.o SB04QD.o SB04QR.o SB04QU.o SB04QY.o\nSB04RD.o SB04RV.o SB04RW.o SB04RX.o SB04RY.o SB06ND.o SB08CD.o SB08DD.o \nSB08ED.o SB08FD.o SB08GD.o SB08HD.o SB08MD.o\nSB08MY.o SB08ND.o SB08NY.o SB09MD.o SB10AD.o SB10DD.o SB10ED.o SB10FD.o \nSB10HD.o SB10ID.o SB10JD.o SB10KD.o SB10LD.o\nSB10MD.o SB10PD.o SB10QD.o SB10RD.o SB10SD.o SB10TD.o SB10UD.o SB10VD.o \nSB10WD.o SB10YD.o SB10ZD.o SB10ZP.o SB16AD.o\nSB16AY.o SB16BD.o SB16CD.o SB16CY.o SG02AD.o SG03AD.o SG03AX.o SG03AY.o \nSG03BD.o SG03BU.o SG03BV.o SG03BW.o SG03BX.o\nSG03BY.o TB01ID.o TB01IZ.o TB01KD.o TB01LD.o TB01MD.o TB01ND.o TB01PD.o \nTB01TD.o TB01TY.o TB01UD.o TB01VD.o TB01VY.o\nTB01WD.o TB01XD.o TB01XZ.o TB01YD.o TB01ZD.o TB03AD.o TB03AY.o TB04AD.o \nTB04AY.o TB04BD.o TB04BV.o TB04BW.o TB04BX.o\nTB04CD.o TB05AD.o TC01OD.o TC04AD.o TC05AD.o TD03AD.o TD03AY.o TD04AD.o \nTD05AD.o TF01MD.o TF01MX.o TF01MY.o TF01ND.o\nTF01OD.o TF01PD.o TF01QD.o TF01RD.o TG01AD.o TG01AZ.o TG01BD.o TG01CD.o \nTG01DD.o TG01ED.o TG01FD.o TG01FZ.o TG01HD.o\nTG01HX.o TG01HY.o TG01ID.o TG01JD.o TG01JY.o TG01WD.o UD01BD.o UD01CD.o \nUD01DD.o UD01MD.o UD01MZ.o UD01ND.o UE01MD.o\ndelctg.o select.o\n-LD:/RCompile/recent/R-3.1.1/bin/i386 -lRlapack \n-LD:/RCompile/recent/R-3.1.1/bin/i386 -lRblas\n-lgfortran -Ld:/Rcompile/CRANpkg/extralibs215/local215/lib/i386 \n-Ld:/Rcompile/CRANpkg/extralibs215/local215/lib\n-lgfortran -LD:/RCompile/recent/R-3.1.1/bin/i386 -lR\nAB08NZ.o:AB08NZ.f:(.text+0x658): undefined reference to `ztzrzf_'\nAB08NZ.o:AB08NZ.f:(.text+0x78f): undefined reference to `zunmrz_'\nAB08NZ.o:AB08NZ.f:(.text+0x150e): undefined reference to `ztzrzf_'\nAB08NZ.o:AB08NZ.f:(.text+0x161e): undefined reference to `zunmrz_'\nAB08NZ.o:AB08NZ.f:(.text+0x173c): undefined reference to `zunmrz_'\nAB13MD.o:AB13MD.f:(.text+0x1a09): undefined reference to `zgees_'\nAB13MD.o:AB13MD.f:(.text+0x210b): undefined reference to `zgees_'\nAB13MD.o:AB13MD.f:(.text+0x2232): undefined reference to `zgetri_'\nAB13MD.o:AB13MD.f:(.text+0x2f8e): undefined reference to `zgees_'\nAB13MD.o:AB13MD.f:(.text+0x3bae): undefined reference to `zgees_'\nAB13MD.o:AB13MD.f:(.text+0x3cd1): undefined reference to `zgetri_'\nAB13MD.o:AB13MD.f:(.text+0x4e4c): undefined reference to `zgees_'\nAB13MD.o:AB13MD.f:(.text+0x5ada): undefined reference to `zgees_'\nAB13MD.o:AB13MD.f:(.text+0x64b7): undefined reference to `zgees_'\nAB13MD.o:AB13MD.f:(.text+0x6c51): undefined reference to `zgees_'\nAB13MD.o:AB13MD.f:(.text+0x75ac): undefined reference to `zgees_'\nAB8NXZ.o:AB8NXZ.f:(.text+0x3b3): undefined reference to `zunmrq_'\nAB8NXZ.o:AB8NXZ.f:(.text+0x469): undefined reference to `zunmrq_'\nAB8NXZ.o:AB8NXZ.f:(.text+0x785): undefined reference to `zlatzm_'\nAB8NXZ.o:AB8NXZ.f:(.text+0xa77): undefined reference to `zunmrq_'\nAB8NXZ.o:AB8NXZ.f:(.text+0xb5d): undefined reference to `zunmrq_'\nAB8NXZ.o:AB8NXZ.f:(.text+0xe99): undefined reference to `zlapmt_'\nAG08BZ.o:AG08BZ.f:(.text+0x80c): undefined reference to `ztzrzf_'\nAG08BZ.o:AG08BZ.f:(.text+0x936): undefined reference to `zunmrz_'\nAG08BZ.o:AG08BZ.f:(.text+0x177f): undefined reference to `ztzrzf_'\nAG08BZ.o:AG08BZ.f:(.text+0x187f): undefined reference to `zunmrz_'\nAG08BZ.o:AG08BZ.f:(.text+0x1a9e): undefined reference to `zunmrz_'\nAG8BYZ.o:AG8BYZ.f:(.text+0x5c0): undefined reference to `zlatzm_'\nAG8BYZ.o:AG8BYZ.f:(.text+0x1128): undefined reference to `zlaic1_'\nAG8BYZ.o:AG8BYZ.f:(.text+0x1181): undefined reference to `zlaic1_'\nAG8BYZ.o:AG8BYZ.f:(.text+0x13c4): undefined reference to `zlapmt_'\nMB02TZ.o:MB02TZ.f:(.text+0x1ea): undefined reference to `zlacon_'\nMB03BZ.o:MB03BZ.f:(.text+0x1fbe): undefined reference to `zlarnv_'\nMB03LZ.o:MB03LZ.f:(.text+0x17d0): undefined reference to `zhgeqz_'\nMB04BZ.o:MB04BZ.f:(.text+0x17a0): undefined reference to `zhgeqz_'\nMB3OYZ.o:MB3OYZ.f:(.text+0x774): undefined reference to `zlaic1_'\nMB3OYZ.o:MB3OYZ.f:(.text+0x7cb): undefined reference to `zlaic1_'\nMB3PYZ.o:MB3PYZ.f:(.text+0x97a): undefined reference to `zlaic1_'\nMB3PYZ.o:MB3PYZ.f:(.text+0x9f4): undefined reference to `zlaic1_'\nTG01FZ.o:TG01FZ.f:(.text+0x93a): undefined reference to `ztzrzf_'\nTG01FZ.o:TG01FZ.f:(.text+0xa16): undefined reference to `zunmrz_'\nTG01FZ.o:TG01FZ.f:(.text+0xb11): undefined reference to `zunmrz_'\nTG01FZ.o:TG01FZ.f:(.text+0xc08): undefined reference to `zunmrz_'\nTG01FZ.o:TG01FZ.f:(.text+0x18b4): undefined reference to `ztzrzf_'\nTG01FZ.o:TG01FZ.f:(.text+0x19d3): undefined reference to `zunmrz_'\nTG01FZ.o:TG01FZ.f:(.text+0x1d3c): undefined reference to `ztzrzf_'\nTG01FZ.o:TG01FZ.f:(.text+0x1ede): undefined reference to `zunmrz_'\nTG01FZ.o:TG01FZ.f:(.text+0x1ff4): undefined reference to `zunmrz_'\nTG01FZ.o:TG01FZ.f:(.text+0x22bb): undefined reference to `zunmrz_'\nTG01FZ.o:TG01FZ.f:(.text+0x23cf): undefined reference to `zunmrz_'\ncollect2: ld returned 1 exit status\nno DLL was created\nERROR: compilation failed for package 'slicot'\n* removing 'd:/RCompile/CRANguest/R-release/lib/slicot'\n\nI figured out that the undefined references are LAPACK functions. I am \nnot an expert in compiling packages, but I thought my line in Makevars \nalready linked to the LAPACK lib.\n\nCan anyone help me on this?\n\nAll the best,\n\nAlexander\n\n______________________________________________\nR-devel at r-project.org mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Windows, there is a separate file makevars.win (not makevars) that is \nused at compile/link time. \n See the R-exts manual, particularly section 5.8.2. \n\nHope that helps,   John\n\n ..................",
       "thread_id": "thread-55f830727dee",
       "thread_depth": 1,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/0443ca54/attachment.pl"
+      ]
     },
     {
       "id": "msg-282926cf6973",
@@ -2054,11 +2129,14 @@
       "subject_clean": "Removed 'extern' on R_running_as_main_program in Rinterface.h -- intentional?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/41ff0a0e/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/41ff0a0e/attachment.pl>",
+      "body_plain": "Hi R-devel,\n\nIn this commit:\nhttps://github.com/wch/r-source/commit/c67a107dd7b0f074cec9359b8e2ca07c6243283c\n\nR_running_as_main_program was moved from Rmain.c to Rinterface.h, and lost\nits 'extern' declaration. This change is causing us linker problems (since\nwe now have duplicate symbols for R_running_as_main_program). Was this\nintentional? If so, what else should applications embedding R be doing to\nindicate they are running as the main program?\n\nIn addition, I guess the documentation at\nhttp://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Embedding-R-under-Unix_002dalikes\nshould be updated to reflect the change.\n\nThanks,\nKevin\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi R-devel,\n\nIn this commit:\nhttps://github.com/wch/r-source/commit/c67a107dd7b0f074cec9359b8e2ca07c6243283c\n\nR_running_as_main_program was moved from Rmain.c to Rinterface.h, and lost\nits 'extern' de",
       "thread_id": "thread-b70fd44bb40a",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140722/41ff0a0e/attachment.pl"
+      ]
     },
     {
       "id": "msg-1f41b3cbe3ba",
@@ -2210,11 +2288,14 @@
       "subject_clean": "Multiple -g flags in R CMD SHLIB",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140725/c37dbf82/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140725/c37dbf82/attachment.pl>",
+      "body_plain": "Does anybody know why two \"-g\" flags appear in the call to gcc in R CMD \nSHLIB\n\nExample:\n\ngcc -std=gnu99 -I/usr/share/R/include -DNDEBUG -fpic *-g* -O2 \n-fstack-protector --param=ssp-buffer-size=4 -Wformat \n-Werror=format-security -D_FORTIFY_SOURCE=2 *-g*  -c c_file1.c -o \nc_object1.o\n\nSurely it need only be listed once?\n\nAlan\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Does anybody know why two \"-g\" flags appear in the call to gcc in R CMD \nSHLIB\n\nExample:\n\ngcc -std=gnu99 -I/usr/share/R/include -DNDEBUG -fpic *-g* -O2 \n-fstack-protector --param=ssp-buffer-size=4 -Wf",
       "thread_id": "thread-386aecaaa986",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140725/c37dbf82/attachment.pl"
+      ]
     },
     {
       "id": "msg-751f85fe9474",
@@ -2327,11 +2408,14 @@
         "<FB8776EE-B310-4C1D-A07C-B600BEED83B7@gmail.com>",
         "<1DCA60F5-151B-4A69-A427-1ECF44D1E946@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140725/72a0a282/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140725/72a0a282/attachment.pl>",
+      "body_plain": "Simon\n\nThat is odd!  I am not aware of any other binary except the ones on www.r-project.org- CRAN- mirrors.   Just to be 100% sure I have used the url you sent me and re-installed R.  No change, gfortran-4.8 is the one R asks for.   I have tried on another mac and no change.  I must be missing something ...\n\nR CMD INSTALL package_1.0.tar.gz \n* installing to library ‘/Library/Frameworks/R.framework/Versions/3.1/Resources/library’\n* installing *source* package ‘package’ ...\n** libs\ngfortran-4.8   -fPIC  -g -O2 \n\ngfortran-4.8 from research worked too, so now I have two options in case I run into trouble again.  The default gfortran.4.2.3 doesn't work because of the links and no quadmath (at least in my setup).\n\nMany thanks\n\nEd\n\n\nOn Jul 25, 2014, at 10:14 AM, Simon Urbanek <simon.urbanek at r-project.org> wrote:\n\n> Eduardo,\n> \n> On Jul 24, 2014, at 8:37 PM, Eduardo M. A. M.Mendes <emammendes at gmail.com> wrote:\n> \n>> Hello\n>> \n>> I have recently upgraded R to the newest version.  Unfortunately my old (fortran and C) R-package cannot be installed anymore (was built before R 3.0.0: please re-install it). \n>> \n>> I have tried R CMD INSTALL package_name but I noticed that R-3.1.1-binary-mac requests gcc-4.8.2 and specific locations for the libraries (gcc and gfortran).  \n> \n> No, it doesn't. You must be using some other binary that the official CRAN one (http://cran.r-project.org/bin/macosx )\n> Our binaries only use standard Apple compilers (from Xcode - in recent OS X versions you can use xcode-select --install on the command line to install) plus a GNU Fortran that you can download from CRAN.\n> \n> \n>> Can someone point me to the documentation on how to install  gcc as R requires, please?\n>> \n>> Please note that I have used \"brew install gcc\" on another mac and soft linked all the necessary libraries so that gcc-4.9.1 can be used as 4.8 (as R requires). However I would like a clean installation.\n>> \n> \n> I you use brew, then you're on your own and you should refer to their support. Our builds do not require brew (or any other 3rd party build system).\n> \n> Cheers,\n> Simon\n> \n> PS: Please note that R-SIG-Mac is the proper mailing list for Mac-specific questions.\n> \n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Simon\n\nThat is odd!  I am not aware of any other binary except the ones on www.r-project.org- CRAN- mirrors.   Just to be 100% sure I have used the url you sent me and re-installed R.  No change, gfor",
       "thread_id": "thread-10e38787094a",
       "thread_depth": 2,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140725/72a0a282/attachment.pl"
+      ]
     },
     {
       "id": "msg-2b2a5e5bd69f",
@@ -2349,11 +2433,14 @@
         "<c4373a30b433470a816d102fad31c99f@CITESHT1.ad.uillinois.edu>",
         "<5E49AAF7-68D1-4725-B1D8-61BCDEB6E194@illinois.edu>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140725/0253d9dd/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140725/0253d9dd/attachment.pl>",
+      "body_plain": "Mavericks for me too.\n\nAs said gfortran 4.2 won't work for me.\n\nCheers\n\nEd\n\n\nOn Jul 25, 2014, at 1:09 PM, Roger Koenker <rkoenker at illinois.edu> wrote:\n\n> Yes,  Mavericks as I should have mentioned.  Anyway,  thanks for providing the 4.8 version, this made it all very\n> convenient, and I always have more confidence when downloading R tools of yours, rather than exploring further\n> afield.\n> \n> Roger\n> \n> url:    www.econ.uiuc.edu/~roger            Roger Koenker\n> email    rkoenker at uiuc.edu            Department of Economics\n> vox:     217-333-4558                University of Illinois\n> fax:       217-244-6678                Urbana, IL 61801\n> \n> On Jul 25, 2014, at 10:50 AM, Simon Urbanek <simon.urbanek at r-project.org> wrote:\n> \n>> On Jul 25, 2014, at 11:25 AM, Roger Koenker <rkoenker at illinois.edu> wrote:\n>> \n>>> FWIW when I installed R-devel  a week or so ago, I had to also install gfortran-4.8.2-darwin13.tar.bz2 from \n>>> \n>>> http://r.research.att.com/libs/\n>>> \n>>> well \"had to\"  is perhaps too strong, but I was seeing complaints about not running 4.8 and they went away\n>>> after this install.\n>>> \n>> \n>> Ah, I think you're talking about the Mavericks builds. That one is indeed using GNU Fortran 4.8.2, but it should technically work even with the 4.2 CRAN Fortran. The only issue is that it uses the gfortran-4.8 name with version, so apart from symlinking the versions the easiest way is to install the binary above.\n>> \n>> Thanks,\n>> Simon\n>> \n>> \n>>> Roger\n>>> \n>>> url:    www.econ.uiuc.edu/~roger            Roger Koenker\n>>> email    rkoenker at uiuc.edu            Department of Economics\n>>> vox:     217-333-4558                University of Illinois\n>>> fax:       217-244-6678                Urbana, IL 61801\n>>> \n>>> On Jul 25, 2014, at 8:14 AM, Simon Urbanek <simon.urbanek at r-project.org> wrote:\n>>> \n>>>> Eduardo,\n>>>> \n>>>> On Jul 24, 2014, at 8:37 PM, Eduardo M. A. M.Mendes <emammendes at gmail.com> wrote:\n>>>> \n>>>>> Hello\n>>>>> \n>>>>> I have recently upgraded R to the newest version.  Unfortunately my old (fortran and C) R-package cannot be installed anymore (was built before R 3.0.0: please re-install it). \n>>>>> \n>>>>> I have tried R CMD INSTALL package_name but I noticed that R-3.1.1-binary-mac requests gcc-4.8.2 and specific locations for the libraries (gcc and gfortran).  \n>>>> \n>>>> No, it doesn't. You must be using some other binary that the official CRAN one (http://cran.r-project.org/bin/macosx )\n>>>> Our binaries only use standard Apple compilers (from Xcode - in recent OS X versions you can use xcode-select --install on the command line to install) plus a GNU Fortran that you can download from CRAN.\n>>>> \n>>>> \n>>>>> Can someone point me to the documentation on how to install  gcc as R requires, please?\n>>>>> \n>>>>> Please note that I have used \"brew install gcc\" on another mac and soft linked all the necessary libraries so that gcc-4.9.1 can be used as 4.8 (as R requires). However I would like a clean installation.\n>>>>> \n>>>> \n>>>> I you use brew, then you're on your own and you should refer to their support. Our builds do not require brew (or any other 3rd party build system).\n>>>> \n>>>> Cheers,\n>>>> Simon\n>>>> \n>>>> PS: Please note that R-SIG-Mac is the proper mailing list for Mac-specific questions.\n>>>> \n>>>> _______________________________________________\n>>>> R-SIG-Mac mailing list\n>>>> R-SIG-Mac at r-project.org\n>>>> https://stat.ethz.ch/mailman/listinfo/r-sig-mac\n>>> \n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Mavericks for me too.\n\nAs said gfortran 4.2 won't work for me.\n\nCheers\n\nEd\n\n\nOn Jul 25, 2014, at 1:09 PM, Roger Koenker <rkoenker at illinois.edu> wrote:\n\n> Yes,  Mavericks as I should have mentioned.",
       "thread_id": "thread-a21a2baae351",
       "thread_depth": 1,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140725/0253d9dd/attachment.pl"
+      ]
     },
     {
       "id": "msg-8a98159f36de",
@@ -2563,11 +2650,14 @@
       "references": [
         "<mailman.14.1406541606.17498.r-devel@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140728/fbfc87fd/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20140728/fbfc87fd/attachment.pl>",
+      "body_plain": "Finding and not unnecessarily duplicating existing functionality is important also from a user perspective.  Negative binomial regression provides a somewhat extreme example of existing overlap between packages, with the scope that this creates for confusing users, especially as the notation is not consistent between these different implementations.\n\nIn addition to MASS::glm.nb(), note msme::negbinomial(), aod::negbin() and gamlss::gamlss().  The gamlss function fits two different types of NB model, either family = NBI (quadratic; var = mu(1 + sigma * mu)) as I think for all the functions above, or family=NBII (linear; var = mu(1 + sigma)).   Also note the somewhat special purpose function glmnb.fit() in the stat mod package, which requires preliminary setup steps.\n\n\nJohn Maindonald             email: john.maindonald at anu.edu.au<mailto:john.maindonald at anu.edu.au>\n\nphone : +61 2 (6125)3473    fax  : +61 2(6125)5549\n\nCentre for Mathematics & Its Applications, Room 1194,\n\nJohn Dedman Mathematical Sciences Building (Building 27)\n\nAustralian National University, Canberra ACT 0200.\n\n\nOn 28/07/2014, at 8:00 pm, Darren Norris wrote:\n\nFrom: Darren Norris <doon75 at hotmail.com<mailto:doon75 at hotmail.com>>\nSubject: Re: [Rd] [Wishlist] a 'PackageDevelopment' Task View\nDate: 28 July 2014 6:19:08 am AEST\nTo: <r-devel at r-project.org<mailto:r-devel at r-project.org>>\n\n\nHi Luca,\nBased on previous comments seems like\n1) there should be a \"multi-functional\"/\"general\" category to cover packages\nlike devtools\n2) I think finding existing function code ( e.g in cran packages / github )\nis necessary and saves many hours in package development (no one wants to\ndevelop a package and then discover they have just reinvented the wheel). So\nincluding packages like sos seems justified and helpful.\nBest,\nDarren\n\n\n\n\n--\nView this message in context: http://r.789695.n4.nabble.com/Wishlist-a-PackageDevelopment-Task-View-tp4694537p4694625.html\nSent from the R devel mailing list archive at Nabble.com<http://nabble.com/>.\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Finding and not unnecessarily duplicating existing functionality is important also from a user perspective.  Negative binomial regression provides a somewhat extreme example of existing overlap betwee",
       "thread_id": "thread-94c0c89b7164",
       "thread_depth": 0,
-      "month": "2014-07"
+      "month": "2014-07",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20140728/fbfc87fd/attachment.pl"
+      ]
     },
     {
       "id": "msg-610680d6073c",

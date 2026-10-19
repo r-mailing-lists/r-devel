@@ -136,11 +136,14 @@
       "subject_clean": "patch: allow R CMD build exclude patterns to match symlinks",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071002/49b08694/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071002/49b08694/attachment.pl",
+      "body_plain": "The following is a patch (svn diff) for the R CMD build script that\ncalculates exclude patterns after the tar/untar step rather than before. The\nperl find() function, used in the calculation of the exclude patterns,\nignores symlinks, which meant that directory symlinks were not considered\nfor exclusion. Since the tar/untar step resolves (copies) symlinks, this\nworks around that limitation.\n\nMichael\n\n\nIndex: src/scripts/build.in\n===================================================================\n--- src/scripts/build.in        (revision 43045)\n+++ src/scripts/build.in        (working copy)\n@@ -171,6 +171,24 @@\n     $log->message(\"removing junk files\");\n     find(\\&unlink_junk_files, $pkgdir);\n\n+       chdir(dirname($pkgdir));\n+       my $filename = \"${intname}_\" . $description->{\"Version\"} . \".tar\";\n+    my $filepath = &file_path($startdir, $filename);\n+    R_system(join(\" \",\n+                 (\"$tar chf\",\n+                  &shell_quote_file_path($filepath),\n+                  \"$pkgname\")));\n+    my $tmpdir = R_tempfile(\"Rbuild\");\n+    rmtree($tmpdir) if(-d $tmpdir);\n+    mkdir(\"$tmpdir\", 0755)\n+       or die \"Error: cannot create directory '$tmpdir'\\n\";\n+    chdir($tmpdir);\n+    ## was xhf, but there are no symbolic links here and that is invalid\n+    ## on FreeBSD, see\nhttp://www.freebsd.org/cgi/man.cgi?query=tar&apropos=0&sektion=0&manpath=FreeBSD+5.4-RELEASE+and+Ports&format=html\n+    R_system(join(\" \",\n+                 (\"$tar xf\",\n+                  &shell_quote_file_path($filepath))));\n+\n     my $exclude = R_tempfile(\"Rbuild-exclude\");\n     open(EXCLUDE, \"> $exclude\")\n        or die \"Error: cannot open file '$exclude' for writing\\n\";\n@@ -226,27 +244,9 @@\n            }\n        }\n     }\n-    chdir(dirname($pkgdir));\n     find(\\&find_exclude_files, \"$pkgname\");\n     close(EXCLUDE);\n\n-    my $filename = \"${intname}_\" . $description->{\"Version\"} . \".tar\";\n-    my $filepath = &file_path($startdir, $filename);\n-    R_system(join(\" \",\n-                 (\"$tar chf\",\n-                  &shell_quote_file_path($filepath),\n-                  \"$pkgname\")));\n-    my $tmpdir = R_tempfile(\"Rbuild\");\n-    rmtree($tmpdir) if(-d $tmpdir);\n-    mkdir(\"$tmpdir\", 0755)\n-       or die \"Error: cannot create directory '$tmpdir'\\n\";\n-    chdir($tmpdir);\n-    ## was xhf, but there are no symbolic links here and that is invalid\n-    ## on FreeBSD, see\nhttp://www.freebsd.org/cgi/man.cgi?query=tar&apropos=0&sektion=0&manpath=FreeBSD+5.4-RELEASE+and+Ports&format=html\n-    R_system(join(\" \",\n-                 (\"$tar xf\",\n-                  &shell_quote_file_path($filepath))));\n-\n     ## Remove exclude files.\n     open(EXCLUDE, \"< $exclude\");\n     while(<EXCLUDE>) {\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "The following is a patch (svn diff) for the R CMD build script that\ncalculates exclude patterns after the tar/untar step rather than before. The\nperl find() function, used in the calculation of the ex",
       "thread_id": "thread-fea69121e523",
       "thread_depth": 0,
-      "month": "2007-10"
+      "month": "2007-10",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20071002/49b08694/attachment.pl"
+      ]
     },
     {
       "id": "msg-f232150bc98c",
@@ -335,11 +338,14 @@
       "references": [
         "<a79825cf0710031902j76a9e0cbx3ae9842ebf8456e2@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071004/d3adde80/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071004/d3adde80/attachment.pl",
+      "body_plain": "Dear R Developers,\n\nI'm developing an R package that I had submitted to Bioconductor project.\nThis package uses the rgl package to do some tri-dimensional scatter pĺots.\nI only work with linux (ubuntu 7.04) system and Windows XP. In both of them\nthe rgl package works fine. But now, bioconductor team is checking my\npackage with Mac OS X (version 10.4.10) and the function is giving the\nfollowing error in this platform:\n\nError in rgl.open() :\n  X11 protocol error: BadMatch (invalid parameter attributes)\nCalls: plot -> plot.maigesClass -> <Anonymous> -> rgl.open -> .C\nExecution halted\n\nI'm sorry, but I can' t  provide more information about the problem, as I\ndon't have access to a MAC PC.\nCould you help me to solve this problem? Thank you in advance!\n\nGustavo Esteves\n\n\n\n\n-- \n*********************************************************\n\n     \"The truth you speak has no past and no\n       future. It is, and that's all it needs to be.\"\n\n     \"A verdade que você fala não tem passado\n      nem futuro. Ela é,  e isso é tudo que ela\n      precisa ser.\"\n\n                         Richard Bach\n\n*********************************************************\n\n\n   Gustavo Henrique Esteves\n\n   Departamento de Matemática e Estatística,\n   Centro de Ciências e Tecnologia,\n   Universidade Estadual da Paraíba.\n\n   e-mail: gesteves at uepb.edu.br\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear R Developers,\n\nI'm developing an R package that I had submitted to Bioconductor project.\nThis package uses the rgl package to do some tri-dimensional scatter pĺots.\nI only work with linux (ubuntu",
       "thread_id": "thread-b8b21732cd4f",
       "thread_depth": 0,
-      "month": "2007-10"
+      "month": "2007-10",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20071004/d3adde80/attachment.pl"
+      ]
     },
     {
       "id": "msg-ba535ab1a97c",
@@ -509,11 +515,14 @@
       "subject_clean": "problem with building package in R 2.6.0",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071005/8e74a312/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071005/8e74a312/attachment.pl",
+      "body_plain": "Hello,\n\n \n\nI can nolonger build R packages in R 2.6.0 (win xp). I get the error\nmessage 'sh' is not recognized as an internal\n\n or external command. In earlier versions of R I had no problems. Maybe\nthat someone can help me with this.\n\n \n\nJean-Paul Fox.  \n\n \n\n \n\nC:\\PROGRA~1\\R\\R-2.6.0\\bin>Rcmd build --force --binary C:\\Temp\\R260\\mlirt\n\n* checking for file 'C:\\Temp\\R260\\mlirt/DESCRIPTION' ... OK\n\n* preparing 'C:\\Temp\\R260\\mlirt':\n\n* checking DESCRIPTION meta-information ...'sh' is not recognized as an\ninternal\n\n or external command,\n\noperable program or batch file.\n\n'sh' is not recognized as an internal or external command,\n\noperable program or batch file.\n\n OK\n\n* removing junk files\n\n'sh' is not recognized as an internal or external command,\n\noperable program or batch file.\n\n'sh' is not recognized as an internal or external command,\n\noperable program or batch file.\n\n'sh' is not recognized as an internal or external command,\n\noperable program or batch file.\n\nError: cannot open file 'mlirt/DESCRIPTION' for reading\n\n \n\n \n\n \n\n______________________________________________________\n\n\n\ndr.ir. G.J.A. Fox\n\nTwente University\nFaculty of Behavioural Sciences\n\nDepartment of Research Methodology, Measurement and Data Analysis \n\nPO. Box 217, 7500 AE Enschede\nThe Netherlands\n\n\n\nE-Mail Fox at edte.utwente.nl\n\nHomePage http://users.edte.utwente.nl/Fox\n\nVoice +31 (0)53 4893326\n______________________________________________________\n\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\n \n\nI can nolonger build R packages in R 2.6.0 (win xp). I get the error\nmessage 'sh' is not recognized as an internal\n\n or external command. In earlier versions of R I had no problems. Maybe\nt",
       "thread_id": "thread-bcd90df30831",
       "thread_depth": 0,
-      "month": "2007-10"
+      "month": "2007-10",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20071005/8e74a312/attachment.pl"
+      ]
     },
     {
       "id": "msg-3dbc3b6bd278",
@@ -1099,11 +1108,14 @@
       "references": [
         "<20071010143524.E4A3F288008C@mail.pubhealth.ku.dk>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071010/7665d86c/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071010/7665d86c/attachment.pl",
+      "body_plain": "This is what I get on R 2.6.0, Win XP\n\nciao\n\nSimone\n\nP.S. you have posted twice\n\n> n <- 100\n>\n> # example from Box and Jenkins p. 83\n> arcoefs <- c(0.8)\n> macoefs <- c(-0.6)\n> p <- length(arcoefs)\n> q <- length(macoefs)\n>\n> require(nlme)\n> tmp <- corARMA(value=c(arcoefs,macoefs), form=~1, p=p, q=q)\n\n> Sigma <- corMatrix(tmp, covariate = 1:n) # segfault\nError in corMatrix.corARMA(tmp, covariate = 1:n) :\n  'object' has not been Initialize()d\n\n\n> noquote(unlist(R.Version()))\n                    platform\narch                           os                       system\n             i386-pc-mingw32\ni386                      mingw32                i386, mingw32\n                      status\nmajor                        minor                         year\n\n2                          6.0                         2007\n                       month\nday                      svn rev                     language\n                          10\n03                        43063                            R\n              version.string\nR version 2.6.0 (2007-10-03)\n>\n\nOn 10/10/2007, btyner at gmail.com <btyner at gmail.com> wrote:\n>\n> Full_Name: Benjamin Tyner\n> Version: 2.6.0 RC 2007-10-01 r43043\n> OS: WinXP\n> Submission from: (NULL) (171.161.224.10)\n>\n>\n> platform       i386-pc-mingw32\n> arch           i386\n> os             mingw32\n> system         i386, mingw32\n> status         RC\n> major          2\n> minor          6.0\n> year           2007\n> month          10\n> day            01\n> svn rev        43043\n> language       R\n> version.string R version 2.6.0 RC (2007-10-01 r43043)\n>\n> I have seen this in other versions/platforms as well. Brian Ripley informs\n> me\n> the segfault is in corStruct.c\n>\n> Code to reproduce:\n>\n> n <- 100\n>\n> # example from Box and Jenkins p. 83\n> arcoefs <- c(0.8)\n> macoefs <- c(-0.6)\n> p <- length(arcoefs)\n> q <- length(macoefs)\n>\n> require(nlme)\n> tmp <- corARMA(value=c(arcoefs,macoefs), form=~1, p=p, q=q)\n> Sigma <- corMatrix(tmp, covariate = 1:n) # segfault\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \n______________________________________________________\n\nSimone Giannerini\nDipartimento di Scienze Statistiche \"Paolo Fortunati\"\nUniversita' di Bologna\nVia delle belle arti 41 - 40126  Bologna,  ITALY\nTel: +39 051 2098262  Fax: +39 051 232153\nhttp://www2.stat.unibo.it/giannerini/\n______________________________________________________\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "This is what I get on R 2.6.0, Win XP\n\nciao\n\nSimone\n\nP.S. you have posted twice\n\n> n <- 100\n>\n> # example from Box and Jenkins p. 83\n> arcoefs <- c(0.8)\n> macoefs <- c(-0.6)\n> p <- length(arcoefs)\n> q",
       "thread_id": "thread-0cfcd52db745",
       "thread_depth": 1,
-      "month": "2007-10"
+      "month": "2007-10",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20071010/7665d86c/attachment.pl"
+      ]
     },
     {
       "id": "msg-6309f0a7be70",
@@ -1707,11 +1719,14 @@
       "references": [
         "<470DF7AC.1070704@ipimar.pt>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071013/c5327f84/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071013/c5327f84/attachment.pl",
+      "body_plain": "Here is what I noted down for our system.\n \nTo reset src/gnuwin32/MkRules as appropriate\nBUILD=CROSS## if cross-building, is this gcc3 or gcc4?CROSS-GCC=gcc3\nR_EXE='/home/jhz22/RCrossBuild/LinuxR/bin/R'> Date: Thu, 11 Oct 2007 11:15:08 +0100> From: ernesto at ipimar.pt> To: r-devel at stat.math.ethz.ch> Subject: [Rd] R260 cross-compilation> > Hi,> > I'm trying to cross compile R260 in a ubuntu 6.06 linux. I downloaded > the Makefile for 251 and simply replaced the R version by 260. However > I'm getting an error about mingw.> > ernesto at gandalf:~/ipimar/devel/R/ccompile260$ make R> export > PATH=/home/ernesto/ipimar/devel/R/ccompile260/cross-tools/bin:/home/ernesto/ipimar/devel/R/ccompile260/cross-tools/i586-mingw32/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/bin/X11:/usr/games; > \\> cd > /home/ernesto/ipimar/devel/R/ccompile260/WinR/R-2.6.0/src/gnuwin32/; \\> make; \\> cd /home/ernesto/ipimar/devel/R/ccompile260/WinR; \\> tar zcf Win-R-2.6.0.tgz R-2.6.0> make[1]: Entering directory > `/home/ernesto/ipimar/devel/R/ccompile260/WinR/R-2.6.0/src/gnuwin32'> make --no-print-directory -C front-ends Rpwd> make -C ../../include -f Makefile.win version> make Rpwd.exe> i586-mingw32-gcc-sjlj -std=gnu99 -I../../include -O3 -Wall -pedantic > -c rpwd.c -o rpwd.o> make[4]: i586-mingw32-gcc-sjlj: Command not found> make[4]: *** [rpwd.o] Error 127> make[3]: *** [Rpwd] Error 2> make[2]: *** [front-ends/Rpwd.exe] Error 2> make[1]: *** [all] Error 2> make[1]: Leaving directory > `/home/ernesto/ipimar/devel/R/ccompile260/WinR/R-2.6.0/src/gnuwin32'> > How can I fix this ? Is there a new Makefile for R260 ?> > Thanks> > EJ> > ______________________________________________> R-devel at r-project.org mailing list> https://stat.ethz.ch/mailman/listinfo/r-devel\n_________________________________________________________________\n100’s of Music vouchers to be won with MSN Music\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Here is what I noted down for our system.\n \nTo reset src/gnuwin32/MkRules as appropriate\nBUILD=CROSS## if cross-building, is this gcc3 or gcc4?CROSS-GCC=gcc3\nR_EXE='/home/jhz22/RCrossBuild/LinuxR/bin/",
       "thread_id": "thread-259ccdcad10d",
       "thread_depth": 1,
-      "month": "2007-10"
+      "month": "2007-10",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20071013/c5327f84/attachment.pl"
+      ]
     },
     {
       "id": "msg-86400d213aa9",
@@ -2922,11 +2937,14 @@
       "subject_clean": "Regression test failed when building on an \"older\" Linux cluster",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071018/a11f817c/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071018/a11f817c/attachment.pl",
+      "body_plain": "We have an aging Linux Cluster here, running Red Hat 7.3. We have some\nbusiness reasons for not upgrading the OS version. I don't recall the exact\nhardware (dual Pentium III, 4 Gbyte RAM, 1 GHz clock?), but it was pretty\ngood in 2001 or so.\n\nWe recently tried to build and install R, ver 2.6.0, for this cluster.\nIt built and apparently ran correctly, but it failed \"make check\".\nEarlier versions of R failed \"make check\" as well, not always for the same\nreason.\n\nI just located the failure in the tests.\nIt is in the file: R-2.6.0/tests/reg-tests-1.R and fails in the code:\n\n## related checks on eff.aovlist\nexample(eff.aovlist) # helmert contrasts\neff1 <- eff.aovlist(fit)\nfit <- aov(Yield ~ A * B * C + Error(Block), data = aovdat)\neff2 <- eff.aovlist(fit)\nstopifnot(all.equal(eff1, eff2)) # will have rounding-error differences\noptions(contrasts = old)\n## Were different in earlier versions\n\nThe failure occurred in the 'stopifnot()' call, but was preceded by a\nwarning about a lack of documentation in \"example(eff.aovlist)\". I looked at\n\"example\" and found that it relies on available documentation to work,\nreturning this warning when no documentation is found:\n\n    file <- index.search(topic, INDICES, \"AnIndex\", \"R-ex\")\n    if (file == \"\") {\n        warning(gettextf(\"no help file found for '%s'\", topic), \n            domain = NA)\n        return(invisible())\n\nWell, our old Linux cluster doesn't support building R documentation; why\nwould it when we are very limited on disk space for each node? No one can\nlog in there; it is all run via LSF. The lack of documentation makes\n\"example()\" fail to return anything and the \"reg-tests-1.R\" requires that a\nvalue for 'fit' be returned in the global environment for comparison. In\nshort, in the absence of documentation, this regression test must fail. (I\nam assuming that my interpretation of the failure is correct; please feel\nfree to let me know that I am mis-interpreting the cause of failure!).\n\nIf I comment out the above code, all the other tests run correctly. Of\ncourse, normally we would build on another, better equipped host, and then\ncopy R to each host. That is not possible in this case as the glibc is so\nold that it is not compatible with the calls generated on newer hosts.\n\nI am surprised that this problem with \"example()\" doesn't cause other\nfailures in the \"make check\". It makes me think that the use of \"example()\"\nhere is unusual (or that I am misinterpreting the failure). If that is the\ncase, then I suggest removing the call to \"example\" and replacing it with\nthe code from within that example. I believe that running R on a compute\ncluster without documentation building tools is not an unreasonable use\ncase. (If that is so, why haven't others stumbled onto this problem before\nme? I don't know.) Making the regression tests work in the absence of\ndocumentation, along with the rest of R seems reasonable.\n\nWe are now using R on the compute cluster. This email's purpose is to\nsuggest that R may at times be built in an environment without documentation\ntools and it would be nice if the regression tests still worked there. I\nhope the developers will consider this use case.\n\nRegards,\nMark Dalphin\n\nPS Having written this email, I am consumed by guilt; I haven't properly and\nrecently checked the \"R admin manual\" that I should be able to build R\nwithout documentation. Checking for \"essential programs for building and\nrunning R\" doesn't seem to show that building documentation is required. I\nam relieved to report that building documentation, despite being under\n\"Essential Programs\" section is described in a manner suggesting that\ndocumentation is optional.\nhttp://cran.r-project.org/doc/manuals/R-admin.html#Essential-and-useful-othe\nr-programs-under-Unix\n\n----------------------\nMark Dalphin\nDept Comp Biol, M/S AW2/D3262\nAmgen, Inc.\n1201 Amgen Court W\nSeattle, WA 98119\nPhone: +1-206-265-7951\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "We have an aging Linux Cluster here, running Red Hat 7.3. We have some\nbusiness reasons for not upgrading the OS version. I don't recall the exact\nhardware (dual Pentium III, 4 Gbyte RAM, 1 GHz clock?",
       "thread_id": "thread-405a7e1b9c30",
       "thread_depth": 0,
-      "month": "2007-10"
+      "month": "2007-10",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20071018/a11f817c/attachment.pl"
+      ]
     },
     {
       "id": "msg-bb18e27e9211",
@@ -4287,11 +4305,14 @@
       "references": [
         "<mailman.15.1193569202.21167.r-devel@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071028/42b05284/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071028/42b05284/attachment.pl",
+      "body_plain": "Dear R expert:\n\nI have the problems with calling R from Java on Windows\nXP_SP2/Eclipse3.1/JDK1.5\n\nproblems:\n\nLoading RInterpreter library\nException in thread \"main\" java.lang.UnsatisfiedLinkError: no RInterpreter\nin java.library.path\nat java.lang.ClassLoader.loadLibrary(ClassLoader.java:1682)\nat java.lang.Runtime.loadLibrary0(Runtime.java:822)\nat java.lang.System.loadLibrary(System.java:992)\nat org.omegahat.R.Java.ROmegahatInterpreter.(ROmegahatInterpreter.java:28)\nat org.omegahat.R.Java.Examples.lmTest.main(lmTest.java:8)\nand\n\nException in thread \"main\" java.lang.UnsatisfiedLinkError: no SJava in\njava.library.path\nat java.lang.ClassLoader.loadLibrary(ClassLoader.java:1682)\nat java.lang.Runtime.loadLibrary0(Runtime.java:822)\nat java.lang.System.loadLibrary(System.java:992)\nat org.omegahat.R.Java.RForeignReference.(RForeignReference.java:22)\nat ne.Test.main(Test.java:11)\n\nhelp me!Thanks!\nname:wanghu(from china)\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear R expert:\n\nI have the problems with calling R from Java on Windows\nXP_SP2/Eclipse3.1/JDK1.5\n\nproblems:\n\nLoading RInterpreter library\nException in thread \"main\" java.lang.UnsatisfiedLinkError: no ",
       "thread_id": "thread-486450de0fb8",
       "thread_depth": 0,
-      "month": "2007-10"
+      "month": "2007-10",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20071028/42b05284/attachment.pl"
+      ]
     },
     {
       "id": "msg-6909411a6895",
@@ -4570,11 +4591,14 @@
         "<d1bf3ebe0710280533m33d9c099jaa101fa0cc386421@mail.gmail.com>",
         "<Pine.LNX.4.64.0710281238140.16703@gannet.stats.ox.ac.uk>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071029/3df40fb8/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071029/3df40fb8/attachment.pl",
+      "body_plain": "On 10/28/07, Prof Brian Ripley <ripley at stats.ox.ac.uk> wrote:\n>\n> The error is:\n>\n> > Exception in thread \"main\" java.lang.UnsatisfiedLinkError: no SJava in\n> > java.library.path\n\n\nIt sounds like you need to put the directory containing the dll's included\nwith the SJava package on your java.library.path. One way to do this is to\nadd it to your system PATH variable.\n\nso this is most likely an error in the package you are using (SJava?), not\n> in R.\n>\n> Please do read and follow the R posting guide at\n> http://www.r-project.org/posting-guide.html (including using a reasonable\n> subject line).\n>\n> On Sun, 28 Oct 2007, Íõ»¢ wrote:\n>\n> > Dear R expert:\n> >\n> > I have the problems with calling R from Java on Windows\n> > XP_SP2/Eclipse3.1/JDK1.5\n> >\n> > problems:\n> >\n> > Loading RInterpreter library\n> > Exception in thread \"main\" java.lang.UnsatisfiedLinkError: no\n> RInterpreter\n> > in java.library.path\n> > at java.lang.ClassLoader.loadLibrary(ClassLoader.java:1682)\n> > at java.lang.Runtime.loadLibrary0(Runtime.java:822)\n> > at java.lang.System.loadLibrary(System.java:992)\n> > at org.omegahat.R.Java.ROmegahatInterpreter.(ROmegahatInterpreter.java\n> :28)\n> > at org.omegahat.R.Java.Examples.lmTest.main(lmTest.java:8)\n> > and\n> >\n> > Exception in thread \"main\" java.lang.UnsatisfiedLinkError: no SJava in\n> > java.library.path\n> > at java.lang.ClassLoader.loadLibrary(ClassLoader.java:1682)\n> > at java.lang.Runtime.loadLibrary0(Runtime.java:822)\n> > at java.lang.System.loadLibrary(System.java:992)\n> > at org.omegahat.R.Java.RForeignReference.(RForeignReference.java:22)\n> > at ne.Test.main(Test.java:11)\n> >\n> > help me!Thanks!\n> > name:wanghu(from china)\n> >\n> >       [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n>\n> --\n> Brian D. Ripley,                  ripley at stats.ox.ac.uk\n> Professor of Applied Statistics,  http://www.stats.ox.ac.uk/~ripley/\n> University of Oxford,             Tel:  +44 1865 272861 (self)\n> 1 South Parks Road,                     +44 1865 272866 (PA)\n> Oxford OX1 3TG, UK                Fax:  +44 1865 272595\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On 10/28/07, Prof Brian Ripley <ripley at stats.ox.ac.uk> wrote:\n>\n> The error is:\n>\n> > Exception in thread \"main\" java.lang.UnsatisfiedLinkError: no SJava in\n> > java.library.path\n\n\nIt sounds like y",
       "thread_id": "thread-486450de0fb8",
       "thread_depth": 2,
-      "month": "2007-10"
+      "month": "2007-10",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20071029/3df40fb8/attachment.pl"
+      ]
     },
     {
       "id": "msg-d951ea017007",
@@ -4604,11 +4628,14 @@
       "references": [
         "<20071029191546.289EA282EFF6@mail.pubhealth.ku.dk>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071029/625a6c46/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071029/625a6c46/attachment.pl",
+      "body_plain": "On 10/29/07, Prof Brian Ripley <ripley at stats.ox.ac.uk> wrote:\n>\n> The problem is that the XtOpenDisplay call did not specify the display.\n> Easily fixed ....\n>\n\nOn 10/29/07, p.dalgaard at biostat.ku.dk <p.dalgaard at biostat.ku.dk> wrote:\n>\n>\n> The culprit would seem to be this bit of devX11.c\n>\n> 1302                    xtdpy = XtOpenDisplay(app_con, NULL, \"r_x11\",\n> \"R_x11\",\n> 1303                                          NULL, 0, &zero, NULL);\n> 1304                    toplevel = XtAppCreateShell(NULL, \"R_x11\",\n>\n> The 2nd arg to XtOpenDisplay is listed as display_string, so passing a\n> NULL here seems like trouble when the default ways of finding the\n> display do not work.\n>\n> Looks like a fix is to insert p instead of NULL. (Tested rudimentarily.)\n\n\nProf. Ripley replaced that NULL with dsp -- p is normally the same.  It's in\nsvn (r43300 on he trunk, r43301 on R-2-6-branch).\nIt built without a hitch, and the fix solves my problem.\n\nP. Dalgaard also pinpointed the problem.  And confirmed Xt was involved :-)\nApparently an XOpenDisplay on the specified display may be followed by an\nXtOpenDisplay, previously on the default display.\n\nThanks to everyone who helped figure this out and fix the problem!\n/Christian Brechbuehler\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On 10/29/07, Prof Brian Ripley <ripley at stats.ox.ac.uk> wrote:\n>\n> The problem is that the XtOpenDisplay call did not specify the display.\n> Easily fixed ....\n>\n\nOn 10/29/07, p.dalgaard at biostat.k",
       "thread_id": "thread-5e0e2200d102",
       "thread_depth": 1,
-      "month": "2007-10"
+      "month": "2007-10",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20071029/625a6c46/attachment.pl"
+      ]
     },
     {
       "id": "msg-6800a8d23a5a",
@@ -4969,11 +4996,14 @@
         "<47294984.1000006@aol.com>",
         "<1193888972.29591.13.camel@Bellerophon.localdomain>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071031/463ea3e4/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20071031/463ea3e4/attachment.pl",
+      "body_plain": "Marc Schwartz wrote:\n> On Wed, 2007-10-31 at 22:35 -0500, Joe W. Byers wrote:\n>   \n>> Marc Schwartz wrote: \n>>     \n>>> On Wed, 2007-10-31 at 22:04 -0500, Joe W. Byers wrote: \n>>>   \n>>>       \n>>>> The readme file on the cran website for linux EL5 contains the following\n>>>> RPMS for Red Hat Enterprise Linux created by Bob Kinney\n>>>> <rhel_cran at hmdc.harvard.edu>.  The RPMS are signed with the following\n>>>> key available from pgp.mit.edu\n>>>>\n>>>> Type bits /keyID    Date       User ID\n>>>> pub  1024D/99B62126 2004/11/18 HMDC Linux Support \n>>>> <linux_support at latte.harvard.edu>\n>>>>\n>>>> I went ot pgp.mit.edu and could not find the key.\n>>>>\n>>>> Any suggestions?\n>>>>\n>>>> Have a Happy Halloween all.\n>>>>\n>>>> Joe\n>>>>     \n>>>>         \n>>> Joe,\n>>>\n>>> How did you search?\n>>>\n>>> Using gpg:\n>>>\n>>> $ gpg --keyserver pgp.mit.edu --search-keys\n>>> \"linux_support at latte.harvard.edu\"\n>>> gpg: searching for \"linux_support at latte.harvard.edu\" from hkp server\n>>> pgp.mit.edu\n>>> (1)     HMDC Linux Support <linux_support at latte.harvard.edu>\n>>>           1024 bit DSA key 99B62126, created: 2004-11-18\n>>> Enter number(s), N)ext, or Q)uit > 1\n>>> gpg: requesting key 99B62126 from hkp server pgp.mit.edu\n>>> gpg: key 99B62126: public key \"HMDC Linux Support\n>>> <linux_support at latte.harvard.edu>\" imported\n>>> gpg: Total number processed: 1\n>>> gpg:               imported: 1\n>>>\n>>>\n>>>\n>>> Using the web site with the e-mail address as the search string:\n>>>\n>>> http://pgp.mit.edu:11371/pks/lookup?search=linux_support%40latte.harvard.edu&op=vindex&fingerprint=on\n>>>\n>>>\n>>> Public Key Server -- Verbose Index ``linux_support at latte.harvard.edu ''\n>>> Type bits /keyID    Date       User ID\n>>> pub  1024D/99B62126 2004/11/18 HMDC Linux Support <linux_support at latte.harvard.edu>\n>>>      Key fingerprint = 352A C4ED 6B3C C121 53FA  61AE C8E0 D236 99B6 2126\n>>> sig        99B62126             HMDC Linux Support <linux_support at latte.harvard.edu>\n>>>\n>>>\n>>> HTH,\n>>>\n>>> Marc Schwartz\n>>>\n>>>\n>>>   \n>>>       \n>> I just used the search engine with HMDC and 99B.  I also went to the\n>> full list and looked by date as well as the two searches.  I could\n>> have just completely missed it.  I think I searched linux as well.\n>>\n>> I did not turn verbose on  though.  \n>>\n>> Sorry about this.\n>>\n>> Joe\n>>     \n>\n> You cannot search using just part of the Key ID. Also, if you want to\n> search on the Key ID, which is of course a hex number, you need to\n> prefix it with '0x'.  So:\n>\n> http://pgp.mit.edu:11371/pks/lookup?search=0x99B62126&op=index\n>\n> Public Key Server -- Index ``0x99B62126 ''\n> Type bits /keyID    Date       User ID\n> pub  1024D/99B62126 2004/11/18 HMDC Linux Support <linux_support at latte.harvard.edu>\n>\n>\n> You can however search using part of the User ID:\n>\n> http://pgp.mit.edu:11371/pks/lookup?search=HMDC&op=index\n>\n> Public Key Server -- Index ``HMDC ''\n> Type bits /keyID    Date       User ID\n> pub  1024D/99B62126 2004/11/18 HMDC Linux Support <linux_support at latte.harvard.edu>\n>\n>\n> HTH,\n>\n> Marc\n>\n>\n>   \nThank you very much,  I just need to import it later this week.\n\nJoe\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Marc Schwartz wrote:\n> On Wed, 2007-10-31 at 22:35 -0500, Joe W. Byers wrote:\n>   \n>> Marc Schwartz wrote: \n>>     \n>>> On Wed, 2007-10-31 at 22:04 -0500, Joe W. Byers wrote: \n>>>   \n>>>       \n>>>> T",
       "thread_id": "thread-0578c257af27",
       "thread_depth": 1,
-      "month": "2007-10"
+      "month": "2007-10",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20071031/463ea3e4/attachment.pl"
+      ]
     }
   ],
   "threads": [

@@ -13,11 +13,14 @@
       "subject_clean": "Behavior or as.environment in function arguments/call (and force() behaviors...)",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130101/f4f9d308/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130101/f4f9d308/attachment.pl>",
+      "body_plain": "Happy 2013!\n\nCan someone with more knowledge of edge case scoping/eval rules explain\nwhat is happening below?  Happens in all the versions of R I have on hand.\n\nBehavior itself is confusing, but ?as.environment also provides no clue.\n The term used in that doc is 'search list', which is ambiguous, but the\nsee also section mentions search(), so I would *think* that is what is\nintended.  Either way Fn1() below can't really be explained.\n\nMajor question is what in the world is Fn1 doing, and why is Fn2 not equal\nto Fn3? [ Fn3/Fn4 are doing what I want. ]\n\n\nFn1 <- function(x=\"test\",pos=-1,env=as.environment(pos)) {\nls(env)\n}\n\nFn2 <- function(x=\"test\",pos=-1,env=as.environment(pos)) {\nforce(env)\nls(env)\n}\n\nFn3 <- function(x=\"test\",pos=-1,env=as.environment(pos)) {\n# should be the same as force() in Fn2, but not\n# ?force\n# Note:\n#\n#    This is semantic sugar: just evaluating the symbol will do the\n#    same thing (see the examples).\nenv\nls(env)\n}\n\nFn4 <- function(x=\"test\",pos=-1,env=as.environment(pos)) {\n# same as Fn3\nenv <- env\nls(env)\n}\n\nFn1()\nFn2()\nFn3()\nFn4()\nls()\n\n###################### output #########################\n> Fn1()\n[1] \"doTryCatch\" \"expr\"       \"handler\"    \"name\"       \"parentenv\"\n\n> Fn2()\n[1] \"env\" \"pos\" \"x\"\n\n> Fn3()\n[1] \"Fn1\" \"Fn2\" \"Fn3\" \"Fn4\"\n\n> Fn4()\n[1] \"Fn1\" \"Fn2\" \"Fn3\" \"Fn4\"\n\n### .GlobalEnv\n> ls()\n[1] \"Fn1\" \"Fn2\" \"Fn3\" \"Fn4\"\n\n> R.version\n               _\nplatform       x86_64-apple-darwin11.2.0\narch           x86_64\nos             darwin11.2.0\nsystem         x86_64, darwin11.2.0\nstatus\nmajor          2\nminor          15.1\nyear           2012\nmonth          06\nday            22\nsvn rev        59600\nlanguage       R\nversion.string R version 2.15.1 (2012-06-22)\nnickname       Roasted Marshmallows\n\n> R.version\n               _\nplatform       x86_64-apple-darwin11.2.0\narch           x86_64\nos             darwin11.2.0\nsystem         x86_64, darwin11.2.0\nstatus         Under development (unstable)\nmajor          3\nminor          0.0\nyear           2012\nmonth          12\nday            28\nsvn rev        61464\nlanguage       R\nversion.string R Under development (unstable) (2012-12-28 r61464)\nnickname       Unsuffered Consequences\n\n-- \nJeffrey Ryan\njeffrey.ryan at lemnica.com\n\nwww.lemnica.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Happy 2013!\n\nCan someone with more knowledge of edge case scoping/eval rules explain\nwhat is happening below?  Happens in all the versions of R I have on hand.\n\nBehavior itself is confusing, but ?as.e",
       "thread_id": "thread-66471a5a2acc",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130101/f4f9d308/attachment.pl"
+      ]
     },
     {
       "id": "msg-6a494bb99b3e",
@@ -50,11 +53,14 @@
         "<CABDUZc-98pUS=7cmSJodNKe7kqm5SxN0+ig63tgoe1iGwXcP1A@mail.gmail.com>",
         "<50E36156.401@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130101/2c9ea9ff/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130101/2c9ea9ff/attachment.pl>",
+      "body_plain": "Thanks Duncan.\n\nI was hoping that pos= would be more useful, but envir is a bit easier to\ngrasp in terms of consistency.\n\nThe lazy eval was also pointed out to me off-list as a source of the\n'weirdness' if you will, which makes perfect sense in retrospect.\n\nThanks for the prompt clarification, and I'm glad I wasn't just\nmissing/misreading the primary docs.\n\nBest,\nJeff\n\n\nOn Tue, Jan 1, 2013 at 4:21 PM, Duncan Murdoch <murdoch.duncan at gmail.com>wrote:\n\n> On 13-01-01 4:35 PM, Jeff Ryan wrote:\n>\n>> Happy 2013!\n>>\n>> Can someone with more knowledge of edge case scoping/eval rules explain\n>> what is happening below?  Happens in all the versions of R I have on hand.\n>>\n>\n> Even though it is used as a default in a number of places, the pos==-1\n> value is really poorly documented.  You need to look in the source, in\n> particular src/main/envir.c, function pos2env.  There you'll see that\n> pos==-1 is special cased to be the environment from which pos.to.env\n> (or as.environment in your case) was called.  For non-negative values, it\n> indexes the search list (i.e. the list returned by search().)  Other values\n> are errors.\n>\n> The trouble in your examples is that this location varies.  In Fn1, it is\n> being called in the ls() call.  In Fn2, it is in the force() call. In Fn3\n> and Fn4, it's the Fn3/Fn4 call.\n>\n> In spite of what the docs say in ?get, I would rarely if ever use a pos\n> argument to as.environment.  Use an environment and pass it as envir.\n>\n> Duncan Murdoch\n>\n>\n>\n>> Behavior itself is confusing, but ?as.environment also provides no clue.\n>>   The term used in that doc is 'search list', which is ambiguous, but the\n>> see also section mentions search(), so I would *think* that is what is\n>> intended.  Either way Fn1() below can't really be explained.\n>>\n>> Major question is what in the world is Fn1 doing, and why is Fn2 not equal\n>> to Fn3? [ Fn3/Fn4 are doing what I want. ]\n>>\n>>\n>> Fn1 <- function(x=\"test\",pos=-1,env=**as.environment(pos)) {\n>> ls(env)\n>> }\n>>\n>> Fn2 <- function(x=\"test\",pos=-1,env=**as.environment(pos)) {\n>> force(env)\n>> ls(env)\n>> }\n>>\n>> Fn3 <- function(x=\"test\",pos=-1,env=**as.environment(pos)) {\n>> # should be the same as force() in Fn2, but not\n>> # ?force\n>> # Note:\n>> #\n>> #    This is semantic sugar: just evaluating the symbol will do the\n>> #    same thing (see the examples).\n>> env\n>> ls(env)\n>> }\n>>\n>> Fn4 <- function(x=\"test\",pos=-1,env=**as.environment(pos)) {\n>> # same as Fn3\n>> env <- env\n>> ls(env)\n>> }\n>>\n>> Fn1()\n>> Fn2()\n>> Fn3()\n>> Fn4()\n>> ls()\n>>\n>> ###################### output #########################\n>>\n>>> Fn1()\n>>>\n>> [1] \"doTryCatch\" \"expr\"       \"handler\"    \"name\"       \"parentenv\"\n>>\n>>  Fn2()\n>>>\n>> [1] \"env\" \"pos\" \"x\"\n>>\n>>  Fn3()\n>>>\n>> [1] \"Fn1\" \"Fn2\" \"Fn3\" \"Fn4\"\n>>\n>>  Fn4()\n>>>\n>> [1] \"Fn1\" \"Fn2\" \"Fn3\" \"Fn4\"\n>>\n>> ### .GlobalEnv\n>>\n>>> ls()\n>>>\n>> [1] \"Fn1\" \"Fn2\" \"Fn3\" \"Fn4\"\n>>\n>>  R.version\n>>>\n>>                 _\n>> platform       x86_64-apple-darwin11.2.0\n>> arch           x86_64\n>> os             darwin11.2.0\n>> system         x86_64, darwin11.2.0\n>> status\n>> major          2\n>> minor          15.1\n>> year           2012\n>> month          06\n>> day            22\n>> svn rev        59600\n>> language       R\n>> version.string R version 2.15.1 (2012-06-22)\n>> nickname       Roasted Marshmallows\n>>\n>>  R.version\n>>>\n>>                 _\n>> platform       x86_64-apple-darwin11.2.0\n>> arch           x86_64\n>> os             darwin11.2.0\n>> system         x86_64, darwin11.2.0\n>> status         Under development (unstable)\n>> major          3\n>> minor          0.0\n>> year           2012\n>> month          12\n>> day            28\n>> svn rev        61464\n>> language       R\n>> version.string R Under development (unstable) (2012-12-28 r61464)\n>> nickname       Unsuffered Consequences\n>>\n>>\n>\n\n\n-- \nJeffrey Ryan\njeffrey.ryan at lemnica.com\n\nwww.lemnica.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thanks Duncan.\n\nI was hoping that pos= would be more useful, but envir is a bit easier to\ngrasp in terms of consistency.\n\nThe lazy eval was also pointed out to me off-list as a source of the\n'weirdnes",
       "thread_id": "thread-66471a5a2acc",
       "thread_depth": 2,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130101/2c9ea9ff/attachment.pl"
+      ]
     },
     {
       "id": "msg-4732b13df645",
@@ -68,11 +74,14 @@
       "references": [
         "<50C0B02D.4070803@mayo.edu>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130102/86b5b61d/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130102/86b5b61d/attachment.pl>",
+      "body_plain": "I agree that it's cleaner to remove the extra attributes -- that's the\npoint of as.matrix.Surv(), to produce a matrix that doesn't include any\nextra details of how Surv objects are implemented.\n\n   -thomas\n\n\nOn Fri, Dec 7, 2012 at 3:48 AM, Terry Therneau <therneau at mayo.edu> wrote:\n\n> 1. A Surv object is a matrix with some extra attributes.  The\n> as.matrix.Surv function removes the extras but otherwise leaves it as is.\n>\n> 2. The last several versions of the survival library were accidentally\n> missing the S3method('as.matrix', 'Surv') line from their NAMESPACE file.\n>  (Instead it's position is held by a duplicate of the line just above it in\n> the NAMESPACE file, suggesting a copy/paste error).  As a consequence the\n> as.matrix.Surv function was effectively ignored, and the default method was\n> being used.\n>    The as.matrix.default function leaves anything with a \"dim\" attribute\n> alone.\n>\n> 3. In my current about-to-submit-to-CRAN  version of survival the missing\n> NAMESPACE line was restored.  This breaks one function in one package (rms)\n> which calls \"as.matrix(y)\" on a Surv object but then later looks at the\n> \"type\" attribute of y.\n>\n>  So now to the design question: should the as.matrix.Surv function\n> \"sanitize\" the result by removing the extra attributes, or should it leave\n> them alone?  The first seems cleaner; my accidental multi-year test of\n> leaving them in, however, clearly shows that it does no harm.\n>\n> Terry T.\n>\n> ______________________________**________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/**listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>\n>\n\n\n\n-- \nThomas Lumley\nProfessor of Biostatistics\nUniversity of Auckland\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I agree that it's cleaner to remove the extra attributes -- that's the\npoint of as.matrix.Surv(), to produce a matrix that doesn't include any\nextra details of how Surv objects are implemented.\n\n   -t",
       "thread_id": "thread-4732b13df645",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130102/86b5b61d/attachment.pl"
+      ]
     },
     {
       "id": "msg-265c0660d531",
@@ -86,11 +95,14 @@
       "references": [
         "<CAErODj9LyK3aZSJjxLPEeTTB3QN9rzEsdHYXnMa26xU98REQgg@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130102/4aa61d67/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130102/4aa61d67/attachment.pl>",
+      "body_plain": "On Thu, Dec 6, 2012 at 12:58 PM, Paul Johnson <pauljohn32 at gmail.com> wrote:\n\n> Dear R-devel:\n>\n> I could use some advice about matrix calculations and steps that might\n> make for faster computation of generalized inverses. It appears in\n> some projects there is a bottleneck at the use of svd in calculation\n> of generalized inverses.\n>\n> Here's some Rprof output I need to understand.\n>\n> >   summaryRprof(\"Amelia.out\")\n> $by.self\n>                              self.time self.pct total.time total.pct\n> \"La.svd\"                        150.34    27.66     164.82     30.32\n>\n>\n[snip]\n\n\n> I *Think* this means that a bottlleneck here is svd, which is being\n>\n\nA bottleneck to a limited extent -- it's still only 30% of computation\ntime, so speeding it up can't save more than that\n\n\n> called by this function that calculates generalized inverses:\n>\n> ## Moore-Penrose Inverse function (aka Generalized Inverse)\n> ##   X:    symmetric matrix\n> ##   tol:  convergence requirement\n> mpinv <- function(X, tol = sqrt(.Machine$double.eps)) {\n>   s <- svd(X)\n>   e <- s$d\n>   e[e > tol] <- 1/e[e > tol]\n>   s$v %*% diag(e,nrow=length(e)) %*% t(s$u)\n> }\n>\n> That is from the Amerlia package, which we like to use very much.\n>\n> Basically, I wonder if I should use a customized generalized inverse\n> or svd calculator to make this faster.\n>\n>\n\nIf your matrix is produced as a covariance matrix, so that it really is\nsymmetric positive semidefinite up to rounding error, my understanding is\nthat the Cholesky approach is stable in the sense that it will reliably\nproduce an accurate inverse or a zero-to-within-tolerance pivot and error\nmessage.\n\nNow, if most of the matrices you are trying to invert are actually\ninvertible (as I would hope), it may be quicker to use the Cholesky\napproach will a fallback to the SVD for semidefinite matrices. That is,\nsomething like\n\ntryCatch(\n    chol2inv(chol(xx)),\n    error=function(e) ginv(xx)\n  )\n\nMost of the  time you will get the Cholesky branch, which is much faster\n(about five-fold for 10x10 matrices on my system).  On my system and using\na 10x10 matrix the overhead in the tryCatch() is much smaller than the time\ntaken by either set of linear algebra, so there is a net gain as long as\neven a reasonably minority of the matrices are actually invertible.\n\nYou can probably do slightly better by replacing the chol2inv() with\nbacksolve(): solving just the systems of linear equations you need is\nusually preferable to constructing a matrix inverse.\n\n\nNote that this approach will give wrong answers without warning if the\nmatrices are not symmetric.\n\n   -thomas\n\n-- \nThomas Lumley\nProfessor of Biostatistics\nUniversity of Auckland\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Thu, Dec 6, 2012 at 12:58 PM, Paul Johnson <pauljohn32 at gmail.com> wrote:\n\n> Dear R-devel:\n>\n> I could use some advice about matrix calculations and steps that might\n> make for faster computation",
       "thread_id": "thread-265c0660d531",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130102/4aa61d67/attachment.pl"
+      ]
     },
     {
       "id": "msg-e7496d3cd594",
@@ -193,11 +205,14 @@
         "<CAErODj9LyK3aZSJjxLPEeTTB3QN9rzEsdHYXnMa26xU98REQgg@mail.gmail.com>",
         "<CAJ55+dKEj5=n85sCyixor2_jJ-gM23u_ocQrLg3V0jvLWyxf=Q@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130102/03ae2370/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130102/03ae2370/attachment.pl>",
+      "body_plain": "Hi all,\n\n\nOn Tue, Jan 1, 2013 at 6:01 PM, Thomas Lumley <tlumley at uw.edu> wrote:\n\n> Now, if most of the matrices you are trying to invert are actually\n>  invertible (as I would hope), it may be quicker to use the Cholesky\n> approach will a fallback to the SVD for semidefinite matrices. That is,\n> something like\n>\n> tryCatch(\n>     chol2inv(chol(xx)),\n>     error=function(e) ginv(xx)\n>   )\n>\n>\nJust to be clear, the Amelia package takes this approach, since our EM\nalgorithm can wander off into questionable parts of the parameter space\n(with non-invertible matrices). The issue that Paul pointed out was an\nissue my implementation of the Cholesky approach which broke the try()\nfunction and so used SVD for every inverse, which of course is slow(er).\nThis has been fixed in the most recent version (1.6.4) and we are finishing\nup a version that uses Rcpp to speed things up quite a bit.\n\nCheers,\nmatt.\n\n~~~~~~~~~~~\nMatthew Blackwell\nAssistant Professor of Political Science\nUniversity of Rochester\nurl: http://www.mattblackwell.org\n\n\n\n\n> Most of the  time you will get the Cholesky branch, which is much faster\n> (about five-fold for 10x10 matrices on my system).  On my system and using\n> a 10x10 matrix the overhead in the tryCatch() is much smaller than the time\n> taken by either set of linear algebra, so there is a net gain as long as\n> even a reasonably minority of the matrices are actually invertible.\n>\n> You can probably do slightly better by replacing the chol2inv() with\n> backsolve(): solving just the systems of linear equations you need is\n> usually preferable to constructing a matrix inverse.\n>\n>\n> Note that this approach will give wrong answers without warning if the\n> matrices are not symmetric.\n>\n>    -thomas\n>\n> --\n> Thomas Lumley\n> Professor of Biostatistics\n> University of Auckland\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi all,\n\n\nOn Tue, Jan 1, 2013 at 6:01 PM, Thomas Lumley <tlumley at uw.edu> wrote:\n\n> Now, if most of the matrices you are trying to invert are actually\n>  invertible (as I would hope), it may be quic",
       "thread_id": "thread-265c0660d531",
       "thread_depth": 1,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130102/03ae2370/attachment.pl"
+      ]
     },
     {
       "id": "msg-a61c58d2671b",
@@ -209,11 +224,14 @@
       "subject_clean": "formal vs. passed args: parent.frame() behavior.",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130102/6c5760bc/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130102/6c5760bc/attachment.pl>",
+      "body_plain": "Happy 2013, Day 2.\n\nI can't seem to figure out why parent.frame() works differently depending\non whether it is a formal/default argument or a passed argument.\n\n##### code: basic setup ####\n\ntmp <- tempfile()\nA <- 101\nsave(A,file=tmp);rm(A)\n\n# these work as expected, loading into the parent of the call load()\nload(tmp);str(A);rm(A)\nload(tmp, parent.frame());str(A);rm(A)\nload(tmp, environment());str(A);rm(A)\n\n\n\n# but these are odd, using local()\n\n#     works\nlocal( { load(tmp); str(A) } )\n\n #    FAILS even though env=parent.frame() by default !?!!\nlocal( { load(tmp,env=parent.frame()); str(A) } )\n\n#     works as well!\nlocal( { load(tmp,env=environment()); str(A) } )\n\nls()            ## NOT in .GlobalEnv, correct!\nargs(load)  ## env=parent.frame() by default, but is it???\n\n\nMy question is why parent.frame() can't be specified in the args without\nchanging the behavior of the call itself if you aren't at the top level.\n\nWhat am I missing?\n\nJeff\n\n\n##### output #####\n\n> tmp <- tempfile()\n> A <- 101\n> save(A,file=tmp);rm(A)\n>\n> # these work as expected, loading into the parent of the call load()\n> load(tmp);str(A);rm(A)\n num 101\n> load(tmp, parent.frame());str(A);rm(A)\n num 101\n> load(tmp, environment());str(A);rm(A)\n num 101\n>\n>\n>\n> # but these are odd, using local()\n>\n> #     works\n> local( { load(tmp); str(A) } )\n num 101\n>\n>  #    fails even though env=parent.frame() by default !?!!\n> local( { load(tmp,env=parent.frame()); str(A) } )\nError in str(A) : object 'A' not found\n>\n> #     works as well!\n> local( { load(tmp,env=environment()); str(A) } )\n num 101\n>\n> ls()            ## NOT in .GlobalEnv, correct!\n[1] \"tmp\"\n> args(load)  ## env=parent.frame() by default, but is it???\nfunction (file, envir = parent.frame())\nNULL\n>\n\n-- \nJeffrey Ryan\njeffrey.ryan at lemnica.com\n\nwww.lemnica.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Happy 2013, Day 2.\n\nI can't seem to figure out why parent.frame() works differently depending\non whether it is a formal/default argument or a passed argument.\n\n##### code: basic setup ####\n\ntmp <- tem",
       "thread_id": "thread-a61c58d2671b",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130102/6c5760bc/attachment.pl"
+      ]
     },
     {
       "id": "msg-db29f8199246",
@@ -476,11 +494,14 @@
       "references": [
         "<CAPr7RtW=qFqRDS2ZoUgz-pbMR8i5R74YCt+4if-uoyzofpoOnw@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130103/1ff42770/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130103/1ff42770/attachment.pl>",
+      "body_plain": "Here is a JIT suggestion:  add the message to errors/coredump reports\n\n\"If you would like to submit a patch for this error, please contact r-devel@\nr-project.org for further instructions.\n If you cannot, or would prefer not to, fix this error yourself, please\nconsider donating $20 to the Fix My Bug (R) fund.\n\npatch:   ;-)\n\nif(R_Interactive) {\n  REprintf(\"\\nPossible actions:\\n1: %s\\n2: %s\\n3: %s\\n4: %s\\n5: %s\\n\",\n     \"abort (with core dump, if enabled)\",\n     \"normal R exit\",\n     \"exit R without saving workspace\",\n     \"exit R saving workspace\",\n>   \"donate $20\"\n);\n\n\n\n--t\n\n\nnb.  if I am not mistaken, Dr. Gentleman is fairly busy these days at\nGenentech, sequencing anything he/they can get his/their hands on\nProf. Ripley might be a more sensible choice for these sorts of suggestions\nif you are going to cc: people besides the r-devel list\nif there is history between you and Dr. Gentleman then by all means please\nignore whatever irrelevant crap I typed above\n\n\nOn Thu, Jan 3, 2013 at 10:00 AM, ivo welch <ivo.welch at anderson.ucla.edu>wrote:\n\n> r\n\n\n\n\n-- \n*A model is a lie that helps you see the truth.*\n*\n*\nHoward Skipper<http://cancerres.aacrjournals.org/content/31/9/1173.full.pdf>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Here is a JIT suggestion:  add the message to errors/coredump reports\n\n\"If you would like to submit a patch for this error, please contact r-devel@\nr-project.org for further instructions.\n If you cann",
       "thread_id": "thread-cf96b0f57b62",
       "thread_depth": 1,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130103/1ff42770/attachment.pl"
+      ]
     },
     {
       "id": "msg-f4448182dee2",
@@ -1023,11 +1044,14 @@
       "references": [
         "<50E5D72E.5010704@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130107/9f0835c7/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130107/9f0835c7/attachment.pl>",
+      "body_plain": "Is there a difference in the copying behavior of\n\nx at little <- other\n\nand\n\nx at little[] <- other\n\nI was using the second form in (yet another!) modification of the internal\nrepresentation of mixed-effects models in the lme4 package in the hopes\nthat it would not trigger copying of the entire object.  The object\nrepresenting the model is quite large but the changes during iterations are\nto small vectors representing parameters and coefficients.\n\n\n\nOn Thu, Jan 3, 2013 at 1:08 PM, John Chambers <jmc at r-project.org> wrote:\n\n> Martin Morgan commented in email to me that a change to any slot of an\n> object that has other, large slot(s) does substantial computation,\n> presumably from copying the whole object.  Is there anything to be done?\n>\n> There are in fact two possible changes, one automatic but only partial,\n> the other requiring some action on the programmer's part.  Herewith the\n> first; I'll discuss the second in a later email.\n>\n> Some context:  The notion is that our object has some big data and some\n> additional smaller things.  We need to change the small things but would\n> rather not copy the big things all the time.  (With long vectors, this\n> becomes even more relevant.)\n>\n> There are three likely scenarios: slots, attributes and named list\n> components.  Suppose our object has \"little\" and \"BIG\" encoded in one of\n> these.\n>\n> The three relevant computations are:\n>\n> x at little <- other\n> attr(x, \"little\") <- other\n> x$little <- other\n>\n> It turns out that these are all similar in behavior with one important\n> exception--fixing that is the automatic change.\n>\n> I need to review what R does here. All these are replacement functions,\n> `@<-`, `attr<-`, `$<-`.  The evaluator checks before calling any\n> replacement whether the object needs to be duplicated (in a routine\n> EnsureLocal()).  It does that by examining a special field that holds the\n> reference status of the object.\n>\n> Some languages, such as Python (and S) keep reference counts for each\n> object, de-allocating the object when the reference count drops back to\n> zero.  R uses a different strategy. Its NAMED() field is 0, 1 or 2\n> according to whether the object has been assigned never, once or more than\n> once.  The field is not a reference count and is not decremented--relevant\n> for this issue.  Objects are de-allocated only when garbage collection\n> occurs and the object does not appear in any current frame or other context.\n> (I did not write any of this code, so apologies if I'm misrepresenting it.)\n>\n> When any of these replacement operations first occurs for a particular\n> object in a particular function call, it's very likely that the reference\n> status will be 2 and EnsureLocal will duplicate it--all of it. Regardless\n> of which of the three forms is used.\n>\n> Here the non-level-playing-field aspect comes in.  `@<-` is a normal R\n> function (a \"closure\") but the other two are primitives in the main code\n> for R.  Primitives have no frame in which arguments are stored.  As a\n> result the new version of x is normally stored with status 1.\n>\n> If one does a second replacement in the same call (in a loop, e.g.) that\n> should not normally copy again.  But the result of `@<-` will be an object\n> from its frame and will have status 2 when saved, forcing a copy each time.\n>\n> So the change, naturally, is that R 3.0.0 will have a primitive\n> implementation of `@<`.  This has been implemented in r-devel (rev. 61544).\n>\n> Please try it out _before_ we issue that version, especially if you own a\n> package that does things related to this question.\n>\n> John\n>\n> PS:  Some may have noticed that I didn't mention a fourth approach: fields\n> in a reference class object.  The assumption was that we wanted classical,\n> functional behavior here.  Reference classes don't have the copy problem\n> but don't behave functionally either.  But that is in fact the direction\n> for the other approach.  I'll discuss that later, when the corresponding\n> code is available.\n>\n> ______________________________**________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/**listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Is there a difference in the copying behavior of\n\nx at little <- other\n\nand\n\nx at little[] <- other\n\nI was using the second form in (yet another!) modification of the internal\nrepresentation of mixed-",
       "thread_id": "thread-786ca10a7b37",
       "thread_depth": 1,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130107/9f0835c7/attachment.pl"
+      ]
     },
     {
       "id": "msg-912a2391b1e1",
@@ -1098,11 +1122,14 @@
         "<50E5D72E.5010704@r-project.org>",
         "<35A75ECB-EDAD-4FCA-A6D6-4CBD69A163EF@warwick.ac.uk>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130107/68a11e51/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130107/68a11e51/attachment.pl>",
+      "body_plain": "On Mon, Jan 7, 2013 at 3:23 PM, Chris Jewell <chris.jewell at warwick.ac.uk>wrote:\n\n> Hi All,\n>\n> I'm currently trying to write an S4 class that mimics a data.frame, but\n> stores data on disc in HDF5 format.  The idea is that the dataset is likely\n> to be too large to fit into a standard desktop machine, and by using\n> subscripts, the user may load bits of the dataset at a time.  eg:\n>\n> > myLargeData <- LargeData(\"/path/to/file\")\n> > mySubSet <- myLargeData[1:10, seq(1,15,by=3)]\n>\n> I've therefore defined by LargeData class thus\n>\n> > LargeData <- setClass(\"LargeData\", representation(filename=\"character\"))\n> > setMethod(\"initialize\",\"LargeData\", function(.Object,filename)\n> .Object at filename <- filename)\n>\n>\nThe above function needs to return .Object.\n\n\n> I've then defined the \"[\" method to call a C++ function (Rcpp), opening\n> the HDF5 file, and returning the required rows/cols as a data.frame.\n>\n> However, what if the user wants to load the entire dataset into memory?\n>  Which method do I overload to achieve the following?\n>\n> > fullData <- myLargeData\n> > class(fullData)\n> [1] \"data.frame\"\n>\n> or apply transformations:\n>\n> > myEigen <- eigen(myLargeData)\n>\n> In C++ I would normally overload the \"double\" or \"float\" operator to\n> achieve this -- can I do the same thing in R?\n>\n\nThe coercions are going to have to be explicit, since there are no type\ndeclarations. So, an as.data.frame method for coercing to a data.frame  (as\nwell as a coerce method via setAs), and you'll need methods for many of the\nbase R functions.  Some of those you can implicitly support using an S3\nmethod on as.data.frame, assuming the function calls it.\n\n\n> Thanks,\n>\n> Chris\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Mon, Jan 7, 2013 at 3:23 PM, Chris Jewell <chris.jewell at warwick.ac.uk>wrote:\n\n> Hi All,\n>\n> I'm currently trying to write an S4 class that mimics a data.frame, but\n> stores data on disc in HDF5 ",
       "thread_id": "thread-786ca10a7b37",
       "thread_depth": 2,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130107/68a11e51/attachment.pl"
+      ]
     },
     {
       "id": "msg-70919185c530",
@@ -1169,11 +1196,14 @@
       "subject_clean": "Bug in list subset assignment due to NAMED optimization",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130108/a7d5edfe/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130108/a7d5edfe/attachment.pl>",
+      "body_plain": "In R version 2.15.2 (2012-10-26) i386-apple-darwin9.8.0/i386 (32-bit) I get\nthe following:\n\n> a <- list(1)\n> (a[[1]] <- a)\n[[1]]\n[[1]][[1]]\n[1] 1\n\nbut\n\n> a <- list(1)\n> b <- a\n> (a[[1]] <- a)\n[[1]]\n[1] 1\n\nAnd similarly:\n\n> a <- list(x=1)\n> (a$x <- a)\n$x\n$x$x\n[1] 1\n\nbut\n\n> a <- list(x=1)\n> b <- a\n> (a$x <- a)\n$x\n[1] 1\n\nIn both cases the result of the first sequence is wrong. It's returning the\nupdated `a` rather than the RHS of the assignment. The second sequence in\nboth cases is correct; the assignment to `b` increments the NAMED value\ncausing the necessary copy to be made so the RHS is returned from the\nassignment.\n\nWould it be sufficient to add a check to do_subassign2_dflt\nand do_subassign3_dflt that creates a duplicate of the LHS if the LHS & RHS\nare the same object?\n\nJustin\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "In R version 2.15.2 (2012-10-26) i386-apple-darwin9.8.0/i386 (32-bit) I get\nthe following:\n\n> a <- list(1)\n> (a[[1]] <- a)\n[[1]]\n[[1]][[1]]\n[1] 1\n\nbut\n\n> a <- list(1)\n> b <- a\n> (a[[1]] <- a)\n[[1]]\n[1",
       "thread_id": "thread-cf0fc69eca0c",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130108/a7d5edfe/attachment.pl"
+      ]
     },
     {
       "id": "msg-0a261fa6f7e4",
@@ -1503,11 +1533,14 @@
       "subject_clean": "Project wanted",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130113/73648e18/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130113/73648e18/attachment.pl>",
+      "body_plain": "Hi\n\nI am quite well versed in R. I can code in C++ and am currently pursuing\nbiotechnology from Indian Institute of Technology, Rookee. I am looking for\na project that I can immediately start working on and which is the need of\nthe hour for R as well, so I can carry it to GSoC. Can anyone please help\nme as to how I should proceed about this?\n\nI don't know whether I should have posted this in R-help or R-devel, but I\nhave been searching online for someone to help me with this one but have\nnot got a favorable response from anyone.\n\nLooking to get a response here.\n\nThanks\n\n-- \nSiddhant Gupta\nIII Year\nDepartment of Biotechnology\nIIT Roorkee\nIndia\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi\n\nI am quite well versed in R. I can code in C++ and am currently pursuing\nbiotechnology from Indian Institute of Technology, Rookee. I am looking for\na project that I can immediately start working ",
       "thread_id": "thread-749c944c9876",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130113/73648e18/attachment.pl"
+      ]
     },
     {
       "id": "msg-75ef84333485",
@@ -1540,11 +1573,14 @@
         "<kctqel$eoh$1@ger.gmane.org>",
         "<20722.52551.510334.990311@max.nulle.part>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130113/cbcfc5d1/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130113/cbcfc5d1/attachment.pl>",
+      "body_plain": "a n00b question:\n\nif I call importFrom(IRanges, ranges) in my NAMESPACE file, that works\ngreat.\nbut if  I call\n\nR> importFrom(IRanges, ranges)\n## Error: could not find function \"importFrom\"\n\nwell, that doesn't work great.  The closest thing I can find in base is\n\nbase:::importIntoEnv\n\nwhich helpfully informs me that it is one of several\n\nInternal namespace support functions.  Not intended to be called directly.\n\n\nWhere's the best place to learn about how namespaces and import/export\nfacilities (particularly in R-3.0) are implemented?\n\nthanks,\n\n--t\n\n\n\n\nOn Sun, Jan 13, 2013 at 7:05 AM, Dirk Eddelbuettel <edd at debian.org> wrote:\n\n>\n> On 13 January 2013 at 11:16, Johannes Graumann wrote:\n> | In a little pkg I'm developing I am in need of the functionality\n> provided by\n> | plotrix::listDepth.\n> |\n> | I am loath of having the depend on and import the whole package just for\n> | that purpose.\n>\n> Step back and realize that your total R installation (including all\n> packages)\n> is already much bigger than the single package. And derives value from all\n> those packages.\n>\n> So I would use importForm(plotrix, listDepth) in my package's NAMESPACE,\n> and\n> add the Imports: in the DESCRIPTION.\n>\n> IMHO that is the right way to do it rather than creating _stale_ and (even\n> worse) _disconnected_ copies which will never receive updates or fixes from\n> the _original author_ of that code.\n>\n> Dirk\n>\n> --\n> Dirk Eddelbuettel | edd at debian.org | http://dirk.eddelbuettel.com\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \n*A model is a lie that helps you see the truth.*\n*\n*\nHoward Skipper<http://cancerres.aacrjournals.org/content/31/9/1173.full.pdf>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "a n00b question:\n\nif I call importFrom(IRanges, ranges) in my NAMESPACE file, that works\ngreat.\nbut if  I call\n\nR> importFrom(IRanges, ranges)\n## Error: could not find function \"importFrom\"\n\nwell, tha",
       "thread_id": "thread-491ffb11ce48",
       "thread_depth": 2,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130113/cbcfc5d1/attachment.pl"
+      ]
     },
     {
       "id": "msg-41c43d39a6f0",
@@ -1576,11 +1612,14 @@
       "subject_clean": "Regarding the recent changes to @<-",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130113/3f05e180/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130113/3f05e180/attachment.pl>",
+      "body_plain": "Hello all,\n\n  In one of the packages (phylobase) I'm contributing to, we define a class\nas follows:\n\nsetClass(\"phylo4\",\n         representation(edge = \"matrix\",\n                        edge.length = \"numeric\",\n                        label = \"character\",\n                        edge.label = \"character\",\n                        order = \"character\",\n                        annote = \"list\"),\n         prototype = list(\n                        edge = matrix(nrow = 0, ncol = 2,\n                            dimname = list(NULL, c(\"ancestor\",\n\"descendant\"))),\n                        edge.length = numeric(0),\n                        label = character(0),\n                        edge.label = character(0),\n                        order = \"unknown\",\n                        annote = list()\n                       ),\n         validity = checkPhylo4)\n\n  Using today's SVN checkout (r61643), building an object of the class\n'phylo4' like this:\n\nphylo4(foo, annote=\"bar\")\n\n  doesn't return an error as it used to (given that annote is not a list).\n\n  What is now the preferred way of checking that annote is a actually a\nlist?\n\n  Thanks,\n  -- François\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello all,\n\n  In one of the packages (phylobase) I'm contributing to, we define a class\nas follows:\n\nsetClass(\"phylo4\",\n         representation(edge = \"matrix\",\n                        edge.length = \"",
       "thread_id": "thread-9f74ba13b186",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130113/3f05e180/attachment.pl"
+      ]
     },
     {
       "id": "msg-918b3a3ebe00",
@@ -1667,11 +1706,14 @@
         "<CAKL30wVySBksnfovg6TxAk9tmHzu_bSc=tip7rDS4iDnA1_mbQ@mail.gmail.com>",
         "<BD5840E9-B37B-4ACC-B61F-60C45712EFF4@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130114/f4583530/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130114/f4583530/attachment.pl>",
+      "body_plain": "Thanks John.\n\nJust to clarify further my previous message, the other slots were returning\nerror messages when provided with objects of the incorrect class, but not\nthe slot that was supposed to be a list.\n\n  Cheers,\n  -- François\n\n\n\n\nOn Mon, Jan 14, 2013 at 12:54 PM, John Chambers <jmc at r-project.org> wrote:\n\n> Thanks.  No need for a complicated example actually:\n>\n> > C1 <- setClass(\"C1\", slots = c(x = \"numeric\"))\n> > c1 <- C1()\n> > c1 at x <- \"Hello\"\n> > validObject(c1)\n> Error in validObject(c1) :\n>   invalid class \"C1\" object: invalid object for slot \"x\" in class \"C1\":\n> got class \"character\", should be or extend class \"numeric\"\n>\n> In making @<- substantially more efficient in r-devel, we lost some error\n> checking.  That's too efficient.\n>\n> This will be fixed, but given that code has migrated from an R function to\n> C and that I'm not currently at home, it may take a little while.\n>\n> John\n>\n>\n> On Jan 13, 2013, at 3:34 PM, François Michonneau wrote:\n>\n> > Hello all,\n> >\n> >  In one of the packages (phylobase) I'm contributing to, we define a\n> class\n> > as follows:\n> >\n> > setClass(\"phylo4\",\n> >         representation(edge = \"matrix\",\n> >                        edge.length = \"numeric\",\n> >                        label = \"character\",\n> >                        edge.label = \"character\",\n> >                        order = \"character\",\n> >                        annote = \"list\"),\n> >         prototype = list(\n> >                        edge = matrix(nrow = 0, ncol = 2,\n> >                            dimname = list(NULL, c(\"ancestor\",\n> > \"descendant\"))),\n> >                        edge.length = numeric(0),\n> >                        label = character(0),\n> >                        edge.label = character(0),\n> >                        order = \"unknown\",\n> >                        annote = list()\n> >                       ),\n> >         validity = checkPhylo4)\n> >\n> >  Using today's SVN checkout (r61643), building an object of the class\n> > 'phylo4' like this:\n> >\n> > phylo4(foo, annote=\"bar\")\n> >\n> >  doesn't return an error as it used to (given that annote is not a list).\n> >\n> >  What is now the preferred way of checking that annote is a actually a\n> > list?\n> >\n> >  Thanks,\n> >  -- François\n> >\n> >       [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thanks John.\n\nJust to clarify further my previous message, the other slots were returning\nerror messages when provided with objects of the incorrect class, but not\nthe slot that was supposed to be a l",
       "thread_id": "thread-9f74ba13b186",
       "thread_depth": 2,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130114/f4583530/attachment.pl"
+      ]
     },
     {
       "id": "msg-a22aaca5927b",
@@ -1720,11 +1762,14 @@
         "<CAKL30wVySBksnfovg6TxAk9tmHzu_bSc=tip7rDS4iDnA1_mbQ@mail.gmail.com>",
         "<20724.20686.556286.756858@stat.math.ethz.ch>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130114/5a4d9f6d/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130114/5a4d9f6d/attachment.pl>",
+      "body_plain": "Hello Martin,\n\n  Below is a reduced version of our code that doesn't produce an error in\nr61643 but does in 2.15.2.\n\n  Thanks,\n  -- François\n\nsetClass(\"phylo4\",\n         representation(edge=\"matrix\",\n                        annote=\"list\"),\n         prototype = list(edge = matrix(nrow = 0, ncol = 2),\n                        annote = list())\n)\n\nsetGeneric(\"phylo4\", function(x, ...) { standardGeneric(\"phylo4\")} )\n\nsetMethod(\"phylo4\", \"matrix\",\n    function(x, annote = list()) {\n    res <- new(\"phylo4\")\n        res at edge <- x\n        res at annote <- annote\n        res\n    }\n)\n\nedge <- structure(c(6L, 7L, 8L, 8L, 9L, 9L, 7L, 6L, 7L, 8L, 1L, 9L,\n      2L, 3L, 4L, 5L), .Dim = c(8, 2))\nphylo4(edge, annote=\"foo\")\n\n\n\n\nOn Mon, Jan 14, 2013 at 1:39 PM, Martin Maechler <maechler at stat.math.ethz.ch\n> wrote:\n\n> phylo4 <- setClass(\"phylo4\",\n>          representation(edge = \"matrix\",\n>                         edge.length = \"numeric\",\n>                         label = \"character\",\n>                         edge.label = \"character\",\n>                         order = \"character\",\n>                         annote = \"list\"),\n>          prototype = list(edge = matrix(nrow = 0, ncol = 2,\n>                                         dimnames = list(NULL,\n>                                         c(\"ancestor\", \"descendant\"))),\n>                           edge.length = numeric(0),\n>                           label = character(0),\n>                           edge.label = character(0),\n>                           order = \"unknown\",\n>                           annote = list()\n>          )\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello Martin,\n\n  Below is a reduced version of our code that doesn't produce an error in\nr61643 but does in 2.15.2.\n\n  Thanks,\n  -- François\n\nsetClass(\"phylo4\",\n         representation(edge=\"matrix\",\n",
       "thread_id": "thread-9f74ba13b186",
       "thread_depth": 2,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130114/5a4d9f6d/attachment.pl"
+      ]
     },
     {
       "id": "msg-ca36685a0e92",
@@ -1851,11 +1896,14 @@
         "<828A41A8-186F-4601-8D0E-C52CCA6F5162@r-project.org>",
         "<20130114233221.GC26703@siouxsie>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130114/8e637c5f/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130114/8e637c5f/attachment.pl>",
+      "body_plain": "On Jan 14, 2013, at 6:32 PM, oliver <oliver at first.in-berlin.de> wrote:\n\n> BTW: I looked up the string \"wish list\" in some of the mentioned docs (mentioned in this thread)\n>     but did not found it.\n>     Can you please point me to it directly?\n>     Googling for \"R wish list\" brings me links to a producer of toys.\n> \n>     Or did you mean I should ask R users for their wishes??!\n> \n>     (Some R users - on this list - asked for Julia language as a speedup alternative for R a while ago…)\n\nIs this what you're looking for: http://developer.r-project.org/ (see TODO lists)\n\n\n> All in all it seems like no special things need to be done.\n> The FSF for example has a page where they ask for support in certain areas,\n> so, this looks rather urgent.\n> R seems not to have such urgent needs for support....\n\nHow about cleaning up some of the documentation/wiki pages?\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Jan 14, 2013, at 6:32 PM, oliver <oliver at first.in-berlin.de> wrote:\n\n> BTW: I looked up the string \"wish list\" in some of the mentioned docs (mentioned in this thread)\n>     but did not found it",
       "thread_id": "thread-ca36685a0e92",
       "thread_depth": 3,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130114/8e637c5f/attachment.pl"
+      ]
     },
     {
       "id": "msg-c1af64f51a18",
@@ -1891,11 +1939,14 @@
         "<20130114233221.GC26703@siouxsie>",
         "<B6006DD8-7079-4D6C-B64D-25074375B91E@muxspace.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/f66c518e/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/f66c518e/attachment.pl>",
+      "body_plain": "Am 15.01.2013 um 01:11 schrieb Brian Lee Yung Rowe <rowe at muxspace.com>:\n\n> \n> On Jan 14, 2013, at 6:32 PM, oliver <oliver at first.in-berlin.de> wrote:\n> \n>> BTW: I looked up the string \"wish list\" in some of the mentioned docs (mentioned in this thread)\n>>     but did not found it.\n>>     Can you please point me to it directly?\n>>     Googling for \"R wish list\" brings me links to a producer of toys.\n>> \n>>     Or did you mean I should ask R users for their wishes??!\n>> \n>>     (Some R users - on this list - asked for Julia language as a speedup alternative for R a while ago…)\n> \n> Is this what you're looking for: http://developer.r-project.org/ (see TODO lists)\n\nAh, yes,there are TODO lists, thanks.\n\nThis is at least some kind of thing yi was looking for.\nBut these are personell TODO lists.\nAre their any goals for R as whole project?\n\n\n\n> \n> \n>> All in all it seems like no special things need to be done.\n>> The FSF for example has a page where they ask for support in certain areas,\n>> so, this looks rather urgent.\n>> R seems not to have such urgent needs for support....\n> \n> How about cleaning up some of the documentation/wiki pages?\n\nI'm not a friend of seperating design, coding, documentation, ...\n\nIMHO this should be something that is not seperated.\nAnd I also think, that the way, R packages will be written\n(code as well as documentation together) uses the same\nkind of philosophy.\nI was very happy about this close relation between code and\ndocumentation,mthat is necessary to wrte a package.\n\nI thought the same holds true for R project as a whole.\nSo I maybe was wrong with this assumption.\n\nCiao,\n   Olver\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Am 15.01.2013 um 01:11 schrieb Brian Lee Yung Rowe <rowe at muxspace.com>:\n\n> \n> On Jan 14, 2013, at 6:32 PM, oliver <oliver at first.in-berlin.de> wrote:\n> \n>> BTW: I looked up the string \"wish list\"",
       "thread_id": "thread-ca36685a0e92",
       "thread_depth": 4,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/f66c518e/attachment.pl"
+      ]
     },
     {
       "id": "msg-342c5eddfcf2",
@@ -1913,11 +1964,14 @@
         "<B6006DD8-7079-4D6C-B64D-25074375B91E@muxspace.com>",
         "<C2660820-4B80-438A-B66E-E01CE5D25D20@first.in-berlin.de>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130114/acfe959d/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130114/acfe959d/attachment.pl>",
+      "body_plain": "Maybe the master Bugzilla is what you are looking for instead: \n  https://bugs.r-project.org/bugzilla3/buglist.cgi?quicksearch=wishlist\n\n\nOn Jan 14, 2013, at 7:55 PM, Oliver Bandel <oliver at first.in-berlin.de> wrote:\n\n> \n> \n> Am 15.01.2013 um 01:11 schrieb Brian Lee Yung Rowe <rowe at muxspace.com>:\n> \n>> \n>> On Jan 14, 2013, at 6:32 PM, oliver <oliver at first.in-berlin.de> wrote:\n>> \n>>> BTW: I looked up the string \"wish list\" in some of the mentioned docs (mentioned in this thread)\n>>>     but did not found it.\n>>>     Can you please point me to it directly?\n>>>     Googling for \"R wish list\" brings me links to a producer of toys.\n>>> \n>>>     Or did you mean I should ask R users for their wishes??!\n>>> \n>>>     (Some R users - on this list - asked for Julia language as a speedup alternative for R a while ago…)\n>> \n>> Is this what you're looking for: http://developer.r-project.org/ (see TODO lists)\n> \n> Ah, yes,there are TODO lists, thanks.\n> \n> This is at least some kind of thing yi was looking for.\n> But these are personell TODO lists.\n> Are their any goals for R as whole project?\n> \n> \n> \n>> \n>> \n>>> All in all it seems like no special things need to be done.\n>>> The FSF for example has a page where they ask for support in certain areas,\n>>> so, this looks rather urgent.\n>>> R seems not to have such urgent needs for support....\n>> \n>> How about cleaning up some of the documentation/wiki pages?\n> \n> I'm not a friend of seperating design, coding, documentation, ...\n> \n> IMHO this should be something that is not seperated.\n> And I also think, that the way, R packages will be written\n> (code as well as documentation together) uses the same\n> kind of philosophy.\n> I was very happy about this close relation between code and\n> documentation,mthat is necessary to wrte a package.\n> \n> I thought the same holds true for R project as a whole.\n> So I maybe was wrong with this assumption.\n> \n> Ciao,\n>    Olver\n> \n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Maybe the master Bugzilla is what you are looking for instead: \n  https://bugs.r-project.org/bugzilla3/buglist.cgi?quicksearch=wishlist\n\n\nOn Jan 14, 2013, at 7:55 PM, Oliver Bandel <oliver at first.in",
       "thread_id": "thread-ca36685a0e92",
       "thread_depth": 5,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130114/acfe959d/attachment.pl"
+      ]
     },
     {
       "id": "msg-7dc82344a51e",
@@ -2050,11 +2104,14 @@
       "subject_clean": "rpvm arch check",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/babeb810/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/babeb810/attachment.pl>",
+      "body_plain": "I've trying to fix the check error in rpvm package. Right now on my Mac, I\nuse darwinport to install PVM and I can get rpvm to pass the check using 'R\n-arch x86_64 CMD check'. However the default 'R CMD check' uses i386 which\nfails since PVM is built for x86_64 only.\n\nSo is there a way to ensure proper architecture is used that matches that\nof the external library like PVM? What does CRAN use when it checks\npackages?\n\nBest, Michael\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I've trying to fix the check error in rpvm package. Right now on my Mac, I\nuse darwinport to install PVM and I can get rpvm to pass the check using 'R\n-arch x86_64 CMD check'. However the default 'R C",
       "thread_id": "thread-a264f3e26449",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/babeb810/attachment.pl"
+      ]
     },
     {
       "id": "msg-c8cfe335f6ff",
@@ -2066,11 +2123,14 @@
       "subject_clean": "R-forge, package dependencies",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/91d47e1b/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/91d47e1b/attachment.pl>",
+      "body_plain": "I have a project on R-forge (sqlsurvey.r-forge.r-project.org) with two\npackages, RMonetDB and sqlsurvey.\n\nAt the moment, sqlsurvey is listed as failing to build.  The error is on\nthe Linux package check, which says that RMonetDB is not available:\n\n\n* checking package dependencies ... ERROR\nPackage required but not available: ‘RMonetDB’\n\nRMonetDB has built successfully: r-forge lists its status as 'current',\nwith Linux, Windows, and Mac packages available for download.  The package\ncheck for sqlsurvey on Windows and Mac finds RMonetDB without any problems,\nit's just on Linux that it appears to be unavailable.\n\nAny suggestions for how to fix this? I've tried uploading a new version of\nRMonetDB, but the situation didn't change: it built successfully, but the\nLinux check of sqlsurvey still couldn't find it.\n\n    -thomas\n\n\n-- \nThomas Lumley\nProfessor of Biostatistics\nUniversity of Auckland\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I have a project on R-forge (sqlsurvey.r-forge.r-project.org) with two\npackages, RMonetDB and sqlsurvey.\n\nAt the moment, sqlsurvey is listed as failing to build.  The error is on\nthe Linux package che",
       "thread_id": "thread-c8cfe335f6ff",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/91d47e1b/attachment.pl"
+      ]
     },
     {
       "id": "msg-bea4447b51ae",
@@ -2146,11 +2206,14 @@
         "<72E32EE0-FAC7-4A4A-A6D8-926A862B3D64@r-project.org>",
         "<50F5A3EF.8060403@fhcrc.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/e363b8fc/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/e363b8fc/attachment.pl>",
+      "body_plain": "On Tue, Jan 15, 2013 at 12:46 PM, Hervé Pagès <hpages at fhcrc.org> wrote:\n\n\n>  and given R's modularity that is fortunately not very often the case.\n>>\n>\n> Modularity would be even better if more things *in core* were made\n> generics. For example why the stuff in parallel was not made generic?\n> (at least S3 generic)\n>\n\nThe better to give interesting people GSoC projects with, of course!  ;-)\n\n... nearly everyone appreciates patches that improve their projects to\nnoticeable benefit.  If you like parallel better a different way... collude\nand make it rock.\n\nbest,\n\n--e\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Tue, Jan 15, 2013 at 12:46 PM, Hervé Pagès <hpages at fhcrc.org> wrote:\n\n\n>  and given R's modularity that is fortunately not very often the case.\n>>\n>\n> Modularity would be even better if more thi",
       "thread_id": "thread-ca36685a0e92",
       "thread_depth": 7,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/e363b8fc/attachment.pl"
+      ]
     },
     {
       "id": "msg-272cef4871e9",
@@ -2162,11 +2225,14 @@
       "subject_clean": "Prevent serialization of an environment?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/45c2b2d1/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/45c2b2d1/attachment.pl>",
+      "body_plain": "Within I'm using an environment as a hashtable to cache the results of some\nrepeated computations in a package. The thing is that the contents of the\ncache will not be valid across R sessions, so I would like to make sure\nthat the cache is cleared if the user saves or restores the workspace (or\nwhen a package is prepared for lazy loading, etc.). Is there a way to mark\nan environment so that its contents do not serialize?\n\nPeter\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Within I'm using an environment as a hashtable to cache the results of some\nrepeated computations in a package. The thing is that the contents of the\ncache will not be valid across R sessions, so I wo",
       "thread_id": "thread-272cef4871e9",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/45c2b2d1/attachment.pl"
+      ]
     },
     {
       "id": "msg-0200a2685a38",
@@ -2199,11 +2265,14 @@
         "<CAJoaRhabfD2AVoyeB-4yiNpi26sfNXuxQ+eTXuYRqCJ5hs=xnQ@mail.gmail.com>",
         "<50F5FA9F.5090102@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/f97724b4/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/f97724b4/attachment.pl>",
+      "body_plain": "On Tue, Jan 15, 2013 at 4:55 PM, Duncan Murdoch <murdoch.duncan at gmail.com>wrote:\n\n> On 13-01-15 7:39 PM, Peter Meilstrup wrote:\n>\n>> Within I'm using an environment as a hashtable to cache the results of\n>> some\n>> repeated computations in a package. The thing is that the contents of the\n>> cache will not be valid across R sessions, so I would like to make sure\n>> that the cache is cleared if the user saves or restores the workspace (or\n>> when a package is prepared for lazy loading, etc.). Is there a way to mark\n>> an environment so that its contents do not serialize?\n>>\n>>\n> Seems like the refhook argument to serialize() could do that.\n>\n> Duncan Murdoch\n>\n>\nBut I don't see where e.g. save() allows specifying which refhook to use\n(or more generally how to ensure that the user always supplies an\nappropriate refhook.) Or how to tell R CMD BUILD to use a refhook. Unless I\nmisunderstand when refhook comes into play.\n\nOne example of the kind of thing I'm looking for is in Matlab, where you\ncan have loadobj() or saveobj() methods; if a class has these methods they\nwill be used to mangle objects of that class as they are de/serialized.\n\nPeter\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Tue, Jan 15, 2013 at 4:55 PM, Duncan Murdoch <murdoch.duncan at gmail.com>wrote:\n\n> On 13-01-15 7:39 PM, Peter Meilstrup wrote:\n>\n>> Within I'm using an environment as a hashtable to cache the resu",
       "thread_id": "thread-272cef4871e9",
       "thread_depth": 2,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/f97724b4/attachment.pl"
+      ]
     },
     {
       "id": "msg-a71669b99521",
@@ -2262,11 +2331,14 @@
         "<50F5FA9F.5090102@gmail.com>",
         "<CAJoaRhbw4r7VMR5UFUiUzc-nPywcWFn2zPehYGnb85V3911NMg@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/7b0d3a85/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/7b0d3a85/attachment.pl>",
+      "body_plain": "OK. Based on comments in serialize.c, this sort of thing isn't\navailable(yet). However, I also came to the conclusion that for my purposes\n(caching functions-of existing R objects) I might implement the cache not\nwith an environment but with the weak-reference facility exposed in the C\ninterfaces.\n\nThanks to those who replied!\n\nPeter\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "OK. Based on comments in serialize.c, this sort of thing isn't\navailable(yet). However, I also came to the conclusion that for my purposes\n(caching functions-of existing R objects) I might implement t",
       "thread_id": "thread-272cef4871e9",
       "thread_depth": 3,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130115/7b0d3a85/attachment.pl"
+      ]
     },
     {
       "id": "msg-8e5fa22704b4",
@@ -2303,11 +2375,14 @@
         "<010c01cdf35f$c5e786e0$51b694a0$@ugent.be>",
         "<20726.25965.68797.657627@stat.math.ethz.ch>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/58a25a6b/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/58a25a6b/attachment.pl>",
+      "body_plain": "Hi,\nthe same error was happen to me as well. it doesn't have problem with mac\nand windows but there is package dependencies with Linux platform. this is\nsomething i don't get a solution yet. so what I've done is, I simply check\non win-builder for machine dependencies and on my local machine as well,\nthen I built and submitted it to cran using ftp. But still the issue\nfor Linux and r forge is what i can't get a solution.\n\nRegards,\nMichael\n\n\nOn Wed, Jan 16, 2013 at 9:31 AM, Martin Maechler <maechler at stat.math.ethz.ch\n> wrote:\n\n> >>>>> Nick Sabbe <nick.sabbe at ugent.be>\n> >>>>>     on Tue, 15 Jan 2013 21:34:52 +0100 writes:\n>\n>     > I have exactly the same issue with a pair of my packages\n>     > on R-Forge.  I've already notified Stefan, but I mentioned\n>     > it wasn't urgent for me :)\n>\n>     > It must have something to do with the R check using a\n>     > different environment than the build...\n>\n> notably when using '--as-cran' I think;\n> this looks like a pretty infelicitous decision to me:\n>\n> E.g. I can no longer use --as-cran for checking our copula\n> package (on my own computer), as that suggests Rmpfr and gmp and\n> these depend on the corresponding external C libraries (mpfr & gmp)\n> and these rely on LD_LIBRARY_PATH and that now fails to be\n> looked at in such circumstances.\n>\n> To me this somewhat recent change looks like something that\n> should be re-considered on the R side..\n>\n> Martin\n>\n>     > So good hunting, Stefan!\n> indeed...\n>\n>\n>     > Nick Sabbe\n>     > --\n>     > ping: nick.sabbe at ugent.be link: http://biomath.ugent.be\n>     > wink: A1.056, Coupure Links 653, 9000 Gent ring:\n>     > 09/264.59.36\n>\n>     > -- Do Not Disapprove\n>\n>\n>\n>\n>     > -----Original Message----- From:\n>     > r-devel-bounces at r-project.org\n>     > [mailto:r-devel-bounces at r-project.org] On Behalf Of Uwe\n>     > Ligges Sent: dinsdag 15 januari 2013 21:09 To: Thomas\n>     > Lumley Cc: Stefan Theussl; R-devel Subject: Re: [Rd]\n>     > R-forge, package dependencies\n>\n>\n>\n>     > On 15.01.2013 20:47, Thomas Lumley wrote:\n>     >> I have a project on R-forge\n>     >> (sqlsurvey.r-forge.r-project.org) with two packages,\n>     >> RMonetDB and sqlsurvey.\n>     >>\n>     >> At the moment, sqlsurvey is listed as failing to build.\n>     >> The error is on the Linux package check, which says that\n>     >> RMonetDB is not available:\n>     >>\n>     >>\n>     >> * checking package dependencies ... ERROR Package\n>     >> required but not available: 'RMonetDB'\n>     >>\n>     >> RMonetDB has built successfully: r-forge lists its status\n>     >> as 'current', with Linux, Windows, and Mac packages\n>     >> available for download.  The package check for sqlsurvey\n>     >> on Windows and Mac finds RMonetDB without any problems,\n>     >> it's just on Linux that it appears to be\n>     > unavailable.\n>     >>\n>     >> Any suggestions for how to fix this? I've tried uploading\n>     >> a new version of RMonetDB, but the situation didn't\n>     >> change: it built successfully, but the Linux check of\n>     >> sqlsurvey still couldn't find it.\n>\n>\n>     > I think you have to ask Stefan to check the details.\n>\n>     > Best, Uwe\n>\n>\n>     >> -thomas\n>     >>\n>     >>\n>     >>\n>     >>\n>     >> ______________________________________________\n>     >> R-devel at r-project.org mailing list\n>     >> https://stat.ethz.ch/mailman/listinfo/r-devel\n>     >>\n>\n>     > ______________________________________________\n>     > R-devel at r-project.org mailing list\n>     > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>     > ______________________________________________\n>     > R-devel at r-project.org mailing list\n>     > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\nthe same error was happen to me as well. it doesn't have problem with mac\nand windows but there is package dependencies with Linux platform. this is\nsomething i don't get a solution yet. so what I",
       "thread_id": "thread-c8cfe335f6ff",
       "thread_depth": 4,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/58a25a6b/attachment.pl"
+      ]
     },
     {
       "id": "msg-0010da25ea98",
@@ -2319,11 +2394,14 @@
       "subject_clean": "How to call Java main method using rJava package?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/76eefea3/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/76eefea3/attachment.pl>",
+      "body_plain": "Hi,\n\nI am trying to integrate my Java program with R using rJava package. I want\nto execute the whole Java program from R. The main() method in my Java code\ncalls all the other defined methods. So, I guess I have to call the main()\nmethod in .jcall.\n\nAn example Java code:\n\n*class A {\n        public static int mySum(int x, int y) {\n                return x+y;\n        }\n        public static void main (String[] arg) {\n                System.out.println(\"The sum is \" + mySum(2, 4));\n        }\n}*\n\nI can do the following to call the mySum() method:\n*.jcall(obj, \"I\", \"mySum\", as.integer(2), as.integer(4))*\nThis will give the output *6*.\n\nBut can some one explain me that how exactly I can execute this program to\nprint *The sum is 6* from R? OR how can I call the main method?\nI am a beginner in R.\n\nThanks,\nGaurav\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\n\nI am trying to integrate my Java program with R using rJava package. I want\nto execute the whole Java program from R. The main() method in my Java code\ncalls all the other defined methods. So, I ",
       "thread_id": "thread-0010da25ea98",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/76eefea3/attachment.pl"
+      ]
     },
     {
       "id": "msg-3aec7bf37ed4",
@@ -2403,11 +2481,14 @@
       "subject_clean": "Declaring/importing non-exported functions [car] in another package",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/cc7996c1/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/cc7996c1/attachment.pl>",
+      "body_plain": "A new function in my heplots package wants to use a non-exported utility \nfunction in the car package,\ndf.terms, but this depends on other non-exported functions.\n From the Writing R extensions manual, I thought I could do this via (in \nmy NAMESPACE)\n\nimportFrom(car, car:::df.terms, car:::df.terms.default, car:::is.aliased)\n\nbut I get:\n** preparing package for lazy loading\nError : objects 'car:::df.terms', 'car:::df.terms.default', \n'car:::is.aliased' are not exported by 'namespace:car'\nERROR: lazy loading failed for package 'heplots'\n\n\\S 1.6.1 of the manual says regarding importFrom():\nUsing |foo:::f| instead of |foo::f| allows access to unexported objects. \nThis is generally not recommended, as the semantics of unexported \nobjects may be changed by the package author in routine maintenance.\n\nQuestions:\n1.  Why doesn't this work?\n2.  Is my only alternative to copy these functions to my package, also \nunexported?\n\nthx,\n-Michael\n\n-- \nMichael Friendly     Email: friendly AT yorku DOT ca\nProfessor, Psychology Dept. & Chair, Quantitative Methods\nYork University      Voice: 416 736-2100 x66249 Fax: 416 736-5814\n4700 Keele Street    Web:   http://www.datavis.ca\nToronto, ONT  M3J 1P3 CANADA\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "A new function in my heplots package wants to use a non-exported utility \nfunction in the car package,\ndf.terms, but this depends on other non-exported functions.\n From the Writing R extensions manual",
       "thread_id": "thread-f60a5f0d6383",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/cc7996c1/attachment.pl"
+      ]
     },
     {
       "id": "msg-b969d7b467ae",
@@ -2440,11 +2521,14 @@
         "<50F6D469.3010305@yorku.ca>",
         "<50F6D805.1020309@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/3d065d7f/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/3d065d7f/attachment.pl>",
+      "body_plain": "On 1/16/2013 11:40 AM, Duncan Murdoch wrote:\n>>\n>> \\S 1.6.1 of the manual says regarding importFrom():\n>> Using |foo:::f| instead of |foo::f| allows access to unexported objects.\n>> This is generally not recommended, as the semantics of unexported\n>> objects may be changed by the package author in routine maintenance.\n>>\n>> Questions:\n>> 1.  Why doesn't this work?\n>\n> I think you misread the manual.  It is talking about ways to access \n> functions other than by using importFrom.  You can use car:::df.terms \n> in your functions.\nThanks for the clarification, but I blame the manual. Could I suggest a \nchange in the manual to make this clearer:\n\nUsing |foo:::f| directly in a function  instead of |foo::f| allows \naccess to unexported objects (rather than in importsFrom()). ...\n\n\n-- \nMichael Friendly     Email: friendly AT yorku DOT ca\nProfessor, Psychology Dept. & Chair, Quantitative Methods\nYork University      Voice: 416 736-2100 x66249 Fax: 416 736-5814\n4700 Keele Street    Web:   http://www.datavis.ca\nToronto, ONT  M3J 1P3 CANADA\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On 1/16/2013 11:40 AM, Duncan Murdoch wrote:\n>>\n>> \\S 1.6.1 of the manual says regarding importFrom():\n>> Using |foo:::f| instead of |foo::f| allows access to unexported objects.\n>> This is generally ",
       "thread_id": "thread-f60a5f0d6383",
       "thread_depth": 2,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130116/3d065d7f/attachment.pl"
+      ]
     },
     {
       "id": "msg-7e7f30aa586e",
@@ -2668,11 +2752,14 @@
         "<CAGgMibL9HqfjN1LMA9S_7oEck9kmD4ccEdbP3XZ8-B+EHGg8mg@mail.gmail.com>",
         "<00064623-6B78-4C0E-84B0-EFD2053B1B19@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130117/5dab2755/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130117/5dab2755/attachment.pl>",
+      "body_plain": "OK. I will upload the updated version to CRAN and see if there is any\nproblem with the checking.\n\nOne additional question, if a user decides to build the library from source\nhe may still encounter the problem. Is there a way (though\nconfigure.in file maybe) to detect the architecture of the external\nlibrary (libpvm.a)\nand use the correct architecture automatically when compiling rpvm code?\n\nThanks,\n\nMichael\n\n\nOn Tue, Jan 15, 2013 at 8:53 PM, Simon Urbanek\n<simon.urbanek at r-project.org>wrote:\n\n> On Jan 15, 2013, at 2:24 PM, Michael Li wrote:\n>\n> > I've trying to fix the check error in rpvm package. Right now on my Mac,\n> I use darwinport to install PVM and I can get rpvm to pass the check using\n> 'R -arch x86_64 CMD check'. However the default 'R CMD check' uses i386\n> which fails since PVM is built for x86_64 only.\n> >\n> > So is there a way to ensure proper architecture is used that matches\n> that of the external library like PVM? What does CRAN use when it checks\n> packages?\n> >\n>\n> We use static builds which have all necessary architectures (so users\n> don't need to install them and can use any architecture).\n>\n> Cheers,\n> Simon\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "OK. I will upload the updated version to CRAN and see if there is any\nproblem with the checking.\n\nOne additional question, if a user decides to build the library from source\nhe may still encounter the",
       "thread_id": "thread-a264f3e26449",
       "thread_depth": 2,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130117/5dab2755/attachment.pl"
+      ]
     },
     {
       "id": "msg-25379de6da19",
@@ -2722,11 +2809,14 @@
       "subject_clean": "debugging C/Fortran code with Visual Studio and Intel compilers",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130118/161b7256/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130118/161b7256/attachment.pl>",
+      "body_plain": "Hello,\n\nMy R code calles a C/Fortran dll and I want to debug C code using Visual\nStudio and Intel compilers /debugger\n\nDebugging with Rcpp and RInsight does not work correctly on Windows.\n\nIs there some other way to set breakpoints in C code and access to\nvariables ?\n\nThank you !\n\nKind regards,\nVitaliy\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\nMy R code calles a C/Fortran dll and I want to debug C code using Visual\nStudio and Intel compilers /debugger\n\nDebugging with Rcpp and RInsight does not work correctly on Windows.\n\nIs there so",
       "thread_id": "thread-71f09ce4e3ce",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130118/161b7256/attachment.pl"
+      ]
     },
     {
       "id": "msg-6f15ad204c77",
@@ -2897,11 +2987,14 @@
       "subject_clean": "R_tabulate",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130122/e86dbab3/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130122/e86dbab3/attachment.pl>",
+      "body_plain": "How could I get the code of the inner function ( written in C, I guess ) of\nR_tabulate?\nThis function is used by R function tabulate.\n\nThank you.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "How could I get the code of the inner function ( written in C, I guess ) of\nR_tabulate?\nThis function is used by R function tabulate.\n\nThank you.\n\n\t[[alternative HTML version deleted]]",
       "thread_id": "thread-0670af91796a",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130122/e86dbab3/attachment.pl"
+      ]
     },
     {
       "id": "msg-b77aefc32a64",
@@ -2983,11 +3076,14 @@
       "subject_clean": "na.omit option in prcomp: formula interface only",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130123/540f8274/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130123/540f8274/attachment.pl>",
+      "body_plain": "Dear r-devel list, dear Ben\n\nI came across a post of Ben Bolker from Feb 2012 (see below) on handling NA\nvalues in prcomp(). As I faced the same issue and found Ben's suggestions\ninteresting, I was wondering whether this led to further discussions I\nmight have missed? I understand handling NA values is far from trivial, but\nwould it be possible to add a warning in the documentation, and/or whenever\nna.action is used with  prcomp() on a data frame (suggesting to use the\nformula instead?)?\n\nThanks!\n\nMatthieu Stigler\n\n\nThis is a wishlist/request for discussion about the behaviour of the\nna.action option in prcomp, specifically the fact that it only applies to\nthe formula interface.\n\n   I had a question from a friend (who is smart and careful and generally\nR's TFM, although like all of us he misses things sometimes) asking why the\nna.action= argument didn't seem to be doing anything in prcomp (i.e. one\ngets an \"Error in svd(x, nu=0): infinite or missing values in 'x'\"). Some\npoking later, I realized that na.action only applied to the formula\ninterface (so I told him to try prcomp(~.,data=x,...) instead).\nSufficiently careful reading of the help page, with hindsight, revealed\nthat na.action only appears in the arguments for the formula method, not\nthe default (on the other hand,\n\n'scale.' only appears in the default formula, but it *does* work with\nprcomp.formula as well, because prcomp.formula passes ... through to\nprcomp.default ...)\n\n\n   Would it be reasonable to (at least) add a sentence to the documentation\nsaying that na.action applies only to the formula interface or (possibly)\nto add some NA-processing machinery to prcomp.default to allow it to handle\nna.action as well? (I can appreciate from looking at stats:::prcomp.formula\nthat the NA-processing is not completely trivial ...)\n\n  Ben Bolker\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear r-devel list, dear Ben\n\nI came across a post of Ben Bolker from Feb 2012 (see below) on handling NA\nvalues in prcomp(). As I faced the same issue and found Ben's suggestions\ninteresting, I was wo",
       "thread_id": "thread-6066ce2a0108",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130123/540f8274/attachment.pl"
+      ]
     },
     {
       "id": "msg-32848de88e85",
@@ -3018,11 +3114,14 @@
       "subject_clean": "Arguments passing through dot-dot-dot lose ability to check for missing()?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130123/ab0bcff3/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130123/ab0bcff3/attachment.pl>",
+      "body_plain": "Hi R-devel. Is the following behavior in g1() and h1() expected? It seems\nto make \"...\" arguments work slightly differently from named arguments.\n\n#missing() has the property that it looks \"up the chain\"\n#for example, \"z\" can be missing in f3 even if\n#that argument did have a name (\"y\") in f2\nf1 <- function(x, ...) {\n  cat(\"In f1, missing(x) is \", missing(x), \"\\n\")\n  f2(x, ...)\n}\n\nf2 <- function(y, ...) {\n  cat(\"In f2, missing(y) is \", missing(y), \"\\n\")\n  f3(y, ...)\n}\n\nf3 <- function(z, ...) {\n  cat(\"in f3, missing(z) is \", missing(z), \"\\n\")\n}\n\nf1( , 2) #all TRUE\n\n#does this also work with ... arguments? It seems to lose track.\ng1 <- function(...) {\n  cat(\"In g1, missing(..1) is \", missing(..1), \"\\n\")\n  g2(...)\n}\n\ng2 <- function(...) {\n  cat(\"In g2, missing(..1) is \", missing(..1), \"\\n\")\n  g3(...)\n}\n\ng3 <- function(...) {\n  cat(\"in g3, missing(..1) is \", missing(..1), \"\\n\")\n}\n\ng1( , 2) #TRUE, TRUE, FALSE ?!\n\n# we can also elicit this lossiness without looking at the virtual ..n\n# symbols:\n\nh1 <- function(x, ...) {\n  cat(\"in h1, missing(x) is \", missing(x), \"\\n\")\n  h2(x, ...)\n}\n\nhh1 <- function(...)\n  h2(...)\n\nh2 <- function(...)\n  h3(...)\n\nh3 <- function(z, ...)\n  cat(\"in h3, missing(z) is \", missing(z), \"\\n\")\n\nh3( , 1) #missing in h3\nh2( , 1) #missing in h3\nh1( , 1) #missing in h1 but NOT h3\nhh1( , 1) #also not missing in h3\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi R-devel. Is the following behavior in g1() and h1() expected? It seems\nto make \"...\" arguments work slightly differently from named arguments.\n\n#missing() has the property that it looks \"up the cha",
       "thread_id": "thread-1892d74d859e",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130123/ab0bcff3/attachment.pl"
+      ]
     },
     {
       "id": "msg-90e770c86e38",
@@ -3071,11 +3170,14 @@
       "subject_clean": "(patch) Layers for pdf() grDevice",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130124/4d953fd1/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130124/4d953fd1/attachment.pl>",
+      "body_plain": "I built a patch (\nhttps://github.com/3jb/R_layers/blob/master/add_pdf_layers_r61733.diff)\nfor grDevice/devPS.c adding an argument 'onepage' to pdf(), if set to\nTRUE, successive plots will be printed to layers within a single pdf\ndocument page rather than successive documents, or successive pages within\na document.  The patch works on the HEAD of the current svn development\ntree.\n\nI'm sure that I have broken a few of the rules for submission as far as:\n\n- new features should have more than one user advocate\nI don't know that masses of people will find this an extraordinarily\nexciting feature.  I know I use it, and one other guy seemed interested.\n\n- don't modify defaults or regression tests\nLayers are not valid in versions of pdf previous to 1.5. The default output\nversion in pdf() was 1.4 - I bumped it up to 1.5 so that when the user just\npdf(\"file/name.pdf\", onepage=TRUE) they wouldn't get any warnings or\nanything unexpected.  This causes the reg-plot and reg-plot-latin1 tests to\nhighlight the version numbers in the output files as conflicting,  so I\nquieted this by adding version=\"1.4\" to reg-plot.R and reg-plot-latin1.R .\n\nI also added an argument entry to pdf.Rd\n\nI've seen Prof Ripley's argument that:\n\n>> Is it possible to create a pdf file with layers using the pdf() device\nin R?\n\n>No.  Is it possible to specify layers in the R graphics language or any\n>device?  (From what I understand by 'layers', no.)\n\nDifferent formats have disparate [features / attributes] and it is because\npeople find value in the differences that so many formats are maintained.\n An interesting feature of the PDF specification is Optional Content\nGroups, (ie layers) so why can't we use them?  It makes post-processing\nfigures infinitely  easier.  Also the package 'latticeExtra' allows a\n'layer-like' ability to stack plots by concatenating them plot()+plot(), so\nI think layers in pdf() is an interesting feature.\n\nI thought about adding the feature as an extension, but I couldn't\ndetermine a way to do it without duplicating most of the functionality of\npdf().  I modified only the essential.\n\nI'm not optimistic that it will be [accepted / applied], but I've already\ndone all the work and figured I'd finish it by showing it to the people\nhere.\n\nthanks for your time,\nejb\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I built a patch (\nhttps://github.com/3jb/R_layers/blob/master/add_pdf_layers_r61733.diff)\nfor grDevice/devPS.c adding an argument 'onepage' to pdf(), if set to\nTRUE, successive plots will be printed t",
       "thread_id": "thread-1882c4ecb153",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130124/4d953fd1/attachment.pl"
+      ]
     },
     {
       "id": "msg-b1b15a64890b",
@@ -3487,11 +3589,14 @@
         "<AA818EAD2576BC488B4F623941DA74279885863D@inbomail.inbo.be>",
         "<CAO1zAVYX3VotMcmSAPnRZrSNqO+45M7xB56sy7XEsQY8pejopA@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130128/6355cc68/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130128/6355cc68/attachment.pl>",
+      "body_plain": "Dear Joris,\n\nThank for your comments. Changing importFrom(\"zoo\", rollmax) to importFrom(\"zoo\", rollmax, rollmax.default) solved the problem.\n\nBest regards,\n\nThierry\n\nir. Thierry Onkelinx\nInstituut voor natuur- en bosonderzoek / Research Institute for Nature and Forest\nteam Biometrie & Kwaliteitszorg / team Biometrics & Quality Assurance\nKliniekstraat 25\n1070 Anderlecht\nBelgium\n+ 32 2 525 02 51\n+ 32 54 43 61 85\nThierry.Onkelinx at inbo.be<mailto:Thierry.Onkelinx at inbo.be>\nwww.inbo.be<http://www.inbo.be/>\n\nTo call in the statistician after the experiment is done may be no more than asking him to perform a post-mortem examination: he may be able to say what the experiment died of.\n~ Sir Ronald Aylmer Fisher\n\nThe plural of anecdote is not data.\n~ Roger Brinner\n\nThe combination of some data and an aching desire for an answer does not ensure that a reasonable answer can be extracted from a given body of data.\n~ John Tukey\n\nVan: Joris Meys [mailto:jorismeys at gmail.com]\nVerzonden: maandag 28 januari 2013 11:27\nAan: ONKELINX, Thierry\nOnderwerp: Re: [Rd] incorrect import?\n\n'rollmax' is a generic S3 method, and the point of that is to be visible to the user. If you only import the generic, it can't find the methods as they still reside in the namespace of 'zoo', which you neither imported nor attached to the search path. So either you import also the relevant methods, or you just load the zoo package using Depends instead of Imports and import.\n\nCheers\nJoris\nOn Mon, Jan 28, 2013 at 11:10 AM, ONKELINX, Thierry <Thierry.ONKELINX at inbo.be<mailto:Thierry.ONKELINX at inbo.be>> wrote:\nDear all,\n\nI'm not getting what I'm doing wrong. The line below from my read.fsa.bin function throws an error when just loading my AFLP package and disappears when I load the zoo package as well.\n\n#the line that throws the error\nIndex <- which(Peak == rollmax(Peak, k = 1 + 2 * floor((min(diff(SizeStandard)) * Fs - 1) / 2), fill = -Inf))\n#the error\nError in UseMethod(\"rollmax\") :  no applicable method for 'rollmax' applied to an object of class \"c('double', 'numeric')\"\n\nDESCRIPTION of the AFLP package contains\nImports: ggplot2, mvtnorm, seqinr, zoo, signal, xtable, vegan\n\nThe NAMESPACE contains\nimportFrom(\"zoo\", rollmax)\n\nWhat am I missing?\n\nThe source files are available on https://r-forge.r-project.org/scm/?group_id=1027\n\nBest regards,\n\nThierry\n\nir. Thierry Onkelinx\nInstituut voor natuur- en bosonderzoek / Research Institute for Nature and Forest\nteam Biometrie & Kwaliteitszorg / team Biometrics & Quality Assurance\nKliniekstraat 25\n1070 Anderlecht\nBelgium\n+ 32 2 525 02 51<tel:%2B%2032%202%20525%2002%2051>\n+ 32 54 43 61 85<tel:%2B%2032%2054%2043%2061%2085>\nThierry.Onkelinx at inbo.be<mailto:Thierry.Onkelinx at inbo.be>\nwww.inbo.be<http://www.inbo.be>\n\nTo call in the statistician after the experiment is done may be no more than asking him to perform a post-mortem examination: he may be able to say what the experiment died of.\n~ Sir Ronald Aylmer Fisher\n\nThe plural of anecdote is not data.\n~ Roger Brinner\n\nThe combination of some data and an aching desire for an answer does not ensure that a reasonable answer can be extracted from a given body of data.\n~ John Tukey\n\n\n* * * * * * * * * * * * * D I S C L A I M E R * * * * * * * * * * * * *\nDit bericht en eventuele bijlagen geven enkel de visie van de schrijver weer en binden het INBO onder geen enkel beding, zolang dit bericht niet bevestigd is door een geldig ondertekend document.\nThe views expressed in this message and any annex are purely those of the writer and may not be regarded as stating an official position of INBO, as long as the message is not confirmed by a duly signed document.\n\n______________________________________________\nR-devel at r-project.org<mailto:R-devel at r-project.org> mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n\n--\nJoris Meys\nStatistical consultant\n\nGhent University\nFaculty of Bioscience Engineering\nDepartment of Mathematical Modelling, Statistics and Bio-Informatics\n\ntel : +32 9 264 59 87\nJoris.Meys at Ugent.be<mailto:Joris.Meys at Ugent.be>\n-------------------------------\nDisclaimer : http://helpdesk.ugent.be/e-maildisclaimer.php\n* * * * * * * * * * * * * D I S C L A I M E R * * * * * * * * * * * * *\nDit bericht en eventuele bijlagen geven enkel de visie van de schrijver weer en binden het INBO onder geen enkel beding, zolang dit bericht niet bevestigd is door een geldig ondertekend document.\nThe views expressed in this message and any annex are purely those of the writer and may not be regarded as stating an official position of INBO, as long as the message is not confirmed by a duly signed document.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear Joris,\n\nThank for your comments. Changing importFrom(\"zoo\", rollmax) to importFrom(\"zoo\", rollmax, rollmax.default) solved the problem.\n\nBest regards,\n\nThierry\n\nir. Thierry Onkelinx\nInstituut voo",
       "thread_id": "thread-6750094d9fe0",
       "thread_depth": 0,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130128/6355cc68/attachment.pl"
+      ]
     },
     {
       "id": "msg-5c217afb7fe9",
@@ -3707,11 +3812,14 @@
         "<7ee277f1191b476fa6083ff8a53e1db3@CHIHT3.ad.uillinois.edu>",
         "<C7C15040-F4C5-4CE8-B652-3F76EFFAE8AA@illinois.edu>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130130/73956a19/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20130130/73956a19/attachment.pl>",
+      "body_plain": "Here is the session info Duncan asked about.\n\n> sessionInfo()\nR version 2.15.1 (2012-06-22)\nPlatform: x86_64-pc-mingw32/x64 (64-bit)\n\nlocale:\n[1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United\nStates.1252    LC_MONETARY=English_United States.1252\n[4] LC_NUMERIC=C                           LC_TIME=English_United\nStates.1252\n\nattached base packages:\n[1] splines   stats     graphics  grDevices utils     datasets  methods\nbase\n\nother attached packages:\n[1] survival_2.36-14 quantreg_4.94    SparseM_0.96\n\nloaded via a namespace (and not attached):\n[1] tools_2.15.1\n> ls()\n[1] \"fit\"             \"huc8list.cl.crq\" \"hucfits.cl.crq\"  \"my\"\n \"sites\"           \"summary.fit\"     \"sw3.3333.crq\"\n[8] \"test.crq\"\n>\n\n\nBrian S. Cade, PhD\n\nU. S. Geological Survey\nFort Collins Science Center\n2150 Centre Ave., Bldg. C\nFort Collins, CO  80526-8818\n\nemail:  brian_cade at usgs.gov\ntel:  970 226-9326\n\n\n\nOn Wed, Jan 30, 2013 at 11:04 AM, Roger Koenker <rkoenker at illinois.edu>wrote:\n\n> Duncan,\n>\n> Humm...  files must have been stripped from my original post....  I've put\n> them in http://www.econ.uiuc.edu/~roger/test/\n> but rerunning the example on my mac a third time revealed that my original\n> \"bad seed\" hypothesis was vindicated,\n> So I now have something to work from.  Sorry for adding to the noise.\n>\n> Roger\n>\n> url:    www.econ.uiuc.edu/~roger            Roger Koenker\n> email    rkoenker at uiuc.edu            Department of Economics\n> vox:     217-333-4558                University of Illinois\n> fax:       217-244-6678                Urbana, IL 61801\n>\n> On Jan 30, 2013, at 11:47 AM, Duncan Murdoch wrote:\n>\n> > On 13-01-30 11:37 AM, Roger Koenker wrote:\n> >> Dear All,\n> >>\n> >> I'm trying to track down a problem with my quantreg package reported by\n> a user doing censored quantile regression.\n> >> When he runs the test4.R file attached below (which reads the csv file\n> also attached) on his windows machine he gets\n> >> an error like this:\n> >>\n> >>> Error in dimnames(B) <- list(c(\"tau\", dimnames(x)[[2]], \"Qhat\"), NULL)\n> :\n> >>>   length of 'dimnames' [1] not equal to array extent\n> >>> In addition: Warning message:\n> >>> In rbind(grid[1:J], B, qhat) :\n> >>>   number of columns of result is not a multiple of vector length (arg\n> 2)\n> >>\n> >> However, when I run the same thing on my mac there is no error, no\n> warning.  And --\n> >> more strangely-- running this on another windows laptop here in Urbana\n> also encounters\n> >> no problems.  I thought that this might just be a seed problem since\n> there is a bootstrapping\n> >> step at the end, but the original user has tried several seeds and\n> always gets this error.\n> >> We are all running 2.15.1 and V4.94 of quantreg.  I understand that\n> YMMV, especially on\n> >> windows,  but it is difficult to debug this sort of thing when I can't\n> reproduce it.  Any suggestions\n> >> or other experience would be welcome.  The test problem takes a minute\n> or so to run on my\n> >> mac.\n> >\n> > There was no attachment.  It might also be important to give more\n> > detailed info, e.g. what sessionInfo() prints on the bad system, and\n> > whether this is from Rgui or Rterm, and what ls() shows (in case some\n> > function is being masked).\n> >\n> > Duncan Murdoch\n> >\n> >\n> >> Thanks,\n> >> Roger\n> >>\n> >>\n> >> url:    www.econ.uiuc.edu/~roger            Roger Koenker\n> >> email    rkoenker at uiuc.edu            Department of Economics\n> >> vox:     217-333-4558                University of Illinois\n> >> fax:       217-244-6678                Urbana, IL 61801\n> >>\n> >>\n> >>>\n> >>>\n> >>>\n> >>>\n> >>>>\n> >>>>\n> >>>>\n> >>>>\n> >>>>\n> >>>>\n> >>>> ______________________________________________\n> >>>> R-devel at r-project.org mailing list\n> >>>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Here is the session info Duncan asked about.\n\n> sessionInfo()\nR version 2.15.1 (2012-06-22)\nPlatform: x86_64-pc-mingw32/x64 (64-bit)\n\nlocale:\n[1] LC_COLLATE=English_United States.1252  LC_CTYPE=Englis",
       "thread_id": "thread-43b2927ce64b",
       "thread_depth": 1,
-      "month": "2013-01"
+      "month": "2013-01",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20130130/73956a19/attachment.pl"
+      ]
     },
     {
       "id": "msg-b004780d9058",

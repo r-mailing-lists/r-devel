@@ -475,11 +475,14 @@
       "subject_clean": "issue with base:::namespaceImportMethods",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120405/b29258a2/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120405/b29258a2/attachment.pl>",
+      "body_plain": "Hi,\n\nI've noticed an issue with S4 methods and namespaces which only arises in\nparticular, difficult to reproduce configurations. One example is the ggbio\npackage in Bioconductor, which currently emits these warnings when its\nnamespace is loaded:\n\n----------------------\n\nlibrary(ggbio)\nLoading required package: ggplot2\n\nAttaching package: ‘ggbio’\n\nThe following object(s) are masked from ‘package:ggplot2’:\n\n    geom_rect, geom_segment, stat_identity, xlim\n\nWarning messages:\n1: found methods to import for function ‘append’ but not the generic itself\n2: found methods to import for function ‘as.factor’ but not the generic\nitself\n3: found methods to import for function ‘as.list’ but not the generic\nitself\n4: found methods to import for function ‘aggregate’ but not the generic\nitself\n5: found methods to import for function ‘as.table’ but not the generic\nitself\n6: found methods to import for function ‘complete.cases’ but not the\ngeneric itself\n7: found methods to import for function ‘cor’ but not the generic itself\n8: found methods to import for function ‘diff’ but not the generic itself\n9: found methods to import for function ‘drop’ but not the generic itself\n\n------------------------\n\nI tracked these warnings down to the behavior of the\nbase:::namespaceImportMethods, which ends up calling\nbase:::namespaceImportFrom with arguments that seem to violate the\nassumptions made in that function. It looks like base:::namespaceImportFrom\n(conditionally) assumes that the \"vars\", \"generics\" and \"packages\"\narguments are parallel vectors. However, base:::namespaceImportMethods can\nend up filtering 'vars' so that it no longer parallels the other two. Maybe\nI am just misreading the code, but the following patch seems to fix things:\n\nIndex: src/library/base/R/namespace.R\n===================================================================\n--- src/library/base/R/namespace.R      (revision 58917)\n+++ src/library/base/R/namespace.R      (working copy)\n@@ -930,8 +930,10 @@\n\n namespaceImportMethods <- function(self, ns, vars) {\n     allVars <- character()\n+    generics <- character()\n+    packages <- character()\n     allFuns <- methods:::.getGenerics(ns) # all the methods tables in ns\n-    packages <- attr(allFuns, \"package\")\n+    allPackages <- attr(allFuns, \"package\")\n     pkg <- methods:::getPackageName(ns)\n     if(!all(vars %in% allFuns)) {\n         message(gettextf(\"No methods found in \\\"%s\\\" for requests: %s\",\n@@ -950,16 +952,23 @@\n         ## import methods tables if asked for\n         ## or if the corresponding generic was imported\n         g <- allFuns[[i]]\n+        p <- allPackages[[i]]\n         if(exists(g, envir = self, inherits = FALSE) # already imported\n            || g %in% vars) { # requested explicitly\n-            tbl <- methods:::.TableMetaName(g, packages[[i]])\n-            if(is.null(.mergeImportMethods(self, ns, tbl))) # a new\nmethods\ntable\n\n+            tbl <- methods:::.TableMetaName(g, p)\n+            if(is.null(.mergeImportMethods(self, ns, tbl))) { # a new\nmethods t\nable\n\n                allVars <- c(allVars, tbl) # import it;else, was merged\n+               generics <- c(generics, g)\n+               packages <- c(packages, p)\n+            }\n         }\n         if(g %in% vars && !exists(g, envir = self, inherits = FALSE)) {\n             if(exists(g, envir = ns) &&\n-               methods:::is(get(g, envir = ns), \"genericFunction\"))\n+               methods:::is(get(g, envir = ns), \"genericFunction\")) {\n                 allVars <- c(allVars, g)\n+                generics <- c(generics, g)\n+                packages <- c(packages, p)\n+            }\n             else { # should be primitive\n                 fun <- methods::getFunction(g, mustFind = FALSE, where =\nself)\n                 if(is.primitive(fun) || methods::is(fun,\n\"genericFunction\")) {}\n@@ -970,7 +979,7 @@\n             }\n         }\n     }\n-    namespaceImportFrom(self, asNamespace(ns), allVars, allFuns, packages)\n+    namespaceImportFrom(self, asNamespace(ns), allVars, generics, packages)\n }\n\n-----------------------------\n\nThanks for any advice,\n\nMichael\n\nPS: sessionInfo() (yes, ggbio has a LOT of dependencies):\n\n> sessionInfo()\nR Under development (unstable) (2012-04-04 r58917)\nPlatform: x86_64-unknown-linux-gnu (64-bit)\n\nlocale:\n [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n [7] LC_PAPER=C                 LC_NAME=C\n [9] LC_ADDRESS=C               LC_TELEPHONE=C\n[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n\nattached base packages:\n[1] stats     graphics  grDevices utils     datasets  methods   base\n\nother attached packages:\n[1] ggbio_1.2.0         ggplot2_0.9.0       BiocInstaller_1.4.3\n\nloaded via a namespace (and not attached):\n [1] AnnotationDbi_1.18.0    Biobase_2.16.0          BiocGenerics_0.2.0\n [4] biomaRt_2.12.0          Biostrings_2.24.1       biovizBase_1.2.0\n [7] bitops_1.0-4.1          BSgenome_1.24.0         cluster_1.14.2\n[10] colorspace_1.1-1        DBI_0.2-5               dichromat_1.2-4\n[13] digest_0.5.2            GenomicFeatures_1.8.0   GenomicRanges_1.8.3\n[16] grid_2.16.0             gridExtra_0.9           Hmisc_3.9-3\n[19] IRanges_1.14.2          lattice_0.20-6          MASS_7.3-17\n[22] Matrix_1.0-6            memoise_0.1             munsell_0.3\n[25] plyr_1.7.1              proto_0.3-9.2           RColorBrewer_1.0-5\n[28] RCurl_1.91-1            reshape2_1.2.1          Rsamtools_1.8.0\n[31] RSQLite_0.11.1          rtracklayer_1.16.0      scales_0.2.0\n[34] snpStats_1.6.0          splines_2.16.0          stats4_2.16.0\n[37] stringr_0.6             survival_2.36-12        tools_2.16.0\n[40] VariantAnnotation_1.2.2 XML_3.9-4               zlibbioc_1.2.0\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\n\nI've noticed an issue with S4 methods and namespaces which only arises in\nparticular, difficult to reproduce configurations. One example is the ggbio\npackage in Bioconductor, which currently emit",
       "thread_id": "thread-ca87f3122672",
       "thread_depth": 0,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120405/b29258a2/attachment.pl"
+      ]
     },
     {
       "id": "msg-3221e98553ca",
@@ -816,11 +819,14 @@
       "subject_clean": "Display instruction text on package load",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120407/f79a4b32/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120407/f79a4b32/attachment.pl>",
+      "body_plain": "I'm currently working on a new package for R that interfaces with an API.\nMost of the package's functionality requires users to supply an access key\nthat allows the package to work with the API. I want to display text\nimmediately upon loading the package that instructs/reminds users to enter\ntheir access key before attempting to do anything (as the package won't\nreally work without it). I've searched the relevant help files for creating\npackages but haven't been able find anything about how to do this. As an\nexample, library(Zelig) does what I'm trying to achieve.\n\nThanks for your help! And sorry if there's an obvious answer to this that I\nam oblivious to.\n-Thomas\n\n-- \nThomas J. Leeper\n\nPhD Candidate, ABD\nDepartment of Political Science\nNorthwestern University\nleeper at u.northwestern.edu\nhttp://www.thomasleeper.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I'm currently working on a new package for R that interfaces with an API.\nMost of the package's functionality requires users to supply an access key\nthat allows the package to work with the API. I wan",
       "thread_id": "thread-c6c1a0c220e8",
       "thread_depth": 0,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120407/f79a4b32/attachment.pl"
+      ]
     },
     {
       "id": "msg-b6f0ff9bc762",
@@ -888,11 +894,14 @@
       "references": [
         "<CAOC91MTM+YPrsWhX4S31BRJcJ-YJddhGqXxZ8Oc4VngV31vWEQ@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120408/73d93834/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120408/73d93834/attachment.pl>",
+      "body_plain": "Great! I will look into .onAttach, .onLoad, and packageStartupMessage.\n\nThanks so much!\n\n-Thomas\n\nOn Sat, Apr 7, 2012 at 4:27 PM, Thomas J. Leeper <thosjleeper at gmail.com>wrote:\n\n> I'm currently working on a new package for R that interfaces with an API.\n> Most of the package's functionality requires users to supply an access key\n> that allows the package to work with the API. I want to display text\n> immediately upon loading the package that instructs/reminds users to enter\n> their access key before attempting to do anything (as the package won't\n> really work without it). I've searched the relevant help files for creating\n> packages but haven't been able find anything about how to do this. As an\n> example, library(Zelig) does what I'm trying to achieve.\n>\n> Thanks for your help! And sorry if there's an obvious answer to this that\n> I am oblivious to.\n> -Thomas\n>\n> --\n> Thomas J. Leeper\n>\n> PhD Candidate, ABD\n> Department of Political Science\n> Northwestern University\n> leeper at u.northwestern.edu\n> http://www.thomasleeper.com\n>\n>\n\n\n-- \nThomas J. Leeper\n\nPhD Candidate, ABD\nDepartment of Political Science\nNorthwestern University\nleeper at u.northwestern.edu\nhttp://www.thomasleeper.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Great! I will look into .onAttach, .onLoad, and packageStartupMessage.\n\nThanks so much!\n\n-Thomas\n\nOn Sat, Apr 7, 2012 at 4:27 PM, Thomas J. Leeper <thosjleeper at gmail.com>wrote:\n\n> I'm currently wor",
       "thread_id": "thread-c6c1a0c220e8",
       "thread_depth": 1,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120408/73d93834/attachment.pl"
+      ]
     },
     {
       "id": "msg-3edada854dd8",
@@ -1089,11 +1098,14 @@
       "subject_clean": "unexpectedly high memory use in R 2.14.0",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120411/7f0cf064/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120411/7f0cf064/attachment.pl>",
+      "body_plain": "I recently started using R 2.14.0 on a new machine and i am  experiencing\nwhat seems like unusually greedy memory use. It happens all the time, but\nto give a specific example, let's say i run the following code\n\n--------\n\nfor(j in 1:length(files)){\n      load(file.path(dump.dir, files[j]))\n      mat.data[[j]]<-data\n}\nsave(abind(mat.data, along=2), file.path(dump.dir, filename))\n\n---------\n\nIt loads parts of multidimensional matrix into a list, then binds it along\nsecond dimension and saves on disk. Code works, although slowly, but what's\nstrange is the amount of memory it uses.\nIn particular, each chunk of data is between 50M to 100M, and altogether\nthe binded matrix is 1.3G. One would expect that R would use roughly double\nthat memory - to keep mat.data and its binded version separately, or 1G. I\ncould imagine that for somehow it could use 3 times the size of matrix. But\nin fact it uses more than 5.5 times (almost all of my physical memory) and\ni think is swapping a lot to disk . For this particular task, my top output\nshows eating more than 7G of memory and using up 11G of virtual memory as\nwell\n\n$top\n\nPID    USER      PR  NI  VIRT    RES  SHR   S %CPU %MEM    TIME+  COMMAND\n8823  user        25   0  11g     7.2g  10m   R   99.7     92.9\n5:55.05\nR\n\n8590   root       15   0  154m   16m   5948  S  0.5      0.2\n23:22.40 Xorg\n\n\nI have strong suspicion that something is off with my R binary, i don't\nthink i experienced things like that in a long time. Is this in line with\nwhat i am supposed to experience? Are there any ideas for diagnosing what\nis going on?\nWould appreciate any suggestions\n\nThanks\nAndre\n\n\n==================================\n\nHere is what i am running on:\n\n\nCentOS release 5.5 (Final)\n\n\n> sessionInfo()\nR version 2.14.0 (2011-10-31)\nPlatform: x86_64-unknown-linux-gnu (64-bit)\n\nlocale:\n[1] en_US.UTF-8\n\nattached base packages:\n[1] stats     graphics  grDevices datasets  utils     methods   base\n\nother attached packages:\n[1] abind_1.4-0       rJava_0.9-3       R.utils_1.12.1    R.oo_1.9.3\nR.methodsS3_1.2.2\n\nloaded via a namespace (and not attached):\n[1] codetools_0.2-8 tcltk_2.14.0    tools_2.14.0\n\n\n\nI compiled R configure as follows\n/configure --prefix=/usr/local/R --enable-byte-compiled-packages=no\n--with-tcltk --enable-R-shlib=yes\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I recently started using R 2.14.0 on a new machine and i am  experiencing\nwhat seems like unusually greedy memory use. It happens all the time, but\nto give a specific example, let's say i run the foll",
       "thread_id": "thread-11ff41fc0996",
       "thread_depth": 0,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120411/7f0cf064/attachment.pl"
+      ]
     },
     {
       "id": "msg-f4eb68b2d862",
@@ -1144,11 +1156,14 @@
         "<CACU3EkMATY=_GZJuOo5gGGKXFS4iOvCMdyeAtNNRmKqbULN7kw@mail.gmail.com>",
         "<2DFCAA94-CFFA-45C5-A280-C099A40E7619@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120411/4b4de15b/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120411/4b4de15b/attachment.pl>",
+      "body_plain": "You are quite right that my exec time would seriously go down if i\npre-allocate and not even use abind, just assign into the preallocated\nmatrix. The reason i didn't do it here is that this is a part of some\nutility function that doesn't know the sizes of chunks that are on disk\nuntill it reads all of them. If i knew a way to read dimnames off disk\nwithout reading whole matrices, i could do what you are suggesting. I guess\ni am better off using filebacked matrices from bigmemory, where i could\nread dimnames off disk without reading the matrix. I need to unwrap 4 dim\narrays into 2 dim arrays and wrap them back, but i guess it would be faster\nanyway.\n\nMy question, however was not so much about speed improvement of a\nparticular task. It was whether this memory use of 7.2g physical memory and\n11g of virtual makes sense when i am building a 1.3G matrix with this code.\nIt just seems to me that my memory goes to almost 100% physical not just on\nthis task but on others. I wonder if there is something seriously off with\nmy memory experience and if i should rebuild R.\n\nIn term of your lapply solution, it indeed used much less memory, in fact\nabout 25% less memory than the loop, about 4 times the size of the final\nobject. I am still not clear if my memory use makes sense in terms of R\nmemory model and I am frankly not clear why lapply uses less memory. (I\nunderstand why it makes less copying)\n\nOn Wed, Apr 11, 2012 at 7:15 PM, peter dalgaard <pdalgd at gmail.com> wrote:\n\n>\n> On Apr 12, 2012, at 00:53 , andre zege wrote:\n>\n> > I recently started using R 2.14.0 on a new machine and i am  experiencing\n> > what seems like unusually greedy memory use. It happens all the time, but\n> > to give a specific example, let's say i run the following code\n> >\n> > --------\n> >\n> > for(j in 1:length(files)){\n> >      load(file.path(dump.dir, files[j]))\n> >      mat.data[[j]]<-data\n> > }\n> > save(abind(mat.data, along=2), file.path(dump.dir, filename))\n>\n> Hmm, did you preallocate mat.data? If not, you will be copying it\n> repeatedly, and I'm not sure that this can be done by copying pointers only.\n>\n> Does it work better with\n>\n> mat.data <- lapply(files, function(name) {load(file.path(dump.dir, name);\n> data})\n>\n> ?\n>\n>\n> >\n> > ---------\n> >\n> > It loads parts of multidimensional matrix into a list, then binds it\n> along\n> > second dimension and saves on disk. Code works, although slowly, but\n> what's\n> > strange is the amount of memory it uses.\n> > In particular, each chunk of data is between 50M to 100M, and altogether\n> > the binded matrix is 1.3G. One would expect that R would use roughly\n> double\n> > that memory - to keep mat.data and its binded version separately, or 1G.\n> I\n> > could imagine that for somehow it could use 3 times the size of matrix.\n> But\n> > in fact it uses more than 5.5 times (almost all of my physical memory)\n> and\n> > i think is swapping a lot to disk . For this particular task, my top\n> output\n> > shows eating more than 7G of memory and using up 11G of virtual memory as\n> > well\n> >\n> > $top\n> >\n> > PID    USER      PR  NI  VIRT    RES  SHR   S %CPU %MEM    TIME+  COMMAND\n> > 8823  user        25   0  11g     7.2g  10m   R   99.7     92.9\n> > 5:55.05\n> > R\n> >\n> > 8590   root       15   0  154m   16m   5948  S  0.5      0.2\n> > 23:22.40 Xorg\n> >\n> >\n> > I have strong suspicion that something is off with my R binary, i don't\n> > think i experienced things like that in a long time. Is this in line with\n> > what i am supposed to experience? Are there any ideas for diagnosing what\n> > is going on?\n> > Would appreciate any suggestions\n> >\n> > Thanks\n> > Andre\n> >\n> >\n> > ==================================\n> >\n> > Here is what i am running on:\n> >\n> >\n> > CentOS release 5.5 (Final)\n> >\n> >\n> >> sessionInfo()\n> > R version 2.14.0 (2011-10-31)\n> > Platform: x86_64-unknown-linux-gnu (64-bit)\n> >\n> > locale:\n> > [1] en_US.UTF-8\n> >\n> > attached base packages:\n> > [1] stats     graphics  grDevices datasets  utils     methods   base\n> >\n> > other attached packages:\n> > [1] abind_1.4-0       rJava_0.9-3       R.utils_1.12.1    R.oo_1.9.3\n> > R.methodsS3_1.2.2\n> >\n> > loaded via a namespace (and not attached):\n> > [1] codetools_0.2-8 tcltk_2.14.0    tools_2.14.0\n> >\n> >\n> >\n> > I compiled R configure as follows\n> > /configure --prefix=/usr/local/R --enable-byte-compiled-packages=no\n> > --with-tcltk --enable-R-shlib=yes\n> >\n> >       [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n> --\n> Peter Dalgaard, Professor,\n> Center for Statistics, Copenhagen Business School\n> Solbjerg Plads 3, 2000 Frederiksberg, Denmark\n> Phone: (+45)38153501\n> Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com\n>\n>\n>\n>\n>\n>\n>\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "You are quite right that my exec time would seriously go down if i\npre-allocate and not even use abind, just assign into the preallocated\nmatrix. The reason i didn't do it here is that this is a part ",
       "thread_id": "thread-11ff41fc0996",
       "thread_depth": 2,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120411/4b4de15b/attachment.pl"
+      ]
     },
     {
       "id": "msg-5e15f5acfdb2",
@@ -1333,11 +1348,14 @@
         "<CACU3EkMATY=_GZJuOo5gGGKXFS4iOvCMdyeAtNNRmKqbULN7kw@mail.gmail.com>",
         "<CAFDcVCSi1wgAMMHdOdHBK-SUNXqaWv8_=p3AX30nyFyNCz-sFQ@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120412/44973f1f/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120412/44973f1f/attachment.pl>",
+      "body_plain": "Henrik, thanks for your reply. I might have misrepresented a  bit my actual\ncode . It seems that you are suggesting doing rm() on objects i don't use.\nIn the real code which behavior i\nreported it is exactly what is being done, i.e i use rm().  I also use a\nsmall wrapper around load that lets me assign loaded data directly into any\na variable with any name, without remembering the name of the object from\nwhich it was saved, i.e instead of standard load i use something like (with\nerror checking in real code)\n\nut.load(filename)<-function(filename){ load(filename); s<-ls(); get(\"obj\")\n}\n\nin other words, after i called data[[j]]<-ut.load(file[j]), there is no\nreference to intermediary object to clean, i am assuming garbage collector\nquickly takes care of it.\nJust making sure that we are on the same page. I am mostly looking for some\nguidance on what to expect in terms of R memory behavior. This particular\ntask is just an illustration of a typical issue that i encounter often\nlately. Is there a way to diagnose if everything is normal with a\nparticular task in terms of memory use? Is there a memory benchmark? Is\nthere some white paper discussing  how memory and copying of objects\nactually works in R? Is there a limited chunk of C code that i could read\nto try to understand it? I just don't want to read all of the C code.\n\nThanks much\nAndre\n\n\n\nOn Wed, Apr 11, 2012 at 9:02 PM, Henrik Bengtsson <hb at biostat.ucsf.edu>wrote:\n\n> Leaving aside what's going on inside abind::abind(), maybe the\n> following sheds some light on what's is being wasted:\n>\n> # Preallocate (probably doesn't make a difference because it's a list)\n> mat.data <- vector(\"list\", length=length(files));\n> for (j in 1:length(files)){\n>     vars <- load(file.path(dump.dir, files[j]))\n>     mat.data[[j]]<-data;\n>      # Not needed anymore/remove everything loaded\n>     rm(list=vars);\n> }\n>\n> data <- abind(mat.data, along=2);\n> # Not needed anymore\n> rm(mat.data);\n>\n> save(data, file.path(dump.dir, filename))\n>\n> My $.02\n> /Henrik\n>\n> On Wed, Apr 11, 2012 at 3:53 PM, andre zege <andre.zege at gmail.com> wrote:\n> > I recently started using R 2.14.0 on a new machine and i am  experiencing\n> > what seems like unusually greedy memory use. It happens all the time, but\n> > to give a specific example, let's say i run the following code\n> >\n> > --------\n> >\n> > for(j in 1:length(files)){\n> >      load(file.path(dump.dir, files[j]))\n> >      mat.data[[j]]<-data\n> > }\n> > save(abind(mat.data, along=2), file.path(dump.dir, filename))\n> >\n> > ---------\n> >\n> > It loads parts of multidimensional matrix into a list, then binds it\n> along\n> > second dimension and saves on disk. Code works, although slowly, but\n> what's\n> > strange is the amount of memory it uses.\n> > In particular, each chunk of data is between 50M to 100M, and altogether\n> > the binded matrix is 1.3G. One would expect that R would use roughly\n> double\n> > that memory - to keep mat.data and its binded version separately, or 1G.\n> I\n> > could imagine that for somehow it could use 3 times the size of matrix.\n> But\n> > in fact it uses more than 5.5 times (almost all of my physical memory)\n> and\n> > i think is swapping a lot to disk . For this particular task, my top\n> output\n> > shows eating more than 7G of memory and using up 11G of virtual memory as\n> > well\n> >\n> > $top\n> >\n> > PID    USER      PR  NI  VIRT    RES  SHR   S %CPU %MEM    TIME+  COMMAND\n> > 8823  user        25   0  11g     7.2g  10m   R   99.7     92.9\n> > 5:55.05\n> > R\n> >\n> > 8590   root       15   0  154m   16m   5948  S  0.5      0.2\n> > 23:22.40 Xorg\n> >\n> >\n> > I have strong suspicion that something is off with my R binary, i don't\n> > think i experienced things like that in a long time. Is this in line with\n> > what i am supposed to experience? Are there any ideas for diagnosing what\n> > is going on?\n> > Would appreciate any suggestions\n> >\n> > Thanks\n> > Andre\n> >\n> >\n> > ==================================\n> >\n> > Here is what i am running on:\n> >\n> >\n> > CentOS release 5.5 (Final)\n> >\n> >\n> >> sessionInfo()\n> > R version 2.14.0 (2011-10-31)\n> > Platform: x86_64-unknown-linux-gnu (64-bit)\n> >\n> > locale:\n> > [1] en_US.UTF-8\n> >\n> > attached base packages:\n> > [1] stats     graphics  grDevices datasets  utils     methods   base\n> >\n> > other attached packages:\n> > [1] abind_1.4-0       rJava_0.9-3       R.utils_1.12.1    R.oo_1.9.3\n> > R.methodsS3_1.2.2\n> >\n> > loaded via a namespace (and not attached):\n> > [1] codetools_0.2-8 tcltk_2.14.0    tools_2.14.0\n> >\n> >\n> >\n> > I compiled R configure as follows\n> > /configure --prefix=/usr/local/R --enable-byte-compiled-packages=no\n> > --with-tcltk --enable-R-shlib=yes\n> >\n> >        [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Henrik, thanks for your reply. I might have misrepresented a  bit my actual\ncode . It seems that you are suggesting doing rm() on objects i don't use.\nIn the real code which behavior i\nreported it is ",
       "thread_id": "thread-11ff41fc0996",
       "thread_depth": 2,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120412/44973f1f/attachment.pl"
+      ]
     },
     {
       "id": "msg-a9a73294c5d7",
@@ -1849,11 +1867,14 @@
       "references": [
         "<CAErODj9RJ60Xdp=sLu=pGRiBOY_CSsxnjUmqObxhHYtEhHyLxA@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120416/8e155084/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120416/8e155084/attachment.pl>",
+      "body_plain": "Paul,\n  How about\nplot(x,y, xlim=c(0, max(pretty(x))))\n\nDave\n\n\n\nFrom:\nPaul Johnson <pauljohn32 at gmail.com>\nTo:\nR Devel List <r-devel at r-project.org>\nDate:\n04/16/2012 12:54 PM\nSubject:\n[Rd] I wish xlim=c(0, NA) would work. How about I send you a patch?\nSent by:\nr-devel-bounces at r-project.org\n\n\n\nI'm looking for an R mentor.  I want to propose a change in management\nof plot options xlim and ylim.\n\nDid you ever want to change one coordinate in xlim or ylim? It happens\nto me all the time.\n\nx <- rnorm(100, m=5, s=1)\ny <- rnorm(100, m=6, s=1)\nplot(x,y)\n\n## Oh, I want the \"y axis\" to show above x=0.\n\nplot(x,y, xlim=c(0, ))\n\n##Output: Error in c(0, ) : argument 2 is empty\n\n plot(x,y, xlim=c(0,NA ))\n## Output: Error in plot.window(...) : need finite 'xlim' values\n\n\nI wish that plot would let me supply just the min (or max) and then\ncalculate the other value where needed.\nIt is a little bit tedious for the user to do that for herself.  The\nuser must be knowledgeable enough to know where the maximum (MAX) is\nsupposed to be, and then supply xlim=c(0, MAX). I can't see any reason\nfor insisting users have that deeper understanding of how R calculates\nranges for plots.\n\nSuppose the user is allowed to supply NA to signal R should fill in the \nblanks.\n\nplot(x,y, xlim=c(0, NA))\n\n\nIn plot.default now, I find this code to manage xlim\n\n   xlim <- if (is.null(xlim))\n        range(xy$x[is.finite(xy$x)])\n\nAnd I would change it to be something like\n   ##get default range\n   nxlim <- range(xy$x[is.finite(xy$x)])\n\n   ## if xlim is NULL, so same as current\n    xlim <- if (is.null(xlim)) nxlim\n## Otherwise, replace NAs in xlim with values from nxlim\n    else xlim[ is.na(xlim) ] <- nxlim[ is.na(xlim) ]\n\n\nWho is the responsible party for plot.default.  How about it?\n\nThink of how much happier users would be!\n\npj\n-- \nPaul E. Johnson\nProfessor, Political Science    Assoc. Director\n1541 Lilac Lane, Room 504     Center for Research Methods\nUniversity of Kansas               University of Kansas\nhttp://pj.freefaculty.org            http://quant.ku.edu\n\n______________________________________________\nR-devel at r-project.org mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Paul,\n  How about\nplot(x,y, xlim=c(0, max(pretty(x))))\n\nDave\n\n\n\nFrom:\nPaul Johnson <pauljohn32 at gmail.com>\nTo:\nR Devel List <r-devel at r-project.org>\nDate:\n04/16/2012 12:54 PM\nSubject:\n[Rd] I wish ",
       "thread_id": "thread-ec07f8e63903",
       "thread_depth": 1,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120416/8e155084/attachment.pl"
+      ]
     },
     {
       "id": "msg-35a31359b96e",
@@ -2194,11 +2215,14 @@
       "subject_clean": "R-2.15 compile error: fatal error: internal consistency failure",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120417/24e1a734/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120417/24e1a734/attachment.pl>",
+      "body_plain": "I am unable to compile R-2.15.0 source. I configured it without problems\nwith options that i used many times before\n\n./configure --prefix=/home/andre/R-2.15.0\n--enable-byte-compiled-packages=no --with-tcltk --enable-R-shlib=yes\n\nThen when i started making it, it died while making lapack, particularly on\nthe line\n\ngfortran  -fopenmp -fpic  -g -O2  -c dlapack3.f -o dlapack3.o\ndlapack3.f: In function ‘dsbgst’:\ndlapack3.f:12097: fatal error: internal consistency failure\ncompilation terminated.\nmake[4]: *** [dlapack3.o] Error 1\n\nCould anyone give me a clue what is going wrong and how could i fix that? I\nam running Centos 5.5, in particular, the following\n\n$ more /proc/version\nLinux version 2.6.18-194.el5 (mockbuild at builder10.centos.org) (gcc version\n4.1.2 20080704 (Red Hat 4.1.2-48)) #1 SMP Fri Apr 2 14:58:14 EDT 2010\n\nThanks\nAndre\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I am unable to compile R-2.15.0 source. I configured it without problems\nwith options that i used many times before\n\n./configure --prefix=/home/andre/R-2.15.0\n--enable-byte-compiled-packages=no --with",
       "thread_id": "thread-476c7171560c",
       "thread_depth": 0,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120417/24e1a734/attachment.pl"
+      ]
     },
     {
       "id": "msg-9c1706213f0a",
@@ -2352,11 +2376,14 @@
       "subject_clean": "Column(row)wise minimum and maximum",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120419/2456aae9/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120419/2456aae9/attachment.pl>",
+      "body_plain": "Hi,\n\nCurrently, the \"base\" has colSums, colMeans.  It seems that it would be useful to extend this to also include colMin, colMax (of course, rowMin and rowMax, as well) in order to facilitate faster computations for large vectors (compared to using apply).  Has this been considered before?  Please forgive me if this has already been discussed before.\n\nThanks,\nRavi\n\nRavi Varadhan, Ph.D.\nAssistant Professor\nThe Center on Aging and Health\nDivision of Geriatric Medicine & Gerontology\nJohns Hopkins University\nrvaradhan at jhmi.edu<mailto:rvaradhan at jhmi.edu>\n410-502-2619\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\n\nCurrently, the \"base\" has colSums, colMeans.  It seems that it would be useful to extend this to also include colMin, colMax (of course, rowMin and rowMax, as well) in order to facilitate faster ",
       "thread_id": "thread-deb51ca3b003",
       "thread_depth": 0,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120419/2456aae9/attachment.pl"
+      ]
     },
     {
       "id": "msg-472f03c3da13",
@@ -2619,11 +2646,14 @@
       "references": [
         "<4F9092F5.8070705@vanderbilt.edu>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120420/f277ac71/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120420/f277ac71/attachment.pl>",
+      "body_plain": "Cole,\nBioconductor's high throughput sequencing infrastructure package IRanges \ncontains code that may be useful for speeding up base::rbind.data.frame. \nI've extracted the salient bits from that rbind method, but left the \ncorner case handling code out. IRanges's rbind method took the approach \nof treating a data set as a list of equal length columns, and so it \ncontains a number of lapplys and vector concatenation calls. Given that \nbase::rbind.data.frame sits at the core of many operations, I'm not sure \nif patches would be accepted for it, but I could take a crack at it.\n\nbiocRBind <- function(..., deparse.level=1)\n{\n   ## Simplified version of IRanges's rbind method for DataFrame\n   ## Removed all data checks, ignored row names\n   args <- list(...)\n   df <- args[[1L]]\n   cn <- colnames(df)\n   cl <- unlist(lapply(as.list(df, use.names = FALSE), class))\n   factors <- unlist(lapply(as.list(df, use.names = FALSE), is.factor))\n   cols <- lapply(seq_len(length(df)), function(i) {\n     cols <- lapply(args, `[[`, cn[i])\n     if (factors[i]) { # combine factor levels, coerce to character\n       levs <- unique(unlist(lapply(cols, levels), use.names=FALSE))\n       cols <- lapply(cols, as.character)\n     }\n     combined <- do.call(c, unname(cols))\n     if (factors[i])\n       combined <- factor(combined, levs)\n     as(combined, cl[i])\n   })\n   names(cols) <- colnames(df)\n   do.call(data.frame, cols)\n}\n\n# create list of data.frames\nset.seed(123)\ndat <- vector(\"list\", 20000)\nfor(i in seq_along(dat)) {\n   size <- sample(1:30, 1)\n   dat[[i]] <- data.frame(id=rep(i, size), value=rnorm(size), \nletter=sample(LETTERS, size, replace=TRUE), ind=sample(c(TRUE,FALSE), \nsize, replace=TRUE))\n}\n\n# sample runs\n > system.time(do.call(biocRBind, dat))\n    user  system elapsed\n   2.120   0.000   2.125\n > system.time(do.call(biocRBind, dat))\n    user  system elapsed\n   2.092   0.000   2.091\n > system.time(do.call(biocRBind, dat))\n    user  system elapsed\n   2.080   0.000   2.077\n > sessionInfo()\nR Under development (unstable) (2012-04-19 r59111)\nPlatform: x86_64-unknown-linux-gnu (64-bit)\n\nlocale:\n  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n  [7] LC_PAPER=C                 LC_NAME=C\n  [9] LC_ADDRESS=C               LC_TELEPHONE=C\n[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n\nattached base packages:\n[1] stats     graphics  grDevices utils     datasets  methods   base\n\nloaded via a namespace (and not attached):\n[1] tools_2.16.0\n\n\nCheers,\nPatrick\n\n\nOn 4/19/2012 3:34 PM, Cole Beck wrote:\n> It's normal for me to create a list of data.frames and then use \n> do.call('rbind', list(...)) to create a single data.frame.  However, \n> I've noticed as the size of the list grows large, it is perhaps better \n> to do this in chunks.  As an example here's a list of 20,000 similar \n> data.frames.\n>\n> # create list of data.frames\n> dat <- vector(\"list\", 20000)\n> for(i in seq_along(dat)) {\n>   size <- sample(1:30, 1)\n>   dat[[i]] <- data.frame(id=rep(i, size), value=rnorm(size), \n> letter=sample(LETTERS, size, replace=TRUE), ind=sample(c(TRUE,FALSE), \n> size, replace=TRUE))\n> }\n> # combine into one data.frame, normal usage\n> # system.time(do.call('rbind', dat)) # takes 2-3 minutes\n> combine <- function(x, steps=NA, verbose=FALSE) {\n>   nr <- length(x)\n>   if(is.na(steps)) steps <- nr\n>   while(nr %% steps != 0) steps <- steps+1\n>   if(verbose) cat(sprintf(\"step size: %s\\r\\n\", steps))\n>   dl <- vector(\"list\", steps)\n>   for(i in seq(steps)) {\n>     ix <- seq(from=(i-1)*nr/steps+1, length.out=nr/steps)\n>     dl[[i]] <- do.call(\"rbind\", x[ix])\n>   }\n>   do.call(\"rbind\", dl)\n> }\n> # combine into one data.frame\n> system.time(combine(dat, 100)) # takes 5-10 seconds\n>\n> I'm very surprised by this result.  Does this improvement seem \n> reasonable?  I would think \"do.call\" could utilize something similar \n> by default when the length of \"args\" is too high.  Is using \"do.call\" \n> not recommended in this scenario?\n>\n> Regards,\n> Cole Beck\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel \n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Cole,\nBioconductor's high throughput sequencing infrastructure package IRanges \ncontains code that may be useful for speeding up base::rbind.data.frame. \nI've extracted the salient bits from that rbin",
       "thread_id": "thread-ad6775c63251",
       "thread_depth": 1,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120420/f277ac71/attachment.pl"
+      ]
     },
     {
       "id": "msg-7d8790a7ee25",
@@ -2834,11 +2864,14 @@
         "<CAJ9CoW=rvNmPoAkb5d1qUdLL+RJMgUt2kAh82WWKs9W1mEH+xw@mail.gmail.com>",
         "<CANVKczNwQA77MS2e_buw_nmwNEbP-a-Rn3hVqb2Pdz93ctnoDQ@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120422/1c2f6a10/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120422/1c2f6a10/attachment.pl>",
+      "body_plain": "Max,\n\nSo it's not particularly readable, but I suspect it could be much faster ...\n\n#mydf is the data.frame\nargs = as.list(mydf)\nargs$sep = \" , \"\nout = paste(do.call(\"paste\", args), collapse=\"\\n\")\n\ncat(out, file=myfilename)\n\nHope that helps,\n~G\nOn Sat, Apr 21, 2012 at 12:59 PM, Barry Rowlingson <\nb.rowlingson at lancaster.ac.uk> wrote:\n\n> On Sat, Apr 21, 2012 at 3:28 PM, Max Kuhn <mxkuhn at gmail.com> wrote:\n> > For a package, I need to write a csv version of a data set to an R\n> > object. Right now, I use:\n> >\n> >    out <- capture.output(\n> >                          write.table(x,\n> >                                      sep = \",\",\n> >                                      na = \"?\",\n> >                                      file = \"\",\n> >                                      quote = FALSE,\n> >                                      row.names = FALSE,\n> >                                      col.names = FALSE))\n> >\n> > To me, this is fairly slow; 131 seconds for a data frame with 8100\n> > rows and 1400 columns.\n> >\n> > The data will be in a data frame; I know write.table() would be faster\n> > with a matrix. I was looking into converting the data frame to a\n> > character matrix using as.matrix() or, better yet, format() prior to\n> > the call above. However, I'm not sure what an appropriate value of\n> > 'digits' should be so that the character version of numeric data has\n> > acceptable fidelity.\n> >\n> > I also tried using a text connection and sink() as shown in\n> > ?textConnection but there was no speedup.\n> >\n>\n>  You could try a loop over each row, and use 'paste' to join each\n> element in a row by commas. Then use 'paste' again to join everything\n> you've got (a vector of rows) by a '\\n' character.\n>\n> something like: paste(apply(x,1,paste,collapse=\",\"),collapse=\"\\n\")   #\n> untested\n>\n> you probably also want to stick a final \\n on it.\n>\n> Is it faster? I don't know!\n>\n> Barry\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \nGabriel Becker\nGraduate Student\nStatistics Department\nUniversity of California, Davis\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Max,\n\nSo it's not particularly readable, but I suspect it could be much faster ...\n\n#mydf is the data.frame\nargs = as.list(mydf)\nargs$sep = \" , \"\nout = paste(do.call(\"paste\", args), collapse=\"\\n\")\n\nca",
       "thread_id": "thread-8077e6cb2b0d",
       "thread_depth": 2,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120422/1c2f6a10/attachment.pl"
+      ]
     },
     {
       "id": "msg-c5193794cbed",
@@ -3277,11 +3310,14 @@
       "subject_clean": "delayedAssign changing values",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120425/503ea94b/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120425/503ea94b/attachment.pl>",
+      "body_plain": "I'm not sure if this is a known peculiarity or a bug, but I stumbled across what I think is very odd behavior from delayedAssign. In the below example x switches values the first two times it is evaluated.\n\n> delayedAssign(\"x\", {x <- 2; x+3})\n> x==x\n[1] FALSE\n\n> delayedAssign(\"x\", {x <- 2; x+3})\n> x\n[1] 5\n> x\n[1] 2\n\nThe ?delayedAssign documentation says that \"after [evaluation], the value is fixed and the expression will not be evaluated again.\" However, this appears not to be true. Is this a bug, or just a good way to write extremely obfuscated code?\n\nRobert McGehee, CFA\nGeode Capital Management, LLC\nOne Post Office Square, 28th Floor | Boston, MA | 02109\nDirect: (617)392-8396\n\nThis e-mail, and any attachments hereto, are intended fo...{{dropped:14}}",
+      "body_snippet": "I'm not sure if this is a known peculiarity or a bug, but I stumbled across what I think is very odd behavior from delayedAssign. In the below example x switches values the first two times it is evalu",
       "thread_id": "thread-172a43c51c38",
       "thread_depth": 0,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120425/503ea94b/attachment.pl"
+      ]
     },
     {
       "id": "msg-df102274faff",
@@ -3372,11 +3408,14 @@
         "<C3D16A4C8BD3F843860C73573C70DD952E255192@TK5EX14MBXC103.redmond.corp.microsoft.com>",
         "<loom.20120425T154547-376@post.gmane.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120426/cd42cc8f/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120426/cd42cc8f/attachment.pl>",
+      "body_plain": "I cleaner alternative would be to use Rserve.  You can use IKVM to compile\nthe Rserve java API to a .NET assembly.   Alternatively you can implement\nthe protocol in C# (as I did).\n\nOn Wed, Apr 25, 2012 at 6:50 AM, Joel <j.nybeck at gmail.com> wrote:\n\n> Jeff Abrams <jeffab <at> microsoft.com> writes:\n>\n> >\n> > I have a C# program that requires the run of a logistic regression.  I\n> have\n> downloaded the R 2.11 package, and\n> > have added the following references to my code:\n> >\n> > STATCONNECTORCLNTLib;\n> > StatConnectorCommonLib;\n> > STATCONNECTORSRVLib;\n> >\n> > In my code I have:\n> > StatConnector scs = new STATCONNECTORSRVLib.StatConnectorClass();\n> > scs.Init(\"R\");\n> >\n> > The init step returns the below error which seems to indicate a\n> connection\n> failure.\n> >\n> > System.Runtime.InteropServices.COMException was unhandled\n> >   Message=\"Exception from HRESULT: 0x80040013\"\n> >   Source=\"Interop.STATCONNECTORSRVLib\"\n> >   ErrorCode=-2147221485\n> >\n> > Any ideas?\n> >\n> > Jeff Abrams\n> > Research Engineer\n> > Auction Analytics, Microsoft\n> >\n> >       [[alternative HTML version deleted]]\n> >\n> >\n>\n>\n> For those who say this is not an R issue, it is... I believe this is a\n> issue\n> with the R registration within Windows. I have all the requisite .dll's in\n> the R\n> install file, and have the R_USER and R_HOME environment variables, yet I\n> am\n> still seeing this issue. I can use other .dll's in this way, so this is\n> NOT a\n> COM issue. It is an R problem. Any thoughts would be helpful.\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \nJonathan Shore\nhttp://tr8dr.wordpress.com/\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I cleaner alternative would be to use Rserve.  You can use IKVM to compile\nthe Rserve java API to a .NET assembly.   Alternatively you can implement\nthe protocol in C# (as I did).\n\nOn Wed, Apr 25, 201",
       "thread_id": "thread-2dda68836e1a",
       "thread_depth": 1,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120426/cd42cc8f/attachment.pl"
+      ]
     },
     {
       "id": "msg-f6d6fa094de6",
@@ -3411,11 +3450,14 @@
         "<loom.20120425T154547-376@post.gmane.org>",
         "<CABaweDOaJzSg04Q8gmNP3UUva_D+65ecKd1=SfefyZhtQ1tzow@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120426/13371dc3/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120426/13371dc3/attachment.pl>",
+      "body_plain": "I ended up getting around this issue by running installstatconnDCOM() - not\nthe exact name, but something very similar to that in RStudio instead of\ndownloading from their site. This resolved the 80040013 error. I\nsubsequently ran into a few issues regarding an 800706BE error. I resolved\nthis by deleting the registry and environment variables and running\nRSetReg.exe. I can now successfully test the statconn server test; however,\nmy code still throws an 800706BE error at .Init(\"R\"). I'm testing the\ncodeplex project .NET R integration now, but am running into some silly\nerrors there as well.\n\nOn Thu, Apr 26, 2012 at 8:43 AM, Jonathan Shore <jonathan.shore at gmail.com>wrote:\n\n> I cleaner alternative would be to use Rserve.  You can use IKVM to compile\n> the Rserve java API to a .NET assembly.   Alternatively you can implement\n> the protocol in C# (as I did).\n>\n> On Wed, Apr 25, 2012 at 6:50 AM, Joel <j.nybeck at gmail.com> wrote:\n>\n>> Jeff Abrams <jeffab <at> microsoft.com> writes:\n>>\n>> >\n>> > I have a C# program that requires the run of a logistic regression.  I\n>> have\n>> downloaded the R 2.11 package, and\n>> > have added the following references to my code:\n>> >\n>> > STATCONNECTORCLNTLib;\n>> > StatConnectorCommonLib;\n>> > STATCONNECTORSRVLib;\n>> >\n>> > In my code I have:\n>> > StatConnector scs = new STATCONNECTORSRVLib.StatConnectorClass();\n>> > scs.Init(\"R\");\n>> >\n>> > The init step returns the below error which seems to indicate a\n>> connection\n>> failure.\n>> >\n>> > System.Runtime.InteropServices.COMException was unhandled\n>> >   Message=\"Exception from HRESULT: 0x80040013\"\n>> >   Source=\"Interop.STATCONNECTORSRVLib\"\n>> >   ErrorCode=-2147221485\n>> >\n>> > Any ideas?\n>> >\n>> > Jeff Abrams\n>> > Research Engineer\n>> > Auction Analytics, Microsoft\n>> >\n>> >       [[alternative HTML version deleted]]\n>> >\n>> >\n>>\n>>\n>> For those who say this is not an R issue, it is... I believe this is a\n>> issue\n>> with the R registration within Windows. I have all the requisite .dll's\n>> in the R\n>> install file, and have the R_USER and R_HOME environment variables, yet I\n>> am\n>> still seeing this issue. I can use other .dll's in this way, so this is\n>> NOT a\n>> COM issue. It is an R problem. Any thoughts would be helpful.\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>\n>\n>\n> --\n> Jonathan Shore\n> http://tr8dr.wordpress.com/\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I ended up getting around this issue by running installstatconnDCOM() - not\nthe exact name, but something very similar to that in RStudio instead of\ndownloading from their site. This resolved the 8004",
       "thread_id": "thread-2dda68836e1a",
       "thread_depth": 2,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120426/13371dc3/attachment.pl"
+      ]
     },
     {
       "id": "msg-49401620219c",
@@ -3600,11 +3642,14 @@
         "<1335420021941-4588973.post@n4.nabble.com>",
         "<87aa1ybfp1.fsf@tajo.ucsd.edu>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120427/d8848df3/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120427/d8848df3/attachment.pl>",
+      "body_plain": "Of course, what you could do is Google dqrls and get the source and \ndocumentation. That is because it is in the publically available linpack. \nIf it were not publically available that would not work. Theoretically, \nall FORTRAN or C code in R should be publically available.\nDave\n\n\n\n\nFrom:\n<cberry at tajo.ucsd.edu>\nTo:\n<r-devel at stat.math.ethz.ch>\nDate:\n04/27/2012 06:28 AM\nSubject:\nRe: [Rd] How does .Fortran \"dqrls\" work?\nSent by:\nr-devel-bounces at r-project.org\n\n\n\nyangleicq <yanglei_cq at 126.com> writes:\n\n> Hi, all.\n> I want to write some functions like glm() so i studied it.\n> In glm.fit(), it calls a fortran subroutine named  \"dqrfit\" to compute \nleast\n> squares solutions\n>  to the system\n>               x * b = y\n>\n> To learn how \"dqrfit\" works, I just follow how glm() calls \"dqrfit\" by \nmy\n> own example, my codes are given below:\n>\n>>  qr <-\n>> \nmatrix(c(4.17,5.58,5.18,6.11,4.50,4.61,5.17,4.53,5.33,5.14,2.3,1.7,1.3,1.7,1.7,1.6,1,1.7,1.7,1.7),ncol=2)\n>> qr \n>       [,1] [,2]\n>  [1,] 4.17  2.3\n>  [2,] 5.58  1.7\n>  [3,] 5.18  1.3\n>  [4,] 6.11  1.7\n>  [5,] 4.50  1.7\n>  [6,] 4.61  1.6\n>  [7,] 5.17  1.0\n>  [8,] 4.53  1.7\n>  [9,] 5.33  1.7\n> [10,] 5.14  1.7\n>> n=10\n>>  p=2\n>>  y <- c(4.81,4.17,4.41,3.59,5.87,3.83,6.03,4.89,4.32,4.69)\n>>  ny=1L\n>>  tol=1e-07\n>>  coefficients=double(p)\n>>  residuals=double(n)\n>>  effects=double(n)\n>>  rank=integer(1L)\n>>  pivot=1:n\n>>  qraux=double(n)\n>>  work=double(2*n)\n>> \n>> \n>> \n>>  fittt<-.Fortran(\"dqrls\", qr =qr, n = n, \n> +                 p = p, y = y, ny = ny, tol = tol,\n> coefficients=coefficients,\n> +                 residuals = residuals, effects = effects, \n> +                 rank = rank, pivot = pivot, qraux = qraux, \n> +                 work = work, PACKAGE = \"base\")\n>> \n>>  fittt$coefficients\n> [1] 0 0\n\nYou have the args for .Fortran wrong. Try:\n\n> fargs <- structure(list(\"dqrls\", qr = structure(c(1, 1, 1, 1, 1, 1, 1, \n+ 1, 1, 1, 4.17, 5.58, 5.18, 6.11, 4.5, 4.61, 5.17, 4.53, 5.33, \n+ 5.14, 2.3, 1.7, 1.3, 1.7, 1.7, 1.6, 1, 1.7, 1.7, 1.7), .Dim = c(10L, \n+ 3L)), n = 10L, p = 3L, y = c(4.81, 4.17, 4.41, 3.59, 5.87, 3.83, \n+ 6.03, 4.89, 4.32, 4.69), ny = 1L, tol = 1e-11, coefficients = c(0, \n+ 0, 0), residuals = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0), effects = c(0, \n+ 0, 0, 0, 0, 0, 0, 0, 0, 0), rank = 0L, pivot = 1:3, qraux = c(0, \n+ 0, 0), work = c(0, 0, 0, 0, 0, 0), PACKAGE = \"base\"), .Names = c(\"\", \n+ \"qr\", \"n\", \"p\", \"y\", \"ny\", \"tol\", \"coefficients\", \"residuals\", \n+ \"effects\", \"rank\", \"pivot\", \"qraux\", \"work\", \"PACKAGE\"))\n> do.call(.Fortran,fargs)$coef\n[1] 11.176571 -0.883272 -1.262772\n>\n\nTIP: It often helps to use something like\n\n     debug(function.calling.Fortran) \n\nand then step thru the function till the call you want to study is\ninvoked. Then inspect the inputs one-by-one and tinker with them and\nrecall the function or save them via \n\n         dput( list(...) , file=\"fargs\" ) \n\nso you can later invoke the function as above.\n\nHTH,\n\nChuck \n\n\n>\n> but when i use lm() which also calls \"dqrls\" internally to fit this \nmodel,\n> it gives reasonable result.\n>\n>> lm(y~qr)\n>\n> Call:\n> lm(formula = y ~ qr)\n>\n> Coefficients:\n> (Intercept)          qr1          qr2 \n>     11.1766      -0.8833      -1.2628 \n>\n>\n> when I change the coefficients to be c(1,1), the output from \"dqrls\", \n> fittt$coefficients also equals to c(1,1). That means the \n.Fortran(\"dqrls\",\n> qr=qr,n=n,p=p,...) did nothing to the coefficients! I don't know why, is\n> there anything I did wrong or missed?  How can I get the result from \n\"dqrls\"\n> as what lm() or glm() gets from \"dqrls\"?\n>\n> Thanks in advance. Best Regards.\n>\n>\n>\n> --\n> View this message in context: \nhttp://r.789695.n4.nabble.com/How-does-Fortran-dqrls-work-tp4588973p4588973.html\n\n> Sent from the R devel mailing list archive at Nabble.com.\n>\n\n-- \nCharles C. Berry                            Dept of Family/Preventive \nMedicine\ncberry at ucsd edu                                                   UC \nSan Diego\nhttp://famprevmed.ucsd.edu/faculty/cberry/  La Jolla, San Diego 92093-0901\n\n______________________________________________\nR-devel at r-project.org mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Of course, what you could do is Google dqrls and get the source and \ndocumentation. That is because it is in the publically available linpack. \nIf it were not publically available that would not work.",
       "thread_id": "thread-88a7fa38d64a",
       "thread_depth": 2,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120427/d8848df3/attachment.pl"
+      ]
     },
     {
       "id": "msg-3a9a83e9d856",
@@ -3690,11 +3735,14 @@
       "subject_clean": "Unable to install rggobi in R 2.15",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120427/be07bffd/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120427/be07bffd/attachment.pl>",
+      "body_plain": "I am currently using R 2.15.0 with R Tools 2.15 (in Windows XP). I downloaded the source for RGgobi and extracted it to a folder.\n \nThen I tried compiling and installing with the following command and got an error message:\n--------------------------------------------------------------------------------------------\nD:\\Work\\tmp>R CMD INSTALL --build \"D:\\\\DPF\\\\Rggobi\\\\rggobi\"\n* installing to library 'C:/Program Files/R/R-2.15.0/library'\n* installing *source* package 'rggobi' ...\n** libs\ncygwin warning:\n  MS-DOS style path detected: C:/PROGRA~1/R/R-215~1.0/etc/i386/Makeconf\n  Preferred POSIX equivalent is: /cygdrive/c/PROGRA~1/R/R-215~1.0/etc/i386/Makeconf\n  CYGWIN environment variable option \"nodosfilewarning\" turns off this warning.\n  Consult the user's guide for more details about POSIX paths:\n    http://cygwin.com/cygwin-ug-net/using.html#using-pathnames\ngcc  -I\"C:/PROGRA~1/R/R-215~1.0/include\" -DNDEBUG -D_R_=1 -DUSE_R=1 -mms-bitfields -I/include/gtk-2.0 -I/include/gdk-pixbuf-2.0 -I/../lib/gtk-2.0/include -\nI/include/atk-1.0 -I/include/cairo -I/include/pango-1.0 -I/include/glib-2.0 -I/../lib/glib-2.0/include -I/include/libxml2 -I/include -I/include/ggobi -IC:/\nPROGRA~1/R/R-215~1.0/include -I/include/libxml         -O3 -Wall  -std=gnu99 -mtune=core2 -c RSEval.c -o RSEval.o\nIn file included from RSEval.c:6:0:\nRSGGobi.h:5:22: fatal error: GGobiAPI.h: No such file or directory\ncompilation terminated.\nmake: *** [RSEval.o] Error 1\nERROR: compilation failed for package 'rggobi'\n* removing 'C:/Program Files/R/R-2.15.0/library/rggobi'\n--------------------------------------------------------------------------------------------\n \nCan anybody help in figuring out what is the problem? I have installed GGobi & RGtk2 previously.\n\nRegards,\nIndrajit\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I am currently using R 2.15.0 with R Tools 2.15 (in Windows XP). I downloaded the source for RGgobi and extracted it to a folder.\n \nThen I tried compiling and installing with the following command and",
       "thread_id": "thread-9804d85f5b4d",
       "thread_depth": 0,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120427/be07bffd/attachment.pl"
+      ]
     },
     {
       "id": "msg-02381b0d69a8",
@@ -3814,11 +3862,14 @@
         "<1335708489266-4596411.post@n4.nabble.com>",
         "<587B04C0-FCA6-4E93-96F2-663E3547EF80@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120429/87d96fb4/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120429/87d96fb4/attachment.pl>",
+      "body_plain": "http://lmgtfy.com/?q=writing+an+R+package\n\nThere you go.\n\n\n\nOn Sun, Apr 29, 2012 at 4:28 PM, R. Michael Weylandt <\nmichael.weylandt at gmail.com> <michael.weylandt at gmail.com> wrote:\n\n> http://cran.r-project.org/doc/manuals/R-exts.pdf\n>\n> Ships with every distribution of R\n>\n> Michael\n>\n> On Apr 29, 2012, at 10:08 AM, nossa <hamdi_ines at hotmail.fr> wrote:\n>\n> > Please  give me the necessary links that permits me to create my own\n> package\n> > inR\n> >\n> > --\n> > View this message in context:\n> http://r.789695.n4.nabble.com/creating-a-package-in-R-tp4596411p4596411.html\n> > Sent from the R devel mailing list archive at Nabble.com.\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \nJoris Meys\nStatistical consultant\n\nGhent University\nFaculty of Bioscience Engineering\nDepartment of Mathematical Modelling, Statistics and Bio-Informatics\n\ntel : +32 9 264 59 87\nJoris.Meys at Ugent.be\n-------------------------------\nDisclaimer : http://helpdesk.ugent.be/e-maildisclaimer.php\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "http://lmgtfy.com/?q=writing+an+R+package\n\nThere you go.\n\n\n\nOn Sun, Apr 29, 2012 at 4:28 PM, R. Michael Weylandt <\nmichael.weylandt at gmail.com> <michael.weylandt at gmail.com> wrote:\n\n> http://cran.",
       "thread_id": "thread-313e179a924a",
       "thread_depth": 2,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120429/87d96fb4/attachment.pl"
+      ]
     },
     {
       "id": "msg-42a60a9ded90",
@@ -3832,11 +3883,14 @@
       "references": [
         "<1335708489266-4596411.post@n4.nabble.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120429/87c85119/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120429/87c85119/attachment.pl>",
+      "body_plain": "If you want simple step by step instructions for Windows, try this\n\nhttp://stevemosher.wordpress.com/ten-steps-to-building-an-r-package-under-windows/\n\n\nOn Sun, Apr 29, 2012 at 7:08 AM, nossa <hamdi_ines at hotmail.fr> wrote:\n\n> Please  give me the necessary links that permits me to create my own\n> package\n> inR\n>\n> --\n> View this message in context:\n> http://r.789695.n4.nabble.com/creating-a-package-in-R-tp4596411p4596411.html\n> Sent from the R devel mailing list archive at Nabble.com.\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "If you want simple step by step instructions for Windows, try this\n\nhttp://stevemosher.wordpress.com/ten-steps-to-building-an-r-package-under-windows/\n\n\nOn Sun, Apr 29, 2012 at 7:08 AM, nossa <hamdi_i",
       "thread_id": "thread-313e179a924a",
       "thread_depth": 1,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120429/87c85119/attachment.pl"
+      ]
     },
     {
       "id": "msg-c1e931b55e18",
@@ -3871,11 +3925,14 @@
         "<CAFu5mM6TX6wmHyb-2c6EvmzKhk-jbnoMd2ordin8JuOGNc9rhg@mail.gmail.com>",
         "<A9C4A85F-35D9-449B-9B1E-FD22E5559DD7@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120430/05c147e6/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120430/05c147e6/attachment.pl>",
+      "body_plain": "Thank you very much, this is very helpful indeed.\n\nBest wishes,\n\nRajen\nOn Apr 28, 2012 2:35 PM, \"Simon Urbanek\" <simon.urbanek at r-project.org>\nwrote:\n\n> On Apr 27, 2012, at 9:54 AM, Rajen Shah wrote:\n>\n> > I would like to create an R package which uses some C code, which in\n> > turn uses MPI. At the moment I'm only interested in creating this\n> > package for UNIX-like systems. The way I envisage this working is for\n> > the R package to contain an R function which uses the system call to\n> > run the C code as a separate process (passing to the C code the\n> > location of a file of data). The C code can then do what it needs to\n> > do with the data, send its output to a file, and when it has finished\n> > R can read the output from the file.\n> >\n> > My question is, is it possible to create an R package which contains C\n> > code which can then be called by an R function in that package using\n> > the system call? The obstacles seem to be (i) compiling this C code in\n> > the right way for it to be called by system, and (ii) giving the R\n> > function responsible for calling the C code (via system) the location\n> > of the executable.\n> >\n> >> From my understanding of the R extensions manual (i) can be solved\n> > using careful configure script and Makevars file (though I don't know\n> > the details),\n>\n> Simply add a target for your executable to Makevars.\n>\n>\n> > and (ii) would require me to provide an R script\n> > `src/install.libs.R’, which would need to copy the executable to the\n> > right place, and modify my R function which uses the system call so it\n> > knows where to look for the executable.\n> >\n>\n> Yes, you can have a look at Rserve (preferably the development version)\n> for both of the above. It is not the perfect example (because it grew\n> organically and is a bit more complex) but it does exactly that.\n>\n>\n> > The reason I’m interested in calling the C code in this peculiar way,\n> > rather than using the .C interface, for example, is that I’m worried\n> > about using MPI from within R. At least, my knowledge of both R and\n> > MPI is insufficient to be confident that calling MPI from within R\n> > will run smoothly. Also, this way I can debug the C program entirely\n> > on its own.\n> >\n>\n> Conceptually, you can achieve the same thing without another executable by\n> forking and calling the main() function of your program -- that way you\n> don't need another executable yet you can compile your code either as a\n> stand-alone program (for testing) or as a package (for deployment):\n>\n> SEXP call_main(SEXP args) {\n>   int argc = LENGTH(args), i;\n>   pid_t pid;\n>   char **argv = (char**) calloc(argc + 1, sizeof(char*));\n>   for (i = 0; i < argc; i++) argv[i] = CHAR(STRING_ELT(args, i));\n>   if ((pid = fork()) == 0) { main(argc, argv); exit(0); }\n>   return ScalarInteger(pid);\n> }\n>\n> and PKG_CPPFLAGS=-Dmain=prog_main make sure you re-map main for the\n> package in case it conflicts with R.\n>\n> In general, you can do better and pass your data directly -- just define\n> some interface in your program -- it will be much more efficient than going\n> through files. Then your main() for the stand-alone program will read in\n> the files and call that interface whereas R will call it directly.\n>\n> Cheers,\n> Simon\n>\n>\n> > I realise there is an R package, Rmpi, which provides a wrapper for\n> > most of the MPI functions, but since all my code will be in C, it\n> > seems less sensible to make use of this, though I may be wrong.\n> >\n> > Thank you for taking to the time to read this, and I very much\n> > appreciate any advice, (especially) even if it is to say that my\n> > proposed approach is entirely daft and I should do things completely\n> > differently. Also, if you know of any examples of packages which do\n> > what I’ve described above, I’d be very glad to know (it seems Sjava\n> > does something like this?).\n> >\n> > Best wishes,\n> >\n> > Rajen Shah\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n> >\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thank you very much, this is very helpful indeed.\n\nBest wishes,\n\nRajen\nOn Apr 28, 2012 2:35 PM, \"Simon Urbanek\" <simon.urbanek at r-project.org>\nwrote:\n\n> On Apr 27, 2012, at 9:54 AM, Rajen Shah wrote",
       "thread_id": "thread-061af00b14e9",
       "thread_depth": 2,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120430/05c147e6/attachment.pl"
+      ]
     },
     {
       "id": "msg-e11aba705df9",
@@ -3887,11 +3944,14 @@
       "subject_clean": "The constant part of the log-likelihood in StructTS",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120430/b0c16ab7/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120430/b0c16ab7/attachment.pl>",
+      "body_plain": "Dear all,\n\nI'd like to discuss about a possible bug in function StructTS of stats\npackage. It seems that the function returns wrong value of the\nlog-likelihood, as the added constant to the relevant part of the\nlog-likelihood is misspecified. Here is an simple example:\n\n> data(Nile)\n> fit <- StructTS(Nile, type = \"level\")\n> fit$loglik\n[1] -367.5194\n\nWhen computing the log-likelihood with other packages such as KFAS and FKF,\nthe loglikelihood value is around -645.\n\nFor the local level model, the likelihood is defined by -0.5*n*log(2*pi) -\n0.5*sum(log(F_t) + v_t^2/sqrt(F_t)) (see for example  Durbin and Koopman\n(2001, page 30). But in StructTS, the likelihood is computed like this:\n\nloglik <- -length(y) * res$value + length(y) * log(2 * pi),\n\nwhere the first part coincides with the last part of the definition, but\nthe constant part has wrong sign and it is not multiplied by 0.5. Also in\ncase of missing observations, I think there should be sum(!is.na(y))\ninstead of length(y) in the constant term, as the likelihood is only\ncomputed for those y which are observed.\n\nThis does not affect in estimation of model parameters, but it could have\neffects in model comparison or some other cases.\n\nIs there some reason for this kind of constant, or is it just a bug?\n\nBest regards,\n\nJouni Helske\nPhD student in Statistics\nUniversity of Jyväskylä\nFinland\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear all,\n\nI'd like to discuss about a possible bug in function StructTS of stats\npackage. It seems that the function returns wrong value of the\nlog-likelihood, as the added constant to the relevant p",
       "thread_id": "thread-e11aba705df9",
       "thread_depth": 0,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120430/b0c16ab7/attachment.pl"
+      ]
     },
     {
       "id": "msg-87af2eda45e1",
@@ -3935,11 +3995,14 @@
       "subject_clean": "fast version of split.data.frame or conversion from data.frame to list of its rows",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120430/555fbd02/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120430/555fbd02/attachment.pl>",
+      "body_plain": "Hi,\nI was wondering if there is anything more efficient than split to do the\nkind of conversion in the subject. If I create a data frame as in\n\nsystem.time({fd =  data.frame(x=1:2000, y = rnorm(2000), id = paste(\"x\",\n1:2000, sep =\"\"))})\n  user  system elapsed\n  0.004   0.000   0.004\n\nand then I try to split it\n\n> system.time(split(fd, 1:nrow(fd)))\n   user  system elapsed\n  0.333   0.031   0.415\n\n\nYou will be quick to notice the roughly two orders of magnitude difference\nin time between creation and conversion. Granted, it's not written anywhere\nthat they should be similar but the latter seems interpreter-slow to me\n(split is implemented with a lapply in the data frame case) There is also a\nmemory issue when I hit about 20000 elements (allocating 3GB when\ninterrupted). So before I resort to Rcpp, despite the electrifying feeling\nof approaching the bare metal and for the sake of getting things done, I\nthought I would ask the experts. Thanks\n\n\nAntonio\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\nI was wondering if there is anything more efficient than split to do the\nkind of conversion in the subject. If I create a data frame as in\n\nsystem.time({fd =  data.frame(x=1:2000, y = rnorm(2000),",
       "thread_id": "thread-45d19f5edf5e",
       "thread_depth": 0,
-      "month": "2012-04"
+      "month": "2012-04",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120430/555fbd02/attachment.pl"
+      ]
     }
   ],
   "threads": [

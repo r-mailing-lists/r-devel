@@ -376,11 +376,14 @@
       "subject_clean": "font inclusions in pdf files",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051204/a6d5678d/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051204/a6d5678d/attachment.pl",
+      "body_plain": "I am stumbling into external font issues here and there.  I presume using\nexternal lucida fonts is fairly rare, so I am more likely to stumble onto\nissues here.  (of course, I often think I have stumbled onto bugs/features\nthat are not.)  So, I hope I am not imposing by reporting the following.\n\n[1] can R please not include fonts that it is not using?\n\nluafmfiles <- c(\"/usr/share/texmf/fonts/afm/yandy/lubright/lbr.afm\",\n                \"/usr/share/texmf/fonts/afm/yandy/lubright/lbd.afm\",\n                \"/usr/share/texmf/fonts/afm/yandy/lubright/lbi.afm\",\n                \"/usr/share/texmf/fonts/afm/yandy/lucida/lbc.afm\",\n                                #\n\"/usr/share/texmf/fonts/afm/yandy/lumath/lbms.afm\",\n                \"/usr/share/texmf/fonts/afm/yandy/lubright/lbr.afm\")\ngrDevices::postscriptFonts(lucida=grDevices::postscriptFont(\"Lucida\",\nmetrics=luafmfiles));\npdf(file=\"testincfonts.pdf\");\npar(family=\"lucida\");\nplot( c(0,0), c(1,1) );\ndev.off();\n\n# pdffonts testincfonts.pdf\nname                                 type         emb sub uni object ID\n------------------------------------ ------------ --- --- --- ---------\nZapfDingbats                         Type 1       no  no  no       5  0\nHelvetica                            Type 1       no  no  no      10  0\nHelvetica-Bold                       Type 1       no  no  no      11  0\nHelvetica-Oblique                    Type 1       no  no  no      12  0\nHelvetica-BoldOblique                Type 1       no  no  no      13  0\nSymbol                               Type 1       no  no  no      14  0\nLucidaBright                         Type 1       no  no  no      15  0\nLucidaBright-Demi                    Type 1       no  no  no      16  0\nLucidaBright-Italic                  Type 1       no  no  no      17  0\nLucidaCalligraphy-Italic             Type 1       no  no  no      18  0\nLucidaBright                         Type 1       no  no  no      19  0\n\n    distill from testincfonts.pdf into testincfonts.pdf.pdf to see what is\nreally used:\n\n# pdffonts testincfonts.pdf.pdf\nname                                 type         emb sub uni object ID\n------------------------------------ ------------ --- --- --- ---------\nKWYJNC+LucidaBright                  Type 1C      yes yes no       9  0\n\n(Including unused fonts can trip up programs that check whether pdf\ndocuments have embedded all fonts, and which are not smart enough to typeset\n[incl. all recursively embedded pdf files] to realize when a font is never\nused.)\n\n\n[2] I do not believe this is an R bug, but I want to mention it anyway\nbecause it comes from interacting the R-created graphics with gs.  for some\nodd reason, when I include these external lucida fonts, and create graphics\nin R, the R-created pdf can no longer be distilled by gs 8.53, because it\nstumbles into a safety issue.  that is, all the gs scripts named 'ps2pdf*'\nhave the option -dSAFER on by default, which disables the renamefile and\ndeletefile operators, and it somehow prevents finding the fonts.   (the bug\ndoes not appear if I do not use the external fonts.)\n\nhttp://groups.google.com/group/comp.lang.postscript/browse_frm/thread/3613c16aec64a9ed/a7c40582a0b5be1b?lnk=st&q=ivowel&rnum=1&hl=en#a7c40582a0b5be1b\n\nregards,\n\n/iaw\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I am stumbling into external font issues here and there.  I presume using\nexternal lucida fonts is fairly rare, so I am more likely to stumble onto\nissues here.  (of course, I often think I have stumb",
       "thread_id": "thread-ae00e812e29c",
       "thread_depth": 0,
-      "month": "2005-12"
+      "month": "2005-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20051204/a6d5678d/attachment.pl"
+      ]
     },
     {
       "id": "msg-f402990bd562",
@@ -464,11 +467,14 @@
       "references": [
         "<mailman.7.1133780401.27269.r-devel@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051205/9871047e/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051205/9871047e/attachment.pl",
+      "body_plain": "actually,  I can confirm now that gs AFPL 8.53 is the \"culprit\" here on #2,\ncopied below again (though it is not a bug but a feature, albeit one you\nneed to know about.)  the -dSAFER switch, which appears in later versions of\nAFPL gs, not only eliminates renamefile and deletefile (manpage), but\nseemingly also allows only fonts in the GS_LIB path to be used\n  export GS_LIB=/usr/local/share/texmf/fonts/type1/yandy:$GS_LIB\nfixes this protection problem for me.    hope this will help some of you\nwhen you run R pdf files through gs.    regards,\n\n/iaw\n\n\n\n[2] I do not believe this is an R bug, but I want to mention it anyway\n> because it comes from interacting the R-created graphics with gs.  for\n> some\n> odd reason, when I include these external lucida fonts, and create\n> graphics\n> in R, the R-created pdf can no longer be distilled by gs 8.53, because it\n> stumbles into a safety issue.  that is, all the gs scripts named 'ps2pdf*'\n> have the option -dSAFER on by default, which disables the renamefile and\n> deletefile operators, and it somehow prevents finding the fonts.   (the\n> bug\n> does not appear if I do not use the external fonts.)\n>\n>\n> http://groups.google.com/group/comp.lang.postscript/browse_frm/thread/3613c16aec64a9ed/a7c40582a0b5be1b?lnk=st&q=ivowel&rnum=1&hl=en#a7c40582a0b5be1b\n>\n> regards,\n>\n> /iaw\n>\n>         [[alternative HTML version deleted]]\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "actually,  I can confirm now that gs AFPL 8.53 is the \"culprit\" here on #2,\ncopied below again (though it is not a bug but a feature, albeit one you\nneed to know about.)  the -dSAFER switch, which app",
       "thread_id": "thread-291bd3bc0823",
       "thread_depth": 0,
-      "month": "2005-12"
+      "month": "2005-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20051205/9871047e/attachment.pl"
+      ]
     },
     {
       "id": "msg-2390f226a6ad",
@@ -1685,11 +1691,14 @@
       "references": [
         "<915D2D65A9986440A277AC5C98AA466F018636BD@groamrexm02.amer.pfizer.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051212/4b3e1119/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051212/4b3e1119/attachment.pl",
+      "body_plain": "I got an email error message when I attempted to send this from my work\naccount.  I have manually added it to the bug tracker, and am resending from\nmy personal account.\n\n-G\n\nOn 12/12/05, Warnes, Gregory R <gregory.r.warnes at pfizer.com> wrote:\n>\n>\n>\n> >  -----Original Message-----\n> > From:         Warnes, Gregory R\n> > Sent: Monday, December 12, 2005 1:53 PM\n> > To:   'bugs at cran.r-project.org'\n> > Subject:      Bug in sum() with named data frame arguments\n> >\n> >\n> > Sum fails if it is passed a data frame argument with a name. It also\n> generated different error messages depending on exactly how the data frame\n> is passed in:\n> >\n> > > df <- data.frame(m1=1:2,m2=3:4)\n> > > df\n> >   m1 m2\n> > 1  1  3\n> > 2  2  4\n> > > sum(df)  # succeeds\n> > [1] 10\n> > > sum(df=df)  # fails\n> > Error in as.matrix(x) : argument \"x\" is missing, with no default\n> > > sum(1,df=df) # fails, different error message\n> > Error in sum(..., na.rm = na.rm) : invalid 'mode' of argument\n> > > sum(df=df,1) # fails, different error message\n> > Error in sum.default(..., na.rm = na.rm) :\n> >       invalid 'mode' of argument\n> > ## Note: no sum.default exists...\n> >\n> >\n> > No similar problem exists for matrixes:\n> >\n> > > x <- as.matrix(df)\n> > > sum(x)\n> > [1] 10\n> > > sum(df=x)\n> > [1] 10\n> > > sum(m1=x)\n> > [1] 10\n> > > sum(1,m1=x)\n> > [1] 11\n> > > sum(m1=x,1)\n> > [1] 11\n> > >\n> >\n> > The cause seems to be that the generic sum is defined as:\n> >\n> > > sum\n> > function (..., na.rm = FALSE)\n> > .Internal(sum(..., na.rm = na.rm))\n> > <environment: namespace:base>\n> >\n> > but the S3 methods are defined as\n> >\n> > > Summary.data.frame\n> > function (x, ...)\n> > {\n> >     x <- as.matrix(x)\n> >     if (!is.numeric(x) && !is.complex(x))\n> >         stop(\"only defined on a data frame with all numeric or complex\n> variables\")\n> >     NextMethod(.Generic)\n> > }\n> > <environment: namespace:base>\n> >\n> > I suspect that the proper resolution of this bug is to change the base\n> 'sum' method to provide a 1st argument named 'x', and to update the\n> documentation.\n> >\n> > Note that the current implementation also failes when more than one data\n> frame argument is supplied:\n> >\n> > > sum(y,y,y)\n> > Error in sum.default(..., na.rm = na.rm) :\n> >       invalid 'mode' of argument\n> >\n> > while the same thing with matrixes works fine:\n> >\n> > > sum(y,y,y)\n> > Error in sum.default(..., na.rm = na.rm) :\n> >       invalid 'mode' of argument\n> >\n> > -Greg\n> >\n> > Gregory R. Warnes, Ph.D.\n> > Associate Director, Non-Clinical Statistics\n> > Pfizer Global Research and Development\n> >\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I got an email error message when I attempted to send this from my work\naccount.  I have manually added it to the bug tracker, and am resending from\nmy personal account.\n\n-G\n\nOn 12/12/05, Warnes, Greg",
       "thread_id": "thread-3ad4b1fe17cf",
       "thread_depth": 0,
-      "month": "2005-12"
+      "month": "2005-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20051212/4b3e1119/attachment.pl"
+      ]
     },
     {
       "id": "msg-f47fc54bd1dd",
@@ -2120,11 +2129,14 @@
       "subject_clean": "Linking C/C++ GUI to R.dll",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051214/0318615f/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051214/0318615f/attachment.pl",
+      "body_plain": "Hi,\n\nI am in the process of linking a C/C++ application to the R.dll\ndirectly.  I have obtained the R source code and compiled it\nsuccessfully.  I have also successfully linked the R.dll directly into\nour application and have made calls successfully into the R.dll that are\nincluded in the sample rtest.c and in the \"Writing R Extensions - The R\nAPI\".  \n\nThe R functionality that we are interested in embedding into our\napplication is the data analysis and graphics.  However, I did not see\nany references to this in the R API section of the documentation.  Is\nthis functionality available from our C/C++ application via the R.dll?\nIf so, how do we access this functionality?\n\nThank you,\nChad Jenness\nElectronic Payment Business Services\nOffice: 612-667-9782\nEmail: Chad.P.Jenness at WellsFargo.com\n\n\"This message may contain confidential and/or privileged information.\nIf you are not the addressee or authorized to receive this for the\naddressee, you must not use, copy, disclose, or take any action based on\nthis message or any information herein.  If you have received this\nmessage in error, please advise the sender immediately by reply e-mail\nand delete this message.  Thank you for your cooperation\"\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\n\nI am in the process of linking a C/C++ application to the R.dll\ndirectly.  I have obtained the R source code and compiled it\nsuccessfully.  I have also successfully linked the R.dll directly into",
       "thread_id": "thread-f58343ae93a4",
       "thread_depth": 0,
-      "month": "2005-12"
+      "month": "2005-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20051214/0318615f/attachment.pl"
+      ]
     },
     {
       "id": "msg-2f8a8c5ad161",
@@ -3533,11 +3545,14 @@
       "subject_clean": "make pkg-* R-2.2.1 Windows",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051223/99f30ab1/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051223/99f30ab1/attachment.pl",
+      "body_plain": "I just installed R-2.2.1 on Windows\n\nNow when I change directories to C:\\Program Files\\R\\R-2.2.1\\src\\gnuwin32 \nand try\nmake pkg-*, e.g., make pkg-designs, I get\n\n\n---------- Making package designs ------------\n  adding build stamp to DESCRIPTION\n  making DLL ...\nmaking rand_exch.d from rand_exch.c\nmaking read_array_dyn.d from read_array_dyn.c\nmaking stard.d from stard.c\nmaking symmd.d from symmd.c\ncat: rand_exch.d: No such file or directory\ncat: read_array_dyn.d: No such file or directory\ncat: stard.d: No such file or directory\ncat: symmd.d: No such file or directory\nmake[3]: *** [makeMakedeps] Error 1\nmake[2]: *** [srcDynlib] Error 2\nmake[1]: *** [all] Error 2\nmake: *** [pkg-designs] Error 2\n\n\nThe \".d\" files are not created. If they are already there then the next \nstep is object files, and they aren't created.\nThis worked in previous versions of R ...\n\nI'm using:\n\nMSYS 1.0.10, GNU Make version 3.79.1\n\nMINGW 3.1.0 (gcc (GCC) 3.2.3 (mingw special 20030504-1))\n\nand \"tools.zip\"\n\nMy path is set up as \nPATH=c:\\msys\\1.0\\bin;C:\\MinGW\\bin;C:\\MinGW\\lib;c:\\tools;\"C:\\Program \nFiles\\R\\R-2.2.1\\bin\"\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I just installed R-2.2.1 on Windows\n\nNow when I change directories to C:\\Program Files\\R\\R-2.2.1\\src\\gnuwin32 \nand try\nmake pkg-*, e.g., make pkg-designs, I get\n\n\n---------- Making package designs ---",
       "thread_id": "thread-c6a7c160a062",
       "thread_depth": 0,
-      "month": "2005-12"
+      "month": "2005-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20051223/99f30ab1/attachment.pl"
+      ]
     },
     {
       "id": "msg-c5300634a20b",
@@ -3639,11 +3654,14 @@
       "subject_clean": "Portability and Memory Issues for R-package",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051225/22f3548d/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051225/22f3548d/attachment.pl",
+      "body_plain": "I have an upcoming JASA paper with an iid sampling algorithm for Bayesian Generalized Linear models (e.g., Logit, Poisson Regression, and Conditional Logit models with multivariate normal priors). At this point, I have implemented the algorithms in C and hope to make the functions and corresponding source code available through an R package.   I have successfully created the code necessary to create and install a package with most of the functions on my local machine (using R CMD check,R CMD build, and R CMD INSTALL).  As my code makes extensive use of the GSL matrix library, however, I have some questions regarding portability of my package. I am also running into some memory issues when making repeated calls to my functions which I would hope to be able to fix before making a formal distribution of the package. More specifically, the issues are the following:\n\nI. Portability-\n\nSince I make extensive use of the gsl library in my C code, I have the gsl library installed (within the MinGw directory so it is included in the path) on my local machine. Within the package, I am then including a Makevars file with the following code in order to link to the gsl library:\n\nPKG_LIBS=-lgsl -lgslcblas\n\nI also know that there is an R package (gsl) making use of some gsl functions which contains a Makevars.win file with the following code:\n\nPKG_LIBS=-LF:/MinGW/usr/local/lib -lgsl -lgslcblas\n# CPPFLAGS=-I$(R_HOME)/include -IF:/MinGW/usr/local/include\nPKG_CPPFLAGS=-IF:/MinGW/usr/local/include\n\nFor my package to install properly on other machines, however, I take it they would have to have the gsl library files already installed in the proper location (or am I mistaken here?).  In order to make it fully portable on other machines, it thus seems like I would need to either include instructions for how to first install the gsl library prior to installation (which would have to be platform specific), or to somehow have the gsl library files installed during the R package installation. Is the latter even possible? If so, how could it be done (the key files are likely the two library files)?  I believe the gsl package requires the user to have the gsl library preinstalled.  \n\nI guess long-term, an option is for me to rework my C code to eliminate the dependence on  the gsl library. This could, however, be a time consuming effort. In the meantime would it be possible to contribute the package with the existing dependence (as I think is the case for the gsl library).\n\nII.  Memory Issue-\n\nThe functions in my package are generally fast and seem to work well if I make a limited number of calls to them from my R code. If I try to make use of them as part of an R MCMC implementation (say updating each Gibbs block 10,000 times in an R loop), I run into memory issues.  Despite the fact that my underlying C code frees memory to all pointers, it does not seem like windows recognizes that the memory has been freed.  This is apparent as the Mem Usage for RGUI.exe in the windows task manager keeps growing throughout the loop and the code slows down and eventually makes virtually no progress. I have noticed similar issues in the past when calling Winbugs repeatedly using Gelmans functions, so it is likely not an issue that is coming just from my code.\nI suspect that the memory issues could have something to do with the fact that my C code makes repeated use of the gsl_matrix_alloc and gsl_matrix_free functions rather than the R_alloc function (I suspect that the memory is not Garbage collected).   I searched the web and found the following suggestion from Bryan Gouch in response to a similar question posted on the gsl discussion forum.\n\"If you want to return an R object containing a gsl_matrix which can be garbage collected then you could use a C++ wrapper, as the C++ interface in R allows the use of separate constructors and destructors. \"  \nWould this be a possible solution?  If so, how can I find information on how to write such wrapper functions that will work for gsl matrices? I must admit that I am not familiar with how the use of separate constructors and destructors would work.  If that is not the solution, would anyone have any other ideas as to how I can solve the memory issues.\nKjell Nygren\n\nKjell Nygren,  Ph.D.\nDirector Pricing and Advanced Analytics\nStatistical Services\nIMS Health®\n960 Harvest Drive, Building A\nBlue Bell, PA 19422 USA\nvoice: 610.832.5586 *  fax: 610.832.5850\nemail: <mailto:knygren at us.imshealth.com>      \nwww.imshealth.com\n \nThe information contained in this communication is confident...{{dropped}}",
+      "body_snippet": "I have an upcoming JASA paper with an iid sampling algorithm for Bayesian Generalized Linear models (e.g., Logit, Poisson Regression, and Conditional Logit models with multivariate normal priors). At ",
       "thread_id": "thread-943ec2ea968c",
       "thread_depth": 0,
-      "month": "2005-12"
+      "month": "2005-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20051225/22f3548d/attachment.pl"
+      ]
     },
     {
       "id": "msg-5d37a4779fb9",
@@ -4019,11 +4037,14 @@
       "subject_clean": "Problems with calloc function.",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051229/c76a4183/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20051229/c76a4183/attachment.pl",
+      "body_plain": "Hi all,\n\nI have a C code in Linux, it has 7 pointers and compile e run OK, but when I\nrun in R happens problems with calloc function, it returns NULL.\n###############################################\n> int *temp1,*temp2,*temp3,*temp4;\n\n temp1 = (int *)calloc(col,sizeof(int));\nif(temp1 == NULL){\n     printf(\"\\n\\n No Memory1!\");\n     exit(1);\n}\n\n  temp2 = (int *)calloc(col,sizeof(int));\n  if(temp2 == NULL){\n        >printf(\"\\n\\n No Memory2!\");\n        >exit(1);\n    }\n\n    temp3 = (int *)calloc(col,sizeof(int));\n    if(temp3 == NULL){\n        >printf(\"\\n\\n No Memory3!\");\n        >exit(1);\n    }\n\n    temp4 = (int *)calloc(col,sizeof(int));\n    if(temp4 == NULL){\n        printf(\"\\n\\n No Memory4!\");\n        exit(1);\n    }\n\n    int *cvector;\n    cvector = (int *)calloc(col,sizeof(int));\n    if(cvector == NULL){\n        printf(\"\\n\\n No Memory5!\");\n        exit(1);\n    }\n\n    tam=ntam;\n\n    int **matrix;\n    matrix=(int**)calloc(row,sizeof(int*));\n    if(matrix == NULL){\n        printf(\"\\n\\n No Memory6!\");\n        exit(1);\n    }\n\n    temp=(int*)calloc(tam,sizeof(int));\n    if(temp == NULL){\n        printf(\"\\n\\n No Memory7!\");\n        exit(1);\n    }\n\n    iia = (int *)calloc(row-1,sizeof(int));\n    if(iia == NULL){\n        printf(\"\\n\\n No Memory8!\");\n        exit(1);\n    }\n\n    iib = (int *)calloc(row-1,sizeof(int));\n    if(iib == NULL){\n        printf(\"\\n\\n No Memory9!\");\n        exit(1);\n    }\n############################################\nIn output !\n> No Memory5!\n>[marcelo at cocada01 home] $\n\nWhat's wrong?\nThanks!\n\n--\nMarcelo Damasceno de Melo\nGraduando em Ciência da Computação\nDepartamento de Tecnologia da Informação - TCI\nUniversidade Federal de Alagoas - UFAL\nMaceió - Alagoas - Brasil\nProjeto CoCADa - Construção do Conhecimento por Agrupamento de dados\n+55 82 8801-2119\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi all,\n\nI have a C code in Linux, it has 7 pointers and compile e run OK, but when I\nrun in R happens problems with calloc function, it returns NULL.\n###############################################\n>",
       "thread_id": "thread-801991c06d3a",
       "thread_depth": 0,
-      "month": "2005-12"
+      "month": "2005-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20051229/c76a4183/attachment.pl"
+      ]
     },
     {
       "id": "msg-b820f6f5595b",

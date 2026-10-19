@@ -322,11 +322,14 @@
       "references": [
         "<CAFOpNVFVEeQcJM5GZ154dnjjpH7MtXk8uX7joM6FkP5mGjQW-A@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120903/c4e93bd9/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120903/c4e93bd9/attachment.pl>",
+      "body_plain": "Any ideas? Is this a big or a deliberate feature?\nHadley\n\nOn Saturday, September 1, 2012, Winston Chang wrote:\n\n> I'm running into some hard-to-understand behavior with the evaluation\n> environment when NextMethod is used. I'm using square-bracket indexing\n> into objects, and the evaluation environment of the expression inside\n> the square brackets seems to change depending on what kind of\n> comparison operators are used.\n>\n> This behavior happens when the following conditions are met (this is\n> what I've found; I'm sure that these aren't necessary and sufficient\n> conditions):\n> - I call a function from an attached package.\n> - The function uses square bracket indexing with a class that has its\n> own definition of the operator, such as `[.factor` or `[.POSIXct`. (If\n> a vector of numerics is used, the error doesn't happen.)\n> - The indexing function uses NextMethod(\"[\").\n> - An S3 method is used within the square brackets. (When a regular\n> function is used, there's no error.)\n> - The S3 method is from a package that is an import for the original\n> function's package, but this package is not attached. (If the package\n> is attached, then the error doesn't happen because R finds the method\n> in the standard search path.)\n> - An operator like == is used. (If the %in% operator is used, the\n> error doesn't happen.)\n>\n>\n> This may sound very abstract. I've created a sample package that\n> illustrates the behavior. The package is called envtest, and it has a\n> function called envtest(), which uses an S3 method from the nlme\n> package. nlme is listed as an import.\n>\n> You can either clone the repository here:\n>   https://github.com/wch/envtest\n> Or you can install it with devtools, using:\n>   library(devtools)\n>   dev_mode()\n>   install_github('envtest', 'wch')\n>\n>\n>\n> The envtest() function tries to index into a factor in different ways,\n> and prints the output for each one. This is the content of the\n> function. (If you load it from the global environment, it won't have\n> the same error, since the issue has to do with an import):\n>\n> envtest <- function() {\n>   dat <- data.frame(x = 0, y = 0)\n>   f <- factor(c(\"a\", \"b\"))\n>\n>   # Print the starting data\n>   cat(\"\\nf                                                : \")\n>   cat(f)\n>\n>   cat(\"\\n\\nTests with %in% operator ----------------------------\")\n>\n>   # OK\n>   cat('\\n\"x\" %in% Names(y ~ x, data = dat)                : ')\n>   cat(\"x\" %in% Names(y ~ x, data = dat))\n>\n>   # OK: Save boolean values to idx, then use f[idx]\n>   cat('\\nidx <- \"x\" %in% Names(y ~ x, data = dat); f[idx] : ')\n>   cat({idx <- \"x\" %in% Names(y ~ x, data = dat); f[idx]})\n>\n>   # OK: Use the expression with S3 function Names directly inside of []\n>   cat('\\nf[\"x\" %in% Names(y ~ x, data = dat)]             : ')\n>   cat(f[\"x\" %in% Names(y ~ x, data = dat)])\n>\n>\n>   cat(\"\\n\\nTests with == operator ------------------------------\")\n>\n>   # OK\n>   cat('\\n\"x\" == Names(y ~ x, data = dat)                  : ')\n>   cat(\"x\" == Names(y ~ x, data = dat))\n>\n>   # OK: Save boolean values to idx, then use f[idx]\n>   cat('\\nidx <- \"x\" == Names(y ~ x, data = dat); f[idx]   : ')\n>   cat({idx <- \"x\" == Names(y ~ x, data = dat); f[idx]})\n>\n>   # Error: Use the expression with S3 function Names directly inside of []\n>   cat('\\nf[\"x\" == Names(y ~ x, data = dat)]               : ')\n>   cat(f[\"x\" == Names(y ~ x, data = dat)])\n>\n>   invisible()\n> }\n>\n>\n>\n> This is what happens when I run the envtest() function. All the\n> indexing operations work, except the last one, where, inside the\n> square brackets, the == operator is used, and it calls the S3 method\n> from an imported package.\n>\n> > library(envtest)\n> > envtest()\n> f                                                : 1 2\n>\n> Tests with %in% operator ----------------------------\n> \"x\" %in% Names(y ~ x, data = dat)                : TRUE\n> idx <- \"x\" %in% Names(y ~ x, data = dat); f[idx] : 1 2\n> f[\"x\" %in% Names(y ~ x, data = dat)]             : 1 2\n>\n> Tests with == operator ------------------------------\n> \"x\" == Names(y ~ x, data = dat)                  : FALSE TRUE\n> idx <- \"x\" == Names(y ~ x, data = dat); f[idx]   : 2\n> f[\"x\" == Names(y ~ x, data = dat)]               : Error in Names(y ~\n> x, data = dat) : could not find function \"Names\"\n>\n>\n> When I set options(error=recover), it's possible to investigate the\n> environment where it's trying to evaluate the expression Names(....),\n> when it runs into the error:\n>\n> Enter a frame number, or 0 to exit\n>\n> 1: envtest()\n> 2: envtest.r#40: cat(f[\"x\" == Names(y ~ x, data = dat)])\n> 3: f[\"x\" == Names(y ~ x, data = dat)]\n> 4: `[.factor`(f, \"x\" == Names(y ~ x, data = dat))\n> 5: NextMethod(\"[\")\n> 6: Names(y ~ x, data = dat)\n>\n> Selection: 5\n>\n> Browse[1]> environment()\n> <environment: 0x104421a78>\n> Browse[1]> parent.env(environment())\n> <environment: namespace:base>\n> Browse[1]> parent.env(parent.env(environment()))\n> <environment: R_GlobalEnv>\n>\n>\n> When == is used, it tries to evaluate the expression Names(....) in\n> the environment namespace:base, and it fails because it can't find the\n> function.\n> However, when %in% is used, it tries to evaluate the expression\n> Names(....) in the environment namespace:nlme, which makes more sense\n> to me.\n>\n>\n> Is this expected behavior? And if so, could someone explain why it\n> should be expected? I'm confused as to why the evaluation environment\n> should change when a certain narrow set of conditions is met.\n>\n>\n> -Winston\n>\n> ______________________________________________\n> R-devel at r-project.org <javascript:;> mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n-- \nAssistant Professor\nDepartment of Statistics / Rice University\nhttp://had.co.nz/\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Any ideas? Is this a big or a deliberate feature?\nHadley\n\nOn Saturday, September 1, 2012, Winston Chang wrote:\n\n> I'm running into some hard-to-understand behavior with the evaluation\n> environment wh",
       "thread_id": "thread-447b1eeedbf4",
       "thread_depth": 1,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120903/c4e93bd9/attachment.pl"
+      ]
     },
     {
       "id": "msg-47ebc7d917ee",
@@ -500,11 +503,14 @@
         "<mailman.17.1346752805.30578.r-devel@r-project.org>",
         "<5045F221.7050600@mayo.edu>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120904/285221b5/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120904/285221b5/attachment.pl>",
+      "body_plain": "All,\n  I seem to be missing some key point about the construction of vignettes. \nI have created a vignette script that works fine when run interactively \nusing Sweave. The top part of the .Rnw file is below.\n\n\\documentclass{article}\n\\parskip 3pt\n\\parindent 30pt\n%\\VignetteIndexEntry{Box Plot Examples}\n%\\VignetteDepends{USGSgraphs}\n\n\\begin{document}\n\n\\title{Box Plot Examples}\n\n\\author{Dave Lorenz}\n\n\\maketitle\n\n... text omittted from this example ...\n<<echo=TRUE>>=\n# Generate a random sample for the box plot\nset.seed(27036)\nBP <- rchisq(32, 3)\n# setSweave is a specialized function that sets up the graphics page\nsetSweave(\"boxplot01\", 6 ,6)\n# Set layout for 4 graphs\nAA.lo <- setLayout(width=rep(1.25, 4), height=4, xtop=1.5)\n\n... remainder omitted ...\n\n  The functions setSweave and setLayout are functions within the \nUSGSgraphs library that I am building. As I said, the script runs just \nfine when I run interactively. I do have a version of the USGSgraphs \nlibrary attached when I run the script. When I run R CMD check, or R CMD \nbuild on the source, I get the error:\n\nError: processing vignette 'boxplots.Rnw' failed with diagnostics:\n chunk 1\nError in eval(expr, envir, enclos) : could not find function \"setSweave\"\nExecution halted\n\n  I would have expected that the contents of the library being built would \nhave been available to the script (based on section 1.3.2 in R-exts.html). \nBarring that, I expected that \"%\\VignetteDepends{USGSgraphs}\" would have \nmade those functions available to the script. I have found that if I \ninclude this code before the first real example, it will run.\n\n<<echo=FALSE>>=\nlibrary(USGSgraphs)\n@\n\n  But I have no reason to believe that it would run on any system that did \nnot already have a version of USGSgraphs installed. Note that if I use the \ndefault graphics output, then I get the same error on setLayout.\n  I use the default process for building the vignettes--no makefile.\n  What do I need to do to get this vignette to run? I know I can set \nBuildVignettes to FALSE in the DESCRIPTION file or try to build with the \n--no-vignettes option, but that does not really address the more general \nissue.\n  Thanks.\nDave\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "All,\n  I seem to be missing some key point about the construction of vignettes. \nI have created a vignette script that works fine when run interactively \nusing Sweave. The top part of the .Rnw file is",
       "thread_id": "thread-d01481032b12",
       "thread_depth": 1,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120904/285221b5/attachment.pl"
+      ]
     },
     {
       "id": "msg-c6241ba998cf",
@@ -541,11 +547,14 @@
         "<OF16428985.E6D7F237-ON86257A6F.0045BFC3-86257A6F.004BBB53@usgs.gov>",
         "<50461135.6010307@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120904/78bdf0a4/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120904/78bdf0a4/attachment.pl>",
+      "body_plain": "Duncan,\n  That does make sense. But then what does %\\VignetteDepends{USGSgraphs} \ndo if it does not actually make the library available from the temporary \nlibrary tree?\nDave\n\n\n\nFrom:\nDuncan Murdoch <murdoch.duncan at gmail.com>\nTo:\nDavid L Lorenz <lorenz at usgs.gov>\nCc:\nr-devel at r-project.org\nDate:\n09/04/2012 09:34 AM\nSubject:\nRe: [Rd] Vignette question\n\n\n\nOn 04/09/2012 9:47 AM, David L Lorenz wrote:\n> All,\n>    I seem to be missing some key point about the construction of \nvignettes.\n> I have created a vignette script that works fine when run interactively\n> using Sweave. The top part of the .Rnw file is below.\n>\n> \\documentclass{article}\n> \\parskip 3pt\n> \\parindent 30pt\n> %\\VignetteIndexEntry{Box Plot Examples}\n> %\\VignetteDepends{USGSgraphs}\n>\n> \\begin{document}\n>\n> \\title{Box Plot Examples}\n>\n> \\author{Dave Lorenz}\n>\n> \\maketitle\n>\n> ... text omittted from this example ...\n> <<echo=TRUE>>=\n> # Generate a random sample for the box plot\n> set.seed(27036)\n> BP <- rchisq(32, 3)\n> # setSweave is a specialized function that sets up the graphics page\n> setSweave(\"boxplot01\", 6 ,6)\n> # Set layout for 4 graphs\n> AA.lo <- setLayout(width=rep(1.25, 4), height=4, xtop=1.5)\n>\n> ... remainder omitted ...\n>\n>    The functions setSweave and setLayout are functions within the\n> USGSgraphs library that I am building. As I said, the script runs just\n> fine when I run interactively. I do have a version of the USGSgraphs\n> library attached when I run the script. When I run R CMD check, or R CMD\n> build on the source, I get the error:\n>\n> Error: processing vignette 'boxplots.Rnw' failed with diagnostics:\n>   chunk 1\n> Error in eval(expr, envir, enclos) : could not find function \"setSweave\"\n> Execution halted\n>\n>    I would have expected that the contents of the library being built \nwould\n> have been available to the script (based on section 1.3.2 in \nR-exts.html).\n> Barring that, I expected that \"%\\VignetteDepends{USGSgraphs}\" would have\n> made those functions available to the script. I have found that if I\n> include this code before the first real example, it will run.\n>\n> <<echo=FALSE>>=\n> library(USGSgraphs)\n> @\n>\n>    But I have no reason to believe that it would run on any system that \ndid\n> not already have a version of USGSgraphs installed. Note that if I use \nthe\n> default graphics output, then I get the same error on setLayout.\n>    I use the default process for building the vignettes--no makefile.\n>    What do I need to do to get this vignette to run? I know I can set\n> BuildVignettes to FALSE in the DESCRIPTION file or try to build with the\n> --no-vignettes option, but that does not really address the more general\n> issue.\n\nVignettes are run in pretty standard R sessions when the package is \nbuilt, so you need the explicit library(USGSgraphs) call to make \nfunctions from your package available in that session.  What the manual \nis saying is just that that call will succeed:  R will install a copy of \nyour package in order to build the vignette.  It goes into a \"temporary \nlibrary tree\", because you might not want that particular version \ninstalled in your main tree.\n\nDuncan Murdoch\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Duncan,\n  That does make sense. But then what does %\\VignetteDepends{USGSgraphs} \ndo if it does not actually make the library available from the temporary \nlibrary tree?\nDave\n\n\n\nFrom:\nDuncan Murdoch <",
       "thread_id": "thread-d01481032b12",
       "thread_depth": 3,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120904/78bdf0a4/attachment.pl"
+      ]
     },
     {
       "id": "msg-354cfbfa07ba",
@@ -1037,11 +1046,14 @@
       "references": [
         "<CAFDcVCSthCJGyvvVZBnWJqYb-F4Z8ZT_YZA7E0GK1Mx5CoNYkw@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120905/4b246313/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120905/4b246313/attachment.pl>",
+      "body_plain": "I would second this suggestion.\n\nOn Wed, Aug 29, 2012 at 12:27 PM, Henrik Bengtsson <hb at biostat.ucsf.edu>wrote:\n\n> Hi,\n>\n> I keep seeing the problem where people are download binary files as\n> text (mode=\"w\") when using R's download.file() for FTP/HTTP downloads.\n>  It often results in unnecessary troubleshooting until one concludes\n> that the downloaded file has been corrupted due to (what I think is)\n> translated newlines.  Search the r-help mailing list and you'll find\n> other examples of this.  This may or may not only be a problem for\n> Windows users.\n>\n> I'd like to suggest to change the default of argument 'mode' of\n> download.file() to be mode=\"wb\".  The \"default\" is current mode=\"w\"\n> except when argument 'mode' is missing (not explicitly given),\n> download.file() tries to be helpful by forcing 'mode' to be \"wb\" for\n> certain filename extensions.  NB: help(\"download.file\",\n> package=\"utils\") has a paragraph on all this.  BTW, the latter seems\n> to be done in a case-sensitive way, such that *.zip and *.ZIP will\n> have different behaviors.\n>\n> Wouldn't it just be safer to change the default to mode=\"wb\"?  ...or\n> are there use cases that I'm overseeing - is anyone out there\n> intentionally using the \"text\" transfer mode?\n>\n> /Henrik\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I would second this suggestion.\n\nOn Wed, Aug 29, 2012 at 12:27 PM, Henrik Bengtsson <hb at biostat.ucsf.edu>wrote:\n\n> Hi,\n>\n> I keep seeing the problem where people are download binary files as\n> text",
       "thread_id": "thread-675635d13a5d",
       "thread_depth": 0,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120905/4b246313/attachment.pl"
+      ]
     },
     {
       "id": "msg-598d7fd9713e",
@@ -1190,11 +1202,14 @@
       "subject_clean": "Need to tell R CMD check that a function qr.R is not a method",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120907/6a842ce7/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120907/6a842ce7/attachment.pl>",
+      "body_plain": "When creating a package, I would like a way to tell R that\na function with a period in its name is not a method.\n\nI'm writing a package now with a modified version of qr.R.\nR CMD check gives warnings:\n\n* checking S3 generic/method consistency ... WARNING\nqr:\n  function(x, ...)\nqr.R:\n  function(qr, complete, pivot)\n\nSee section ‘Generic functions and methods’ of the ‘Writing R\nExtensions’ manual.\n\n* checking Rd \\usage sections ... NOTE\nS3 methods shown with full name in documentation object 'QR.Auxiliaries':\n  ‘qr.R’\n\nThe \\usage entries for S3 methods should use the \\method markup and\nnot their full name.\nSee the chapter ‘Writing R documentation files’ in the ‘Writing R\nExtensions’ manual.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "When creating a package, I would like a way to tell R that\na function with a period in its name is not a method.\n\nI'm writing a package now with a modified version of qr.R.\nR CMD check gives warnings:",
       "thread_id": "thread-fcd9eb014d93",
       "thread_depth": 0,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120907/6a842ce7/attachment.pl"
+      ]
     },
     {
       "id": "msg-0807e8aeeb74",
@@ -1206,11 +1221,14 @@
       "subject_clean": "Suggest adding a 'pivot' argument to qr.R",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120907/477f479e/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120907/477f479e/attachment.pl>",
+      "body_plain": "I suggest adding a 'pivot' argument to qr.R, to obtain columns in the\nsame order as the original x, so that\n  a <- qr(x)\n  qr.Q(a) %*% qr.R(a, pivot=TRUE)\nreturns x.\n\n--------------------------------------------------\n#  File src/library/base/R/qr.R\n\nqr.R <- function(qr, complete = FALSE, pivot = FALSE)\n{\n  # Args:\n  #   qr: a QR decomposition, produced by qr()\n  #   complete: logical, if TRUE then return all columns\n  #   pivot: logical, if TRUE then columns of the result are permuted to\n  #        be in the same order as the original x.\n  if (!is.qr(qr))\n    stop(\"argument is not a QR decomposition\")\n  R <- qr$qr\n  if (!complete)\n    R <- R[seq.int(min(dim(R))), , drop = FALSE]\n  R[row(R) > col(R)] <- 0\n  if(pivot)\n    R <- R[, order(qr$pivot)]\n  R\n}\n\n\n--------------------------------------------------\n% File src/library/base/man/qraux.Rd\n\nqr.R(qr, complete = FALSE, pivot = FALSE)\n\n\\item{pivot}{logical expression of length 1.  If \\code{TRUE},\n  then columns of the result are permuted to be in the same order\n  as the original \\code{x}.}\n\nzapsmall(qr.R(a))               # columns are int b1 c1 c2 b2 c3\nzapsmall(qr.R(a, pivot = TRUE)) # columns are int b1 b2 c1 c2 c3\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I suggest adding a 'pivot' argument to qr.R, to obtain columns in the\nsame order as the original x, so that\n  a <- qr(x)\n  qr.Q(a) %*% qr.R(a, pivot=TRUE)\nreturns x.\n\n---------------------------------",
       "thread_id": "thread-0807e8aeeb74",
       "thread_depth": 0,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120907/477f479e/attachment.pl"
+      ]
     },
     {
       "id": "msg-aa93de89c8fe",
@@ -1689,11 +1707,14 @@
       "references": [
         "<mailman.21.1347098407.5750.r-devel@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120912/538a0e1f/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120912/538a0e1f/attachment.pl>",
+      "body_plain": "I am trying to do a classic\n\nR -d valgrind --vanilla < mypkg-Ex.R\n\nas described in \nhttp://cs.swan.ac.uk/~csoliver/ok-sat-library/internet_html/doc/doc/R/2.9.1/doc/manual/R-exts.html#Using-valgrind\n\nThe problem is valgrind crashes imediately.\n\nI am using Ubuntu 10.04 LST (actually Biolinux) on a 64bit Dell \nPrecision laptop with 4 core-i5 Intel processors. I have R-2-15-0 \ninstalled from source and configured using\n\n./configure --enable-memory-profiling --with-valgrind-instrumentation=2 \n--prefix=/usr/local/lib64/R-2.15.0-vg2\n\nin  /usr/local/bin there's a dynamic link\n\nR-2.15.0-vg2 -> /usr/local/lib64/R-2.15.0-vg2/bin/R\n\nI can run R in bash using\n\n$ R-2.15.0-vg2\n\nValgrind was installed from the Ubuntu repositories using apt-get. But ...\n\n$ R-2.15.0-vg2 -d valgrind --vanilla\nR-2.15.0-vg2 -d valgrind --vanilla\n==29007== Memcheck, a memory error detector\n==29007== Copyright (C) 2002-2009, and GNU GPL'd, by Julian Seward et al.\n==29007== Using Valgrind-3.6.0.SVN-Debian and LibVEX; rerun with -h for \ncopyright info\n==29007== Command: /usr/local/lib64/R-2.15.0-vg2/lib64/R/bin/exec/R \n--vanilla\n==29007==\n--29007-- Warning: DWARF2 CFI reader: unhandled DW_OP_ opcode 0x2a\n\nvalgrind: m_debuginfo/readdwarf.c:2292 (copy_convert_CfiExpr_tree): \nAssertion 'srcix >= 0 && srcix < VG_(sizeXA)(srcxa)' failed.\n==29007==    at 0x3802B1F7: ??? (in /usr/lib/valgrind/memcheck-amd64-linux)\n\nsched status:\n   running_tid=0\n\n\nNote: see also the FAQ in the source distribution.\nIt contains workarounds to several common problems.\nIn particular, if Valgrind aborted or crashed after\nidentifying problems in your program, there's a good chance\nthat fixing those problems will prevent Valgrind aborting or\ncrashing, especially if it happened in m_mallocfree.c.\n\nIf that doesn't help, please report this bug to: www.valgrind.org\n\nIn the bug report, send all the above text, the valgrind\nversion, and what OS and version you are using.  Thanks.\n\n\nI've used valgrind in the past on other computer without problem, but I \nhave no idea what's failling here (the FAQ didn't help). Does anyone \nhave any idea?\n\nmany thanks\nDavid\n\np.s. I also have 2.15.1 installed in a near-identical manner as 2.15.0 \nwith just the difference --with-valgrind-instrumentation=1, the result \nis the same though.\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I am trying to do a classic\n\nR -d valgrind --vanilla < mypkg-Ex.R\n\nas described in \nhttp://cs.swan.ac.uk/~csoliver/ok-sat-library/internet_html/doc/doc/R/2.9.1/doc/manual/R-exts.html#Using-valgrind\n\nT",
       "thread_id": "thread-85aa51b73394",
       "thread_depth": 0,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120912/538a0e1f/attachment.pl"
+      ]
     },
     {
       "id": "msg-b46d30d6511a",
@@ -1708,11 +1729,14 @@
         "<mailman.21.1347098407.5750.r-devel@r-project.org>",
         "<50501FEA.4030200@supagro.inra.fr>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120912/701bad84/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120912/701bad84/attachment.pl>",
+      "body_plain": "> I am trying to do a classic\n>\n> R -d valgrind --vanilla < mypkg-Ex.R\n>\n> as described in \n> http://cs.swan.ac.uk/~csoliver/ok-sat-library/internet_html/doc/doc/R/2.9.1/doc/manual/R-exts.html#Using-valgrind\n>\n> The problem is valgrind crashes imediately.\n>\n> I am using Ubuntu 10.04 LST (actually Biolinux) on a 64bit Dell \n> Precision laptop with 4 core-i5 Intel processors. I have R-2-15-0 \n> installed from source and configured using\n>\n> ./configure --enable-memory-profiling \n> --with-valgrind-instrumentation=2 --prefix=/usr/local/lib64/R-2.15.0-vg2\n>\n> in  /usr/local/bin there's a dynamic link\n>\n> R-2.15.0-vg2 -> /usr/local/lib64/R-2.15.0-vg2/bin/R\n>\n> I can run R in bash using\n>\n> $ R-2.15.0-vg2\n>\n> Valgrind was installed from the Ubuntu repositories using apt-get. \n\nSimply removing this version and installing from source got things working.\n\nall the best\nDavid\n\n> But ...\n>\n> $ R-2.15.0-vg2 -d valgrind --vanilla\n> R-2.15.0-vg2 -d valgrind --vanilla\n> ==29007== Memcheck, a memory error detector\n> ==29007== Copyright (C) 2002-2009, and GNU GPL'd, by Julian Seward et al.\n> ==29007== Using Valgrind-3.6.0.SVN-Debian and LibVEX; rerun with -h \n> for copyright info\n> ==29007== Command: /usr/local/lib64/R-2.15.0-vg2/lib64/R/bin/exec/R \n> --vanilla\n> ==29007==\n> --29007-- Warning: DWARF2 CFI reader: unhandled DW_OP_ opcode 0x2a\n>\n> valgrind: m_debuginfo/readdwarf.c:2292 (copy_convert_CfiExpr_tree): \n> Assertion 'srcix >= 0 && srcix < VG_(sizeXA)(srcxa)' failed.\n> ==29007==    at 0x3802B1F7: ??? (in \n> /usr/lib/valgrind/memcheck-amd64-linux)\n>\n> sched status:\n>   running_tid=0\n>\n>\n> Note: see also the FAQ in the source distribution.\n> It contains workarounds to several common problems.\n> In particular, if Valgrind aborted or crashed after\n> identifying problems in your program, there's a good chance\n> that fixing those problems will prevent Valgrind aborting or\n> crashing, especially if it happened in m_mallocfree.c.\n>\n> If that doesn't help, please report this bug to: www.valgrind.org\n>\n> In the bug report, send all the above text, the valgrind\n> version, and what OS and version you are using.  Thanks.\n>\n>\n> I've used valgrind in the past on other computer without problem, but \n> I have no idea what's failling here (the FAQ didn't help). Does anyone \n> have any idea?\n>\n> many thanks\n> David\n>\n> p.s. I also have 2.15.1 installed in a near-identical manner as 2.15.0 \n> with just the difference --with-valgrind-instrumentation=1, the result \n> is the same though.\n>\n\n\n-- \nDavid Pleydell\nUMR CMAEE (INRA),\nTA A-54/B,\nCampus International de Baillarguet,\n34398 MONTPELLIER CEDEX 5,\nFRANCE\npleydell at supagro.inra.fr\npleydell at cirad.fr\nTel +33 4 67 61 58 00 ext.4140\nFax +33 4 67 59 37 98\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "> I am trying to do a classic\n>\n> R -d valgrind --vanilla < mypkg-Ex.R\n>\n> as described in \n> http://cs.swan.ac.uk/~csoliver/ok-sat-library/internet_html/doc/doc/R/2.9.1/doc/manual/R-exts.html#Using-v",
       "thread_id": "thread-85aa51b73394",
       "thread_depth": 1,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120912/701bad84/attachment.pl"
+      ]
     },
     {
       "id": "msg-130c61bfd6ac",
@@ -2367,11 +2391,14 @@
       "subject_clean": "Rcmd check problem",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120918/89e558c4/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120918/89e558c4/attachment.pl>",
+      "body_plain": "Hi, all.\n\nI was trying to build my R package with R 2.15.1 32bit and win7.\n\nI basically follow the routine in Steven Mosher's blog\nhttp://stevemosher.wordpress.com/step-10-build/\n\nAfter I fixed the path, and built the skeleton of the package, I started\ncommand prompt and used the following commands in building my package\n\nRcmd check myPackageName\n\nRcmd build myPackageName\n\nRcmd check myPackageName.tar.gz\n\nRcmd INSTALL --build myPackageName.tar.gz\n\nRcmd check myPackageName.zip\n\nThe last check command return me an error\n\nRcmd check myPackageName.zip\n\nError in rawToChar(block[seq_len(ns)]) :\n  embedded nul in string:\n'PK\\003\\004\\n\\0\\0\\0\\0\\0}?1A\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\f\\\n0\\0\\0myPackageName/PK\\003\\004\\n\\0\\0\\0\\0\\0y?1A\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\021\\0\\0\\0myPackageName/demo/PK\\003\\004\\024\\0\\002\\0\\b\\0y'\nExecution halted\n\nI do not know what it means. On the other hand, we I\nload  myPackageName.zip as a package from the local zip file, it works. I\ndid not get any error from my other two Rcmd check commands neither.\n\nI am wondering whether the returned error of Rcmd check means anything, and\nwhether my package can be uploaded to CRAN without much trouble.\n\nThanks.\n\nBest,\n\nQi\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi, all.\n\nI was trying to build my R package with R 2.15.1 32bit and win7.\n\nI basically follow the routine in Steven Mosher's blog\nhttp://stevemosher.wordpress.com/step-10-build/\n\nAfter I fixed the pa",
       "thread_id": "thread-4b00844b8ce1",
       "thread_depth": 0,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120918/89e558c4/attachment.pl"
+      ]
     },
     {
       "id": "msg-0dea51537f36",
@@ -2481,11 +2508,14 @@
         "<5058EA54.8050305@gmail.com>",
         "<alpine.LRH.2.02.1209190946151.1094@reclus.nhh.no>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120919/040ee264/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120919/040ee264/attachment.pl>",
+      "body_plain": "Sorry about out of date trip, I appreciate the detailed discussion here and\nwill fix it soon once I catch up\n\nOn Wednesday, September 19, 2012, Roger Bivand wrote:\n\n> On Tue, 18 Sep 2012, Paul Gilbert wrote:\n>\n>\n>> ( A similar problem is also reported by Sebastian P. Luque with\n>>  library(maptools)\n>>  library(trip)\n>> in the vignette as below ).\n>>\n>\n> Thanks for bringing this up. This is caused by maptools avoiding: Depends:\n> spatstat, which might create circularities. maptools and spatstat (which\n> defines the classes that maptools and trip augment by adding coercion to\n> and from their own or sp classes) mutually Suggest: each other. trip\n> Depends: spatstat, but out of the box has no NAMESPACE - I haven't\n> investigated whether adding one helps.\n>\n> Adding maptools to trip::Depends removes the warnings; check passes as\n> before, so no side-effects I can see. The auto-generated NAMESPACE is then:\n>\n> # Default NAMESPACE created by R\n> # Remove the previous line if you edit this file\n>\n> # Export all names\n> exportPattern(\".\")\n>\n> # Import all packages listed as Imports or Depends\n> import(\n>   methods,\n>   sp,\n>   spatstat,\n>   maptools\n> )\n>\n> Since trip was last updated in May 2011, it is missing both a NAMESPACE\n> file, and suggestion of the correct adehabitat?? package(s) - adehabitat is\n> deprecated. I don't think that this is an S4 problem, I think it is about\n> keeping packages in sync with the R engine, especially with regard to\n> NAMESPACE, etc., and with packages named in DESCRIPTION. This may carry\n> over to the main case here, but I haven't checked.\n>\n> Roger\n>\n>\n>> I am writing a vignette which loads RMySQL and RPostgreSQL. This produces\n>> the warning:\n>>\n>> Loading required package: DBI\n>> Warning in .simpleDuplicateClass(def, prev) :\n>>  A specification for class “dbObjectId” in package ‘RPostgreSQL’ seems\n>> equivalent to one from package ‘RMySQL’ and is not turning on duplicate\n>> class definitions for this class\n>>\n>> This can be reproduced by running\n>>  R CMD Sweave --pdf Atest.Stex\n>>\n>> where the file Atest.Stex has the lines\n>>\n>> \\documentclass{article}\n>> \\usepackage{Sweave}\n>> \\begin{document}\n>> \\begin{Scode}\n>> library(\"RMySQL\")\n>> library(\"RPostgreSQL\")\n>> \\end{Scode}\n>> \\end{document}\n>>\n>> These warnings only happen in a vignette. They are not produced if the\n>> lines are entered in an R session.\n>>\n>> (Using R version 2.15.1 (2012-06-22) -- \"Roasted Marshmallows\" on Ubuntu)\n>>\n>> Paul\n>>\n>>\n> --\n> Roger Bivand\n> Department of Economics, NHH Norwegian School of Economics,\n> Helleveien 30, N-5045 Bergen, Norway.\n> voice: +47 55 95 93 55; fax +47 55 95 95 43\n> e-mail: Roger.Bivand at nhh.no\n>\n\n\n-- \nMichael Sumner\nHobart, Australia\ne-mail: mdsumner at gmail.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Sorry about out of date trip, I appreciate the detailed discussion here and\nwill fix it soon once I catch up\n\nOn Wednesday, September 19, 2012, Roger Bivand wrote:\n\n> On Tue, 18 Sep 2012, Paul Gilbert",
       "thread_id": "thread-03a284686406",
       "thread_depth": 2,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120919/040ee264/attachment.pl"
+      ]
     },
     {
       "id": "msg-51fe6034297c",
@@ -2614,11 +2644,14 @@
       "subject_clean": "different behavior accessing type-specific as.data.frame inside a function vs inside R shell",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120919/247b8e7c/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120919/247b8e7c/attachment.pl>",
+      "body_plain": "hello\n\nwe are developing an R package called ANTsR for which we have some special\ntypes.\n\none of these types is an \" antsMatrix \" type.\n\nwe implemented a \"as.data.frame\" function that casts an antsMatrix to a\ndata.frame\n\nthis works fine in a basic shell script.   for instance:\n\n# install\nR CMD INSTALL ANTsR\n# open\nR\n# in R do\nlibrary(ANTsR)\na <- new( \"antsMatrix\", \"float\" )\nb <- as.data.frame( a )\n\nthis all works fine and i am pleased.\n\nfyi, the implementation of as.data.frame is:\n\nsetMethod( f = \"as.data.frame\" ,\n   signature( x = \"antsMatrix\" ) ,\n   definition = function( x )\n          {\n  lst = .Call( \"antsMatrix_asList\" , x )\n names(lst)[ 1 : (length(lst)) ] <- lst[[ length(lst) ]]\nlst[[ length(lst) ]] <- NULL\n                        as.data.frame(lst)\n}\n   )\n\n\nnow the problem comes when i try to access the same functionality in a\nfunction that is within my package R source.\n\ni.e. the function is defined in   ANTsR/R/test.R   which reads\n\ntest <- function(...)\n{\n  a <- new( \"antsMatrix\", \"float\" )\n  b <- as.data.frame( a )\n}\n\nthis should produce the same behavior as above, i would think.\n\nbut somehow , i get different behavior:\n\nlibrary(ANTsR)\ntest()\n\nproduces :\n\nError in as.data.frame.default(a) :\n  cannot coerce class 'structure(\"antsMatrix\", package = \"ANTsR\")' into a\ndata.frame\n\nit is clear to me what's happening ----- R is trying to use the default\nimplementation of as.data.frame\n\nwhich clearly won't work on an antsMatrix type.\n\nthe issue is --- i do not know why R is not using the correct type-specific\nimplementation when\n\nthis function is called as opposed to when the same operations are called\nwithin the shell.\n\ncertainly there must be some simple error on our part in implementation but\ni cannot find\n\nwhat it is --- i am the 3rd person who has looked into this.   it's true\nthat we are all novice R\n\ndevelopers .... am hoping someone on the list can provide some insight.\n\nmany thanks for your time,\n\nbrian\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "hello\n\nwe are developing an R package called ANTsR for which we have some special\ntypes.\n\none of these types is an \" antsMatrix \" type.\n\nwe implemented a \"as.data.frame\" function that casts an antsMat",
       "thread_id": "thread-ae3f8601d974",
       "thread_depth": 0,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120919/247b8e7c/attachment.pl"
+      ]
     },
     {
       "id": "msg-5973086e1a2b",
@@ -2751,11 +2784,14 @@
       "subject_clean": "Defunct of --max-vsize and mem.limits",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120921/6b05a1b0/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120921/6b05a1b0/attachment.pl>",
+      "body_plain": "R-devel,\n\nI am migrating from R.2.13.2 to R.2.15.1 and just realize that R command line options --max-nsize and --max-vsize are no longer supported along with the defunct of mem.limits(). To me, the function and options along with other two, --min-nsize and --min-vsize, are useful in allowing some explicit control of R memory usage. One benefit is that the setting of maximum boundary could prompt gc() to be triggered at specific point and prevent R from holding memory resources unnecessarily, or gc() could be postponed too much. This can also serve a way to manually balance the resources and performance between R and other processes that are running on the same system.\n\nCould anyone in R core team share the reason behind the decision of defuncting this memory upper bound feature ? Is this functionality covered in R-2.15.1 by other means ? In particular, without --max-vsize in R-2.15.1, how can I set maximum memory limits when running embedded R ?\n \nThanks,\n \nQuin\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "R-devel,\n\nI am migrating from R.2.13.2 to R.2.15.1 and just realize that R command line options --max-nsize and --max-vsize are no longer supported along with the defunct of mem.limits(). To me, the f",
       "thread_id": "thread-5578c00cbb6e",
       "thread_depth": 0,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120921/6b05a1b0/attachment.pl"
+      ]
     },
     {
       "id": "msg-9482f17ae533",
@@ -3162,11 +3198,14 @@
         "<CAErODj_0BLVxjTZ7tM6FKnJGhrwWOeMJ+ivQLV9srBb2JveKoQ@mail.gmail.com>",
         "<CAP01uRmxzLbuTbLJLEQnLkA6DB+AWhDb7qwthjpf7VuGUHrOGg@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120928/000edece/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120928/000edece/attachment.pl>",
+      "body_plain": "I get an error when I try to use \\S4method in a usage section in an Rd \nfile for a function. I tried to duplicate exactly how stats4 documents its \nmethod functions, but I must be missing something. Here is the top part of \nthe Rd file:\n\n\\name{xyPlot-methods}\n\\docType{methods}\n\\alias{xyPlot-methods}\n\\alias{xyPlot,numeric,numeric-method}\n\\title{Methods for Function \\code{xyPlot}}\n\\description{\nCreate a line or scatter plot.\n}\n\\usage{\n\\S4method{xyPlot}{numeric, numeric}(x, y, \nPlot = list(name = \"\", what = \"lines\", type = \"solid\", width = \"standard\", \n\n symbol = \"circle\", filled = TRUE, size = 0.09, color = \"black\"), \nyaxis.log = FALSE, yaxis.rev = FALSE, yaxis.range = c(NA, NA), \nxaxis.log = FALSE, xaxis.range = c(NA, NA), ylabels = 7, xlabels = 7, \nxtitle = deparse(substitute(x)), ytitle = deparse(substitute(y)), \ncaption = \"\", margin = c(NA, NA, NA, NA))\n}\n\n  The error I get is \n\nBad \\usage lines found in documentation object 'xyPlot-methods':\n  <unescaped bksl>S4method{xyPlot}{numeric, numeric}(x, y,\n  Plot = list(name = \"\", what = \"lines\", type = \"solid\", width = \n\"standard\",\n   symbol = \"circle\", filled = TRUE, size = 0.09, color = \"black\"),\n  yaxis.log = FALSE, yaxis.rev = FALSE, yaxis.range = c(NA, NA),\n  xaxis.log = FALSE, xaxis.range = c(NA, NA), ylabels = 7, xlabels = 7,\n  xtitle = deparse(substitute(x)), ytitle = deparse(substitute(y)),\n  caption = \"\", margin = c(NA, NA, NA, NA))\n\n  Here's my R info:\n\nR version 2.15.1 (2012-06-22) -- \"Roasted Marshmallows\"\nCopyright (C) 2012 The R Foundation for Statistical Computing\nISBN 3-900051-07-0\nPlatform: x86_64-pc-mingw32/x64 (64-bit)\n\n  The error is treated as a WARNING, so I can build and install the \npackage and the documentation file looks fine when I ask for help on \nxyPlot-methods. What am I missing?\n  Thanks.\nDave\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I get an error when I try to use \\S4method in a usage section in an Rd \nfile for a function. I tried to duplicate exactly how stats4 documents its \nmethod functions, but I must be missing something. H",
       "thread_id": "thread-4884461e2f97",
       "thread_depth": 2,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120928/000edece/attachment.pl"
+      ]
     },
     {
       "id": "msg-79e39f999315",
@@ -3205,11 +3244,14 @@
         "<OFA3B703F8.D1968544-ON86257A87.0067672B-86257A87.00682F19@usgs.gov>",
         "<5065FD08.8090305@fhcrc.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120928/56639c1f/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20120928/56639c1f/attachment.pl>",
+      "body_plain": "Martin, that was it. Thanks. Dave\n\n\n\nFrom:\nMartin Morgan <mtmorgan at fhcrc.org>\nTo:\nDavid L Lorenz <lorenz at usgs.gov>\nCc:\nr-devel at r-project.org\nDate:\n09/28/2012 02:39 PM\nSubject:\nRe: [Rd] S4method\n\n\n\nOn 09/28/2012 11:57 AM, David L Lorenz wrote:\n> I get an error when I try to use \\S4method in a usage section in an Rd\n> file for a function. I tried to duplicate exactly how stats4 documents \nits\n> method functions, but I must be missing something. Here is the top part \nof\n> the Rd file:\n>\n> \\name{xyPlot-methods}\n> \\docType{methods}\n> \\alias{xyPlot-methods}\n> \\alias{xyPlot,numeric,numeric-method}\n> \\title{Methods for Function \\code{xyPlot}}\n> \\description{\n> Create a line or scatter plot.\n> }\n> \\usage{\n> \\S4method{xyPlot}{numeric, numeric}(x, y,\n> Plot = list(name = \"\", what = \"lines\", type = \"solid\", width = \n\"standard\",\n>\n>   symbol = \"circle\", filled = TRUE, size = 0.09, color = \"black\"),\n> yaxis.log = FALSE, yaxis.rev = FALSE, yaxis.range = c(NA, NA),\n> xaxis.log = FALSE, xaxis.range = c(NA, NA), ylabels = 7, xlabels = 7,\n> xtitle = deparse(substitute(x)), ytitle = deparse(substitute(y)),\n> caption = \"\", margin = c(NA, NA, NA, NA))\n> }\n>\n>    The error I get is\n>\n> Bad \\usage lines found in documentation object 'xyPlot-methods':\n>    <unescaped bksl>S4method{xyPlot}{numeric, numeric}(x, y,\n\nHi David - R is being picky about spaces; use {numeric,numeric}. Martin\n\n>    Plot = list(name = \"\", what = \"lines\", type = \"solid\", width =\n> \"standard\",\n>     symbol = \"circle\", filled = TRUE, size = 0.09, color = \"black\"),\n>    yaxis.log = FALSE, yaxis.rev = FALSE, yaxis.range = c(NA, NA),\n>    xaxis.log = FALSE, xaxis.range = c(NA, NA), ylabels = 7, xlabels = 7,\n>    xtitle = deparse(substitute(x)), ytitle = deparse(substitute(y)),\n>    caption = \"\", margin = c(NA, NA, NA, NA))\n>\n>    Here's my R info:\n>\n> R version 2.15.1 (2012-06-22) -- \"Roasted Marshmallows\"\n> Copyright (C) 2012 The R Foundation for Statistical Computing\n> ISBN 3-900051-07-0\n> Platform: x86_64-pc-mingw32/x64 (64-bit)\n>\n>    The error is treated as a WARNING, so I can build and install the\n> package and the documentation file looks fine when I ask for help on\n> xyPlot-methods. What am I missing?\n>    Thanks.\n> Dave\n>\n>                [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n-- \nComputational Biology / Fred Hutchinson Cancer Research Center\n1100 Fairview Ave. N.\nPO Box 19024 Seattle, WA 98109\n\nLocation: Arnold Building M1 B861\nPhone: (206) 667-2793\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Martin, that was it. Thanks. Dave\n\n\n\nFrom:\nMartin Morgan <mtmorgan at fhcrc.org>\nTo:\nDavid L Lorenz <lorenz at usgs.gov>\nCc:\nr-devel at r-project.org\nDate:\n09/28/2012 02:39 PM\nSubject:\nRe: [Rd] S4meth",
       "thread_id": "thread-4884461e2f97",
       "thread_depth": 4,
-      "month": "2012-09"
+      "month": "2012-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20120928/56639c1f/attachment.pl"
+      ]
     },
     {
       "id": "msg-8446be36e885",

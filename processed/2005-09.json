@@ -319,11 +319,14 @@
       "subject_clean": "Question about package's DESCRIPTION/Depends field",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050901/b5f64d0b/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050901/b5f64d0b/attachment.pl",
+      "body_plain": "Hi,\n\nMy package \"caMassClass\" depends on several other packages, one of them\n\"PROcess\" residing on \"Bioconductor\" website. Bioconductor repository is\nnot, listed in default set of repositories in current version of R (Windows\nR 2.1.1). As a result people installing my package have to change that\ndefault, before installing the package.\n\nIs there a way of including that information in the DESCRIPTION file, that\nwould spare the user from manual tinkering with the installation process?.\nSomething along the lines of \"Repositories: Bioconductor\".  \n\nJarek Tuszynski\n\n \n \n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\n\nMy package \"caMassClass\" depends on several other packages, one of them\n\"PROcess\" residing on \"Bioconductor\" website. Bioconductor repository is\nnot, listed in default set of repositories in curr",
       "thread_id": "thread-64f1a70b7368",
       "thread_depth": 0,
-      "month": "2005-09"
+      "month": "2005-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20050901/b5f64d0b/attachment.pl"
+      ]
     },
     {
       "id": "msg-43ff77f911f3",
@@ -812,11 +815,14 @@
       "references": [
         "<355C35514FEAC9458F75947F5270974D076CA3@usctmx1103.merck.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050904/7fd1fa6f/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050904/7fd1fa6f/attachment.pl",
+      "body_plain": "Hello there!\nI almost don't deal with SEXPs. The function's name is main() it returns a \nSEXP wich is R_NilValue, thats all I use of SEXPs. This function call an \noptimization packge and the output goes all to a text file.\nWell, I followed Mr. Lumley's hint and used gdb with R and my program. \nTogether with a friend we could find the problem.\nInside the Fortran optimization package there's a subroutine called cg(...), \nand for some wierd reason this subroutine is never called (so, some \nvariables are not correctly initialized) and the program becomes crazy.\nI did this small example to show you what happens:\n\nFile: prog.f\n-------------\nsubroutine cg()\nwrite(*,*) 'Just a simple test'\nend\n\nsubroutine program()\nwrite(*,*) 'Calling the function...'\ncall cg()\nend\n\nFile test.h\n------------\n#include \"cfortran.h\"\n\nPROTOCCALLSFSUB0(PROGRAM,program)\n#define program() CCALLSFSUB0(PROGRAM,program)\n\n\nFile test.c\n------------\n#include <R.h>\n#include <Rdefines.h>\n#include <stdio.h>\n#include \"test.h\"\n\n\nSEXP simple_program(){\nprogram();\nreturn R_NilValue;\n}\n\n\nI compile the C and Fortran souces into a shared lib. I open R, do a \ndyn.load(\"lib's name\") and then a .Call(\"simple_program\").\nWhat I got?\nCalling the function...\nSegmentation fault\n\nWhat if I change the cg function's name to pp? My Fortran code is now:\n\nFile: prog.f\n-------------\nsubroutine pp()\nwrite(*,*) 'Just a simple test'\nend\n\nsubroutine program()\nwrite(*,*) 'Calling the function...'\ncall pp()\nend\n\nAnd the output from R is:\n\nCalling the function...\nJust a simple test\nNULL\n\nCan anyone explain this? Is there a way to solve it? The optimization \npackage I use has the \"cg\" function, and I cannot change it's name!\n\n\nThanks,\n\n\nRicardo\n\n\n\nOn 8/31/05, Huntsinger, Reid <reid_huntsinger at merck.com> wrote:\n> \n> I suggest you look at the code for .Call() in dotcode.c. I suspect the\n> problem is in dealing with R objects, however. You don't show how you get\n> from SEXPs to pointers to pass to Fortran, or what the Fortran routine\n> requires.\n> \n> I don't understand how you can call the \"same\" function from C. How do you\n> deal with SEXPs?\n> \n> Reid Huntsinger\n> \n> Reid Huntsinger\n> -----Original Message-----\n> From: r-devel-bounces at r-project.org [mailto:r-devel-bounces at r-project.org]\n> On Behalf Of Ricardo Luiz Andrade Abrantes\n> Sent: Tuesday, August 30, 2005 4:33 PM\n> To: r-devel at r-project.org\n> Subject: Re: [Rd] .Call and Segmentation Fault\n> \n> \n> Hello to everybody!\n> After reading all the C code, checking for problems, and find nothing, I\n> decided something a little bit different...\n> If my \".so\" library works in a wrog way in R it should do the same in C. \n> So\n> I created a C program that loads my library file and the executes the same\n> function R is executing.\n> The program worked perfectly! In fact I changed two things in my library:\n> The function I call now return an int, not a SEXP, and the return value is \n> 0\n> \n> not R_NilValue.\n> Valgrind's output is ok too...\n> If .Call has no problems, and if my function works perfect when called \n> from\n> a C program, where the problem lies? Why my program becomes \"crazy\" when I\n> run it from R?\n> I would apreciate very much your help! I don't where else I could find \n> help\n> on this.\n> I can provide any piece of code that may help, Its just ask!\n> \n> \n> Thanks,\n> \n> \n> Ricardo\n> \n> \n> \n> On 8/28/05, Prof Brian Ripley <ripley at stats.ox.ac.uk> wrote:\n> >\n> > On Sat, 27> dyn.load(\"libtest.so\")\n> > .Call(\"simple_program\")\n> Calling the function...\n> Falha de segmentação\n> Aug 2005, Ricardo Luiz Andrade Abrantes wrote:\n> >\n> > > Hi!\n> > > Yes, I am returning a SEXP from the functions called from R, and the\n> > > problem occurs before (thousands of iterations before) the return\n> > > point.\n> > > In fact I runned valgrind into R and when I call \".Call(...) \" I got\n> > > many errors like:\n> > > ==4324== Use of uninitialised value of size 8\n> > > ==4324== at 0x1CB0766D: tnls_ (gencan.f:4101)\n> > > ==4324== by 0x1CB01962: gencan_ (gencan.f:1876)\n> > > ==4324== by 0x1CAFECA5: easygencan_ (gencan.f:440)\n> > > ==4324== by 0x1CB0B47D: algencan_ (algencan.f:517)\n> > > ==4324== by 0x1CB09E74: easyalgencan_ (algencan.f:76)\n> > > ==4324== by 0x1CAFE5B3: main (algencanma.c:808)\n> > > what does not happens when I compile the algencanma as a regular\n> > > program (not a library) and run it from shell. Valgrind does not find\n> > > anything wrong when I run the program directly, except 2 missing\n> > > free() calls.\n> > > Do you have any ideas where the problem lies (R .Call function or C\n> > program)?\n> >\n> > It cannot be .Call: your .Call passed no parameters so there was nothing\n> > to be uninitialized. I did ask you why you were doing that.\n> >\n> > .Call is very heavily tested in lots of R applications, so the prior\n> > probability of innocence must be very high.\n> >\n> > --\n> > Brian D. Ripley, ripley at stats.ox.ac.uk\n> > Professor of Applied Statistics, http://www.stats.ox.ac.uk/~ripley/\n> > University of Oxford, Tel: +44 1865 272861 (self)\n> > 1 South Parks Road, +44 1865 272866 (PA)\n> > Oxford OX1 3TG, UK Fax: +44 1865 272595\n> >\n> \n> [[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n> \n> \n> \n> \n> \n> \n> ------------------------------------------------------------------------------\n> Notice: This e-mail message, together with any attachments...{{dropped}}",
+      "body_snippet": "Hello there!\nI almost don't deal with SEXPs. The function's name is main() it returns a \nSEXP wich is R_NilValue, thats all I use of SEXPs. This function call an \noptimization packge and the output go",
       "thread_id": "thread-517108dbdf42",
       "thread_depth": 0,
-      "month": "2005-09"
+      "month": "2005-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20050904/7fd1fa6f/attachment.pl"
+      ]
     },
     {
       "id": "msg-56f71be8a29f",
@@ -867,11 +873,14 @@
         "<973080e105090412324891faa6@mail.gmail.com>",
         "<x27jdwlic3.fsf@turmalin.kubism.ku.dk>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050904/5d53c8ab/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050904/5d53c8ab/attachment.pl",
+      "body_plain": "I think I did. \nBut if I don't, (1) my OS is Linux (Debian) kernel 2.6.8, R version 2.1.1.\n(2) I generate the shared lib with a cutom makefile:\n\nFC = g77\nCC = gcc\nRC = R CMD SHLIB\nCFLAGS = -Df2cFortran -I/usr/local/lib/R/include -I/usr/local/include -g3 \n-shared -fPIC\nFFLAGS = -g3 -shared -fPIC\n\nall: libtest\n\nlibtest: test.o prog.o\n$(RC) test.o prog.o -o libtest.so\n\ntest.o: test.c test.h cfortran.h\n$(CC) $(CFLAGS) -c test.c\n\nprog.o: prog.f\n$(FC) $(FFLAGS) -c prog.f\n\nclean:\nrm *.o *.so\n\n(3) What I do in R is:\n> dyn.load(\"libtest.so\")\n> .Call(\"simple_program\")\n\n\nThanks,\n\n\nRicardo\n\n\n\nOn 04 Sep 2005 21:54:20 +0200, Peter Dalgaard <p.dalgaard at biostat.ku.dk> \nwrote:\n> \n> Ricardo Luiz Andrade Abrantes <rabrantes82 at gmail.com> writes:\n> \n> > Hello there!\n> > I almost don't deal with SEXPs. The function's name is main() it returns \n> a\n> > SEXP wich is R_NilValue, thats all I use of SEXPs. This function call an\n> > optimization packge and the output goes all to a text file.\n> > Well, I followed Mr. Lumley's hint and used gdb with R and my program.\n> > Together with a friend we could find the problem.\n> > Inside the Fortran optimization package there's a subroutine called \n> cg(...),\n> > and for some wierd reason this subroutine is never called (so, some\n> > variables are not correctly initialized) and the program becomes crazy.\n> > I did this small example to show you what happens:\n> >\n> > File: prog.f\n> > -------------\n> > subroutine cg()\n> > write(*,*) 'Just a simple test'\n> > end\n> >\n> > subroutine program()\n> > write(*,*) 'Calling the function...'\n> > call cg()\n> > end\n> >\n> > File test.h\n> > ------------\n> > #include \"cfortran.h\"\n> >\n> > PROTOCCALLSFSUB0(PROGRAM,program)\n> > #define program() CCALLSFSUB0(PROGRAM,program)\n> >\n> >\n> > File test.c\n> > ------------\n> > #include <R.h>\n> > #include <Rdefines.h>\n> > #include <stdio.h>\n> > #include \"test.h\"\n> >\n> >\n> > SEXP simple_program(){\n> > program();\n> > return R_NilValue;\n> > }\n> >\n> >\n> > I compile the C and Fortran souces into a shared lib. I open R, do a\n> > dyn.load(\"lib's name\") and then a .Call(\"simple_program\").\n> > What I got?\n> > Calling the function...\n> > Segmentation fault\n> >\n> > What if I change the cg function's name to pp? My Fortran code is now:\n> >\n> > File: prog.f\n> > -------------\n> > subroutine pp()\n> > write(*,*) 'Just a simple test'\n> > end\n> >\n> > subroutine program()\n> > write(*,*) 'Calling the function...'\n> > call pp()\n> > end\n> >\n> > And the output from R is:\n> >\n> > Calling the function...\n> > Just a simple test\n> > NULL\n> >\n> > Can anyone explain this? Is there a way to solve it? The optimization\n> > package I use has the \"cg\" function, and I cannot change it's name!\n> \n> Hmmmm.... Did you ever tell us\n> \n> 1) Exactly what your platform is\n> 2) How you generated the shared library (R CMD SHLIB, or?)\n> 3) What you did to load it into R\n> \n> ?\n> \n> --\n> O__ ---- Peter Dalgaard Øster Farimagsgade 5, Entr.B\n> c/ /'_ --- Dept. of Biostatistics PO Box 2099, 1014 Cph. K\n> (*) \\(*) -- University of Copenhagen Denmark Ph: (+45) 35327918\n> ~~~~~~~~~~ - (p.dalgaard at biostat.ku.dk) FAX: (+45) 35327907\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I think I did. \nBut if I don't, (1) my OS is Linux (Debian) kernel 2.6.8, R version 2.1.1.\n(2) I generate the shared lib with a cutom makefile:\n\nFC = g77\nCC = gcc\nRC = R CMD SHLIB\nCFLAGS = -Df2cFortra",
       "thread_id": "thread-517108dbdf42",
       "thread_depth": 2,
-      "month": "2005-09"
+      "month": "2005-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20050904/5d53c8ab/attachment.pl"
+      ]
     },
     {
       "id": "msg-a265d99caac9",
@@ -1187,11 +1196,14 @@
         "<20050904195444.15D49CBFC@slim.kubism.ku.dk>",
         "<Pine.A41.4.63a.0509050929430.366298@homer04.u.washington.edu>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050906/1680120f/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050906/1680120f/attachment.pl",
+      "body_plain": "You're right!\nThanks to everybody here, and I am sorry for that \"non-sense\" bug report!\n\n\nRicardo\n\n\n\nOn 9/5/05, Thomas Lumley <tlumley at u.washington.edu> wrote:\n> \n> \n> >\n> > In some machines I don't get the segmentation fault problem, but I don't \n> get the\n> > message \"Just a simple test\" either (when using \"cg\" as the subroutine's \n> name).\n> > I believe this is bug in R because if I change my C interface again to \n> return a\n> > 0 instead of a R_NilValue, and then use it with another C program wich \n> loads the\n> > dynamic library amd call the function simple_program(), everything work\n> > perfectly.\n> >\n> \n> I don't think it is an R bug. I think it is because there is already a\n> Fortran function called cg in R. The fact that changing the name matters\n> suggest that you have a linking problem, and this turns out to be the\n> case.\n> \n> When I try running your code under gdb in R as Peter Dalgaard suggested\n> (after editing it to use R's macros for calling fortran from C instead of\n> \"cfortran.h\" which I don't have), I get\n> \n> > .Call(\"simple_program\")\n> Calling the function...\n> \n> Program received signal SIGSEGV, Segmentation fault.\n> 0x081604e5 in cg_ (nm=0x9e5dda4, n=0xbfefccfc, ar=0xbfefcce8, ai=0x89a826,\n> wr=0x9e5dda4, wi=0x9790cc0, matz=0x56090a0, zr=0x80992d4, zi=0x0,\n> fv1=0x0,\n> fv2=0x9e745f8, fv3=0x89a810, ierr=0x706d6973) at eigen.f:3416\n> 3416 IERR = 10 * N\n> Current language: auto; currently fortran\n> \n> \n> That is, your program is calling the Fortran subroutine CG in eigen.f,\n> rather than your CG.\n> \n> There should be some set of linker flags that makes sure your definition\n> of CG is used, but I don't know what it would be (and it's probably very\n> platform dependent)\n> \n> -thomas\n> \n> \n> \n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "You're right!\nThanks to everybody here, and I am sorry for that \"non-sense\" bug report!\n\n\nRicardo\n\n\n\nOn 9/5/05, Thomas Lumley <tlumley at u.washington.edu> wrote:\n> \n> \n> >\n> > In some machines I don'",
       "thread_id": "thread-5c418a422321",
       "thread_depth": 2,
-      "month": "2005-09"
+      "month": "2005-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20050906/1680120f/attachment.pl"
+      ]
     },
     {
       "id": "msg-8386279ec5e9",
@@ -5020,11 +5032,14 @@
       "subject_clean": "indicating progress in RGui from a c function",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050920/414caca5/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050920/414caca5/attachment.pl",
+      "body_plain": "Hi,\n\nI'm sure this issue has come up before, but searching the archives didn't\nlead me to a solution or resolution of the issue.\n\n \n\nI'd like to indicate progress of a calculation from within a C shared\nlibrary to the R GUI.  The apparent function call is flush.console() after\nRPrintf, but it isn't clear to me what the easiest way to do this is.  Would\nit be possible to add a flag to RPrintf to have this done implicitly?\n\n \n\nThanks,\n\nchris\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\n\nI'm sure this issue has come up before, but searching the archives didn't\nlead me to a solution or resolution of the issue.\n\n \n\nI'd like to indicate progress of a calculation from within a C shar",
       "thread_id": "thread-27cb829e663b",
       "thread_depth": 0,
-      "month": "2005-09"
+      "month": "2005-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20050920/414caca5/attachment.pl"
+      ]
     },
     {
       "id": "msg-8487dce219e7",
@@ -6247,11 +6262,14 @@
       "subject_clean": "Help: A application error and failed just-in-debugging.",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050927/36926d5a/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050927/36926d5a/attachment.pl",
+      "body_plain": "Hello all,\n \nWhen I ran my R program in R version 2.1.1 in windows XP and 2000, and I\ndownloaded a package call \"MIX\",  I got an application error:\n \nRGui:Rgui.exe - Application Error:\nThe instruction at \"0x1009d8a1\" referenced memory at \"0xbde48f58\". The\nmemory could not be \"read\".\nClick on ok to terminate the program\nclick on cancel to debug the program\n \nIf I use R version 2.1.0, I get an application error:\nRGui:Rgui.exe - Application Error:\nThe instruction at \"0x3f1c18\" referenced memory at \"0x00000000\". The\nmemory could not be \"read\".\nClick on ok to terminate the program\nclick on cancel to debug the program\n \nafter I click cancel button to debug, I got:\n \nJust-In-Time Debugging: \n     An exception 'unhandled win32 exception' has occurred in Rgui.exe.\nHowever, no debuggers are registered that can debug this exception.\nUnable to JIT debug.\n \nIn my program, I first  source(\"sump6d2.q\") to get data from splus, and\nattach(sump6d2),\nWhenever I run this part of program, the error pops up:\n\nlibrary(mix)\n\nY<-cbind(race2,nodes,htypeed1,htypeed2,ngraded2,blood2,agem40,agem40sq,e\nr,pr) #<--Y has to be a matrix for mix\n\ns<-prelim.mix(Y,6)\n\n#----------------------------run multiple\nimputation------------------------------#\n\nMI<-vector(\"list\",10) #<--vector of complete data after MI\n\nfit.model.mi<-vector(\"list\",10)\n\nrngseed(1234567) #<-- set random number generator seed\n\nfor (i in 1:10){\n\ncat(\"Doing imputation \",i,\"\\n\")\n\nthetahat <- em.mix(s)\n\nnewtheta <- da.mix(s, thetahat, steps=2000, showits=TRUE) \n\nMI[[i]] <- imp.mix(s, newtheta)\n\n}\n\nHere is help file about mix\n\nHelp files with alias or concept or title matching 'mix' using regular\nexpression matching:\n\n \n\nglmmPQL(MASS)           Fit Generalized Linear Mixed Models via PQL\ngamm(mgcv)                 Generalized Additive Mixed Models\ngamm.setup(mgcv)        Generalized Additive Mixed Model set up.\nda.mix(mix)                   Data Augmentation for Unrestricted General\n                                  Location Model\ndabipf.mix(mix)         Data Augmentation/Bayesian IPF Algorithm for\n                              Restricted General Location Models\necm.mix(mix)            ECM Algorithm for Restricted General Location\n                               Model\nem.mix(mix)             EM Algorithm for Unrestricted General Location\n                                Model\ngetparam.mix(mix)       Present Parameters of General Location Model\n                              in an Understandable Format\nimp.mix(mix)            Impute Missing Data Under General Location\n                             Model\nloglik.mix(mix)         Loglikelihood for Incomplete Data under the\n                              General Location Model\nprelim.mix(mix)         Preliminary Manipulations on Matrix of\n                        I      ncomplete Mixed Data\nlme(nlme)               Linear Mixed-Effects Models\nlmeStruct(nlme)         Linear Mixed-Effects Structure\nnlme(nlme)              Nonlinear Mixed-Effects Models\nnlmeStruct(nlme)        Nonlinear Mixed-Effects Structure\n\n \n\nType 'help(FOO, package = PKG)' to inspect entry 'FOO(PKG) TITLE'.\n\nThanks,\n\nJia\n\n \n\n \n \n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello all,\n \nWhen I ran my R program in R version 2.1.1 in windows XP and 2000, and I\ndownloaded a package call \"MIX\",  I got an application error:\n \nRGui:Rgui.exe - Application Error:\nThe instruction",
       "thread_id": "thread-85d890ca622d",
       "thread_depth": 0,
-      "month": "2005-09"
+      "month": "2005-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20050927/36926d5a/attachment.pl"
+      ]
     },
     {
       "id": "msg-d520385b4040",
@@ -6279,11 +6297,14 @@
       "subject_clean": "gfortran Makefile for windows",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050928/3a4e228a/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050928/3a4e228a/attachment.pl",
+      "body_plain": "Hi all,\n\n(Originally posted to r-help)\n\nI'm porting a package that I've worked on for OS X to Windows.\nThe package is written in F95 so I need to compile it with gfortran\nand link it with gcc4.\n\nI've been trying to build an R with gcc4 without luck so far. If there is\na binary of such a thing info would be appreciated.\n\nThis package requires a Makefile. My question is, how can I find out\n(or what is), the link command?\n\nHere is the OS X Makefile:\n\n\nRLIB_LOC=${R_HOME}\n\nF90_FILES=\\\nclass_data_frame.f90 \\\nclass_old_dbest.f90 \\\nclass_cm_data.f90 \\\nclass_cm.f90 \\\nclass_bgw.f90 \\\nclass_cm_mle.f90 \\\ncme.f90\n\n\nFORTRAN_FILES=\\\ndgletc.f \\\ndglfgb.f\\\ndglfg.f\\\ndmdc.f\\\nmecdf.f\n\n\n%.o: %.f90\ngfortran -c -g $<\n\n%.o: %.f\ngfortran -c -g $<\n\nbpkg.so: $(F90_FILES:%.f90=%.o) $(FORTRAN_FILES:%.f=%.o)\ngcc -Wall -bundle -flat_namespace -undefined suppress -L/sw/lib\n-L/usr/local/lib -o $@ $^ \\\n-L$(RLIB_LOC)/lib -lR\n\n###EOF####\n\nThe -L lib dirs are not correct. On a *nix platform I would do something\nlike this\n\nsh -x R CMD SHLIB ...\n\nto get at the R internal link information but I can't get that to work on\nCygwin.\n\nRegards,\n\nJoel\n\n--\nJoel Bremson\nGraduate Student\nInstitute for Transportation Studies - UC Davis\nhttp://etrans.blogspot.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi all,\n\n(Originally posted to r-help)\n\nI'm porting a package that I've worked on for OS X to Windows.\nThe package is written in F95 so I need to compile it with gfortran\nand link it with gcc4.\n\nI've ",
       "thread_id": "thread-6d5a8136f5ee",
       "thread_depth": 0,
-      "month": "2005-09"
+      "month": "2005-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20050928/3a4e228a/attachment.pl"
+      ]
     },
     {
       "id": "msg-82340d008d4b",
@@ -6711,11 +6732,14 @@
       "subject_clean": "Compiling R on OpenSolaris",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050930/eaa98ff1/attachment.pl",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nUrl: https://stat.ethz.ch/pipermail/r-devel/attachments/20050930/eaa98ff1/attachment.pl",
+      "body_plain": "Hi:\n\nI am trying to R (v2.1.1) to compile on OpenSolaris (build 22) using gcc\nversion 3.4.3.\nBut I am getting this error message:\n\ngmake[5]: Entering directory `/usr/local/R-2.1.1/src/library/tools/src'\n../../../../library/tools/libs/tools.so is unchanged\ngmake[5]: Leaving directory `/usr/local/R-2.1.1/src/library/tools/src'\ngmake[4]: Leaving directory `/usr/local/R-2.1.1/src/library/tools/src'\nError in dyn.load(x, as.logical(local), as.logical(now)) :\nunable to load shared library '/usr/local/R-2.1.1\n/library/tools/libs/tools.so':\nld.so.1: R: fatal: relocation error: R_AMD64_PC32: file\n/usr/local/R-2.1.1/library/tools/libs/tools.so:\nsymbol main: value 0x28001413f04 does not fit\nExecution halted\ngmake[3]: *** [all] Error 1\ngmake[3]: Leaving directory `/usr/local/R-2.1.1/src/library/tools'\n\nI am on an Athlon64 box so I put in -m64 -mtune=athlon64 for the compiler\noption.\nAny help how I can fix this problem much appreciated.\n\nthanks\n\n---Vincent\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi:\n\nI am trying to R (v2.1.1) to compile on OpenSolaris (build 22) using gcc\nversion 3.4.3.\nBut I am getting this error message:\n\ngmake[5]: Entering directory `/usr/local/R-2.1.1/src/library/tools/sr",
       "thread_id": "thread-122ea9546702",
       "thread_depth": 0,
-      "month": "2005-09"
+      "month": "2005-09",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20050930/eaa98ff1/attachment.pl"
+      ]
     },
     {
       "id": "msg-9132479abf4a",

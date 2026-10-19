@@ -468,11 +468,14 @@
       "subject_clean": "Validity glitch when contains=\"matrix\"",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100505/615a6e10/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100505/615a6e10/attachment.pl>",
+      "body_plain": "Sirs:\n\nMy validity function did not run when my class contains=\"matrix\". But if I\nfirst define the class with contains=\"numeric\", then define it again\nwith contains=\"matrix\", validity runs. Here's the session:\n\n> f <- function(object) \"BAD CLASS\" # force error to\n> setClass(\"A\", contains=\"matrix\", validity=f)\n[1] \"A\"\n> new(\"A\",as.matrix(1)) # should generate a validity error, does not\nAn object of class “A”\n     [,1]\n[1,]    1\n> setClass(\"B\", contains=\"numeric\", validity=f)\n[1] \"B\"\n> new(\"B\",1) # generates the error\nError in validObject(.Object) : invalid class \"B\" object: BAD CLASS\n> setClass(\"B\", contains=\"matrix\", validity=f)\n[1] \"B\"\n> new(\"B\",as.matrix(1)) # generates the error\nError in validObject(.Object) : invalid class \"B\" object: BAD CLASS\n\nOn the other hand, when I define the class with \"matrix\" in its\nrepresentation, validity is called, no work-around necessary:\n\n> setClass(\"C\", representation(a=\"matrix\"), validity=f)\n[1] \"C\"\n> new(\"C\",a=as.matrix(1)) # error, as desired\nError in validObject(.Object) : invalid class \"C\" object: BAD CLASS\n\nShould I\n1) always put \"matrix\" into the setClass representation argument instead of\nthe contains argument, or\n2) use contains=\"numeric\", put the matrix's dims and dimnames attributes\ninto slots, and rely on a constructor to populate the instance?\n\nOption 2 seems most \"stable\".\n\nThanks,\nDan Murphy\n\nWindows Vista, R version 2.11.0 (2010-04-22)\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Sirs:\n\nMy validity function did not run when my class contains=\"matrix\". But if I\nfirst define the class with contains=\"numeric\", then define it again\nwith contains=\"matrix\", validity runs. Here's the",
       "thread_id": "thread-faa6d5f97227",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100505/615a6e10/attachment.pl"
+      ]
     },
     {
       "id": "msg-2897ef7a8b72",
@@ -541,11 +544,14 @@
         "<19426.41812.311331.576832@lynne.math.ethz.ch>",
         "<4BE2EFA8.9010301@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100506/7f6dff3c/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100506/7f6dff3c/attachment.pl>",
+      "body_plain": "Thank you, John. Understood. The \"is a\" construct makes more sense for my\npurposes as the class users will \"expect\" matrix behavior.\n\nInitially (no pun intended) it was counter-intuitive to me that initialize\nchecked validity, but now it seems like a reasonable compromise.\n\nIn the long term I will probably take advantage of the Matrix package.\n\nThanks, all.\n\nNo-longer-dead-in-the-water,\nDan\n\nOn Thu, May 6, 2010 at 9:34 AM, John Chambers <jmc at r-project.org> wrote:\n\n> Re: the validity bug.  It's just as your example suggests:  the inherited\n> initialize() method for \"matrix\" fails to call validObject().  Should be\n> easy to fix.  (Although it points out that the code should perhaps be\n> reorganized so the initialize() method is not responsible for checking\n> validity.)\n>\n>\n> Re: your other question:\n>\n>\n> On 5/6/10 4:09 AM, Martin Maechler wrote:\n>\n>> Daniel Murphy<chiefmurphy at gmail.com>\n>>>>>>>     on Wed, 5 May 2010 22:08:06 -0700 writes:\n>>>>>>>\n>>>>>> <snip>\n>\n>      >  Should I\n>>     >  1) always put \"matrix\" into the setClass representation argument\n>> instead of\n>>     >  the contains argument, or\n>>     >  2) use contains=\"numeric\", put the matrix's dims and dimnames\n>> attributes\n>>     >  into slots, and rely on a constructor to populate the instance?\n>>\n>>\n> Either is possible, but if you really want your new objects to inherit the\n> properties of a matrix, your initial idea of contains=\"matrix\" is the\n> natural choice for 2) (once the bug is fixed, but even before for most\n> purposes). The choice is to inherit from matrix or have matrix as a slot\n> (what Smalltalk called \"is a\" versus \"has a\").\n>\n> The choice is as always whether you want to inherit all the methods and\n> then override the ones that DON'T make sense, or put the matrix in a slot\n> and write all the methods that DO make sense.\n>\n> Neither choice fits all examples but \"matrix\" is special, because R treats\n> them in a special (perhaps \"weird\" would apply) way:  they are not a class\n> (not even an S3 class) but much code recognizes them internally, meaning you\n> inherit a great deal of stuff.\n>\n> If your new class of objects are supposed to act like matrices most of the\n> time, the contains= version may require a lot less programming. On the other\n> hand, if you planned to store the data in a non-standard way (as the Matrix\n> package does) then you really don't want to inherit the standard methods\n> because any you failed to override could be disastrous.\n>\n>\n>\n>  Well, one can go the very long and \"stable\" way as we did in the\n>> Matrix package...\n>>\n>> I'm not sure I would recommend that for you in your situation.\n>> ...\n>> not the least because you *could* use the Matrix package if you\n>> want to use such formal matrices with its thousands of methods.\n>>\n>> Martin Maechler,\n>> ETH Zurich\n>>\n>>     >  Option 2 seems most \"stable\".\n>>\n>>     >  Thanks,\n>>     >  Dan Murphy\n>>\n>>     >  Windows Vista, R version 2.11.0 (2010-04-22)\n>>\n>>     >  [[alternative HTML version deleted]]\n>>\n>>     >  ______________________________________________\n>>     >  R-devel at r-project.org mailing list\n>>     >  https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thank you, John. Understood. The \"is a\" construct makes more sense for my\npurposes as the class users will \"expect\" matrix behavior.\n\nInitially (no pun intended) it was counter-intuitive to me that in",
       "thread_id": "thread-faa6d5f97227",
       "thread_depth": 3,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100506/7f6dff3c/attachment.pl"
+      ]
     },
     {
       "id": "msg-758697a50127",
@@ -623,11 +629,14 @@
       "subject_clean": "Use of R in C#",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100507/e2502060/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100507/e2502060/attachment.pl>",
+      "body_plain": "I have a C# program that requires the run of a logistic regression.  I have downloaded the R 2.11 package, and have added the following references to my code:\n\nSTATCONNECTORCLNTLib;\nStatConnectorCommonLib;\nSTATCONNECTORSRVLib;\n\nIn my code I have:\nStatConnector scs = new STATCONNECTORSRVLib.StatConnectorClass();\nscs.Init(\"R\");\n\nThe init step returns the below error which seems to indicate a connection failure.\n\nSystem.Runtime.InteropServices.COMException was unhandled\n  Message=\"Exception from HRESULT: 0x80040013\"\n  Source=\"Interop.STATCONNECTORSRVLib\"\n  ErrorCode=-2147221485\n\nAny ideas?\n\n\nJeff Abrams\nResearch Engineer\nAuction Analytics, Microsoft\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I have a C# program that requires the run of a logistic regression.  I have downloaded the R 2.11 package, and have added the following references to my code:\n\nSTATCONNECTORCLNTLib;\nStatConnectorCommo",
       "thread_id": "thread-5d37a099b116",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100507/e2502060/attachment.pl"
+      ]
     },
     {
       "id": "msg-7c82aade6233",
@@ -916,11 +925,14 @@
       "subject_clean": "Build R static",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100510/b9a60958/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100510/b9a60958/attachment.pl>",
+      "body_plain": "Hi, I am having trouble building R static on Solaris 5.10.  I have a requirement to run R within a specific user account on Solaris 5.10 and I do not have access to compilers and or shared libraries on the target machine.  I thought I could build R static ( I've build it locally on Solaris with shared libraries) and just ftp the build to the target Solaris box.  Can any help with what ./configure & Make flags need to be set for this, assuming it is possible?\n\nHere is what my currently built ./bin/exec/R executable is using.\n\n$ ldd R\n        libRblas.so =>   (file not found)\n        libg2c.so.0 =>   /usr/local/lib/libg2c.so.0\n        libm.so.2 =>     /usr/lib/libm.so.2\n        libreadline.so.6 =>      /usr/local/lib/libreadline.so.6\n        libcurses.so.1 =>        /usr/lib/libcurses.so.1\n        libnsl.so.1 =>   /usr/lib/libnsl.so.1\n        libsocket.so.1 =>        /usr/lib/libsocket.so.1\n        libdl.so.1 =>    /usr/lib/libdl.so.1\n        libiconv.so.2 =>         /usr/local/lib/libiconv.so.2\n        libicuuc.so.3 =>         /usr/lib/libicuuc.so.3\n        libicui18n.so.3 =>       /usr/lib/libicui18n.so.3\n        libc.so.1 =>     /usr/lib/libc.so.1\n        libgcc_s.so.1 =>         /usr/local/lib/libgcc_s.so.1\n        libmp.so.2 =>    /usr/lib/libmp.so.2\n        libmd5.so.1 =>   /usr/lib/libmd5.so.1\n        libscf.so.1 =>   /usr/lib/libscf.so.1\n        libicudata.so.3 =>       /usr/lib/libicudata.so.3\n        libpthread.so.1 =>       /usr/lib/libpthread.so.1\n        libCrun.so.1 =>  /usr/lib/libCrun.so.1\n        libdoor.so.1 =>  /usr/lib/libdoor.so.1\n        libuutil.so.1 =>         /usr/lib/libuutil.so.1\n        /platform/SUNW,Sun-Fire-280R/lib/libc_psr.so.1\n        /platform/SUNW,Sun-Fire-280R/lib/libmd5_psr.so.1\n\n Thanks for your help,\nAlex\n\n//************************\n// Alex Bryant\n// Software Developer\n// Integrated Clinical Systems, Inc.\n// 908-996-7208\n\n\n________________________________\nConfidentiality Note: This e-mail, and any attachment to...{{dropped:13}}",
+      "body_snippet": "Hi, I am having trouble building R static on Solaris 5.10.  I have a requirement to run R within a specific user account on Solaris 5.10 and I do not have access to compilers and or shared libraries o",
       "thread_id": "thread-571ac315a0d1",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100510/b9a60958/attachment.pl"
+      ]
     },
     {
       "id": "msg-e979ede86500",
@@ -1144,11 +1156,14 @@
       "subject_clean": "gc() reports bytes (MB) but uses notation for bits (Mb)",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100512/b9de027c/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100512/b9de027c/attachment.pl>",
+      "body_plain": "I am not a standards expert, but the notation here seems incorrect to me:\n\n> gc()\n          used (Mb) gc trigger  (Mb) max used  (Mb)\nNcells  138668  7.5     650970  34.8   492193  26.3\nVcells 6668566 50.9   18582019 141.8 17001419 129.8\n\nIn the IEEE 1541-2002 document (\nhttp://en.wikipedia.org/wiki/IEEE_1541-2002) the recommended notation\nfor bytes is a capital B, whereas bits is either\na lower case \"b\", (or \"bits\" per IEC 60027-2)\n\nBoth documents, while possibly in disagreement as to the prefix (e.g. M vs.\nMi) agree that B is for bytes.\n\ngc's output is commonly considered confusing, or at least not overly obvious\nto many, but the notational confusion surely can't help.\n\nAdditional link:\nhttp://physics.nist.gov/cuu/Units/binary.html\n\nThanks,\nJeff\n\n-- \nJeffrey Ryan\njeffrey.ryan at insightalgo.com\n\nia: insight algorithmics\nwww.insightalgo.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I am not a standards expert, but the notation here seems incorrect to me:\n\n> gc()\n          used (Mb) gc trigger  (Mb) max used  (Mb)\nNcells  138668  7.5     650970  34.8   492193  26.3\nVcells 6668566",
       "thread_id": "thread-b35ed69f1065",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100512/b9de027c/attachment.pl"
+      ]
     },
     {
       "id": "msg-ed116415702d",
@@ -1213,11 +1228,14 @@
       "subject_clean": "How to profile R interpreter?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100512/f9c91c3b/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100512/f9c91c3b/attachment.pl>",
+      "body_plain": "Hi, all. Does anyone know how to profile R interpreter? I tried Rprof, which\nonly gave me profiling information at script level. My intention is to\nidentify hot spots in R interpreter. I compiled R interpreter with -pg for\ngprof. However, I couldn't generate gmon.out when I ran the R interpreter\nwith a script. Thanks.\n\nXiaoming\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi, all. Does anyone know how to profile R interpreter? I tried Rprof, which\nonly gave me profiling information at script level. My intention is to\nidentify hot spots in R interpreter. I compiled R in",
       "thread_id": "thread-ecd00eaeb08b",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100512/f9c91c3b/attachment.pl"
+      ]
     },
     {
       "id": "msg-00b03ddefdee",
@@ -1254,11 +1272,14 @@
         "<77EB52C6DD32BA4D87471DCD70C8D70002E6721F@NA-PA-VBE03.na.tibco.com>",
         "<34260.66.201.56.150.1273696060.squirrel@www.stat.berkeley.edu>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100512/4d62d484/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100512/4d62d484/attachment.pl>",
+      "body_plain": "Providing the wrapper would allow for both performance as well as\nuser-simplicity.\n\nx[RANGE(1,1e6)] and x[1:1e6] could both be handled internally, where:\n\nRANGE <- function(from,to) {\n  structure(seq(from,to), class=\"RANGE\")\n}\n\nJust testing for a 'RANGE' object in your [. method would let the\noptimization be up to the end user.\n\nThe 'xts' package provides something similar with respect to subsetting by\ntime.  We accept a character string conforming to ISO8601 style time ranges,\nas well as standard classes that would be available to subset any other\nmatrix-like object.\n\nThe ISO way will get you fast binary searching over the time-index, whereas\nusing POSIX time is a linear search.\n\nHTH\nJeff\n\nOn Wed, May 12, 2010 at 3:27 PM, James Bullard <bullard at stat.berkeley.edu>wrote:\n\n> >> -----Original Message-----\n> >> From: r-devel-bounces at r-project.org\n> >> [mailto:r-devel-bounces at r-project.org] On Behalf Of Duncan Murdoch\n> >> Sent: Wednesday, May 12, 2010 11:35 AM\n> >> To: bullard at stat.berkeley.edu\n> >> Cc: r-devel at stat.math.ethz.ch\n> >> Subject: Re: [Rd] ranges and contiguity checking\n> >>\n> >> On 12/05/2010 2:18 PM, James Bullard wrote:\n> >> > Hi All,\n> >> >\n> >> > I am interfacing to some C libraries (hdf5) and I have\n> >> methods defined for\n> >> > '[', these methods do hyperslab selection, however, currently I am\n> >> > limiting slab selection to contiguous blocks, i.e., things\n> >> defined like:\n> >> > i:(i+k). I don't do any contiguity checking at this point,\n> >> I just grab the\n> >> > max and min of the range and them potentially do an\n> >> in-memory subselection\n> >> > which is what I am definitely trying to avoid. Besides\n> >> using deparse, I\n> >> > can't see anyway to figure out that these things (i:(i+k)\n> >> and c(i, i+1,\n> >> > ..., i+k)) are different.\n> >> >\n> >> > I have always liked how 1:10 was a valid expression in R\n> >> (as opposed to\n> >> > python where it is not by itself.), however I'd somehow\n> >> like to know that\n> >> > the thing was contiguous range without examining the un-evaluated\n> >> > expression or worse, all(diff(i:(i+k)) == 1)\n> >\n> > You could define a sequence class, say 'hfcSeq'\n> > and insist that the indices given to [.hfc are\n> > hfcSeq objects.  E.g., instead of\n> >     hcf[i:(i+k)]\n> > the user would use\n> >     hcf[hfcSeq(i,i+k)]\n> > or\n> >     index <- hcfSeq(i,i+k)\n> >     hcf[index]\n> > max, min, and range methods for hcfSeq\n> > would just inspect one or both of its\n> > elements.\n>\n> I could do this, but I wanted it to not matter to the user whether or not\n> they were dealing with a HDF5Dataset or a plain-old matrix.\n>\n> It seems like I cannot define methods on: ':'. If I could do that then I\n> could implement an immutable 'range' class which would be good, but then\n> I'd have to also implement: '['(matrix, range) -- which would be easy, but\n> still more work than I wanted to do.\n>\n> I guess I was thinking that there is some inherent value in an immutable\n> native range type which is constant in time and memory for construction.\n> Then I could define methods on '['(matrix, range) and '['(matrix,\n> integer). I'm pretty confident this is more less what is happening in the\n> IRanges package in Bioconductor, but (maybe for the lack of support for\n> setting methods on ':') it is happening in a way that makes things very\n> non-transparent to a user. As it stands, I can optimize for performance by\n> using a IRange-type wrapper or I can optimize for code-clarity by killing\n> performance.\n>\n> thanks again, jim\n>\n>\n>\n>\n>\n> >\n> > Bill Dunlap\n> > Spotfire, TIBCO Software\n> > wdunlap tibco.com\n> >\n> >>\n> >> You can implement all(diff(x) == 1) more efficiently in C,\n> >> but I don't\n> >> see how you could hope to do any better than that without\n> >> putting very\n> >> un-R-like restrictions on your code.  Do you really want to say that\n> >>\n> >> A[i:(i+k)]\n> >>\n> >> is legal, but\n> >>\n> >> x <- i:(i+k)\n> >> A[x]\n> >>\n> >> is not?  That will be very confusing for your users.  The problem is\n> >> that objects don't remember where they came from, only arguments to\n> >> functions do, and functions that make use of this fact mainly\n> >> do it for\n> >> decorating the output (nice labels in plots) or making error messages\n> >> more intelligible.\n> >>\n> >> Duncan Murdoch\n> >>\n> >> ______________________________________________\n> >> R-devel at r-project.org mailing list\n> >> https://stat.ethz.ch/mailman/listinfo/r-devel\n> >>\n> >\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \nJeffrey Ryan\njeffrey.ryan at insightalgo.com\n\nia: insight algorithmics\nwww.insightalgo.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Providing the wrapper would allow for both performance as well as\nuser-simplicity.\n\nx[RANGE(1,1e6)] and x[1:1e6] could both be handled internally, where:\n\nRANGE <- function(from,to) {\n  structure(seq(",
       "thread_id": "thread-ed116415702d",
       "thread_depth": 4,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100512/4d62d484/attachment.pl"
+      ]
     },
     {
       "id": "msg-891061208f75",
@@ -1488,11 +1509,14 @@
       "subject_clean": "Compiling R with ATLAS",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/64185a81/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/64185a81/attachment.pl>",
+      "body_plain": "Hello. I know almost nothing about Linux, so I apologize if the answer to\nthis is obvious.\n\nI am trying to compile R with ATLAS (successfully compiled 3.9.24 on Ubuntu\n10.04 64 bit). I configured with:\n\n./configure --enable-R-shlib --enable-BLAS-shlib\n--with-blas=\"-L/usr/local/atlas/lib -lf77blas -latlas\"\n--with-lapack=\"-L/usr/local/atlaslib -llapack -lcblas\" --with-x\n\nand I get this error (from config.log):\n\nconfigure:28566: checking for dgemm_ in -L/usr/local/atlas/lib -lf77blas\n-latlas\nconfigure:28587: gcc -std=gnu99 -o conftest -g -O2 -fpic\n-I/usr/local/include  -L/usr/local/lib64 conftest.c -L/usr/local/atlas/lib\n-lf77blas -latlas  -lgfortran -lm -ldl -lm  >&5\nconftest.c: In function 'main':\nconftest.c:193: warning: implicit declaration of function 'dgemm_'\n/usr/local/atlas/lib/libf77blas.so: undefined reference to\n`atl_f77wrap_zger2u_'\n/usr/local/atlas/lib/libf77blas.so: undefined reference to\n`atl_f77wrap_cger2c_'\n/usr/local/atlas/lib/libf77blas.so: undefined reference to\n`atl_f77wrap_zger2c_'\n/usr/local/atlas/lib/libf77blas.so: undefined reference to\n`atl_f77wrap_cger2u_'\ncollect2: ld returned 1 exit status\nconfigure:28587: $? = 1\n\nI found the following e-mail in the archives <\nhttp://www.mail-archive.com/r-devel at r-project.org/msg16853.html>, but it has\na different error, and the suggestion of switching out the BLAS later does\nnot seem to apply to ATLAS which requires two files, I think.\n\nAny advice would be very appreciated.\n\nThank you.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello. I know almost nothing about Linux, so I apologize if the answer to\nthis is obvious.\n\nI am trying to compile R with ATLAS (successfully compiled 3.9.24 on Ubuntu\n10.04 64 bit). I configured with",
       "thread_id": "thread-4e9a17129503",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/64185a81/attachment.pl"
+      ]
     },
     {
       "id": "msg-4b0cdb13aed0",
@@ -1504,11 +1528,14 @@
       "subject_clean": "discrete-time survival model",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/58016624/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/58016624/attachment.pl>",
+      "body_plain": "Dear List,\n\nLast week, I asked on R-help if there was a package implementing the dynamic discrete time model of Fahrmeir (1994) - http://www.jstor.org/pss/2336962. Unfortunately, nobody answered. So I start to implement it. \n\nDoes anyone interested in such development? Or is it useless because someone has already implemented this model?\n\nIn the coming days, I plan to move my code on R-forge, so people can easily contribute. If you are interested please let me know.\n\nThanks in advance\n\nChristophe\n\n\n--\nChristophe Dutang\nPh.D. student at ISFA, Lyon, France\nwebsite: http://dutangc.free.fr\n\n\n\n\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear List,\n\nLast week, I asked on R-help if there was a package implementing the dynamic discrete time model of Fahrmeir (1994) - http://www.jstor.org/pss/2336962. Unfortunately, nobody answered. So I",
       "thread_id": "thread-4b0cdb13aed0",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/58016624/attachment.pl"
+      ]
     },
     {
       "id": "msg-1d2f115bd285",
@@ -1700,11 +1727,14 @@
         "<AANLkTine-6pPbbOKspjOxOFF7qYC56KItUn_apBUKSgy@mail.gmail.com>",
         "<AANLkTinVN5_uVkOaryuBnmw5JTYWdqWRojFRdG41hC-7@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/35c0ffcd/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/35c0ffcd/attachment.pl>",
+      "body_plain": "This isn't like a local variable though, since any function above the\nbaseenv() in the search path will also not be found.\n\n> f\nfunction(a) { rnorm(b) }\n<environment: base>\n\n> f()\nError in f() : could not find function \"rnorm\"\n\nJeff\n\nOn Fri, May 14, 2010 at 9:20 AM, Hadley Wickham <hadley at rice.edu> wrote:\n\n> > Hello All,\n> >\n> > By default, a reference of a variable in a function cause R to look\n> > for the variable in the parent environment if it is not available in\n> > the current environment (without generating any errors or warnings).\n> > I'm wondering if there is a way to revert this behaviors, such that it\n> > will not look for the parent environment and will generate an error if\n> > the variable is not available in the current environment. Is this\n> > tuning has to be done at the C level?\n>\n> Try this:\n> b <- 1\n> f <- function(a) {\n>  b\n> }\n>\n> environment(f) <- baseenv()\n> f()\n>\n> Hadley\n>\n> --\n> Assistant Professor / Dobelman Family Junior Chair\n> Department of Statistics / Rice University\n> http://had.co.nz/\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \nJeffrey Ryan\njeffrey.ryan at insightalgo.com\n\nia: insight algorithmics\nwww.insightalgo.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "This isn't like a local variable though, since any function above the\nbaseenv() in the search path will also not be found.\n\n> f\nfunction(a) { rnorm(b) }\n<environment: base>\n\n> f()\nError in f() : could",
       "thread_id": "thread-fc8fe84e7b79",
       "thread_depth": 2,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/35c0ffcd/attachment.pl"
+      ]
     },
     {
       "id": "msg-ed3d64d1c663",
@@ -1820,11 +1850,14 @@
         "<AANLkTin1X624rbBUEZg5GiJU6Xam79NhRRjFPqhSuuuI@mail.gmail.com>",
         "<AANLkTinXKRyabRrYK4J5Xf3h_DOkjQaN8AEtayGoFZZS@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/a50c84a7/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/a50c84a7/attachment.pl>",
+      "body_plain": "Thank you.\n\nI am doing it this way as I really do not know much about Linux, and I would\nnot know how to re-compile Rblas and Rlapack with the ATLAS BLAS and tuned\nLAPACK after I install the precompiled packages through synaptic. This way,\nostensibly, I should be compiling it from scratch so it should work. Also,\nthis way, I can compile R itself with optimization and -march=native to\nsqueeze out whatever speed I can from my machine.\n\nAny advice would be very much appreciated, and thank you for pointing me to\nthe correct list.\n\n--Avi\n\n\nOn Fri, May 14, 2010 at 9:00 AM, Douglas Bates <bates at stat.wisc.edu> wrote:\n\n> There is a Debian/Ubuntu specific list, R-SIG-Debian at R-project.org,\n> which I am cc:'ing on this reply, that is a better location for this\n> discussion.\n>\n> It appears that you may be going about things the hard way.  There are\n> Ubuntu packages for atlas and for R that can handle all of this for\n> you.  Take a look at http://cran.r-project.org/bin/linux/ubuntu for\n> information on how to get started.  It will probably be much easier to\n> install the pre-compiled packages first and worry about compilation\n> for customization later.\n>\n> On Thu, May 13, 2010 at 11:16 PM, Avraham Adler <avraham.adler at gmail.com>\n> wrote:\n> > Hello. I know almost nothing about Linux, so I apologize if the answer to\n> > this is obvious.\n> >\n> > I am trying to compile R with ATLAS (successfully compiled 3.9.24 on\n> Ubuntu\n> > 10.04 64 bit). I configured with:\n> >\n> > ./configure --enable-R-shlib --enable-BLAS-shlib\n> > --with-blas=\"-L/usr/local/atlas/lib -lf77blas -latlas\"\n> > --with-lapack=\"-L/usr/local/atlaslib -llapack -lcblas\" --with-x\n> >\n> > and I get this error (from config.log):\n> >\n> > configure:28566: checking for dgemm_ in -L/usr/local/atlas/lib -lf77blas\n> > -latlas\n> > configure:28587: gcc -std=gnu99 -o conftest -g -O2 -fpic\n> > -I/usr/local/include  -L/usr/local/lib64 conftest.c\n> -L/usr/local/atlas/lib\n> > -lf77blas -latlas  -lgfortran -lm -ldl -lm  >&5\n> > conftest.c: In function 'main':\n> > conftest.c:193: warning: implicit declaration of function 'dgemm_'\n> > /usr/local/atlas/lib/libf77blas.so: undefined reference to\n> > `atl_f77wrap_zger2u_'\n> > /usr/local/atlas/lib/libf77blas.so: undefined reference to\n> > `atl_f77wrap_cger2c_'\n> > /usr/local/atlas/lib/libf77blas.so: undefined reference to\n> > `atl_f77wrap_zger2c_'\n> > /usr/local/atlas/lib/libf77blas.so: undefined reference to\n> > `atl_f77wrap_cger2u_'\n> > collect2: ld returned 1 exit status\n> > configure:28587: $? = 1\n> >\n> > I found the following e-mail in the archives <\n> > http://www.mail-archive.com/r-devel at r-project.org/msg16853.html>, but it\n> has\n> > a different error, and the suggestion of switching out the BLAS later\n> does\n> > not seem to apply to ATLAS which requires two files, I think.\n> >\n> > Any advice would be very appreciated.\n> >\n> > Thank you.\n> >\n> >        [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thank you.\n\nI am doing it this way as I really do not know much about Linux, and I would\nnot know how to re-compile Rblas and Rlapack with the ATLAS BLAS and tuned\nLAPACK after I install the precompil",
       "thread_id": "thread-4e9a17129503",
       "thread_depth": 2,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/a50c84a7/attachment.pl"
+      ]
     },
     {
       "id": "msg-5a10bfef0ec7",
@@ -1875,11 +1908,14 @@
       "subject_clean": "S4 default/missing args",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/cca05e92/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/cca05e92/attachment.pl>",
+      "body_plain": "I am trying to understand the missing vs default value for an argument\nto an S4 method. (I'm not sure if this is a bug or my confusion.) In S3\nI can specify a default value for an argument and then both check if the\nargument was missing in the call, and use it because it takes on the\ndefault value. I do not seem to be able to do that in S4 as shown by\nthis simplified example:\n\n \n\nsetGeneric(\"TSdoc\",\n\n   def= function(x, con, ...) standardGeneric(\"TSdoc\"))\n\n \n\nsetMethod(\"TSdoc\",   signature(x=\"character\", con=\"missing\"),\n\n    definition= function(x, con=getOption(\"TSconnection\"), ...){\n\n        if(is.null(con))\n\n           stop(\"con should be specified or set with\noptions(TSconnection=con).\")\n\n        else return('ok')} )\n\n \n\nThen when I try\n\n   TSdoc(\"B103\")\n\nIn my original problem I got\n\n   Error in is.null(con) : 'con' is missing\n\nAnd in the simplified example I get\n\n  Error in TSdoc(\"B103\") :\n\n    element 1 is empty;\n\n     the part of the args list of 'is.null' being evaluated was:\n\n     (con)\n\n \n\nI'm not sure why there is a difference, but the implication is the same\nin both, the default   \n\n> getOption(\"TSconnection\")\n\nNULL\n\n \n\nIs not getting through to the is.null().  I can fix (or work around)\nthis with\n\n \n\nsetMethod(\"TSdoc\",   signature(x=\"character\", con=\"missing\"),\n\n   definition= function(x, con,  ...){\n\n       if(is.null(con <- getOption(\"TSconnection\")))\n\n          stop(\"con should be specified or set with\noptions(TSconnection=con).\")\n\n       else return('ok') } )\n\n \n\nTSdoc(\"B103\")\n\nError in TSdoc(\"B103\") :\n\n  con should be specified or set with options(TSconnection=con).\n\n \n\nSo my question is, is this a bug or do I have to adjust my programming\nstyle for the way missing/default arguments are handled in S4?\n\n \n\nPaul Gilbert\n\n====================================================================================\n\nLa version française suit le texte anglais.\n\n------------------------------------------------------------------------------------\n\nThis email may contain privileged and/or confidential information, and the Bank of\nCanada does not waive any related rights. Any distribution, use, or copying of this\nemail or the information it contains by other than the intended recipient is\nunauthorized. If you received this email in error please delete it immediately from\nyour system and notify the sender promptly by email that you have done so. \n\n------------------------------------------------------------------------------------\n\nLe présent courriel peut contenir de l'information privilégiée ou confidentielle.\nLa Banque du Canada ne renonce pas aux droits qui s'y rapportent. Toute diffusion,\nutilisation ou copie de ce courriel ou des renseignements qu'il contient par une\npersonne autre que le ou les destinataires désignés est interdite. Si vous recevez\nce courriel par erreur, veuillez le supprimer immédiatement et envoyer sans délai à\nl'expéditeur un message électronique pour l'aviser que vous avez éliminé de votre\nordinateur toute copie du courriel reçu.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I am trying to understand the missing vs default value for an argument\nto an S4 method. (I'm not sure if this is a bug or my confusion.) In S3\nI can specify a default value for an argument and then bo",
       "thread_id": "thread-d0996a417da7",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100514/cca05e92/attachment.pl"
+      ]
     },
     {
       "id": "msg-cfc2efa9ac2a",
@@ -2115,11 +2151,14 @@
       "subject_clean": "format.data.frame containing S4 class with format method",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100516/10239b25/attachment.asc>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100516/10239b25/attachment.asc>",
+      "body_plain": "Hi again,\n\nI must be misunderstanding something fundamental about how an S4 class\nstored in a data.frame can be persuaded to print according to a desired\nformat. The help page says:\n\nformat.data.frame formats the data frame column by column, applying the\nappropriate method of format for each column.\n\nHere is my class:\n> setClass(\"A\",contains=\"character\")\n[1] \"A\"\n> a <- new(\"A\", \"aaa\")\n> a\nAn object of class \"A\"\n[1] \"aaa\"\n\nI defined my format method to display in uppercase:\n> setMethod(\"format\",\"A\", function(x, ...) toupper(x))\n[1] \"format\"\n> format(a)\nAn object of class \"A\"\n[1] \"AAA\"\n\nI looked at the S4 class definition for data.frame (getClass(\"data.frame\"))\nwhich prompted me to store the instance 'a' into a data.frame as follows:\n> adf<-new(\"data.frame\",list(a), names=\"a\", row.names=\"1\")\n> adf\nObject of class \"data.frame\"\n    a\n1 aaa\n\n... not upper case. The str function clearly shows that the object was\nsuccessfully stored in the data.frame:\n> str(adf)\n'data.frame':   1 obs. of  1 variable:\n'data.frame':   1 obs. of  1 variable:\nFormal class 'data.frame' [package \"methods\"] with 4 slots\n  ..@ .Data    :List of 1\n  .. ..$ :Formal class 'A' [package \".GlobalEnv\"] with 1 slots\n  .. .. .. ..@ .Data: chr \"aaa\"\n  ..@ names    : chr \"a\"\n  ..@ row.names: chr \"1\"\n  ..@ .S3Class : chr \"data.frame\"\n\nIs there another step I should be taking so that \"A\"'s format method is\nfound and used?\n\nThank you,\n\nDan Murphy\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi again,\n\nI must be misunderstanding something fundamental about how an S4 class\nstored in a data.frame can be persuaded to print according to a desired\nformat. The help page says:\n\nformat.data.frame",
       "thread_id": "thread-fd2e101330f5",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100516/10239b25/attachment.asc"
+      ]
     },
     {
       "id": "msg-efe91c5442e0",
@@ -2294,11 +2333,14 @@
         "<AANLkTimbtO9SjWzkuzzA5R0E6LvwXmUPjbIKEL9iYpiv@mail.gmail.com>",
         "<77EB52C6DD32BA4D87471DCD70C8D70002F1EB4D@NA-PA-VBE03.na.tibco.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100518/e10d0ddf/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100518/e10d0ddf/attachment.pl>",
+      "body_plain": "On Tue, May 18, 2010 at 22:38, William Dunlap <wdunlap at tibco.com> wrote:\n\n> > -----Original Message-----\n> > From: r-help-bounces at r-project.org\n> > [mailto:r-help-bounces at r-project.org] On Behalf Of Martin Maechler\n> > Sent: Tuesday, May 18, 2010 1:25 PM\n> > To: milton ruser\n> > Cc: r-help at r-project.org\n> > Subject: Re: [R] avoiding reinstall already installed *package*\n> >\n> > On Tue, May 18, 2010 at 18:06, milton ruser\n> > <milton.ruser at gmail.com> wrote:\n> >\n> > > Hi Martin,\n> > >\n> > > thanks for your reply, and very thanks for your kind tips\n> > about \"package\"\n> > > and \"library\"\n> > > So, I was trying to understand *why* we load packages using\n> > library().\n> > >\n> >\n> > I've started to use and suggest using   require(.) instead\n> > {as my efforts to introduce  use() or usePackage() *and* deprecating\n> >  library()  where met with strong opposition}\n>\n> I hate to get into arguments over function names, but\n> I would have thought that require(\"pkg\") would throw\n> an error if the required pkg was not available.  It seems\n> like require() can be used when pkg is not really required\n> but library(\"pkg\") is easiest when pkg is required to\n> continue:\n>\n>  > { require(\"noSuchPackage\"); functionFromNoSuchPackage() }\n>  Loading required package: noSuchPackage\n>  Error: could not find function \"functionFromNoSuchPackage\"\n>  In addition: Warning message:\n>  In library(package, lib.loc = lib.loc, character.only = TRUE,\n> logical.return = TRUE,  :\n>    there is no package called 'noSuchPackage'\n>  > { library(\"noSuchPackage\"); functionFromNoSuchPackage() }\n>  Error in library(\"noSuchPackage\") :\n>    there is no package called 'noSuchPackage'\n>\n\nWell, both require() and library() pretty soon lead to an error if the\npackage is not available... but I agree that you'd prefer to get the more\nhelpful error message immediately rather than belatedly.\n\nIf that's an issue, the typical use of require() would be\n\nif(require(...)) {\n  ...\n  ...\n} else {\n   stop(\"..... not available; do this or that \")\n}\n\nbut instead of stop(..) which can provide a context dependent, \"customized\"\nerror message, you can also work around the absence of the package in other\nways.\n\na   usePackage()  function would typically use \"best\" of library() and\nrequire() ,\nmaybe  not allowing   usePackage(MASS)\nbut requiring              usePackage(\"MASS\")\nbut also working \"logically\" e.g. for\n   mylme <- \"lme4\"\n   usePackage(mylme)\ni.e. not allowing non-standard evaluation.\n\nBill Dunlap\n> Spotfire, TIBCO Software\n> wdunlap tibco.com\n>\n> >\n> >\n> > > I suggest that developers killl the problem on its root,\n> > deleting library\n> > > function :-)\n> > > Good to know already installed packages will not be reinstalled.\n> > >\n> > > cheers\n> > >\n> > > milton\n> > >\n> > > On Tue, May 18, 2010 at 12:49 PM, Martin Maechler <\n> > > maechler at stat.math.ethz.ch> wrote:\n> > >\n> > >> { I've modified the subject; I can't stand it hitting square into\n> > >>  my face ... }\n> > >>\n> > >> >>>>> \"mr\" == milton ruser <milton.ruser at gmail.com>\n> > >> >>>>>     on Tue, 18 May 2010 12:36:23 -0300 writes:\n> > >>\n> > >>    mr> Dear R-experts,\n> > >>    mr> I am installing new libraries using\n> > >>    mr> install.packages(\"ggplot2\",dependencies=T).\n> > >>    mr> But I perceive that many dependencies are already\n> > installed. As I\n> > >> am using\n> > >>    mr> a low-band internet, how can avoid reinstall\n> > installed libraries?\n> > >>\n> > >> There's no problem with installed libraries, as ...\n> > >> they DO NOT EXIST.\n> > >>\n> > >> These are *PACKAGES* !\n> > >> Why do you think are you talking about the function\n> > >>\n> > >>  install.packages()  ????\n> > >>         ^^^^^^^^\n> > >>\n> > >> ---\n> > >> To answer the question you did want to ask:\n> > >>\n> > >> Do not be afraid:  Depedencies are only installed when needed,\n> > >> i.e., no package will be downloaded and installed if it already\n> > >> is there.\n> > >>\n> > >> Martin Maechler, ETH Zurich\n> > >>\n> > >>    mr> cheers\n> > >>\n> > >>    mr> milton\n> > >>\n> > >>    mr> [[alternative HTML version deleted]]\n> > >>        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n> > >> (another thing you should learn to avoid, please)\n> > >>\n> > >>\n> > >\n> >\n> >       [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-help at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-help\n> > PLEASE do read the posting guide\n> > http://www.R-project.org/posting-guide.html\n> > and provide commented, minimal, self-contained, reproducible code.\n> >\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Tue, May 18, 2010 at 22:38, William Dunlap <wdunlap at tibco.com> wrote:\n\n> > -----Original Message-----\n> > From: r-help-bounces at r-project.org\n> > [mailto:r-help-bounces at r-project.org] On Be",
       "thread_id": "thread-9daeebed8960",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100518/e10d0ddf/attachment.pl"
+      ]
     },
     {
       "id": "msg-9d71fbcf1567",
@@ -2360,11 +2402,14 @@
       "subject_clean": "Why does my RPy2 program run faster on Windows?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100519/f0af5197/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100519/f0af5197/attachment.pl>",
+      "body_plain": "Hi\n\nThis is my function. It serves an HTML page after the calculations. I'm\nconnecting to a MSSQL DB using pyodbc.\n\n    def CAPM(self,client):\n\n        r=self.r\n\n        cds=\"1590\"\n        bm=\"20559\"\n\n        d1 = []\n        v1 = []\n        v2 = []\n\n\n        print\"Parsing GET Params\"\n\n        params=client.g[1].split(\"&\")\n\n        for items in params:\n            item=items.split(\"=\")\n\n            if(item[0]==\"cds\"):\n                cds=unquote(item[1])\n            elif(item[0]==\"bm\"):\n                bm=unquote(item[1])\n\n        print \"cds: %s bm: %s\" % (cds,bm)\n\n        print \"Fetching data\"\n\n        t3=datetime.now()\n\n        for row in self.cursor.execute(\"select * from (select * from (\nselect co_code,dlyprice_date,dlyprice_close from feed_dlyprice P where\nco_code in (%s,%s) ) DataTable PIVOT ( max(dlyprice_close) FOR co_code IN\n([%s],[%s])  )PivotTable ) a order by dlyprice_date\" %(cds,bm,cds,bm)):\n            d1.append(str(row[0]))\n            v1.append(row[1])\n            v2.append(row[2])\n\n        t4=datetime.now()\n\n        t1=datetime.now()\n\n        print \"Calculating\"\n\n        d1.pop(0)\n        d1vec = robjects.StrVector(d1)\n        v1vec = robjects.FloatVector(v1)\n        v2vec = robjects.FloatVector(v2)\n\n        r1 = r('Return.calculate(%s)' %v1vec.r_repr())\n        r2 = r('Return.calculate(%s)' %v2vec.r_repr())\n\n        tl = robjects.rlc.TaggedList([r1,r2],tags=('Geo','Nifty'))\n        df = robjects.DataFrame(tl)\n\n        ts2 = r.timeSeries(df,d1vec)\n        tsa = r.timeSeries(r1,d1vec)\n        tsb = r.timeSeries(r2,d1vec)\n\n        robjects.globalenv[\"ta\"] = tsa\n        robjects.globalenv[\"tb\"] = tsb\n        robjects.globalenv[\"t2\"] = ts2\n        a = r('table.CAPM(ta,tb)')\n\n        t2=datetime.now()\n\n\n        page=\"<html><title>CAPM</title><body>Result:<br>%s<br>Time taken by\nDB:%s<br>Time taken by R:%s<br>Total time elapsed:%s<br></body></html>\"\n%(str(a),str(t4-t3),str(t2-t1),str(t2-t3))\n        print \"Serving page:\"\n        #print page\n\n        self.serveResource(page,\"text\",client)\n\n\n\nOn Linux\nTime taken by DB:0:00:00.024165\nTime taken by R:0:00:05.572084\nTotal time elapsed:0:00:05.596288\n\nOn Windows\nTime taken by DB:0:00:00.112000\nTime taken by R:0:00:02.355000\nTotal time elapsed:0:00:02.467000\n\nWhy is there such a huge difference in the time taken by R on the two\nplatforms? Am I doing something wrong? It's my first Rpy2 code so I guess\nit's badly written.\n\nI'm loading the following libraries:\n'PerformanceAnalytics','timeSeries','fPortfolio','fPortfolioBacktest'\n\nI'm using Rpy2 2.1.0 and R 2.11\n\nRegards\n\nAbhijit Bera\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi\n\nThis is my function. It serves an HTML page after the calculations. I'm\nconnecting to a MSSQL DB using pyodbc.\n\n    def CAPM(self,client):\n\n        r=self.r\n\n        cds=\"1590\"\n        bm=\"20559\"\n",
       "thread_id": "thread-fadc52e5a08b",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100519/f0af5197/attachment.pl"
+      ]
     },
     {
       "id": "msg-e5c4d2660f70",
@@ -2378,11 +2423,14 @@
       "references": [
         "<AANLkTilpKFsvkWRwpA91F5_9qPPUqfxS-zBDZbTm-z7T@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100519/9ea30a57/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100519/9ea30a57/attachment.pl>",
+      "body_plain": "Update: it appears that the time taken isn't so much on the Data conversion.\nThe maximum time taken is in CAPM calculation. :( Anyone know why the CAPM\ncalculation would be faster on Windows?\n\nOn Wed, May 19, 2010 at 5:51 PM, Abhijit Bera <abhibera at gmail.com> wrote:\n\n> Hi\n>\n> This is my function. It serves an HTML page after the calculations. I'm\n> connecting to a MSSQL DB using pyodbc.\n>\n>     def CAPM(self,client):\n>\n>         r=self.r\n>\n>         cds=\"1590\"\n>         bm=\"20559\"\n>\n>         d1 = []\n>         v1 = []\n>         v2 = []\n>\n>\n>         print\"Parsing GET Params\"\n>\n>         params=client.g[1].split(\"&\")\n>\n>         for items in params:\n>             item=items.split(\"=\")\n>\n>             if(item[0]==\"cds\"):\n>                 cds=unquote(item[1])\n>             elif(item[0]==\"bm\"):\n>                 bm=unquote(item[1])\n>\n>         print \"cds: %s bm: %s\" % (cds,bm)\n>\n>         print \"Fetching data\"\n>\n>         t3=datetime.now()\n>\n>         for row in self.cursor.execute(\"select * from (select * from (\n> select co_code,dlyprice_date,dlyprice_close from feed_dlyprice P where\n> co_code in (%s,%s) ) DataTable PIVOT ( max(dlyprice_close) FOR co_code IN\n> ([%s],[%s])  )PivotTable ) a order by dlyprice_date\" %(cds,bm,cds,bm)):\n>             d1.append(str(row[0]))\n>             v1.append(row[1])\n>             v2.append(row[2])\n>\n>         t4=datetime.now()\n>\n>         t1=datetime.now()\n>\n>         print \"Calculating\"\n>\n>         d1.pop(0)\n>         d1vec = robjects.StrVector(d1)\n>         v1vec = robjects.FloatVector(v1)\n>         v2vec = robjects.FloatVector(v2)\n>\n>         r1 = r('Return.calculate(%s)' %v1vec.r_repr())\n>         r2 = r('Return.calculate(%s)' %v2vec.r_repr())\n>\n>         tl = robjects.rlc.TaggedList([r1,r2],tags=('Geo','Nifty'))\n>         df = robjects.DataFrame(tl)\n>\n>         ts2 = r.timeSeries(df,d1vec)\n>         tsa = r.timeSeries(r1,d1vec)\n>         tsb = r.timeSeries(r2,d1vec)\n>\n>         robjects.globalenv[\"ta\"] = tsa\n>         robjects.globalenv[\"tb\"] = tsb\n>         robjects.globalenv[\"t2\"] = ts2\n>         a = r('table.CAPM(ta,tb)')\n>\n>         t2=datetime.now()\n>\n>\n>         page=\"<html><title>CAPM</title><body>Result:<br>%s<br>Time taken by\n> DB:%s<br>Time taken by R:%s<br>Total time elapsed:%s<br></body></html>\"\n> %(str(a),str(t4-t3),str(t2-t1),str(t2-t3))\n>         print \"Serving page:\"\n>         #print page\n>\n>         self.serveResource(page,\"text\",client)\n>\n>\n>\n> On Linux\n> Time taken by DB:0:00:00.024165\n> Time taken by R:0:00:05.572084\n> Total time elapsed:0:00:05.596288\n>\n> On Windows\n> Time taken by DB:0:00:00.112000\n> Time taken by R:0:00:02.355000\n> Total time elapsed:0:00:02.467000\n>\n> Why is there such a huge difference in the time taken by R on the two\n> platforms? Am I doing something wrong? It's my first Rpy2 code so I guess\n> it's badly written.\n>\n> I'm loading the following libraries:\n> 'PerformanceAnalytics','timeSeries','fPortfolio','fPortfolioBacktest'\n>\n> I'm using Rpy2 2.1.0 and R 2.11\n>\n> Regards\n>\n> Abhijit Bera\n>\n>\n>\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Update: it appears that the time taken isn't so much on the Data conversion.\nThe maximum time taken is in CAPM calculation. :( Anyone know why the CAPM\ncalculation would be faster on Windows?\n\nOn Wed,",
       "thread_id": "thread-fadc52e5a08b",
       "thread_depth": 1,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100519/9ea30a57/attachment.pl"
+      ]
     },
     {
       "id": "msg-49ac8b43398a",
@@ -2397,11 +2445,14 @@
         "<AANLkTilpKFsvkWRwpA91F5_9qPPUqfxS-zBDZbTm-z7T@mail.gmail.com>",
         "<AANLkTikz-B62AkrSGKjNez2EyZK-P6VA2vJr7w5GpEub@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100519/4d78ed7a/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100519/4d78ed7a/attachment.pl>",
+      "body_plain": "Here is an updated bench mark:\n\nLinux\nTime taken by DB:0:00:00.226888\nTime taken by R:0:00:05.536973\nTime taken for vector conversions:0:00:00.001799\nTotal time taken for return calculation:0:00:00.090062\nTotal time taken for making Tagged list and Data Frame:0:00:00.015424\nTotal time taken for making TimeSeries:0:00:00.887713\nTotal time to assign global vars:0:00:00.000364\nTotal time taken for CAPM:0:00:04.541611\nTotal time elapsed:0:00:05.763861\n\nWindows\nTime taken by DB:0:00:00.139000\nTime taken by R:0:00:02.593000\nTime taken for vector conversions:0:00:00.037000\nTotal time taken for return calculation:0:00:00.114000\nTotal time taken for making Tagged list and Data Frame:0:00:00.021000\nTotal time taken for making TimeSeries:0:00:00.201000\nTotal time to assign global vars:0:00:00.002000\nTotal time taken for CAPM:0:00:02.218000\nTotal time elapsed:0:00:02.732000\n\n\n\nOn Wed, May 19, 2010 at 6:34 PM, Abhijit Bera <abhibera at gmail.com> wrote:\n\n> Update: it appears that the time taken isn't so much on the Data\n> conversion. The maximum time taken is in CAPM calculation. :( Anyone know\n> why the CAPM calculation would be faster on Windows?\n>\n>\n> On Wed, May 19, 2010 at 5:51 PM, Abhijit Bera <abhibera at gmail.com> wrote:\n>\n>> Hi\n>>\n>> This is my function. It serves an HTML page after the calculations. I'm\n>> connecting to a MSSQL DB using pyodbc.\n>>\n>>     def CAPM(self,client):\n>>\n>>         r=self.r\n>>\n>>         cds=\"1590\"\n>>         bm=\"20559\"\n>>\n>>         d1 = []\n>>         v1 = []\n>>         v2 = []\n>>\n>>\n>>         print\"Parsing GET Params\"\n>>\n>>         params=client.g[1].split(\"&\")\n>>\n>>         for items in params:\n>>             item=items.split(\"=\")\n>>\n>>             if(item[0]==\"cds\"):\n>>                 cds=unquote(item[1])\n>>             elif(item[0]==\"bm\"):\n>>                 bm=unquote(item[1])\n>>\n>>         print \"cds: %s bm: %s\" % (cds,bm)\n>>\n>>         print \"Fetching data\"\n>>\n>>         t3=datetime.now()\n>>\n>>         for row in self.cursor.execute(\"select * from (select * from (\n>> select co_code,dlyprice_date,dlyprice_close from feed_dlyprice P where\n>> co_code in (%s,%s) ) DataTable PIVOT ( max(dlyprice_close) FOR co_code IN\n>> ([%s],[%s])  )PivotTable ) a order by dlyprice_date\" %(cds,bm,cds,bm)):\n>>             d1.append(str(row[0]))\n>>             v1.append(row[1])\n>>             v2.append(row[2])\n>>\n>>         t4=datetime.now()\n>>\n>>         t1=datetime.now()\n>>\n>>         print \"Calculating\"\n>>\n>>         d1.pop(0)\n>>         d1vec = robjects.StrVector(d1)\n>>         v1vec = robjects.FloatVector(v1)\n>>         v2vec = robjects.FloatVector(v2)\n>>\n>>         r1 = r('Return.calculate(%s)' %v1vec.r_repr())\n>>         r2 = r('Return.calculate(%s)' %v2vec.r_repr())\n>>\n>>         tl = robjects.rlc.TaggedList([r1,r2],tags=('Geo','Nifty'))\n>>         df = robjects.DataFrame(tl)\n>>\n>>         ts2 = r.timeSeries(df,d1vec)\n>>         tsa = r.timeSeries(r1,d1vec)\n>>         tsb = r.timeSeries(r2,d1vec)\n>>\n>>         robjects.globalenv[\"ta\"] = tsa\n>>         robjects.globalenv[\"tb\"] = tsb\n>>         robjects.globalenv[\"t2\"] = ts2\n>>         a = r('table.CAPM(ta,tb)')\n>>\n>>         t2=datetime.now()\n>>\n>>\n>>         page=\"<html><title>CAPM</title><body>Result:<br>%s<br>Time taken\n>> by DB:%s<br>Time taken by R:%s<br>Total time elapsed:%s<br></body></html>\"\n>> %(str(a),str(t4-t3),str(t2-t1),str(t2-t3))\n>>         print \"Serving page:\"\n>>         #print page\n>>\n>>         self.serveResource(page,\"text\",client)\n>>\n>>\n>>\n>> On Linux\n>> Time taken by DB:0:00:00.024165\n>> Time taken by R:0:00:05.572084\n>> Total time elapsed:0:00:05.596288\n>>\n>> On Windows\n>> Time taken by DB:0:00:00.112000\n>> Time taken by R:0:00:02.355000\n>> Total time elapsed:0:00:02.467000\n>>\n>> Why is there such a huge difference in the time taken by R on the two\n>> platforms? Am I doing something wrong? It's my first Rpy2 code so I guess\n>> it's badly written.\n>>\n>> I'm loading the following libraries:\n>> 'PerformanceAnalytics','timeSeries','fPortfolio','fPortfolioBacktest'\n>>\n>> I'm using Rpy2 2.1.0 and R 2.11\n>>\n>> Regards\n>>\n>> Abhijit Bera\n>>\n>>\n>>\n>>\n>>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Here is an updated bench mark:\n\nLinux\nTime taken by DB:0:00:00.226888\nTime taken by R:0:00:05.536973\nTime taken for vector conversions:0:00:00.001799\nTotal time taken for return calculation:0:00:00.09",
       "thread_id": "thread-fadc52e5a08b",
       "thread_depth": 2,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100519/4d78ed7a/attachment.pl"
+      ]
     },
     {
       "id": "msg-50b6c0afabfb",
@@ -2466,11 +2517,14 @@
       "subject_clean": "pretty.Date(): new \"halfmonth\" time step",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100519/495f784b/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100519/495f784b/attachment.pl>",
+      "body_plain": ">Much better to implement directly what this is trying to do: i.e. to\n>have a \"halfmonth\" time step. This is just the union of two \"monthly\"\n>sequences, one on the 1st of each month and another on the 15th of\n>each month.\n\nFor some applications that might be true. But not for others. For a month\nwith 31 days, there are 14 days before the 15th of the month and 16 days\nafter the 15th, so, for example, March 16th (specifically noon) rather than\nMarch 15th would be the halfway point if you define \"halfway\" in terms of\nthe distances to the beginning and end of the month. For a month with 30\ndays -- like April -- the halfway point would be the instant between the\n15th and the 16th of the month. Do you label that instant April 15 or April\n16?  (I prefer \"15\".) Don't get me started on February.\n\n- Dan Murphy\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": ">Much better to implement directly what this is trying to do: i.e. to\n>have a \"halfmonth\" time step. This is just the union of two \"monthly\"\n>sequences, one on the 1st of each month and another on the",
       "thread_id": "thread-94191ff49a28",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100519/495f784b/attachment.pl"
+      ]
     },
     {
       "id": "msg-1540e1c154f7",
@@ -2537,11 +2591,14 @@
         "<AANLkTim1YYlrryyI5-24VgYNVBTU-fxNe8cZlowrL86e@mail.gmail.com>",
         "<AANLkTil4POsPLZ40AKT9Td9sO7HFyPTw5PynrT9WxDSa@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100520/ec0f60a5/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100520/ec0f60a5/attachment.pl>",
+      "body_plain": "Felix,\n\nI see your point about the \"halfway\" point acting like the first day of the\nmonth in its relativity to the ending date of the month: they're both\nvariable.\n\nI'm an actuary. Like accountants, actuaries tend to measure \"financial\" time\nin months because of how the books close. But in our mathematical models\ntime takes on a continuous nature. So our problem is how to build a computer\nrepresentation of time that reflects both its continuous nature as well as\nthe varying-length, \"discrete\" nature of financial months. I've found that a\nfixed value for a halfway point complicates actuarial calculations. It could\nserve other purposes just fine, however.\n\nBest regards,\nDan\n\nOn Wed, May 19, 2010 at 7:48 PM, Felix Andrews <felix at nfrac.org> wrote:\n\n> On 20 May 2010 11:56, Daniel Murphy <chiefmurphy at gmail.com> wrote:\n> >>Much better to implement directly what this is trying to do: i.e. to\n> >>have a \"halfmonth\" time step. This is just the union of two \"monthly\"\n> >>sequences, one on the 1st of each month and another on the 15th of\n> >>each month.\n> >\n> > For some applications that might be true. But not for others. For a month\n> > with 31 days, there are 14 days before the 15th of the month and 16 days\n> > after the 15th, so, for example, March 16th (specifically noon) rather\n> than\n> > March 15th would be the halfway point if you define \"halfway\" in terms of\n> > the distances to the beginning and end of the month. For a month with 30\n> > days -- like April -- the halfway point would be the instant between the\n> > 15th and the 16th of the month. Do you label that instant April 15 or\n> April\n> > 16?  (I prefer \"15\".) Don't get me started on February.\n>\n> Dan, you are correct: the midpoint of a 30 day month is the 16th at\n> 00:00. That instant is called the 16th according to print.POSIXt.\n>\n> junstart <- as.POSIXct(\"2000-06-01 00:00\", tz=\"GMT\")\n> julstart <- as.POSIXct(\"2000-07-01 00:00\", tz=\"GMT\")\n> junstart + ((julstart - junstart) / 2)\n> #[1] \"2000-06-16 GMT\"\n>\n> How embarassing...\n> So I think it would be better to use 16 rather than 15 for the\n> \"halfmonth\" time step.\n>\n> Yes, months have variable lengths, but I think it is best to use a\n> consistent date (the 16th) than to calculate exact midpoints, just as\n> a normal monthly series has a consistent date (the 1st) and has\n> variable lengths.\n>\n> Regards\n> -Felix\n>\n>\n> >\n> > - Dan Murphy\n> >\n> >        [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n>\n>\n>\n> --\n> Felix Andrews / 安福立\n> Postdoctoral Fellow\n> Integrated Catchment Assessment and Management (iCAM) Centre\n> Fenner School of Environment and Society [Bldg 48a]\n> The Australian National University\n> Canberra ACT 0200 Australia\n> M: +61 410 400 963\n> T: + 61 2 6125 4670\n> E: felix.andrews at anu.edu.au\n> CRICOS Provider No. 00120C\n> --\n> http://www.neurofractal.org/felix/\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Felix,\n\nI see your point about the \"halfway\" point acting like the first day of the\nmonth in its relativity to the ending date of the month: they're both\nvariable.\n\nI'm an actuary. Like accountants, a",
       "thread_id": "thread-94191ff49a28",
       "thread_depth": 2,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100520/ec0f60a5/attachment.pl"
+      ]
     },
     {
       "id": "msg-6282ba198263",
@@ -2630,11 +2687,14 @@
       "subject_clean": "Build R static",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100520/3c7583a0/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100520/3c7583a0/attachment.pl>",
+      "body_plain": "Does anyone know if it's possible to create a static build of R?\n\nThanks,\n\nFrom: Alex Bryant\nSent: Monday, May 10, 2010 2:50 PM\nTo: 'r-devel at r-project.org'\nSubject: Build R static\n\nHi, I am having trouble building R static on Solaris 5.10.  I have a requirement to run R within a specific user account on Solaris 5.10 and I do not have access to compilers and or shared libraries on the target machine.  I thought I could build R static ( I've build it locally on Solaris with shared libraries) and just ftp the build to the target Solaris box.  Can any help with what ./configure & Make flags need to be set for this, assuming it is possible?\n\nHere is what my currently built ./bin/exec/R executable is using.\n\n$ ldd R\n        libRblas.so =>   (file not found)\n        libg2c.so.0 =>   /usr/local/lib/libg2c.so.0\n        libm.so.2 =>     /usr/lib/libm.so.2\n        libreadline.so.6 =>      /usr/local/lib/libreadline.so.6\n        libcurses.so.1 =>        /usr/lib/libcurses.so.1\n        libnsl.so.1 =>   /usr/lib/libnsl.so.1\n        libsocket.so.1 =>        /usr/lib/libsocket.so.1\n        libdl.so.1 =>    /usr/lib/libdl.so.1\n        libiconv.so.2 =>         /usr/local/lib/libiconv.so.2\n        libicuuc.so.3 =>         /usr/lib/libicuuc.so.3\n        libicui18n.so.3 =>       /usr/lib/libicui18n.so.3\n        libc.so.1 =>     /usr/lib/libc.so.1\n        libgcc_s.so.1 =>         /usr/local/lib/libgcc_s.so.1\n        libmp.so.2 =>    /usr/lib/libmp.so.2\n        libmd5.so.1 =>   /usr/lib/libmd5.so.1\n        libscf.so.1 =>   /usr/lib/libscf.so.1\n        libicudata.so.3 =>       /usr/lib/libicudata.so.3\n        libpthread.so.1 =>       /usr/lib/libpthread.so.1\n        libCrun.so.1 =>  /usr/lib/libCrun.so.1\n        libdoor.so.1 =>  /usr/lib/libdoor.so.1\n        libuutil.so.1 =>         /usr/lib/libuutil.so.1\n        /platform/SUNW,Sun-Fire-280R/lib/libc_psr.so.1\n        /platform/SUNW,Sun-Fire-280R/lib/libmd5_psr.so.1\n\n Thanks for your help,\nAlex\n\n//************************\n// Alex Bryant\n// Software Developer\n// Integrated Clinical Systems, Inc.\n// 908-996-7208\n\n\n________________________________\nConfidentiality Note: This e-mail, and any attachment to...{{dropped:13}}",
+      "body_snippet": "Does anyone know if it's possible to create a static build of R?\n\nThanks,\n\nFrom: Alex Bryant\nSent: Monday, May 10, 2010 2:50 PM\nTo: 'r-devel at r-project.org'\nSubject: Build R static\n\nHi, I am having ",
       "thread_id": "thread-b0d680b3ce94",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100520/3c7583a0/attachment.pl"
+      ]
     },
     {
       "id": "msg-146ca9c0aa77",
@@ -2649,11 +2709,14 @@
         "<AANLkTim1YYlrryyI5-24VgYNVBTU-fxNe8cZlowrL86e@mail.gmail.com>",
         "<AANLkTilwStAV-c2AXj8gH0Jz8zH3-071AkJOcCUj8yZJ@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100520/90e89a61/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100520/90e89a61/attachment.pl>",
+      "body_plain": "Yes. I looked at that feature of zoo. But it forced me to keep track of\nfractional months in the \"Date\" world. Square one. I ended up implementing a\nclass under the paradigm of whole and fractional months. It allows me to do\nall my time arithmetic in ways that accountants expect. For example,\naccountants think of the close of business June 30th as being the halfway\npoint of the year, but it's certainly not half the year \"as the crow flies.\"\n-Dan\n\nOn Thu, May 20, 2010 at 4:01 AM, Gabor Grothendieck <ggrothendieck at gmail.com\n> wrote:\n\n> Note that in the zoo package that as.Date.yearmon has a frac= argument,\n> e.g.\n>\n> > library(zoo)\n> > ym <- as.yearmon(\"2010-01\")\n> > as.Date(ym, frac = 0.5)\n> [1] \"2010-01-16\"\n>\n>\n> On Wed, May 19, 2010 at 9:56 PM, Daniel Murphy <chiefmurphy at gmail.com>\n> wrote:\n> >>Much better to implement directly what this is trying to do: i.e. to\n> >>have a \"halfmonth\" time step. This is just the union of two \"monthly\"\n> >>sequences, one on the 1st of each month and another on the 15th of\n> >>each month.\n> >\n> > For some applications that might be true. But not for others. For a month\n> > with 31 days, there are 14 days before the 15th of the month and 16 days\n> > after the 15th, so, for example, March 16th (specifically noon) rather\n> than\n> > March 15th would be the halfway point if you define \"halfway\" in terms of\n> > the distances to the beginning and end of the month. For a month with 30\n> > days -- like April -- the halfway point would be the instant between the\n> > 15th and the 16th of the month. Do you label that instant April 15 or\n> April\n> > 16?  (I prefer \"15\".) Don't get me started on February.\n> >\n> > - Dan Murphy\n> >\n> >        [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Yes. I looked at that feature of zoo. But it forced me to keep track of\nfractional months in the \"Date\" world. Square one. I ended up implementing a\nclass under the paradigm of whole and fractional mo",
       "thread_id": "thread-94191ff49a28",
       "thread_depth": 2,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100520/90e89a61/attachment.pl"
+      ]
     },
     {
       "id": "msg-71ee049b693e",
@@ -2803,11 +2866,14 @@
       "subject_clean": "dyn.load() strange behavior",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100521/4b4e5920/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100521/4b4e5920/attachment.pl>",
+      "body_plain": "Hello,\n\nI am observing the following strange behavior when I try to\nload a shared library using dyn.load() under Linux...\n\nThe library foo.so refers to a symbol in another package bar\n(with shared library bar.so), I get:\n\ndyn.load('foo.so') # error message because I forgot to load bar\nlibrary(bar) # so I fix it\ndyn.load('foo.so') # works this time and everything is fine\n\nBut, if restart my R session and do it \"right\" the second\ntime there is a surprise:\n\nlibrary(bar)\ndyn.load('foo.so') # fails\nlibrary(bar) # just to be sure?\ndyn.load('foo.so) # fails again\ndyn.load('/usr/local/lib64/library/bar/lib/libbar.so') # just to be really\nsure?\ndyn.load('foo.so')\n\nIn other words, it is possible to load foo.so, but only\nafter a failed attempt. If I remember to load the required\npackage bar I cannot load the depenent library foo.so.\n\nAny ideas?\n\nThanks,\nDominick\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\nI am observing the following strange behavior when I try to\nload a shared library using dyn.load() under Linux...\n\nThe library foo.so refers to a symbol in another package bar\n(with shared lib",
       "thread_id": "thread-d0bb70fe1963",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100521/4b4e5920/attachment.pl"
+      ]
     },
     {
       "id": "msg-7e5a64424ec5",
@@ -2890,11 +2956,14 @@
         "<AANLkTilbED_tlJJV9wZd8iZDKd-7P0vPYhbKT3CzehHK@mail.gmail.com>",
         "<4BF7E663.2040700@statistik.tu-dortmund.de>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100522/0914b675/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100522/0914b675/attachment.pl>",
+      "body_plain": "Thanks for taking the time to look at this Uwe. Turns out the\nproblem was caused by the fact that foo.so was built with\nincorrect linker options (not pointing to bar.so), so there were\nundefined symbols. Why it worked at all is a puzzle.\n\n2010/5/22 Uwe Ligges <ligges at statistik.tu-dortmund.de>\n\n> - Does bar really dyn.load its shared library on load?\n> - Have you told package foo (in the DESCRIPTION) it is LinkingTo: bar ?\n>\n> Uwe Ligges\n>\n>\n>\n>\n> On 21.05.2010 22:35, Dominick Samperi wrote:\n>\n>> Hello,\n>>\n>> I am observing the following strange behavior when I try to\n>> load a shared library using dyn.load() under Linux...\n>>\n>> The library foo.so refers to a symbol in another package bar\n>> (with shared library bar.so), I get:\n>>\n>> dyn.load('foo.so') # error message because I forgot to load bar\n>> library(bar) # so I fix it\n>> dyn.load('foo.so') # works this time and everything is fine\n>>\n>> But, if restart my R session and do it \"right\" the second\n>> time there is a surprise:\n>>\n>> library(bar)\n>> dyn.load('foo.so') # fails\n>> library(bar) # just to be sure?\n>> dyn.load('foo.so) # fails again\n>> dyn.load('/usr/local/lib64/library/bar/lib/libbar.so') # just to be really\n>> sure?\n>> dyn.load('foo.so')\n>>\n>> In other words, it is possible to load foo.so, but only\n>> after a failed attempt. If I remember to load the required\n>> package bar I cannot load the depenent library foo.so.\n>>\n>> Any ideas?\n>>\n>> Thanks,\n>> Dominick\n>>\n>>        [[alternative HTML version deleted]]\n>>\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Thanks for taking the time to look at this Uwe. Turns out the\nproblem was caused by the fact that foo.so was built with\nincorrect linker options (not pointing to bar.so), so there were\nundefined symbo",
       "thread_id": "thread-d0bb70fe1963",
       "thread_depth": 2,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100522/0914b675/attachment.pl"
+      ]
     },
     {
       "id": "msg-deed92cb4cea",
@@ -3057,11 +3126,14 @@
       "subject_clean": "Accessing functions from a package",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100524/8e528a8d/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100524/8e528a8d/attachment.pl>",
+      "body_plain": "Hi All,\n\nI created a .R file with source code that accesses functions from a R\npackage (example, fTrading).\n\nI then run the created application in two different configurations:\n\n1. I started a R session, and then ran the application using the source\n(\"my_application.R\") command, and I measured the time the application ran.\n\n2. I started 2 R sessions in the same processor, and executed the same\nsource (\"my_application.R\") command, and measured the times the application\nran.\n\nThe times I measured for each applications in #2 was slower than the times I\nmeasured for the application in #1.\n\nThe application was run in a 4-core machine running Linux.\n\nWhen the application ran, i used \"mpstat\" to look at the CPU usage. For #1,\nthe CPU usage was 25%, and for #2, the CPU usage was 50%.\n\nNo other process was running in the machine.\n\nMy question is, why would #2 be slower than #1?\n\nThanks,\nPeter\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi All,\n\nI created a .R file with source code that accesses functions from a R\npackage (example, fTrading).\n\nI then run the created application in two different configurations:\n\n1. I started a R sessi",
       "thread_id": "thread-738817383cfa",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100524/8e528a8d/attachment.pl"
+      ]
     },
     {
       "id": "msg-bf9f8841843d",
@@ -3107,11 +3179,14 @@
       "subject_clean": "R without dynamic libraries: anyone working on this?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100525/57252948/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100525/57252948/attachment.pl>",
+      "body_plain": "Hi all,\nI'm building R for a context where I can't load dynamic libraries. I've\nconfigured the build appropriately but from what I can tell it's not\ncurrently supported: there are compile errors here and there and the\nmechanism for looking up base symbols (CFunTab in Rdynload.c??) seems to\nhave been ripped out.\n\nI'm going to add enough code so that R_FindSymbol will at least return\ncorrect pointers for the base library (error:  C symbol name\n\"R_isMethodsDispatchOn\" not in DLL for package \"base\"), but I was wondering\nwhether if anyone else is working on this, or if this is scheduled to be\nphased out altogether.\n\nThanks for the info,\n\nAlex\n\n\nAlex Bertram\nPartner\nbe*datadriven*\n\nEmail: alex at bedatadriven.com\nTel. +31(0)647205388\nSkype: akbertram\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi all,\nI'm building R for a context where I can't load dynamic libraries. I've\nconfigured the build appropriately but from what I can tell it's not\ncurrently supported: there are compile errors here ",
       "thread_id": "thread-96b0360dd335",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100525/57252948/attachment.pl"
+      ]
     },
     {
       "id": "msg-cb28f96864b8",
@@ -3264,11 +3339,14 @@
       "subject_clean": "segfault on 2.11.0 with large POSIXct vector using as.character",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100526/3a211a41/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100526/3a211a41/attachment.pl>",
+      "body_plain": "Running \"as.character\" on a large POSIXct causes a segfault on my 2.11\n(2010-04-22) install.  Seems to crash at around 9e4 ... on OSX and Ubuntu at\nleast.\n\n> invisible(as.character(Sys.time()+1:7e4))\n> invisible(as.character(Sys.time()+1:8e4))\n> invisible(as.character(Sys.time()+1:9e4))\nError: segfault from C stack overflow\n\n\n> invisible(as.character(Sys.time()+1:5e5))\nError: segfault from C stack overflow\n\nThanks,\nJeff\n\n> sessionInfo()\nR version 2.11.0 (2010-04-22)\nx86_64-apple-darwin10.2.0\n\nlocale:\n[1] en_US.UTF-8/en_US.UTF-8/C/C/en_US.UTF-8/en_US.UTF-8\n\nattached base packages:\n[1] stats     graphics  grDevices utils     datasets  methods   base\n\n\n> sessionInfo()\nR version 2.11.0 (2010-04-22)\ni486-pc-linux-gnu\n\nlocale:\n [1] LC_CTYPE=en_US.utf8       LC_NUMERIC=C\n [3] LC_TIME=en_US.utf8        LC_COLLATE=en_US.utf8\n [5] LC_MONETARY=C             LC_MESSAGES=en_US.utf8\n [7] LC_PAPER=en_US.utf8       LC_NAME=C\n [9] LC_ADDRESS=C              LC_TELEPHONE=C\n[11] LC_MEASUREMENT=en_US.utf8 LC_IDENTIFICATION=C\n\nattached base packages:\n[1] stats     graphics  grDevices utils     datasets  methods   base\n>\n\n-- \nJeffrey Ryan\njeffrey.ryan at insightalgo.com\n\nia: insight algorithmics\nwww.insightalgo.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Running \"as.character\" on a large POSIXct causes a segfault on my 2.11\n(2010-04-22) install.  Seems to crash at around 9e4 ... on OSX and Ubuntu at\nleast.\n\n> invisible(as.character(Sys.time()+1:7e4))\n",
       "thread_id": "thread-b61953d6de09",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100526/3a211a41/attachment.pl"
+      ]
     },
     {
       "id": "msg-9ef1a2ec423f",
@@ -3337,11 +3415,14 @@
         "<AANLkTinxn-L8bgYFSGxnhTu9ozIEJfH449DMH3HahGyn@mail.gmail.com>",
         "<4BFD0DA5.9070009@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100526/b6a478bd/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100526/b6a478bd/attachment.pl>",
+      "body_plain": ">\n>\n> This has been fixed for a while in R-patched.  The 2.11.1 release on Monday\n> should be fine.\n> Apparently people aren't running the betas/release candidates.  You really\n> should run the test versions to flush out bugs.  If you'd run the\n> pre-release versions of 2.11.0, this bug would likely have been found before\n> release.  The standard tests can miss things; the advantage of open source\n> is there are many eyes looking for bugs.  But if those eyes are closed, the\n> model doesn't work.\n>\n\nI'd say it does work, and did.  As far as catching before release, that\nsounds great, as great as having no bugs.\n\nI am not too sure that my tests could have caught a bug that the got passed\nthe R tests though, so passing along a segfault issue to those who might\nknow the source better seemed prudent -- even if I could only have the time\nto test against the released version.\n\nThanks for the fix!\n\nJeff\n\n\n> Duncan Murdoch\n>\n>\n>>\n>>> invisible(as.character(Sys.time()+1:7e4))\n>>> invisible(as.character(Sys.time()+1:8e4))\n>>> invisible(as.character(Sys.time()+1:9e4))\n>>>\n>>>\n>> Error: segfault from C stack overflow\n>>\n>>\n>>\n>>\n>>> invisible(as.character(Sys.time()+1:5e5))\n>>>\n>>>\n>> Error: segfault from C stack overflow\n>>\n>> Thanks,\n>> Jeff\n>>\n>>\n>>\n>>> sessionInfo()\n>>>\n>>>\n>> R version 2.11.0 (2010-04-22)\n>> x86_64-apple-darwin10.2.0\n>>\n>> locale:\n>> [1] en_US.UTF-8/en_US.UTF-8/C/C/en_US.UTF-8/en_US.UTF-8\n>>\n>> attached base packages:\n>> [1] stats     graphics  grDevices utils     datasets  methods   base\n>>\n>>\n>>\n>>\n>>> sessionInfo()\n>>>\n>>>\n>> R version 2.11.0 (2010-04-22)\n>> i486-pc-linux-gnu\n>>\n>> locale:\n>>  [1] LC_CTYPE=en_US.utf8       LC_NUMERIC=C\n>>  [3] LC_TIME=en_US.utf8        LC_COLLATE=en_US.utf8\n>>  [5] LC_MONETARY=C             LC_MESSAGES=en_US.utf8\n>>  [7] LC_PAPER=en_US.utf8       LC_NAME=C\n>>  [9] LC_ADDRESS=C              LC_TELEPHONE=C\n>> [11] LC_MEASUREMENT=en_US.utf8 LC_IDENTIFICATION=C\n>>\n>> attached base packages:\n>> [1] stats     graphics  grDevices utils     datasets  methods   base\n>>\n>>\n>>\n>\n>\n\n\n-- \nJeffrey Ryan\njeffrey.ryan at insightalgo.com\n\nia: insight algorithmics\nwww.insightalgo.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": ">\n>\n> This has been fixed for a while in R-patched.  The 2.11.1 release on Monday\n> should be fine.\n> Apparently people aren't running the betas/release candidates.  You really\n> should run the test v",
       "thread_id": "thread-b61953d6de09",
       "thread_depth": 2,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100526/b6a478bd/attachment.pl"
+      ]
     },
     {
       "id": "msg-4f8f6ebf0717",
@@ -3895,11 +3976,14 @@
         "<AANLkTimkEzQ5GLpnWHJr1EuBcNBmwod81UzBFs0fXusk@mail.gmail.com>",
         "<4C016CE3.8050403@r-enthusiasts.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100529/14a07108/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100529/14a07108/attachment.pl>",
+      "body_plain": "The idea of modifying .DollarNames to recognize S4 methods is OK, but \nthe problem could arise again.\n\nIt would be better to have a general solution.  The general problem as \nit seems is that an S3 generic called from within its package's \nnamespace (or from some other 3rd package) will not detect S4 methods.  \nIn a sense, this is a natural consequence of namespace semantics and \ntherefore not a bug.  We don't really want to fix up each case when it \narises.\n\nI can see two general solutions, one a reasonable fix that could likely \nbe implemented for 2.12.0, the other a slight hack added to make the \nsolution work now.\n\nBoth solutions start with the idea that we continue to treat the S3 \ngeneric as an S3 generic (at least when it's called from the owning \npackage's namespace).  We then define an S3 method for the S4 class.\n\nRight now, that fails to recognize S4 inheritance (that's the fix that \nshould be doable for 2.12.0; most of the mechanism needed is already in \nthe UseMethod implementation).\n\nThe workaround/hack that *does* work now, I believe, is to insert a \ndummy S3 class into the mix and define the S3 .DollarNames method for it.\n\nExample:\n > setOldClass(\"foo3\")\n > .DollarNames.foo3 <- function(x, pattern)\"bar\"\n >\n > setClass(\"foo\", contains = \"foo3\", representation(x = \"numeric\"))\n[1] \"foo\"\n >\n > ff = new(\"foo\")\n >\n > setClass(\"fee\", contains = \"foo\")\n[1] \"fee\"\n >\n > fe = new(\"fee\")\n\nBoth ff$ and fe$ complete with \"bar\", running 2.11.0 from the command line.\n\nJohn\n\n\n\n\n\nOn 5/29/10 12:37 PM, Romain Francois wrote:\n> Le 29/05/10 20:23, Deepayan Sarkar a écrit :\n>> On Sat, May 29, 2010 at 4:21 AM, Romain Francois\n>> <romain at r-enthusiasts.com>  wrote:\n>>> Hello,\n>>>\n>>> I'm trying to make .DollarNames generic and implement a method for \n>>> it in a\n>>> package. .DollarNames is the function that is now called to get \n>>> completion\n>>> possibilities.\n>>>\n>>> My R code looks like this:\n>>>\n>>> setGeneric( \".DollarNames\" )\n>>>\n>>> setClass(\"track\",\n>>>          representation(x=\"numeric\", y=\"numeric\"))\n>>> ## A class extending the previous, adding one more slot\n>>> setClass(\"trackCurve\",\n>>>     representation(smooth = \"numeric\"),\n>>>     contains = \"track\")\n>>>\n>>> setMethod( \".DollarNames\", signature( x = \"track\", pattern = \n>>> \"character\" ),\n>>> function(x, pattern){\n>>>         grep( pattern, c(\"foo\", \"bar\"), value = TRUE )\n>>> } )\n>>>\n>>>\n>>> and the NAMESPACE :\n>>>\n>>> import( utils )\n>>> exportMethods( .DollarNames )\n>>> exportClasses( track, trackCurve )\n>>>\n>>>\n>>> When I load the package, I can call .DollarNames explicitely :\n>>>\n>>>> require( foo )\n>>>> x<- new( \"trackCurve\", x = 1:10, y = 1:10, smooth = 1:10 )\n>>>> .DollarNames( x, \"f\" )\n>>> [1] \"foo\"\n>>>\n>>> but completion does not work :\n>>>\n>>>> x$f<TAB>\n>>> x$\n>>\n>> I guess because\n>>\n>>> utils:::.DollarNames(x, \"f\")\n>> character(0)\n>\n> yes. hence the hack I used when replying which is probably not a good \n> idea, specially if two packages want it.\n>\n>> so the S4 generic is not being seen within the utils namespace. I\n>> don't know what the right fix is...\n>>\n>> -Deepayan\n>\n> Perhaps something like the attached ?\n>\n> defining a generic in methods and use this one when methods dispatch \n> is on.\n>\n>\n>>> What do I miss ?\n>>>\n>>> I've uploaded foo here : \n>>> http://addictedtor.free.fr/misc/rcpp/foo_1.0.tar.gz\n>>>\n>>> Romain\n>\n>\n> ______________________________________________\n> R-devel at r-project.org  mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>    \n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "The idea of modifying .DollarNames to recognize S4 methods is OK, but \nthe problem could arise again.\n\nIt would be better to have a general solution.  The general problem as \nit seems is that an S3 ge",
       "thread_id": "thread-b3e5de314612",
       "thread_depth": 3,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100529/14a07108/attachment.pl"
+      ]
     },
     {
       "id": "msg-e3172c92d514",
@@ -4225,11 +4309,14 @@
       "subject_clean": "Documentation of biplot for princomp",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100531/e2fd83a5/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20100531/e2fd83a5/attachment.pl>",
+      "body_plain": "Hi,\n\n \n\nI think that the documentation for the biplot function `biplot.princomp' is\ninconsistent with what it actually does.  Here is what the documentation\nstates:\n\n \n\n\npc.biplot\n\nIf true, use what Gabriel (1971) refers to as a \"principal component\nbiplot\", with lambda = 1 and observations scaled up by sqrt(n) and variables\nscaled down by sqrt(n). Then inner products between variables approximate\ncovariances and distances between observations approximate Mahalanobis\ndistance. \n\n \n\nHere is what the code looks like:\n\n \n\n>  getAnywhere(\"biplot.princomp\")\n\nA single object matching 'biplot.princomp' was found\n\nIt was found in the following places\n\n  registered S3 method for biplot from namespace stats\n\n  namespace:stats\n\nwith value\n\n \n\nfunction (x, choices = 1L:2L, scale = 1, pc.biplot = FALSE, ...) \n\n{\n\n    if (length(choices) != 2) \n\n        stop(\"length of choices must be 2\")\n\n    if (!length(scores <- x$scores)) \n\n        stop(gettextf(\"object '%s' has no scores\", deparse(substitute(x))), \n\n            domain = NA)\n\n    lam <- x$sdev[choices]\n\n    if (is.null(n <- x$n.obs)) \n\n        n <- 1\n\n    lam <- lam * sqrt(n)\n\n    if (scale < 0 || scale > 1) \n\n        warning(\"'scale' is outside [0, 1]\")\n\n    if (scale != 0) \n\n        lam <- lam^scale\n\n    else lam <- 1\n\n    if (pc.biplot) \n\n        lam <- lam/sqrt(n)\n\n    biplot.default(t(t(scores[, choices])/lam), t(t(x$loadings[, \n\n        choices]) * lam), ...)\n\n    invisible()\n\n}\n\n \n\n1.       Let us consider the default options:  scale = 1 and pc.biplot =\nFALSE.   Now, lam = x$sdev * sqrt(n).  Hence, the observations (scores) are\nscaled down by eigenvalue * sqrt(n) and variables (loadings) are scaled up\nby eigenvalue * sqrt(n).  \n\n \n\n2.       Now consider:  scale = 1 and pc.biplot = TRUE.  We have, lam =\nx$sdev .  The observations are scaled down by eigenvalue and variables are\nscaled up by eigenvalue.\n\n \n\nThus, in either case the documentation does not seem to be consistent with\nthe implementation.  Am I missing something here?\n\n \n\nThanks & Best,\n\nRavi.\n\n \n\n \n\n----------------------------------------------------------------------------\n------------------------------\n\nRavi Varadhan, Ph.D.\n\nAssistant Professor, \n\nCenter on Aging and Health, \n\nJohns Hopkins University School of Medicine\n\n(410)502-2619\n\nrvaradhan at jhmi.edu \n\nhttp://www.jhsph.edu/agingandhealth/People/Faculty_personal_pages/Varadhan.h\ntml \n\n \n\n \n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\n\n \n\nI think that the documentation for the biplot function `biplot.princomp' is\ninconsistent with what it actually does.  Here is what the documentation\nstates:\n\n \n\n\npc.biplot\n\nIf true, use what G",
       "thread_id": "thread-a1d1344b4de8",
       "thread_depth": 0,
-      "month": "2010-05"
+      "month": "2010-05",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20100531/e2fd83a5/attachment.pl"
+      ]
     },
     {
       "id": "msg-b326e1ac9ed6",

@@ -66,11 +66,14 @@
       "subject_clean": "Compilation failure on Solaris: any advice?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121203/3efe9f93/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121203/3efe9f93/attachment.pl>",
+      "body_plain": "Dear all,\n\nThe current version of my RNiftyReg package is failing to compile on CRAN's\nSolaris testbed, but I don't have access to a Solaris system to debug on,\nand Googling the error hasn't been very helpful. The error is\n\nCC -library=stlport4 -I/home/ripley/R/cc/include -DNDEBUG -DNDEBUG\n-DRNIFTYREG -I/usr/local/include    -KPIC  -O -xlibmil -xtarget=native\n-nofstore  -c niftyreg.cpp -o niftyreg.o\n\"_reg_f3d_sym.cpp\", line 25: Error: reg_f3d may not have a type qualifier.\n\"niftyreg.cpp\", line 527:     Where: While instantiating\n\"reg_f3d_sym<double>::reg_f3d_sym(int, int)\".\n\"niftyreg.cpp\", line 527:     Where: Instantiated from non-template code.\n\"_reg_f3d_sym.cpp\", line 26: Error: reg_f3d<T> cannot be initialized\nin a constructor.\n\"niftyreg.cpp\", line 527:     Where: While instantiating\n\"reg_f3d_sym<double>::reg_f3d_sym(int, int)\".\n\"niftyreg.cpp\", line 527:     Where: Instantiated from non-template code.\n\"_reg_f3d_sym.cpp\", line 26: Error: Could not find\nreg_f3d<double>::reg_f3d() to initialize base class.\n\"niftyreg.cpp\", line 527:     Where: While instantiating\n\"reg_f3d_sym<double>::reg_f3d_sym(int, int)\".\n\"niftyreg.cpp\", line 527:     Where: Instantiated from non-template code.\n3 Error(s) detected.\n*** Error code 2\nmake: Fatal error: Command failed for target `niftyreg.o'\n\n\n(Full log at [1].) The relevant part of the source is a C++ class\nconstructor, part of the library that my package interfaces to:\n\ntemplate <class T>\nreg_f3d_sym<T>::reg_f3d_sym(int refTimePoint,int floTimePoint)\n    :reg_f3d<T>::reg_f3d(refTimePoint,floTimePoint)\n{\n    this->executableName=(char *)\"NiftyReg F3D SYM\";\n\n    this->backwardControlPointGrid=NULL;\n    this->backwardWarped=NULL;\n    this->backwardWarpedGradientImage=NULL;\n    this->backwardDeformationFieldImage=NULL;\n    this->backwardVoxelBasedMeasureGradientImage=NULL;\n    this->backwardNodeBasedGradientImage=NULL;\n\n    this->backwardBestControlPointPosition=NULL;\n    this->backwardConjugateG=NULL;\n    this->backwardConjugateH=NULL;\n\n    this->backwardProbaJointHistogram=NULL;\n    this->backwardLogJointHistogram=NULL;\n\n    this->floatingMaskImage=NULL;\n    this->currentFloatingMask=NULL;\n    this->floatingMaskPyramid=NULL;\n    this->backwardActiveVoxelNumber=NULL;\n\n    this->inverseConsistencyWeight=0.1;\n\n#ifndef NDEBUG\n    printf(\"[NiftyReg DEBUG] reg_f3d_sym constructor called\\n\");\n#endif\n}\n\nThe error does not occur on any Windows, Linux or OS X system which I have\naccess to, so this would seem to be an issue relating to the Solaris\ncompiler toolchain in particular. Can anyone shed any light on it, please?\n\nThanks in advance,\nJon\n\n--\n[1]\nhttp://www.r-project.org/nosvn/R.check/r-patched-solaris-x86/RNiftyReg-00install.html\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear all,\n\nThe current version of my RNiftyReg package is failing to compile on CRAN's\nSolaris testbed, but I don't have access to a Solaris system to debug on,\nand Googling the error hasn't been very",
       "thread_id": "thread-2d57ee3cf85f",
       "thread_depth": 0,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121203/3efe9f93/attachment.pl"
+      ]
     },
     {
       "id": "msg-6140803c0a8c",
@@ -84,11 +87,14 @@
       "references": [
         "<50BCF760.1000909@structuremonitoring.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121203/54cfb11c/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121203/54cfb11c/attachment.pl>",
+      "body_plain": "Hello:\n\n\n       Is there a standard reference on how to improve the speed of R code?\n\n\n       A recent R-help post asked about \"using multicores in R\" (see my \nreply below).  It seems to me that there should be a comprehensive \nanswer somewhere, but I couldn't find one.  It looks like there might be \nan opportunity for something on this order to be published, e.g., in The \nR Journal and / or in some other standard R documentation.  I hesitate \nto mention this, because I don't feel qualified to write such myself.  \nHowever, I think something like this appropriately placed could attract \na reasonable audience.\n\n\n       Thanks,\n       Spencer\n\n\n-------- Original Message --------\nSubject: \tRe: [R] Using multicores in R\nDate: \tMon, 03 Dec 2012 11:02:56 -0800\nFrom: \tSpencer Graves <spencer.graves at structuremonitoring.com>\nCC: \tr-help at r-project.org <r-help at r-project.org>\n\n\n\n       1.  Have you looked at CRAN Task View: High-Performance and\nParallel Computing with R\n(http://cran.r-project.org/web/views/HighPerformanceComputing.html)?\n\n\n       2.  Have you tried the \"compiler\" package?  If I understand\ncorrectly, R is a two-stage interpreter, first translating what we know\nas R into byte code, which is then interpreted by a byte code\ninterpreter.  If my memory is correct, this approach can cut the compute\ntime by a factor of 100.\n\n\n       3.  Have you reviewed the section on \"Profiling R code for speed\"\nin the \"Writing R Extensions\" manual that becomes available after\nhelp.start()?  The profiling tools discussed there help identify the\nportion of more complex code that takes the most time.  The standard\nadvice then is to experiment with writing the most time consuming\nportion several different ways.  I've seen many examples where writing\nwhat appears to be the same thing in R several different ways identifies\none that is easily 10 and maybe 100 or 1000 times faster than the\nslowest alternative tried.\n\n\n       4.  Have you tried using the \"sos\" package to search for other\nfunctions and packages in R that may already have good code doing some\nof the things you want to do?  The \"findFn\" function in \"sos\" searches\nthe \"functions\" subset of the \"RSiteSearch\" database and returns the\nresult sorted by package.  There are also a \"union\" and\n\"writeFindFn2xls\" functions to make it easy to manipulate and evaluate\nthe results, described in a vignette. It's the best literature search I\nknow for anything statistical: If I don't find it there, it's OK to look\nsomeplace else. [Caveat:  I'm the lead author of \"sos\", so I'm biased.]\n\n\n       Best Wishes,\n       Spencer\n\n\nOn 12/3/2012 6:24 AM, Steve Lianoglou wrote:\n> And also:\n>\n> On Monday, December 3, 2012, Uwe Ligges wrote:\n>\n>>\n>> On 03.12.2012 11:14, moriah wrote:\n>>\n>>> Hi,\n>>>\n>>> I have an R script which is time consuming because it has two nested loops\n>>> in it of at least 5000 iterations each, I have tried to use the multicore\n>>> package but id doesn't seem to improve the elapsed time of the script(a\n>>> shorter script for example) and I can't use the mcapply because of\n>>> technical\n>>> reasons.\n>>>\n>> Errr, but otherwise multicore does not have an effect ...\n>>\n>> See package \"parallel\" that offers various functions for parallel\n>> computations. We cannot help much more if you do not tell us what the\n>> technical reasons are why mcapply() does not work.\n>\n> If the work you are doing within each iteration of the loop is trivial, you\n> will likely even see a decrease in performance if you try to parallelize it.\n>\n> Without more info from you regarding your problem, there's little we can do\n> to help, tho.\n>\n>   -Steve\n>\n>\n>\n\n\n-- \nSpencer Graves, PE, PhD\nPresident and Chief Technology Officer\nStructure Inspection and Monitoring, Inc.\n751 Emerson Ct.\nSan José, CA 95126\nph:  408-655-4567\nweb:  www.structuremonitoring.com\n\n\n-- \nSpencer Graves, PE, PhD\nPresident and Chief Technology Officer\nStructure Inspection and Monitoring, Inc.\n751 Emerson Ct.\nSan José, CA 95126\nph:  408-655-4567\nweb:  www.structuremonitoring.com\n\n______________________________________________\nR-help at r-project.org mailing list\nhttps://stat.ethz.ch/mailman/listinfo/r-help\nPLEASE do read the posting guide http://www.R-project.org/posting-guide.html\nand provide commented, minimal, self-contained, reproducible code.\n\n\n\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello:\n\n\n       Is there a standard reference on how to improve the speed of R code?\n\n\n       A recent R-help post asked about \"using multicores in R\" (see my \nreply below).  It seems to me that there",
       "thread_id": "thread-6140803c0a8c",
       "thread_depth": 0,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121203/54cfb11c/attachment.pl"
+      ]
     },
     {
       "id": "msg-92abf8e56e04",
@@ -168,11 +174,14 @@
       "subject_clean": "RInside, rcpp   compilation problem",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121205/2c6b6351/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121205/2c6b6351/attachment.pl>",
+      "body_plain": "I have spent some hours browsing the RInside and rcpp documentation, lots of it; but ... as a programmer of C++ since 1990, on both Windows and Unix ... ( Solaris and Ubuntu, and Mandrake/Mandrivo Linux); I see a minor problem ......  Where is the rcpp.h header file??  The below code fails to compile as the RInside.h header file references the rcpp.h header file, which is not included with RInclude download. This is the sample code provided in one of the RInside manuals: \n#include <iostream> \n\n#include <RInside.h>                            // for the embedded R via RInside\nrcpp::NumericMatrix createMatrix(const int n) {\n    Rcpp::NumericMatrix M(n,n);\n    for (int i=0; i<n; i++) {\n        for (int j=0; j<n; j++) {\n            M(i,j) = i*10 + j; \n        }\n    }\n    return(M);\n} \t\t \t   \t\t  \n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I have spent some hours browsing the RInside and rcpp documentation, lots of it; but ... as a programmer of C++ since 1990, on both Windows and Unix ... ( Solaris and Ubuntu, and Mandrake/Mandrivo Lin",
       "thread_id": "thread-a1e703111c86",
       "thread_depth": 0,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121205/2c6b6351/attachment.pl"
+      ]
     },
     {
       "id": "msg-adf1006400d5",
@@ -446,11 +455,14 @@
       "references": [
         "<CAM9CR=0DPTdi2eh1ZSnpzQi3vPpbJKzrQg+WADby7+S40pNd4w@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121205/bb9d215d/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121205/bb9d215d/attachment.pl>",
+      "body_plain": "Is that a build with \"good old\" Studio or a build with a recent GCC?\n\nI don't have any direct comments that would be helpful to you - but let me\nknow if you need a place to do some test builds and try to figure it out.\n I can certainly help you with that.\n\n[Are more Solaris-esque build slaves needed?  Someone give a shout if so...\nwe can sponsor some infrastructure there.]\n\n--elijah\n(@Joyent)\n\n\n\nOn Mon, Dec 3, 2012 at 11:28 AM, Jon Clayden <jon.clayden at gmail.com> wrote:\n\n> Dear all,\n>\n> The current version of my RNiftyReg package is failing to compile on CRAN's\n> Solaris testbed, but I don't have access to a Solaris system to debug on,\n> and Googling the error hasn't been very helpful. The error is\n>\n> CC -library=stlport4 -I/home/ripley/R/cc/include -DNDEBUG -DNDEBUG\n> -DRNIFTYREG -I/usr/local/include    -KPIC  -O -xlibmil -xtarget=native\n> -nofstore  -c niftyreg.cpp -o niftyreg.o\n> \"_reg_f3d_sym.cpp\", line 25: Error: reg_f3d may not have a type qualifier.\n> \"niftyreg.cpp\", line 527:     Where: While instantiating\n> \"reg_f3d_sym<double>::reg_f3d_sym(int, int)\".\n> \"niftyreg.cpp\", line 527:     Where: Instantiated from non-template code.\n> \"_reg_f3d_sym.cpp\", line 26: Error: reg_f3d<T> cannot be initialized\n> in a constructor.\n> \"niftyreg.cpp\", line 527:     Where: While instantiating\n> \"reg_f3d_sym<double>::reg_f3d_sym(int, int)\".\n> \"niftyreg.cpp\", line 527:     Where: Instantiated from non-template code.\n> \"_reg_f3d_sym.cpp\", line 26: Error: Could not find\n> reg_f3d<double>::reg_f3d() to initialize base class.\n> \"niftyreg.cpp\", line 527:     Where: While instantiating\n> \"reg_f3d_sym<double>::reg_f3d_sym(int, int)\".\n> \"niftyreg.cpp\", line 527:     Where: Instantiated from non-template code.\n> 3 Error(s) detected.\n> *** Error code 2\n> make: Fatal error: Command failed for target `niftyreg.o'\n>\n>\n> (Full log at [1].) The relevant part of the source is a C++ class\n> constructor, part of the library that my package interfaces to:\n>\n> template <class T>\n> reg_f3d_sym<T>::reg_f3d_sym(int refTimePoint,int floTimePoint)\n>     :reg_f3d<T>::reg_f3d(refTimePoint,floTimePoint)\n> {\n>     this->executableName=(char *)\"NiftyReg F3D SYM\";\n>\n>     this->backwardControlPointGrid=NULL;\n>     this->backwardWarped=NULL;\n>     this->backwardWarpedGradientImage=NULL;\n>     this->backwardDeformationFieldImage=NULL;\n>     this->backwardVoxelBasedMeasureGradientImage=NULL;\n>     this->backwardNodeBasedGradientImage=NULL;\n>\n>     this->backwardBestControlPointPosition=NULL;\n>     this->backwardConjugateG=NULL;\n>     this->backwardConjugateH=NULL;\n>\n>     this->backwardProbaJointHistogram=NULL;\n>     this->backwardLogJointHistogram=NULL;\n>\n>     this->floatingMaskImage=NULL;\n>     this->currentFloatingMask=NULL;\n>     this->floatingMaskPyramid=NULL;\n>     this->backwardActiveVoxelNumber=NULL;\n>\n>     this->inverseConsistencyWeight=0.1;\n>\n> #ifndef NDEBUG\n>     printf(\"[NiftyReg DEBUG] reg_f3d_sym constructor called\\n\");\n> #endif\n> }\n>\n> The error does not occur on any Windows, Linux or OS X system which I have\n> access to, so this would seem to be an issue relating to the Solaris\n> compiler toolchain in particular. Can anyone shed any light on it, please?\n>\n> Thanks in advance,\n> Jon\n>\n> --\n> [1]\n>\n> http://www.r-project.org/nosvn/R.check/r-patched-solaris-x86/RNiftyReg-00install.html\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Is that a build with \"good old\" Studio or a build with a recent GCC?\n\nI don't have any direct comments that would be helpful to you - but let me\nknow if you need a place to do some test builds and try",
       "thread_id": "thread-2d57ee3cf85f",
       "thread_depth": 1,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121205/bb9d215d/attachment.pl"
+      ]
     },
     {
       "id": "msg-619c79f75b91",
@@ -603,11 +615,14 @@
         "<CAM9CR=0DPTdi2eh1ZSnpzQi3vPpbJKzrQg+WADby7+S40pNd4w@mail.gmail.com>",
         "<CANQ3A2OymxgrJvr3M0pOAgsxp4+LPE5j58u+fitsCG_M3wxR9Q@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121206/cb1fa21e/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121206/cb1fa21e/attachment.pl>",
+      "body_plain": "Dear Elijah,\n\nMany thanks for the reply.\n\nIs that a build with \"good old\" Studio or a build with a recent GCC?\n>\n\nAccording to <\nhttp://cran.r-project.org/web/checks/check_flavors.html#r-patched-solaris-x86>\nit's Studio 12.3 on Solaris 10.\n\n\n> I don't have any direct comments that would be helpful to you - but let me\n> know if you need a place to do some test builds and try to figure it out.\n>  I can certainly help you with that.\n>\n\nThat would be fantastic - thank you very much for the offer. I would hope\nthat it should be fairly quick to resolve (don't we always!), so I wouldn't\nneed access for long.\n\nRegards,\nJon\n\n\n>\n> [Are more Solaris-esque build slaves needed?  Someone give a shout if\n> so... we can sponsor some infrastructure there.]\n>\n> --elijah\n> (@Joyent)\n>\n>\n>\n> On Mon, Dec 3, 2012 at 11:28 AM, Jon Clayden <jon.clayden at gmail.com>wrote:\n>\n>> Dear all,\n>>\n>> The current version of my RNiftyReg package is failing to compile on\n>> CRAN's\n>> Solaris testbed, but I don't have access to a Solaris system to debug on,\n>> and Googling the error hasn't been very helpful. The error is\n>>\n>> CC -library=stlport4 -I/home/ripley/R/cc/include -DNDEBUG -DNDEBUG\n>> -DRNIFTYREG -I/usr/local/include    -KPIC  -O -xlibmil -xtarget=native\n>> -nofstore  -c niftyreg.cpp -o niftyreg.o\n>> \"_reg_f3d_sym.cpp\", line 25: Error: reg_f3d may not have a type qualifier.\n>> \"niftyreg.cpp\", line 527:     Where: While instantiating\n>> \"reg_f3d_sym<double>::reg_f3d_sym(int, int)\".\n>> \"niftyreg.cpp\", line 527:     Where: Instantiated from non-template code.\n>> \"_reg_f3d_sym.cpp\", line 26: Error: reg_f3d<T> cannot be initialized\n>> in a constructor.\n>> \"niftyreg.cpp\", line 527:     Where: While instantiating\n>> \"reg_f3d_sym<double>::reg_f3d_sym(int, int)\".\n>> \"niftyreg.cpp\", line 527:     Where: Instantiated from non-template code.\n>> \"_reg_f3d_sym.cpp\", line 26: Error: Could not find\n>> reg_f3d<double>::reg_f3d() to initialize base class.\n>> \"niftyreg.cpp\", line 527:     Where: While instantiating\n>> \"reg_f3d_sym<double>::reg_f3d_sym(int, int)\".\n>> \"niftyreg.cpp\", line 527:     Where: Instantiated from non-template code.\n>> 3 Error(s) detected.\n>> *** Error code 2\n>> make: Fatal error: Command failed for target `niftyreg.o'\n>>\n>>\n>> (Full log at [1].) The relevant part of the source is a C++ class\n>> constructor, part of the library that my package interfaces to:\n>>\n>> template <class T>\n>> reg_f3d_sym<T>::reg_f3d_sym(int refTimePoint,int floTimePoint)\n>>     :reg_f3d<T>::reg_f3d(refTimePoint,floTimePoint)\n>> {\n>>     this->executableName=(char *)\"NiftyReg F3D SYM\";\n>>\n>>     this->backwardControlPointGrid=NULL;\n>>     this->backwardWarped=NULL;\n>>     this->backwardWarpedGradientImage=NULL;\n>>     this->backwardDeformationFieldImage=NULL;\n>>     this->backwardVoxelBasedMeasureGradientImage=NULL;\n>>     this->backwardNodeBasedGradientImage=NULL;\n>>\n>>     this->backwardBestControlPointPosition=NULL;\n>>     this->backwardConjugateG=NULL;\n>>     this->backwardConjugateH=NULL;\n>>\n>>     this->backwardProbaJointHistogram=NULL;\n>>     this->backwardLogJointHistogram=NULL;\n>>\n>>     this->floatingMaskImage=NULL;\n>>     this->currentFloatingMask=NULL;\n>>     this->floatingMaskPyramid=NULL;\n>>     this->backwardActiveVoxelNumber=NULL;\n>>\n>>     this->inverseConsistencyWeight=0.1;\n>>\n>> #ifndef NDEBUG\n>>     printf(\"[NiftyReg DEBUG] reg_f3d_sym constructor called\\n\");\n>> #endif\n>> }\n>>\n>> The error does not occur on any Windows, Linux or OS X system which I have\n>> access to, so this would seem to be an issue relating to the Solaris\n>> compiler toolchain in particular. Can anyone shed any light on it, please?\n>>\n>> Thanks in advance,\n>> Jon\n>>\n>> --\n>> [1]\n>>\n>> http://www.r-project.org/nosvn/R.check/r-patched-solaris-x86/RNiftyReg-00install.html\n>>\n>>         [[alternative HTML version deleted]]\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear Elijah,\n\nMany thanks for the reply.\n\nIs that a build with \"good old\" Studio or a build with a recent GCC?\n>\n\nAccording to <\nhttp://cran.r-project.org/web/checks/check_flavors.html#r-patched-solar",
       "thread_id": "thread-2d57ee3cf85f",
       "thread_depth": 2,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121206/cb1fa21e/attachment.pl"
+      ]
     },
     {
       "id": "msg-2bc1b86a673c",
@@ -637,11 +652,14 @@
       "references": [
         "<1354772376.18523.YahooMailClassic@web125102.mail.ne1.yahoo.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121206/c67fd956/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121206/c67fd956/attachment.pl>",
+      "body_plain": "Suharto,\n  I think that the key is to read the definition of exclude in the\nArguments section:\n\na vector of values to be excluded when forming the set of levels. This\nshould be of the same type as x, and will be coerced if necessary.\n\n  Because the levels already exist for x as a factor, they are not formed\nor revised, except to drop unused levels in the case where exclude=NULL (or\nthe default value). To drop level a from x use:\n\nfactor(as.character(x), exclude=\"a\")\n  or, on creation:\n\nx <- factor(c(\"a\", \"b\"), exclude=\"a\")\n\nDave\n\n\nOn Wed, Dec 5, 2012 at 11:39 PM, Suharto Anggono Suharto Anggono <\nsuharto_anggono at yahoo.com> wrote:\n\n> factor(x, exclude=factor(\"a\", levels=c(\"a\",\"b\")))\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Suharto,\n  I think that the key is to read the definition of exclude in the\nArguments section:\n\na vector of values to be excluded when forming the set of levels. This\nshould be of the same type as x, ",
       "thread_id": "thread-cfd76c61fa47",
       "thread_depth": 1,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121206/c67fd956/attachment.pl"
+      ]
     },
     {
       "id": "msg-2578a3fda498",
@@ -771,11 +789,14 @@
         "<20672.46577.43959.564387@stat.math.ethz.ch>",
         "<20672.47896.772981.226424@max.nulle.part>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121206/1422873c/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121206/1422873c/attachment.pl>",
+      "body_plain": "On Thu, Dec 6, 2012 at 9:34 AM, Dirk Eddelbuettel <edd at debian.org> wrote:\n\n|     > [Are more Solaris-esque build slaves needed?  Someone give a shout\n> if so...\n> |     > we can sponsor some infrastructure there.]\n> |\n> | as long we (R community at large \"in principle\", de facto,\n> |           AFAIK, Prof Brian Ripley)\n> | can have a Solaris testbed for CRAN which is reflected in the\n> | CRAN package check, it would be really great if someone provided\n> | a \"Solaris-builder\" server similar to the\n> | win-builder.r-project.org one that Uwe (and his Depaertment/\n> | University) provides.\n>\n> In a world with finite resources in terms of coding time and attention\n> span,\n> should we not provide such resources first for OS X and Linux?  But maybe\n> we\n> need some empirics first so that we can rank-order compilers by relevance.\n>\n\n\n I would fully expect it to be the case that the distribution of build\nissues would somewhat match the popularity of platforms.  Modulated by\nsomething like the approximate expertise on the platforms.  E.g. you may\nnot see many problems from Solaris folks for a variety of reasons,\npopularity being only one aspect of this...  :-)\n\n\n\n> I for one get more error emails from Intel icc users (say, two a year) than\n> from Solaris users (probably about one or two, over all these years; and\n> yes\n> I excluded the CRAN maintainers here).\n>\n> That said, we do have a concrete offer for help from Elijah which should a)\n> be commended (\"nice job!\") and used\n\n\n\nI'm going to get 'official permission' from someone, in hopes that whatever\nwe do lasts longer.  I'm expecting a positive reception, of course, or I\nwouldn't have said it could be done.  :-)\n\n(oh - yes, I got uniquivocal permission to go full speed ahead.  :-) )\n\n\nOnce I get that in hand, is B. Ripley the right person to reach out to?\n I'm pretty unfamiliar with what the CRAN autobuilder world is like, these\ndays.\n\n\n\n> but b) we should maybe try to think about\n> what other resources would help.\n>\n\nYup, this seems like a good time to bring that up, for sure.  :-)\n\nbest,\n\n--e\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Thu, Dec 6, 2012 at 9:34 AM, Dirk Eddelbuettel <edd at debian.org> wrote:\n\n|     > [Are more Solaris-esque build slaves needed?  Someone give a shout\n> if so...\n> |     > we can sponsor some infras",
       "thread_id": "thread-2d57ee3cf85f",
       "thread_depth": 4,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121206/1422873c/attachment.pl"
+      ]
     },
     {
       "id": "msg-03a44a16d4fc",
@@ -967,11 +988,14 @@
       "subject_clean": "memory management in C code",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121207/c3328d69/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121207/c3328d69/attachment.pl>",
+      "body_plain": "Hi ,\n\nI am a newbie to R and i am trying to create a R package which is pretty\nmain memory intensive.\nI would like to know what happens to the variables allocated in the C code\nwhile writing R extensions based on C.\nAre they preserved until someone de-allocate them or are they taken out by\nR's garbage collection ?\n\nThanks\n           Vineeth\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi ,\n\nI am a newbie to R and i am trying to create a R package which is pretty\nmain memory intensive.\nI would like to know what happens to the variables allocated in the C code\nwhile writing R extensi",
       "thread_id": "thread-5a000c68c359",
       "thread_depth": 0,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121207/c3328d69/attachment.pl"
+      ]
     },
     {
       "id": "msg-9c4f7dbf2971",
@@ -983,11 +1007,14 @@
       "subject_clean": "Workarounds/solutions to Rd file name conflict when extending a S4 method of some other package",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121207/37733bed/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121207/37733bed/attachment.pl>",
+      "body_plain": "Dear list,\n\nthis is a re-post of my post to r-help on 2012-30-11. Duncan Murdoch did \nprovide a great pointer to a possible workaround, but I'm still eager to \ncheck out other ways. So I hope it's okay to get this out on r-devel now \nas well:\n\n// IN SHORT //\nWhat are possible workarounds to \"consolidate\" documentation for S4 \nmethods that are scattered across different packages (generic and some \ncustom methods in one package, additional custom methods in another \npackage) in a *single* Rd help file while using package 'roxygen2' to \ngenerate the actual Rd files?\n\n// ADDITIONAL INFORMATION //\nFirst of, here are the three facts that \"cause\" my problem:\n\n1) I'd like the software, i.e. the packages, that I write to be as \nextendable as possible\n2) I pretty much ended up using S4 functionality in everything I do\n3) I'm a big fan of \"in-file documentation\" and package 'roxygen2' does \na wonderful job in helping me out keeping my Rd help files synced\n\nThat being said, it is a quite common scenario that some package (say \n'pkga') contains the *generic* method/function 'foo()' as well as *some* \ncustom methods (for different data types of the available signature \narguments).\n\nNow, let's suppose that someone using 'pkga' and building a new package \n(say 'pkgb') would like to build upon the generic method 'pkga::foo()' \nand provide some more custom methods for it. When he sticks to the \nsuggested workflow (especially with respect to the way the roxygen2 code \nis written), then R CMD check will rightly(!) complain that an Rd file \nwith the respective name (generated by 'roxygenize()') already exists \n(because it is already part of 'pkga').\n\nMy question is hence twofold:\n1) What would be possible workarounds that allow me to a) keep using \n'roxygen2' and link documentation of pkga::foo() with that of \npkgb::foo() (as they do belong together conecptionally)\n2) Is there a need to address this problem on a higher level in the \nfuture? My feeling is that more people are starting to use S4 which, \nIMHO, is a good thing as it allows to systematically build upon code of \nother programmers. But then I guess we would need some sort of an \n\"inter-package\" check and/or help-file consolidation to present the user \na single source of documentation for some S4 method.\n\nI tried to illustrate the problem with actual code in this post at \nStackoverflow: \nhttp://stackoverflow.com/questions/13137912/rd-file-name-conflict-when-s4-generic-and-methods-are-not-in-the-same-package \n\n\nBest regards,\nJanko\n\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear list,\n\nthis is a re-post of my post to r-help on 2012-30-11. Duncan Murdoch did \nprovide a great pointer to a possible workaround, but I'm still eager to \ncheck out other ways. So I hope it's oka",
       "thread_id": "thread-9c4f7dbf2971",
       "thread_depth": 0,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121207/37733bed/attachment.pl"
+      ]
     },
     {
       "id": "msg-3f029224ba08",
@@ -1297,11 +1324,14 @@
       "subject_clean": "How to locate a file quickly",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121210/7ccdc3e9/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121210/7ccdc3e9/attachment.pl>",
+      "body_plain": "Dear all,\n\nDuring the development of R packages, more and more functions are written\nand some of them are placed in a file. After a while, I want to revised a\nfunction, but forget which file the function is in. Is there a recommended\nway of locate a function quickly?\n\nThanks in advance.\n\n-- \nWincent Ronggui HUANG\nSociology Department of Fudan University\nPhD of City University of Hong Kong\nhttp://homepage.fudan.edu.cn/rghuang/cv/\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear all,\n\nDuring the development of R packages, more and more functions are written\nand some of them are placed in a file. After a while, I want to revised a\nfunction, but forget which file the funct",
       "thread_id": "thread-aced1f719b46",
       "thread_depth": 0,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121210/7ccdc3e9/attachment.pl"
+      ]
     },
     {
       "id": "msg-2e8dddd1038a",
@@ -1486,11 +1516,14 @@
       "subject_clean": "Bug in mclapply?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121210/b9a76d53/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121210/b9a76d53/attachment.pl>",
+      "body_plain": "I've been using mclapply and have encountered situations where it gives\nerrors or returns incorrect results. Here's a minimal example, which gives\nthe error on R 2.15.2 on Mac and Linux:\n\nlibrary(parallel)\nf <- function(x) NULL\nmclapply(1, f, mc.preschedule = FALSE, mc.cores = 1)\n# Error in sum(sapply(res, inherits, \"try-error\")) :\n#  invalid 'type' (list) of argument\n\n\nI believe it happens when the following are true:\n- The function returns NULL\n- mc.preschedule = FALSE\n- mc.cores >= length of the input data\n\n\nHere are some examples I used to trace down the problem.\n\nlibrary(parallel)\nf <- function(x) NULL\n\n# Error when mc.preschedule=FALSE and mc.cores >= length(x)\nmclapply(1, f, mc.preschedule = FALSE, mc.cores = 1)    # Error\nmclapply(1, f, mc.preschedule = FALSE, mc.cores = 2)    # Error\nmclapply(1:2, f, mc.preschedule = FALSE, mc.cores = 1)  # OK\n\n# In the following 2 cases, I get an error about 10-20% of the time.\n# The other times, the result is worse: it returns a list with only one\n# element, not two!\nmclapply(1:2, f, mc.preschedule = FALSE, mc.cores = 2)  # Error\nmclapply(1:2, f, mc.preschedule = FALSE, mc.cores = 3)  # Error\n\n\n# When mc.preschedule=TRUE, always works\nmclapply(1, f, mc.preschedule = TRUE, mc.cores = 1)    # OK\nmclapply(1:2, f, mc.preschedule = TRUE, mc.cores = 1)  # OK\nmclapply(1:2, f, mc.preschedule = TRUE, mc.cores = 2)  # OK\n\n# lapply() always works\nlapply(1, f)    # OK\nlapply(1:2, f)  # OK\nlapply(1:2, f)  # OK\n\n\n# If function returns non-null, it works\ng <- function(x) 0\nmclapply(1, g, mc.preschedule = FALSE, mc.cores = 1)    # OK\nmclapply(1:2, g, mc.preschedule = FALSE, mc.cores = 1)  # OK\nmclapply(1:2, g, mc.preschedule = FALSE, mc.cores = 2)  # OK\n\n\n\nDigging around in mclapply(), I think it happens because mccollect(jobs) is\nreturning an empty list. But when I use options(error=recover) and debug\nthe function, I find that when I call mccollect(jobs) again, it returns a\nlist with values -- it's as though mccollect() is returning too early. This\nwill illustrate:\n\n> mclapply(1, f, mc.preschedule = FALSE, mc.cores = 1)\nError in sum(sapply(res, inherits, \"try-error\")) :\n  invalid 'type' (list) of argument\n\nEnter a frame number, or 0 to exit\n\n1: mclapply(1, f, mc.preschedule = FALSE, mc.cores = 1)\n\nSelection: 1\nCalled from: top level\nBrowse[1]> res\nnamed list()\nBrowse[1]> res <- mccollect(jobs)\nBrowse[1]> res\n$`12348`\nNULL\n\nThe error happens on line 63 of mclapply.r, which is after `res <-\nmccollect(jobs)` is called, on line 61. At this point, res should be a\nnamed list with values filled in, but it's empty. When I run `res <-\nmccollect(jobs)` again, it gives the correct values.\n\nIs there a good way to work around this issue for now?\n\n-Winston\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I've been using mclapply and have encountered situations where it gives\nerrors or returns incorrect results. Here's a minimal example, which gives\nthe error on R 2.15.2 on Mac and Linux:\n\nlibrary(para",
       "thread_id": "thread-697b6379ec26",
       "thread_depth": 0,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121210/b9a76d53/attachment.pl"
+      ]
     },
     {
       "id": "msg-88f2c00be6cc",
@@ -1520,11 +1553,14 @@
       "subject_clean": "Strange, most probably unjustified, codoc mismatch for S4 method with one argument plus '...'",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121211/c80d3706/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121211/c80d3706/attachment.pl>",
+      "body_plain": "Hi,\n\nI am currently extending one of our CRAN packages and ran into an \nunexpected problem when checking the source package. I got some warnings \nin the step \"* checking for code/documentation mismatches\". I double \nchecked everything and did not see anything that would actually justify \nthis warning. After testing around for quite a while, I think I can now \npinpoint the problem. In order to make myself clear, I need to explain \nthe situation in more detail:\n\nThe default method (passed as def argument of setGeneric()) has the \nformal argument list (x, y, ...). Suppose I want to register a method \nwith a signature without y, say signature(x=\"matrix\", y=\"missing\"). If I \npass a function to setMethod() that only has the argument x,i.e. \nfunction(x) {...}, everything works well. It also works well if I \nregister a function with additional arguments, e.g. function(x, \ndummy=NULL, ...){...} (note: y is missing in the definition). However, \nif I try to register a function with two formal arguments, x and '...', \ni.e.function(x, ...){...}, I get the warning that argument y is present \nin the code but missing in the documentation , although it is actually \nNOT in the code. In order to make this reproducible for everybody, I put \ntogether a little dummy package in which one of the methods leads to \nexactly this warning:\n\n    http://www.bioinf.jku.at/people/bodenhofer/codocMismatchTest_0.0.1.tar.gz\n\nJust run 'R CMD check' on this archive and you'll see. You will also see \nfrom the code and the corresponding documentation that the warning seems \nunjustified. I tried the following R versions: 2.12.1, 2.13.0, 2.13.1, \n2.14.0, 2.14.1, 2.15.0, 2.15.1, 2.15.2, 2.16.0 (devel), and all \nconsistently gave the same warning.\n\nIs this a bug or is there a special reason for this behavior? Any help \nis gratefully appreciated!\n\nThanks in advance and best regards,\nUlrich\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi,\n\nI am currently extending one of our CRAN packages and ran into an \nunexpected problem when checking the source package. I got some warnings \nin the step \"* checking for code/documentation mismatc",
       "thread_id": "thread-5cc87b29b88d",
       "thread_depth": 0,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121211/c80d3706/attachment.pl"
+      ]
     },
     {
       "id": "msg-eba170a8bcc8",
@@ -1573,11 +1609,14 @@
       "references": [
         "<1355238815.25539.5588.camel@bonnington.inf.ed.ac.uk>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121211/c315f1d7/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121211/c315f1d7/attachment.pl>",
+      "body_plain": "Dear David,\n\nI can think of two strategies for dealing with this problem:\n>\n> Strategy 1: Some code like this:\n>    if (det(X) < epsilon) {\n>       warning(\"Near singular matrix\")\n>       return(NULL)\n>    }\n>    return(solve(X))\n\n\nThis solution is probably the easiest one to take, but to match\nsolve.default, the test should be\n\n  if (rcond(X) < .Machine$double.eps)\n\nCatching that case should avoid the error. I hope this helps.\n\nAll the best,\nJon\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Dear David,\n\nI can think of two strategies for dealing with this problem:\n>\n> Strategy 1: Some code like this:\n>    if (det(X) < epsilon) {\n>       warning(\"Near singular matrix\")\n>       return(NULL)",
       "thread_id": "thread-65fb6ed66c6b",
       "thread_depth": 1,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121211/c315f1d7/attachment.pl"
+      ]
     },
     {
       "id": "msg-f6f8957657e7",
@@ -2002,11 +2041,14 @@
         "<CAErODj-96eWJ-geM_3eCt1RMZxA7zCOo6ev1-WibvZtFAMYoDQ@mail.gmail.com>",
         "<50C9A0FA.9090501@statistik.tu-dortmund.de>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121214/a6550718/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121214/a6550718/attachment.pl>",
+      "body_plain": "I have also encountered a similar problem. My mvabund package runs much\nfaster on linux/OSX than on windows with both R/2.15.1 and R/2.15.2. For\nexample, with mvabund_3.6.3 and\nR/2.15.2, system.time(example(anova.manyglm))\n\non OSX returns\n\n   user  system elapsed\n  3.351   0.006   3.381\n\nbut on windows 7 it returns\n\n   user  system elapsed\n  13.13   0.00   13.14\n\nI also used svd frequently in my c code though by calling the gsl functions\nonly. In my memory, I think the comp time difference is not that\nsignificant with earlier R versions. So maybe it is worth an investigation?\n\nMany thanks,\nYi Wang\n\n\nOn Thu, Dec 13, 2012 at 5:33 PM, Uwe Ligges <ligges at statistik.tu-dortmund.de\n> wrote:\n\n> Long message, but as far as I can see, this is not about base R but the\n> contributed package Amelia: Please discuss possible improvements with its\n> maintainer.\n>\n> Best,\n> Uwe Ligges\n>\n>\n> On 12.12.2012 19:14, Paul Johnson wrote:\n>\n>> Speaking of optimization and speeding up R calculations...\n>>\n>> I mentioned last week I want to speed up calculation of generalized\n>> inverses. On Debian Wheezy with R-2.15.2, I see a huge speedup using a\n>> souped up generalized inverse algorithm published by\n>>\n>> V. N. Katsikis, D. Pappas, Fast computing of theMoore-Penrose inverse\n>> matrix, Electronic Journal of Linear Algebra,\n>> 17(2008), 637-650.\n>>\n>> I was so delighted to see the computation time drop on my Debian\n>> system that I boasted to the WIndows users and gave them a test case.\n>> They answered back \"there's no benefits, plus Windows is faster than\n>> Linux\".\n>>\n>> That sent me off on a bit of a goose chase, but I think I'm beginning\n>> to understand the situation.  I believe R-2.15.2 introduced a tighter\n>> requirement for precision, thus triggering longer-lasting calculations\n>> in many example scripts. Better algorithms can avoid some of that\n>> slowdown, as you see in this test case.\n>>\n>> Here is the test code you can run to see:\n>>\n>> http://pj.freefaculty.org/**scraps/profile/prof-puzzle-1.R<http://pj.freefaculty.org/scraps/profile/prof-puzzle-1.R>\n>>\n>> It downloads a data file from that same directory and then runs some\n>> multiple imputations with the Amelia package.\n>>\n>> Here's the output from my computer\n>>\n>> http://pj.freefaculty.org/**scraps/profile/prof-puzzle-1.**Rout<http://pj.freefaculty.org/scraps/profile/prof-puzzle-1.Rout>\n>>\n>> That includes the profile of the calculations that depend on the\n>> ordinary generalized inverse algorithm based on svd and the new one.\n>>\n>> See? The KP algorithm is faster.  And just as accurate as\n>> Amelia:::mpinv or MASS::ginv (for details on that, please review my\n>> notes in http://pj.freefaculty.org/**scraps/profile/qrginv.R<http://pj.freefaculty.org/scraps/profile/qrginv.R>\n>> ).\n>>\n>> So I asked WIndows users for more detailed feedback, including\n>> sessionInfo(), and I noticed that my proposed algorithm is not faster\n>> on Windows--WITH OLD R!\n>>\n>> Here's the script output with R-2.15.0, shows no speedup from the\n>> KPginv algorithm\n>>\n>> http://pj.freefaculty.org/**scraps/profile/prof-puzzle-1-**Windows.Rout<http://pj.freefaculty.org/scraps/profile/prof-puzzle-1-Windows.Rout>\n>>\n>> On the same machine, I updated to R-2.15.2, and we see the same\n>> speedup from the KPginv algorithm\n>>\n>> http://pj.freefaculty.org/**scraps/profile/prof-puzzle-1-**\n>> CRMDA02-WinR2.15.2.Rout<http://pj.freefaculty.org/scraps/profile/prof-puzzle-1-CRMDA02-WinR2.15.2.Rout>\n>>\n>> After that, I realized it is an R version change, not an OS\n>> difference, I was a bit relieved.\n>>\n>> What causes the difference in this case?  In the Amelia code, they try\n>> to avoid doing the generalized inverse by using the ordinary solve(),\n>> and if that fails, then they do the generalized inverse. In R 2.15.0,\n>> the near singularity of the matrix is ignored, but not in R 2.15.2.\n>> The ordinary solve is failing almost all the time, thus triggering the\n>> use of the svd based generalized inverse.  Which is slower.\n>>\n>> The Katsikis and Pappas 2008 algorithm is the fastest one I've found\n>> after translating from Matlab to R.  It is not so universally\n>> applicable as svd based methods, it will fail if there are linearly\n>> dependent columns. However, it does tolerate columns of all zeros,\n>> which seems to be the problem case in the particular application I am\n>> testing.\n>>\n>> I tried very hard to get the newer algorithm described here to go as\n>> fast, but it is way way slower, at least in the implementations I\n>> tried:\n>> ##  KPP\n>> ## Vasilios N. Katsikis, Dimitrios Pappas, Athanassios Petralias.  \"An\n>> improved method for\n>> ## the computation of the Moore Penrose inverse matrix,\" Applied\n>> ## Mathematics and Computation, 2011\n>>\n>> The notes on that are in the qrginv.R file linked above.\n>>\n>> The fact that I can't make that newer KPP algorithm go faster,\n>> although the authors show it can go faster in Matlab, leads me to a\n>> bunch of other questions and possibly the need to implement all of\n>> this in C with LAPACK or EIGEN or something like that, but at this\n>> point, I've got to return to my normal job.  If somebody is good at\n>> R's .Call interface and can make a pure C implementation of KPP.\n>>\n>> I think the key thing is that with R-2.15.2, there is an svd-related\n>> bottleneck in the multiple imputation algorithms in Amelia. The\n>> replacement version of the function Amelia:::mpinv does reclaim a 30%\n>> time saving, while generating imputations that are identical, so far\n>> as i can tell.\n>>\n>> pj\n>>\n>>\n>>\n>>\n> ______________________________**________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/**listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>\n>\n\n\n\n-- \n\n\n-- \nDr. Wang, Yi (Alice)\nResearch Assistant Professor\nInstitute of Computational and Theoretical Studies\nDepartment of Computer Science\nFaculty of Science\nHong Kong Baptist University\nKowloon Tong, Hong Kong\nEmail: yiwang at comp.hkbu.edu.hk\nTel: +852-3411-2789\nWeb: http://www.icts.hkbu.edu.hk/yiwang/public/\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I have also encountered a similar problem. My mvabund package runs much\nfaster on linux/OSX than on windows with both R/2.15.1 and R/2.15.2. For\nexample, with mvabund_3.6.3 and\nR/2.15.2, system.time(e",
       "thread_id": "thread-772afefb4bd3",
       "thread_depth": 2,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121214/a6550718/attachment.pl"
+      ]
     },
     {
       "id": "msg-bf321454093c",
@@ -2677,11 +2719,14 @@
       "subject_clean": "R-devel",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121217/42407eb3/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121217/42407eb3/attachment.pl>",
+      "body_plain": "I am wondering if the normal scores version of the Wilcoxon rank sums test can be added to \"wilcox.test\" in the \"stats\" package.  I have writing a crude function for myself but \"Wilcox.test\" is the go to function in general.\n\nSincerely,\n\n\nDan Ayers\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I am wondering if the normal scores version of the Wilcoxon rank sums test can be added to \"wilcox.test\" in the \"stats\" package.  I have writing a crude function for myself but \"Wilcox.test\" is the go",
       "thread_id": "thread-297aa0a5f6bc",
       "thread_depth": 0,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121217/42407eb3/attachment.pl"
+      ]
     },
     {
       "id": "msg-2c22329c8767",
@@ -2786,11 +2831,14 @@
         "<CAFDcVCQ5RgSJTh+7eiJNDb7zLf_AZUCBQvD7TkXbYY5r+yNx+g@mail.gmail.com>",
         "<50D06099.9050500@prodsyse.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121218/d701344a/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121218/d701344a/attachment.pl>",
+      "body_plain": "Many thanks for your replies.\n\nI had a quick look at both functions:\n-  CRAN(): it detects timing check from --as-cran.\n- queryRCmdCheck() allows to detect which part of the check is calling a\nfunction (examples, tests?).\n\nBoth are useful!\nWould be nice to have a R-base function which can provide a definite\nidentification of R CMD check and other special calls (e.g. in \\Sexpr in Rd\nfiles).\n\nBests,\nRenaud\n\n\n2012/12/18 Spencer Graves <spencer.graves at prodsyse.com>\n\n> Have you considered the CRAN function in \"fda\"?  Spencer\n>\n>\n>\n> On 12/18/2012 4:00 AM, Henrik Bengtsson wrote:\n>\n>> Hi Renaud,\n>>\n>> On Tue, Dec 18, 2012 at 8:44 AM, Renaud Gaujoux <renaud at cbio.uct.ac.za>\n>> wrote:\n>>\n>>> Hi Henrik (and list),\n>>>\n>>> I am interested in a similar feature, and would be happy to see the\n>>> suggestions you got off-line :)\n>>> Have you come up with a robust solution, which would work in a variety of\n>>> situations (in examples, tests, \\Sexpr calls, etc..)?\n>>>\n>> see queryRCmdCheck() of R.utils.  Example:\n>>\n>> # Get the 'R CMD check' status, if any\n>> status <- R.utils::queryRCmdCheck()\n>>\n>> if (status != \"notRunning\") {\n>>    cat(\"The current R session was launched by R CMD check. Status:\",\n>> status, \"\\n\")\n>> } else {\n>>    cat(\"The current R session was not launched by R CMD check.\\n\")\n>> }\n>>\n>> I haven't tested it with Sweave, but with examples and tests.\n>>\n>> R.utils 1.18.0 is on CRAN, but you'd want 1.18.3, because:\n>>\n>> Version: 1.18.3 [2012-11-06]\n>> o BUG FIX: queryRCmdCheck() did not detect \"tests\" evidences when\n>>    'R CMD check' was testing multiple architectures.\n>>\n>> It may be another couple of weeks before I submit it to CRAN, but in\n>> the meanwhile you can grab it via:\n>>\n>> source(\"http://aroma-project.**org/hbLite.R<http://aroma-project.org/hbLite.R>\n>> \");\n>> hbLite(\"R.utils\")\n>>\n>> Any feedback (positive or negative) is appreciated.\n>>\n>> Hope it helps\n>>\n>> /Henrik\n>>\n>>\n>>  Thank you.\n>>>\n>>> Bests,\n>>> Renaud\n>>>\n>>> --\n>>> Renaud Gaujoux\n>>> Computational Biology - University of Cape Town\n>>> South Africa\n>>>\n>>>\n>>>  ______________________________**________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/**listinfo/r-devel<https://stat.ethz.ch/mailman/listinfo/r-devel>\n>>\n>>\n>>\n>\n> --\n> Spencer Graves, PE, PhD\n> President and Chief Technology Officer\n> Structure Inspection and Monitoring, Inc.\n> 751 Emerson Ct.\n> San José, CA 95126\n> ph:  408-655-4567\n> web:  www.structuremonitoring.com\n>\n>\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Many thanks for your replies.\n\nI had a quick look at both functions:\n-  CRAN(): it detects timing check from --as-cran.\n- queryRCmdCheck() allows to detect which part of the check is calling a\nfunctio",
       "thread_id": "thread-a2a6829171c0",
       "thread_depth": 3,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121218/d701344a/attachment.pl"
+      ]
     },
     {
       "id": "msg-027b9606725b",
@@ -2930,11 +2978,14 @@
         "<50D06614.9060404@epiconcept.fr>",
         "<C388E3C2-611A-4717-8049-D72867AB8BCB@gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121219/9e56c4e5/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121219/9e56c4e5/attachment.pl>",
+      "body_plain": "The safest way to prevent attacks using an R connector, is managing the\npermissions for the application on your own server. We do that with the\nRStudio Server application we have running. You have to take into account\nthat R allows for many interactions with the system. Also file(), dir(),\nunlink() and all sys. functions have the potential to screen and possibly\nalter your system. Not only system() and eval() pose a security problem...\n\nHow to do this exactly, depends very much on both the server and OS\nsettings and the specific R connector you use/build. But don't count on R\nalone to provide safety.\n\nCheers\nJoris\n\nOn Wed, Dec 19, 2012 at 12:28 PM, Michael Weylandt <\nmichael.weylandt at gmail.com> wrote:\n\n>\n>\n> On Dec 18, 2012, at 12:48 PM, Etienne Sévin <e.sevin at epiconcept.fr> wrote:\n>\n> > Hey all,\n> >\n> > We are building a R connector for our web application.\n> > The user can upload a script so it can be executed on the server.\n> >\n> > Is there a way to scan the script for insidious commands (writing on the\n> > disk for example) and purge them out?\n>\n> Completely, not that I know of: but grepping for system() and eval()\n> should catch a majority of red flags.\n>\n> Michael\n>\n> > I guess a simple search is not enough so is there a way to analyse the\n> > pseudo code?\n> >\n> > Best,\n> >\n> > Etienne\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \nJoris Meys\nStatistical consultant\n\nGhent University\nFaculty of Bioscience Engineering\nDepartment of Mathematical Modelling, Statistics and Bio-Informatics\n\ntel : +32 9 264 59 87\nJoris.Meys at Ugent.be\n-------------------------------\nDisclaimer : http://helpdesk.ugent.be/e-maildisclaimer.php\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "The safest way to prevent attacks using an R connector, is managing the\npermissions for the application on your own server. We do that with the\nRStudio Server application we have running. You have to ",
       "thread_id": "thread-027b9606725b",
       "thread_depth": 2,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121219/9e56c4e5/attachment.pl"
+      ]
     },
     {
       "id": "msg-872a9d664dfb",
@@ -2971,11 +3022,14 @@
         "<CAO1zAVbqQXsBEz7Uvdjqi0FxE2NxMb3fTZ5MuEFgn3KSaLb_xw@mail.gmail.com>",
         "<20121219120210.GA4036@paxarchia.galaxy.uni>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121219/d0b4447b/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121219/d0b4447b/attachment.pl>",
+      "body_plain": "On Wed, Dec 19, 2012 at 1:02 PM, Jan T Kim <jttkim at googlemail.com> wrote:\n\n> On Wed, Dec 19, 2012 at 12:39:21PM +0100, Joris Meys wrote:\n> > The safest way to prevent attacks using an R connector, is managing the\n> > permissions for the application on your own server. We do that with the\n> > RStudio Server application we have running. You have to take into account\n> > that R allows for many interactions with the system. Also file(), dir(),\n> > unlink() and all sys. functions have the potential to screen and possibly\n> > alter your system. Not only system() and eval() pose a security\n> problem...\n>\n> just out of curiosity, how do you disable these functions?\n\n\nYou got me wrong: We don't disable these functions, we just don't give the\nR instance that's executing the file any permissions on the system. So\ntrying to run any function that wants to access the system only results in\nerror messages. I believe we did that by creating a specific user account\nand linked that to the R application behind the interface. But sandboxing\n(as you mentioned) is just as good.\n\n-- \nJoris Meys\nStatistical consultant\n\nGhent University\nFaculty of Bioscience Engineering\nDepartment of Mathematical Modelling, Statistics and Bio-Informatics\n\ntel : +32 9 264 59 87\nJoris.Meys at Ugent.be\n-------------------------------\nDisclaimer : http://helpdesk.ugent.be/e-maildisclaimer.php\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "On Wed, Dec 19, 2012 at 1:02 PM, Jan T Kim <jttkim at googlemail.com> wrote:\n\n> On Wed, Dec 19, 2012 at 12:39:21PM +0100, Joris Meys wrote:\n> > The safest way to prevent attacks using an R connector, ",
       "thread_id": "thread-027b9606725b",
       "thread_depth": 4,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121219/d0b4447b/attachment.pl"
+      ]
     },
     {
       "id": "msg-24c44cc8a9c8",
@@ -3054,11 +3108,14 @@
         "<CAO1zAVaXwrt_f1LN29kJz-2XvoOYn5rz-EuuHnqYfXWrL2sJPg@mail.gmail.com>",
         "<20689.49717.671544.744493@max.nulle.part>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121219/a7ccf9ff/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121219/a7ccf9ff/attachment.pl>",
+      "body_plain": "See also: https://github.com/Rapporter/sandboxR\n\nsandboxR (not written by me) is a proof of concept for security inside R\n(as opposed to security outside R as discussed above) via evaluating all R\ncommands in a specialized security environment (R environment that is)\nwhich contains safe replacements for blacklisted functions.\n\nHTH,\n~G\n\n\n\nOn Wed, Dec 19, 2012 at 5:33 AM, Dirk Eddelbuettel <edd at debian.org> wrote:\n\n>\n> Jeroen has a package devoted to the sandboxing approach in conjunction with\n> the system-level AppArmor facility:  RAppArmor.  See\n>\n>   http://cran.r-project.org/web/packages/RAppArmor/index.html\n>\n> and more details at\n>\n>   https://github.com/jeroenooms/RAppArmor#readme\n>\n> Dirk\n>\n> --\n> Dirk Eddelbuettel | edd at debian.org | http://dirk.eddelbuettel.com\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n\n-- \nGabriel Becker\nGraduate Student\nStatistics Department\nUniversity of California, Davis\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "See also: https://github.com/Rapporter/sandboxR\n\nsandboxR (not written by me) is a proof of concept for security inside R\n(as opposed to security outside R as discussed above) via evaluating all R\ncom",
       "thread_id": "thread-027b9606725b",
       "thread_depth": 6,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121219/a7ccf9ff/attachment.pl"
+      ]
     },
     {
       "id": "msg-e9d134343020",
@@ -3121,11 +3178,14 @@
         "<CADwqtCM_OB_HqQ1bHYzKfN00NH41+PGyT0_HcC3aQhSv0TDp0A@mail.gmail.com>",
         "<52342EBD-789E-4048-AA05-30A44C535321@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121219/4122aeac/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121219/4122aeac/attachment.pl>",
+      "body_plain": "Simon,\n\nI don't really have a horse in this race (as I said I didn't write\nsandboxR), but it seems like if you control library (to prevent \"untrusted\"\npackages, specifically including things like Rcpp and Rffi), and dyn.load\nthe executing arbitrary compiled code issue can be curtailed. If I'm wrong\nplease let me know, I'm always looking to learn.\n\nI assume XXXX in your example was some C code you whipped up and then\nloaded using one of the methods above? Or a .Call to an existing internal R\nfunction?\n\n~G\n\nOn Wed, Dec 19, 2012 at 9:12 AM, Simon Urbanek\n<simon.urbanek at r-project.org>wrote:\n\n> On Dec 19, 2012, at 11:21 AM, Gabriel Becker wrote:\n>\n> > See also: https://github.com/Rapporter/sandboxR\n> >\n> > sandboxR (not written by me) is a proof of concept for security inside R\n> > (as opposed to security outside R as discussed above) via evaluating all\n> R\n> > commands in a specialized security environment (R environment that is)\n> > which contains safe replacements for blacklisted functions.\n> >\n>\n> It is a good example of false security. For the reasons mentioned before\n> this doesn't work and can be circumvented:\n>\n> > sandbox(\"XXXX('tail /etc/group')\")\n> _developer:*:204:\n> _locationd:*:205:\n> _carddav:*:206:\n> _detachedsig:*:207:\n> _trustevaluationagent:*:208:\n> _odchpass:*:209:\n> _timezone:*:210:\n> _lda:*:211:\n> _cvms:*:212:\n> _usbmuxd:*:213:\n> [1] 0\n>\n> The problem is that you can try to plug holes (and sandboxR is trying hard\n> to plug a lot of them), but there will always be new ones. It's simply the\n> wrong approach IMHO.\n>\n> Cheers,\n> Simon\n>\n>\n>\n> > HTH,\n> > ~G\n> >\n> >\n> >\n> > On Wed, Dec 19, 2012 at 5:33 AM, Dirk Eddelbuettel <edd at debian.org>\n> wrote:\n> >\n> >>\n> >> Jeroen has a package devoted to the sandboxing approach in conjunction\n> with\n> >> the system-level AppArmor facility:  RAppArmor.  See\n> >>\n> >>  http://cran.r-project.org/web/packages/RAppArmor/index.html\n> >>\n> >> and more details at\n> >>\n> >>  https://github.com/jeroenooms/RAppArmor#readme\n> >>\n> >> Dirk\n> >>\n> >> --\n> >> Dirk Eddelbuettel | edd at debian.org | http://dirk.eddelbuettel.com\n> >>\n> >> ______________________________________________\n> >> R-devel at r-project.org mailing list\n> >> https://stat.ethz.ch/mailman/listinfo/r-devel\n> >>\n> >\n> >\n> >\n> > --\n> > Gabriel Becker\n> > Graduate Student\n> > Statistics Department\n> > University of California, Davis\n> >\n> >       [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n> >\n>\n>\n\n\n-- \nGabriel Becker\nGraduate Student\nStatistics Department\nUniversity of California, Davis\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Simon,\n\nI don't really have a horse in this race (as I said I didn't write\nsandboxR), but it seems like if you control library (to prevent \"untrusted\"\npackages, specifically including things like Rcpp",
       "thread_id": "thread-027b9606725b",
       "thread_depth": 8,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121219/4122aeac/attachment.pl"
+      ]
     },
     {
       "id": "msg-17205666d111",
@@ -3497,11 +3557,14 @@
       "references": [
         "<CACrz-Hvdk+rNsYs2hSSjKpg-bt3L55eJs8VV6vOEto_8DLiXeg@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121227/18ed23ac/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121227/18ed23ac/attachment.pl>",
+      "body_plain": "Duncan noticed that either the sending server (Gmail - shouldn't be the\ncase) or receiving server stripped out the attachment.  Here it is again,\ninline.\n\n -Ken\n\n===========================\n>From 99766dd8f16804ecddc73f6169be3e42b916b8fa Mon Sep 17 00:00:00 2001\nFrom: Ken Williams <Ken.Williams at WindLogics.com>\nDate: Thu, 27 Dec 2012 09:58:21 -0600\nSubject: [PATCH] Add system.time link to Sys.time documentation, and vice\n versa.\n\n\ndiff --git a/src/library/base/man/Sys.time.Rd\nb/src/library/base/man/Sys.time.Rd\nindex d34571b..f0b0c50 100644\n--- a/src/library/base/man/Sys.time.Rd\n+++ b/src/library/base/man/Sys.time.Rd\n@@ -41,6 +41,8 @@ Sys.Date()\n   string.\n\n   \\code{\\link{Sys.timezone}}.\n+\n+  \\code{\\link{system.time}} for measuring elapsed/CPU time of expressions.\n }\n \\examples{\\donttest{\n Sys.time()\ndiff --git a/src/library/base/man/system.time.Rd\nb/src/library/base/man/system.time.Rd\nindex 5cd79b7..ad21267 100644\n--- a/src/library/base/man/system.time.Rd\n+++ b/src/library/base/man/system.time.Rd\n@@ -38,6 +38,8 @@ unix.time(expr, gcFirst = TRUE)\n }\n \\seealso{\n   \\code{\\link{proc.time}}, \\code{\\link{time}} which is for time series.\n+\n+  \\code{\\link{Sys.time}} to get the current date & time.\n }\n \\examples{\n require(stats)\n-- \n1.7.9\n===========================\n\n\n\nOn Thu, Dec 27, 2012 at 10:08 AM, Ken Williams <kenahoo at gmail.com> wrote:\n\n> Here’s a patch that adds ‘seealso’ entries to Sys.time and system.time\n> docs, to help people who forget what the distinction is between them.\n>\n> Patch was made against https://svn.r-project.org/R/trunk at 61454 .\n>\n>  -Ken\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Duncan noticed that either the sending server (Gmail - shouldn't be the\ncase) or receiving server stripped out the attachment.  Here it is again,\ninline.\n\n -Ken\n\n===========================\n>From 9976",
       "thread_id": "thread-c6421e534e28",
       "thread_depth": 1,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121227/18ed23ac/attachment.pl"
+      ]
     },
     {
       "id": "msg-ef5ec146036f",
@@ -3532,11 +3595,14 @@
         "<DDF515A2-D7C3-4123-B8EC-DD6D864AC665@gmail.com>",
         "<6FE1CC5F-31AF-4782-BFDC-693890B3044A@r-project.org>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121227/278ce09f/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121227/278ce09f/attachment.pl>",
+      "body_plain": "Hi Simon\n\nThanks for the clarification - makes sense and I now think youre right - probably better to avoid an automatic factor conversion and let the user explicitly convert if necessary. And you are right, I did abuse the term factor when referring to varchar - instead of factor, I really meant something like 'internalized strings' a la Java (ie like a factor but with no ordering or distinct levels attributes.\n\nMany thanks\n-- Rory\n\n\nOn 27/12/2012, at 5:47 PM, Simon Urbanek <simon.urbanek at r-project.org> wrote:\n\n> varchars are character strings. Factors consists of index and level set, so if your DB doesn't keep those separate, it is not a factor (and below you suggest it doesn't). Even if the DB supports ordered and unordered sets, the drivers typically only return the strings anyway, so you don't get at the set (without querying the schema). To make a point - a factor is if you can have a column consisting of values A,A,B,B and a level set of A,B,C (i.e. C is not used so it is extra information that you cannot express in a character string). if you don't have levels information nor the order then it's just a character vector.\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi Simon\n\nThanks for the clarification - makes sense and I now think youre right - probably better to avoid an automatic factor conversion and let the user explicitly convert if necessary. And you are",
       "thread_id": "thread-025287ea012d",
       "thread_depth": 2,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121227/278ce09f/attachment.pl"
+      ]
     },
     {
       "id": "msg-ec00f7920656",
@@ -3739,11 +3805,14 @@
         "<CANcXGiyfmVh=ajUx=Nwbvwa8pzPST3u124mo9MUeZOQrdiHudg@mail.gmail.com>",
         "<CANcXGiy+ArzGZJ+gDMWrQzsBF2S2hXyUsdGJdi1jZ2TqjHQ--A@mail.gmail.com>"
       ],
-      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121229/96c0c656/attachment.pl>",
-      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: not available\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20121229/96c0c656/attachment.pl>",
+      "body_plain": "Hello,\n\nYou're right, it has to do with the argument xy.labels. The relevant \nlines in the source are\n(file src/library/stats/R/ts.R, function plot.ts)\n\n         [...]\n         n <- length(xy $ x)          #-> default for xy.l(ines|abels)\n         if(missing(xy.labels)) xy.labels <- (n <= 150)\n         if(!is.logical(xy.labels)) {\n             if(!is.character(xy.labels))\n                 stop(\"'xy.labels' must be logical or character\")\n             do.lab <- TRUE\n         } else do.lab <- xy.labels\n         [...]\n         ptype <-\n         if(do.lab) \"n\" else if(missing(type)) \"p\" else type\n         plot.default(xy, type = ptype,\n         [...]\n         if(do.lab)\n             text(xy, labels =\n              if(is.character(xy.labels)) xy.labels\n              else if(all(tsp(x) == tsp(y))) formatC(time(x), width = 1)\n              else seq_along(xy$x),\n              col = col, cex = cex)\n         if(xy.lines)\n             lines(xy, col = col, lty = lty, lwd = lwd,\n               type = if(do.lab) \"c\" else \"l\")\n         [...]\n\nNote that this is executed only if both 'x' and 'y' are passed to plot.ts.\nThe variable 'do.lab' will control the plot.default type and whether the \npoints are labeled using text() and the lines() type.\nThis variable is set according to xy.labels. This behavior is more or \nless documented in plot.ts:\n\n|\"xy.labels|||logical, indicating if |text \n<http://127.0.0.1:29428/library/stats/help/text>()| labels should be \nused for an x-y plot, /or/ character, supplying a vector of labels to be \nused. The default is to label for up to 150 points, and not for more.\"\n\nbut I believe the documentation could be more clear. It could say that \nin the case of a y ~ x plot, to supress the plot xy.labels should be set \nto FALSE.\n\nHope this helps,\n\nRui Barradas\nEm 29-12-2012 17:04, Simone Giannerini escreveu:\n> Dear all,\n>\n> I think I have found a buglet in plot.ts\n>\n> plot.ts(x=1,type=\"n\")     # correct: does not show the plot\n> plot.ts(x=1,y=1,type=\"n\") # not correct: does show the plot\n>\n> I did not investigate the problem in depth but it could be related to\n> the switch xy.labels, in fact\n>\n> plot.ts(x=1,y=1,type=\"n\",xy.labels=TRUE) #  does show the plot\n> plot.ts(x=1,y=1,type=\"n\",xy.labels=FALSE) # does not show the plot\n>\n>> sessionInfo()\n> R version 2.15.2 Patched (2012-10-26 r61028)\n> Platform: x86_64-w64-mingw32/x64 (64-bit)\n>\n> locale:\n> [1] LC_COLLATE=Italian_Italy.1252  LC_CTYPE=Italian_Italy.1252\n> [3] LC_MONETARY=Italian_Italy.1252 LC_NUMERIC=C\n> [5] LC_TIME=Italian_Italy.1252\n>\n> attached base packages:\n> [1] stats     graphics  grDevices utils     datasets  methods   base\n>\n> loaded via a namespace (and not attached):\n> [1] tools_2.15.2\n>\n>\n> Kind regards\n>\n> Simone\n> ______________________________________________________\n>\n>\n> Simone Giannerini\n> Dipartimento di Scienze Statistiche \"Paolo Fortunati\"\n> Universita' di Bologna\n> Via delle belle arti 41 - 40126  Bologna,  ITALY\n> Tel: +39 051 2098262  Fax: +39 051 232153\n> http://www2.stat.unibo.it/giannerini/\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\nYou're right, it has to do with the argument xy.labels. The relevant \nlines in the source are\n(file src/library/stats/R/ts.R, function plot.ts)\n\n         [...]\n         n <- length(xy $ x)    ",
       "thread_id": "thread-936b85afb54a",
       "thread_depth": 1,
-      "month": "2012-12"
+      "month": "2012-12",
+      "restored_from": [
+        "https://stat.ethz.ch/pipermail/r-devel/attachments/20121229/96c0c656/attachment.pl"
+      ]
     },
     {
       "id": "msg-06b4693f6327",
