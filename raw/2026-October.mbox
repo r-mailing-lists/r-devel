@@ -962,3 +962,161 @@ On Wed, Oct 14, 2026 at 7:32?PM Dirk Eddelbuettel <edd at debian.org> wrote:
 > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From edd @end|ng |rom deb|@n@org  Mon Oct 19 20:59:40 2026
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 19 Oct 2026 13:59:40 -0500
+Subject: [Rd] 
+ [4 of 4] [Success] Revisiting and updating reproducible builds
+ for base R in Debian
+In-Reply-To: <27263.3609.430853.363070@paul.eddelbuettel.com>
+References: <27250.25781.774076.975806@paul.eddelbuettel.com>
+ <CAD4oTHH4g_bkpb02UXSaq2XAUvpaC1JqwN2t0PO7qP0JCgCdNg@mail.gmail.com>
+ <27250.32063.558447.645370@paul.eddelbuettel.com>
+ <27250.33843.545655.403512@paul.eddelbuettel.com>
+ <27256.50884.551129.280495@paul.eddelbuettel.com>
+ <5B137412-650C-4BD7-93F7-BC2935A1B46C@R-project.org>
+ <27257.48959.325101.674098@paul.eddelbuettel.com>
+ <27262.15518.490838.70049@paul.eddelbuettel.com>
+ <27262.18415.897034.477900@paul.eddelbuettel.com>
+ <27263.3609.430853.363070@paul.eddelbuettel.com>
+Message-ID: <27350.26780.967517.247007@paul.eddelbuettel.com>
+
+
+A belated update to an earlier thread, and good news: R builds reproducibly!!
+
+Special thanks for Kurt for assistance with an autoconf/m4 aspect (we longer
+show a hostname which may differ if different nodes get assigned the
+different builds that are compared), and to the powerhouse team of Kevin and
+his assistance Claude :) (for staring down some gnarly aspects of how
+internal packages 'tools' and 'methods' are built when R is built). Along
+with an earlier fix I managed by myself ;-) and all the earlier patches we
+had done already in 2017 (!!) we are now at a point where R builds
+reproducibly.
+
+We had already used an earlier variable PKG_BUILT_STAMP just for the Debian
+side, now along with the 'more official' one SOURCE_DATE_EPOCH. I will ensure
+all my patches use only SOURCE_DATE_EPOCH -- which is cross-distro and will
+ensure other builds besides Debian will be reproducible -- and ensure those
+patches land in base R.
+
+To recap as there had been confusion, and possible hesitation by e.g. Simon
+who seemed to read all this as a way of interfering with how his overload of
+build stamps in generated DESCRIPTION files is used where we lack
+representation of built-version numbers in binary artifact filenames: it has
+nothing to do with any of that. By default, Sys.time() is used as before in
+all builds. But if and when a special timestamp env var is used (and will
+standardize on SOURCE_DATE_EPOCH) then binary artifacts (when patched) use
+this 'source archive time' when set instead of wallclock at the time of
+building. When set, this makes two subsequent or almost concurrent builds
+binary identical (as we also stopped representing build-machine hostnames and
+other sources of differences).
+
+All this is current in patches inside the debian/patches/ directory indexed
+by debian/patches/series (and hence ignoring some other older ones there) at
+the repo at https://salsa.debian.org/edd/r-base and more public browseable
+mirrors such as https://sources.debian.org/src/r-base/4.6.1-9 for the current
+(Debian) patch version.
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Oct 19 22:44:36 2026
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 19 Oct 2026 23:44:36 +0300
+Subject: [Rd] 
+ Ncell GC trigger reaches SIZE_MAX after grow/shrink/regrow in
+ AdjustHeapSize
+In-Reply-To: <CAJhwqzTLir5B=kvp-DaCi1=PO9VH8uZ2m-WHmabaAVxDMBOsAQ@mail.gmail.com>
+References: <CAJhwqzTLir5B=kvp-DaCi1=PO9VH8uZ2m-WHmabaAVxDMBOsAQ@mail.gmail.com>
+Message-ID: <20261019234436.263d7e7d@Tarkus>
+
+? Mon, 5 Oct 2026 01:43:31 -0400
+Tyler <tylermw at gmail.com> ?????:
+
+> I found a reproducible node-heap sizing bug in R 4.6.0 on arm64 macOS.
+> After allocating and releasing a list, shrinking the heap with gc(),
+> and allocating a smaller list, the Ncell GC trigger becomes
+> approximately 1.844674e19, although fewer than one million Ncells are
+> live.
+
+Thank you for the report! I can also reproduce the R_NSize overflow on
+Linux/amd64 when R is compiled using Clang, but not GCC. As you
+mention, R builds with -fsanitize=undefined using both GCC and Clang
+show a runtime error when the double -> size_t conversion overflows,
+even if R_NSize stays fine.
+
+R_size_t next_in_use = R_NodesInUse + (R_NodesInUse - last_in_use);
+(gdb) p R_NodesInUse                   
+$6 = 992417                            
+(gdb) p last_in_use                    
+$7 = 2332966                           
+(gdb) p /x (R_NodesInUse - last_in_use)
+$8 = 0xffffffffffeb8b7b                
+
+R_size_t next_nsize = (R_size_t) (next_in_use / R_NGrowFrac);
+// ../../../src/main/memory.c:1204:52: runtime error: 2.63525e+19 is
+// outside the range of representable values of type 'long unsigned int'
+
+GCC compiles this as:
+                                R_NGrowFrac -> xmm5
+                        (double)PTRDIFF_MAX -> xmm1
+; convert next_in_use to double accounting for the sign flag set
+mov      %rdx,%rdi     
+and      $0x1,%edx     
+pxor     %xmm0,%xmm0
+shr      %rdi          
+or       %rdx,%rdi     
+cvtsi2sd %rdi,%xmm0  
+addsd    %xmm0,%xmm0          ; (double)next_in_use -> xmm0
+divsd    %xmm5,%xmm0          ; xmm0 / xmm5 -> xmm0
+(gdb) p $xmm0.v2_double[0]
+$35 = 2.6352491533870297e+19
+comisd   %xmm1,%xmm0          ; result exceeds PTRDIFF_MAX? (yes)
+...
+subsd    %xmm1,%xmm0          ; xmm0 - xmm1 -> xmm0
+cvttsd2si %xmm0,%rdi          ; failed conversion stores (1<<63) in rdi
+btc      $0x3f,%rdi           ; flips bit 63 in rdi, leaving 0
+                              ; rdi -> next_nsize
+(gdb) p /x next_nsize
+$51 = 0x0
+
+Clang compiles the same code as:
+                                R_NGrowFrac -> xmm3
+                                next_in_use -> r9
+movq      %r9,%xmm1           ; (double)r9 -> xmm1
+punpckldq 0x101164(%rip),%xmm1
+subpd     0x10116c(%rip),%xmm1
+movapd    %xmm1,%xmm2         ; xmm1 -> xmm2
+unpckhpd  %xmm1,%xmm2
+addsd     %xmm1,%xmm2
+divsd     %xmm3,%xmm2         ; xmm2 / xmm3 -> xmm2
+(gdb) p $xmm2.v2_double[0]
+$32 = 2.6352491533870293e+19 
+cvttsd2si %xmm2,%rsi          ; failed conversion stores (1<<63) in rsi
+mov       %rsi,%r9
+sar       $0x3f,%r9           ; account for the sign bit?
+subsd     0x1011f0(%rip),%xmm2
+cvttsd2si %xmm2,%r10          ; stores PTRDIFF_MAX in r10
+and       %r9,%r10
+or        %rsi,%r10           ; r10 -> next_nsize
+(gdb) p /x next_nsize   
+$46 = 0x8000000000000000
+
+Thus the branch
+
+    if (next_nsize > R_NSize + change)
+        change = next_nsize - R_NSize;
+
+is taken on Clang but not on GCC.
+
+I think that your patch is sufficient to avoid the next_in_use overflow
+and the resulting invalid double -> size_t conversion.
+
+-- 
+Best regards,
+Ivan
+
+

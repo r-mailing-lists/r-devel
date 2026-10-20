@@ -216,6 +216,51 @@
       "thread_id": "thread-c8ab1213a0f8",
       "thread_depth": 2,
       "month": "2026-10"
+    },
+    {
+      "id": "msg-c3c3f72be495",
+      "message_id": "<27350.26780.967517.247007@paul.eddelbuettel.com>",
+      "from_name": "Dirk Eddelbuettel",
+      "from_email_hash": "26604783910298c073ad132e77cb72b30037ddd7369ecad11e5fe08281600547",
+      "date": "2026-10-19T18:59:40Z",
+      "subject": "[Rd]  [4 of 4] [Success] Revisiting and updating reproducible builds for base R in Debian",
+      "subject_clean": "[4 of 4] [Success] Revisiting and updating reproducible builds for base R in Debian",
+      "in_reply_to": "<27263.3609.430853.363070@paul.eddelbuettel.com>",
+      "references": [
+        "<27250.25781.774076.975806@paul.eddelbuettel.com>",
+        "<CAD4oTHH4g_bkpb02UXSaq2XAUvpaC1JqwN2t0PO7qP0JCgCdNg@mail.gmail.com>",
+        "<27250.32063.558447.645370@paul.eddelbuettel.com>",
+        "<27250.33843.545655.403512@paul.eddelbuettel.com>",
+        "<27256.50884.551129.280495@paul.eddelbuettel.com>",
+        "<5B137412-650C-4BD7-93F7-BC2935A1B46C@R-project.org>",
+        "<27257.48959.325101.674098@paul.eddelbuettel.com>",
+        "<27262.15518.490838.70049@paul.eddelbuettel.com>",
+        "<27262.18415.897034.477900@paul.eddelbuettel.com>",
+        "<27263.3609.430853.363070@paul.eddelbuettel.com>"
+      ],
+      "body_plain": "A belated update to an earlier thread, and good news: R builds reproducibly!!\n\nSpecial thanks for Kurt for assistance with an autoconf/m4 aspect (we longer\nshow a hostname which may differ if different nodes get assigned the\ndifferent builds that are compared), and to the powerhouse team of Kevin and\nhis assistance Claude :) (for staring down some gnarly aspects of how\ninternal packages 'tools' and 'methods' are built when R is built). Along\nwith an earlier fix I managed by myself ;-) and all the earlier patches we\nhad done already in 2017 (!!) we are now at a point where R builds\nreproducibly.\n\nWe had already used an earlier variable PKG_BUILT_STAMP just for the Debian\nside, now along with the 'more official' one SOURCE_DATE_EPOCH. I will ensure\nall my patches use only SOURCE_DATE_EPOCH -- which is cross-distro and will\nensure other builds besides Debian will be reproducible -- and ensure those\npatches land in base R.\n\nTo recap as there had been confusion, and possible hesitation by e.g. Simon\nwho seemed to read all this as a way of interfering with how his overload of\nbuild stamps in generated DESCRIPTION files is used where we lack\nrepresentation of built-version numbers in binary artifact filenames: it has\nnothing to do with any of that. By default, Sys.time() is used as before in\nall builds. But if and when a special timestamp env var is used (and will\nstandardize on SOURCE_DATE_EPOCH) then binary artifacts (when patched) use\nthis 'source archive time' when set instead of wallclock at the time of\nbuilding. When set, this makes two subsequent or almost concurrent builds\nbinary identical (as we also stopped representing build-machine hostnames and\nother sources of differences).\n\nAll this is current in patches inside the debian/patches/ directory indexed\nby debian/patches/series (and hence ignoring some other older ones there) at\nthe repo at https://salsa.debian.org/edd/r-base and more public browseable\nmirrors such as https://sources.debian.org/src/r-base/4.6.1-9 for the current\n(Debian) patch version.\n\nCheers, Dirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debian.org",
+      "body_snippet": "A belated update to an earlier thread, and good news: R builds reproducibly!!\n\nSpecial thanks for Kurt for assistance with an autoconf/m4 aspect (we longer\nshow a hostname which may differ if differen",
+      "thread_id": "thread-c3c3f72be495",
+      "thread_depth": 0,
+      "month": "2026-10"
+    },
+    {
+      "id": "msg-abbe0da5a11f",
+      "message_id": "<20261019234436.263d7e7d@Tarkus>",
+      "from_name": "Ivan Krylov",
+      "from_email_hash": "72bda76034efaa18cd166b722c373c5159885b988468de351df8992020f3856a",
+      "date": "2026-10-19T20:44:36Z",
+      "subject": "[Rd]  Ncell GC trigger reaches SIZE_MAX after grow/shrink/regrow in AdjustHeapSize",
+      "subject_clean": "Ncell GC trigger reaches SIZE_MAX after grow/shrink/regrow in AdjustHeapSize",
+      "in_reply_to": "<CAJhwqzTLir5B=kvp-DaCi1=PO9VH8uZ2m-WHmabaAVxDMBOsAQ@mail.gmail.com>",
+      "references": [
+        "<CAJhwqzTLir5B=kvp-DaCi1=PO9VH8uZ2m-WHmabaAVxDMBOsAQ@mail.gmail.com>"
+      ],
+      "body_plain": "? Mon, 5 Oct 2026 01:43:31 -0400\nTyler <tylermw at gmail.com> ?????:\n\n> I found a reproducible node-heap sizing bug in R 4.6.0 on arm64 macOS.\n> After allocating and releasing a list, shrinking the heap with gc(),\n> and allocating a smaller list, the Ncell GC trigger becomes\n> approximately 1.844674e19, although fewer than one million Ncells are\n> live.\n\nThank you for the report! I can also reproduce the R_NSize overflow on\nLinux/amd64 when R is compiled using Clang, but not GCC. As you\nmention, R builds with -fsanitize=undefined using both GCC and Clang\nshow a runtime error when the double -> size_t conversion overflows,\neven if R_NSize stays fine.\n\nR_size_t next_in_use = R_NodesInUse + (R_NodesInUse - last_in_use);\n(gdb) p R_NodesInUse                   \n$6 = 992417                            \n(gdb) p last_in_use                    \n$7 = 2332966                           \n(gdb) p /x (R_NodesInUse - last_in_use)\n$8 = 0xffffffffffeb8b7b                \n\nR_size_t next_nsize = (R_size_t) (next_in_use / R_NGrowFrac);\n// ../../../src/main/memory.c:1204:52: runtime error: 2.63525e+19 is\n// outside the range of representable values of type 'long unsigned int'\n\nGCC compiles this as:\n                                R_NGrowFrac -> xmm5\n                        (double)PTRDIFF_MAX -> xmm1\n; convert next_in_use to double accounting for the sign flag set\nmov      %rdx,%rdi     \nand      $0x1,%edx     \npxor     %xmm0,%xmm0\nshr      %rdi          \nor       %rdx,%rdi     \ncvtsi2sd %rdi,%xmm0  \naddsd    %xmm0,%xmm0          ; (double)next_in_use -> xmm0\ndivsd    %xmm5,%xmm0          ; xmm0 / xmm5 -> xmm0\n(gdb) p $xmm0.v2_double[0]\n$35 = 2.6352491533870297e+19\ncomisd   %xmm1,%xmm0          ; result exceeds PTRDIFF_MAX? (yes)\n...\nsubsd    %xmm1,%xmm0          ; xmm0 - xmm1 -> xmm0\ncvttsd2si %xmm0,%rdi          ; failed conversion stores (1<<63) in rdi\nbtc      $0x3f,%rdi           ; flips bit 63 in rdi, leaving 0\n                              ; rdi -> next_nsize\n(gdb) p /x next_nsize\n$51 = 0x0\n\nClang compiles the same code as:\n                                R_NGrowFrac -> xmm3\n                                next_in_use -> r9\nmovq      %r9,%xmm1           ; (double)r9 -> xmm1\npunpckldq 0x101164(%rip),%xmm1\nsubpd     0x10116c(%rip),%xmm1\nmovapd    %xmm1,%xmm2         ; xmm1 -> xmm2\nunpckhpd  %xmm1,%xmm2\naddsd     %xmm1,%xmm2\ndivsd     %xmm3,%xmm2         ; xmm2 / xmm3 -> xmm2\n(gdb) p $xmm2.v2_double[0]\n$32 = 2.6352491533870293e+19 \ncvttsd2si %xmm2,%rsi          ; failed conversion stores (1<<63) in rsi\nmov       %rsi,%r9\nsar       $0x3f,%r9           ; account for the sign bit?\nsubsd     0x1011f0(%rip),%xmm2\ncvttsd2si %xmm2,%r10          ; stores PTRDIFF_MAX in r10\nand       %r9,%r10\nor        %rsi,%r10           ; r10 -> next_nsize\n(gdb) p /x next_nsize   \n$46 = 0x8000000000000000\n\nThus the branch\n\n    if (next_nsize > R_NSize + change)\n        change = next_nsize - R_NSize;\n\nis taken on Clang but not on GCC.\n\nI think that your patch is sufficient to avoid the next_in_use overflow\nand the resulting invalid double -> size_t conversion.\n\n-- \nBest regards,\nIvan",
+      "body_snippet": "? Mon, 5 Oct 2026 01:43:31 -0400\nTyler <tylermw at gmail.com> ?????:\n\n> I found a reproducible node-heap sizing bug in R 4.6.0 on arm64 macOS.\n> After allocating and releasing a list, shrinking the he",
+      "thread_id": "thread-0672183b1644",
+      "thread_depth": 1,
+      "month": "2026-10"
     }
   ],
   "threads": [
@@ -257,12 +302,13 @@
     {
       "id": "thread-0672183b1644",
       "subject": "Ncell GC trigger reaches SIZE_MAX after grow/shrink/regrow in AdjustHeapSize",
-      "message_count": 1,
+      "message_count": 2,
       "participants": [
+        "Ivan Krylov",
         "Tyler"
       ],
       "started": "2026-10-05T05:43:31Z",
-      "last_reply": "2026-10-05T05:43:31Z",
+      "last_reply": "2026-10-19T20:44:36Z",
       "root_message_id": "msg-0672183b1644"
     },
     {
@@ -309,6 +355,17 @@
       "started": "2026-10-15T02:25:02Z",
       "last_reply": "2026-10-15T19:24:44Z",
       "root_message_id": "msg-c8ab1213a0f8"
+    },
+    {
+      "id": "thread-c3c3f72be495",
+      "subject": "[4 of 4] [Success] Revisiting and updating reproducible builds for base R in Debian",
+      "message_count": 1,
+      "participants": [
+        "Dirk Eddelbuettel"
+      ],
+      "started": "2026-10-19T18:59:40Z",
+      "last_reply": "2026-10-19T18:59:40Z",
+      "root_message_id": "msg-c3c3f72be495"
     }
   ]
 }
