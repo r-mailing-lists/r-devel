@@ -19,7 +19,8 @@
       "body_snippet": "\"On CRAN servers\" or \"\"R CMD check --as-cran\"?  I assume you mean the\nformer.  The way I do it is \"the other way around\", i.e. to condition\non running locally or not such that the default is not to ru",
       "thread_id": "thread-ee2b752f07b2",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066910.html"
     },
     {
       "id": "msg-b65ac90309bc",
@@ -35,7 +36,8 @@
       "body_snippet": "Hello,\n\nIn trying to minimize the margin on the left hand side when using\ndotchart I found what may be a typo in the code.\n\nIn the lines below from dotchart.R, should nmai[4L] be nmai[2L]?\n\n\n    if (!",
       "thread_id": "thread-b65ac90309bc",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066911.html"
     },
     {
       "id": "msg-562ebdc1beed",
@@ -51,7 +53,8 @@
       "body_snippet": "An unwanted side effect of the new restrictions on abrreviated names.\n\nThe anova.coxph command, in a slavish copy of anova.lm etc, returns a data frame with \ncolumn labels of\n     loglik  Chisq  Df  P",
       "thread_id": "thread-562ebdc1beed",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066912.html"
     },
     {
       "id": "msg-639e35e365f0",
@@ -69,7 +72,8 @@
       "body_snippet": "On Mon, Jul 1, 2013 at 3:51 PM, Terry Therneau <therneau at mayo.edu> wrote:\n> An unwanted side effect of the new restrictions on abrreviated names.\n>\n> The anova.coxph command, in a slavish copy of a",
       "thread_id": "thread-562ebdc1beed",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066913.html"
     },
     {
       "id": "msg-e8f617eea690",
@@ -83,11 +87,12 @@
       "references": [
         "<51B259C6.8090302@fhcrc.org>"
       ],
-      "body_plain": "Hi,\n\nOn 06/07/2013 03:08 PM, Herv? Pag?s wrote:\n> Hi,\n>\n> relist() is broken when the skeleton is a list with empty list elements:\n>\n>    > x <- list(1:3, integer(0), 11:14)\n>\n>    > relist(unlist(x), x)\n>    [[1]]\n>    [1] 1 2 3\n>\n>    [[2]]\n>    [1] 11  3\n>\n>    [[3]]\n>    [1] 11 12 13 14\n>\n> Hard to believe that such a bug has been around for 6 years (i.e. since\n> the introduction of relist()) without ever being noticed.\n\nThis bug has actually been noticed. Just found out it was already\nreported by Michael Lawrence 2 years ago:\n\n \nhttps://stat.ethz.ch/pipermail/r-devel/attachments/20110811/4bbaa84f/attachment.pl\n\nAny chance it can be fixed?\n\nBelow is the patch against current R-devel if that helps (it fixes\nrelist.list and relist.matrix which are both broken in the same way).\n\nThanks,\nH.\n\n\nhpages at thinkpad:~/svn/R/R-devel$ svn diff\nIndex: src/library/utils/R/relist.R\n===================================================================\n--- src/library/utils/R/relist.R\t(revision 63132)\n+++ src/library/utils/R/relist.R\t(working copy)\n@@ -119,13 +119,13 @@\n\n  relist.list <- function(flesh, skeleton=attr(flesh, \"skeleton\"))\n  {\n-    ind <- 1L\n+    offset <- 0L\n      result <- skeleton\n      for (i in seq_along(skeleton)) {\n  \tsize <- length(unlist(result[[i]]))\n  \tresult[[i]] <-\n-\t    relist(flesh[ind:(ind + size - 1L)], result[[i]])\n-\tind <- ind + size\n+\t    relist(flesh[seq_len(size) + offset], result[[i]])\n+\toffset <- offset + size\n      }\n      result\n  }\n@@ -139,13 +139,13 @@\n      n <- nrow(skeleton)\n      m <- ncol(skeleton)\n      result <- skeleton\n-    ind <- 1L\n-    for (j in 1L:m)\n-\tfor (i in 1L:n) {\n+    offset <- 0L\n+    for (j in seq_len(m))\n+\tfor (i in seq_len(n)) {\n  \t    size <- length(unlist(skeleton[[i, j]]))\n-\t    result[[i, j]] <- relist(flesh[ind:(ind + size - 1)],\n+\t    result[[i, j]] <- relist(flesh[seq_len(size) + offset],\n  \t\t\t\t     skeleton[[i, j]])\n-\t    ind <- ind + size\n+\t    offset <- offset + size\n  \t}\n      result\n  }\n\n\n>\n> Cheers,\n> H.\n>\n>  > sessionInfo()\n> R version 3.0.1 (2013-05-16)\n> Platform: x86_64-unknown-linux-gnu (64-bit)\n>\n> locale:\n>   [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n>   [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n>   [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n>   [7] LC_PAPER=C                 LC_NAME=C\n>   [9] LC_ADDRESS=C               LC_TELEPHONE=C\n> [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n>\n> attached base packages:\n> [1] stats     graphics  grDevices utils     datasets  methods   base\n>\n\n-- \nHerv? Pag?s\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
-      "body_snippet": "Hi,\n\nOn 06/07/2013 03:08 PM, Herv? Pag?s wrote:\n> Hi,\n>\n> relist() is broken when the skeleton is a list with empty list elements:\n>\n>    > x <- list(1:3, integer(0), 11:14)\n>\n>    > relist(unlist(x),",
+      "body_plain": "Hi,\n\nOn 06/07/2013 03:08 PM, Hervé Pagès wrote:\n> Hi,\n>\n> relist() is broken when the skeleton is a list with empty list elements:\n>\n>    > x <- list(1:3, integer(0), 11:14)\n>\n>    > relist(unlist(x), x)\n>    [[1]]\n>    [1] 1 2 3\n>\n>    [[2]]\n>    [1] 11  3\n>\n>    [[3]]\n>    [1] 11 12 13 14\n>\n> Hard to believe that such a bug has been around for 6 years (i.e. since\n> the introduction of relist()) without ever being noticed.\n\nThis bug has actually been noticed. Just found out it was already\nreported by Michael Lawrence 2 years ago:\n\n \nhttps://stat.ethz.ch/pipermail/r-devel/attachments/20110811/4bbaa84f/attachment.pl\n\nAny chance it can be fixed?\n\nBelow is the patch against current R-devel if that helps (it fixes\nrelist.list and relist.matrix which are both broken in the same way).\n\nThanks,\nH.\n\n\nhpages at thinkpad:~/svn/R/R-devel$ svn diff\nIndex: src/library/utils/R/relist.R\n===================================================================\n--- src/library/utils/R/relist.R\t(revision 63132)\n+++ src/library/utils/R/relist.R\t(working copy)\n@@ -119,13 +119,13 @@\n\n  relist.list <- function(flesh, skeleton=attr(flesh, \"skeleton\"))\n  {\n-    ind <- 1L\n+    offset <- 0L\n      result <- skeleton\n      for (i in seq_along(skeleton)) {\n  \tsize <- length(unlist(result[[i]]))\n  \tresult[[i]] <-\n-\t    relist(flesh[ind:(ind + size - 1L)], result[[i]])\n-\tind <- ind + size\n+\t    relist(flesh[seq_len(size) + offset], result[[i]])\n+\toffset <- offset + size\n      }\n      result\n  }\n@@ -139,13 +139,13 @@\n      n <- nrow(skeleton)\n      m <- ncol(skeleton)\n      result <- skeleton\n-    ind <- 1L\n-    for (j in 1L:m)\n-\tfor (i in 1L:n) {\n+    offset <- 0L\n+    for (j in seq_len(m))\n+\tfor (i in seq_len(n)) {\n  \t    size <- length(unlist(skeleton[[i, j]]))\n-\t    result[[i, j]] <- relist(flesh[ind:(ind + size - 1)],\n+\t    result[[i, j]] <- relist(flesh[seq_len(size) + offset],\n  \t\t\t\t     skeleton[[i, j]])\n-\t    ind <- ind + size\n+\t    offset <- offset + size\n  \t}\n      result\n  }\n\n\n>\n> Cheers,\n> H.\n>\n>  > sessionInfo()\n> R version 3.0.1 (2013-05-16)\n> Platform: x86_64-unknown-linux-gnu (64-bit)\n>\n> locale:\n>   [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n>   [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n>   [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n>   [7] LC_PAPER=C                 LC_NAME=C\n>   [9] LC_ADDRESS=C               LC_TELEPHONE=C\n> [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n>\n> attached base packages:\n> [1] stats     graphics  grDevices utils     datasets  methods   base\n>\n\n-- \nHervé Pagès\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
+      "body_snippet": "Hi,\n\nOn 06/07/2013 03:08 PM, Hervé Pagès wrote:\n> Hi,\n>\n> relist() is broken when the skeleton is a list with empty list elements:\n>\n>    > x <- list(1:3, integer(0), 11:14)\n>\n>    > relist(unlist(x),",
       "thread_id": "thread-e8f617eea690",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066914.html"
     },
     {
       "id": "msg-151e617a5e36",
@@ -106,6 +111,7 @@
       "thread_id": "thread-562ebdc1beed",
       "thread_depth": 1,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066915.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130701/2c0366e3/attachment.pl"
       ]
@@ -126,7 +132,8 @@
       "body_snippet": "Hi,\n\nS4 method dispatch can be very slow. Would it be reasonable to cache the \nmost\nrecent dispatch, anticipating the next invocation will be on the same \ntype? This\nwould be very helpful in loops.\n\n ",
       "thread_id": "thread-438d883b15e9",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066916.html"
     },
     {
       "id": "msg-a585fe03e6b8",
@@ -141,11 +148,12 @@
         "<51D255CC.1050300@fhcrc.org>",
         "<51D25F62.6050102@fhcrc.org>"
       ],
-      "body_plain": "Hi Val,\n\n[off list... I don't want to compromise your chances to start a\nconstructive discussion ;-)]\n\nThanks for reporting this. Just wanted to mention that the reason I\nthink the situation is worst when you use the paste() generic defined\nin BiocGenerics than when you make paste() a generic with\nsetGeneric(\"paste\") is because of the signature of the generic.\nWith the latter dispatch is on the 'sep' and 'collapse' args only\n(which is surprising but that's another story), while\nwith the former it's on ...:\n\n   > setGeneric(\"paste\")\n   [1] \"paste\"\n\n   > paste\n   standardGeneric for \"paste\" defined from package \"base\"\n\n   function (..., sep = \" \", collapse = NULL)\n   standardGeneric(\"paste\")\n   <environment: 0x157a028>\n   Methods may be defined for arguments: sep, collapse\n   Use  showMethods(\"paste\")  for currently available ones.\n\n   ## Note that showMethods() is broken (it contradicts the above\n   ## that indicates dispatch is on 'sep' and 'collapse').\n   > showMethods(\"paste\")\n   Function: paste (package base)\n   ...=\"ANY\"\n\n   > microbenchmark(fun0(lst), fun1(lst), times=10)\n   Unit: milliseconds\n         expr       min        lq    median        uq       max neval\n    fun0(lst) 27.374228 27.508580 28.144858 28.895889 33.528221    10\n    fun1(lst)  5.474173  5.739289  5.803471  6.050482  6.825982    10\n\n   > removeGeneric(\"paste\")\n   [1] TRUE\n\n   > setGeneric(\"paste\", signature=\"...\")  # this how it's defined in \nBiocGenerics\n   Creating a new generic function for ?paste? in the global environment\n   [1] \"paste\"\n\n   > microbenchmark(fun0(lst), fun1(lst), times=10)\n   Unit: milliseconds\n         expr        min         lq     median         uq        max neval\n    fun0(lst) 149.828201 153.192866 155.845508 157.916067 176.313906    10\n    fun1(lst)   4.924387   5.088094   5.114532   5.200432   5.332386    10\n\nDispatch on ... seems to have a ridiculously high cost!\n\nH.\n\nOn 07/01/2013 10:04 PM, Valerie Obenchain wrote:\n> Hi,\n>\n> S4 method dispatch can be very slow. Would it be reasonable to cache the\n> most\n> recent dispatch, anticipating the next invocation will be on the same\n> type? This\n> would be very helpful in loops.\n>\n>    fun0 <- function(x)\n>        sapply(x, paste, collapse=\"+\")\n>    fun1 <- function(x) {\n>        paste <- selectMethod(paste, class(x[[1]]))\n>        sapply(x, paste, collapse=\"+\")\n>    }\n>    lst <- split(rep(LETTERS, 100), rep(1:1300, 2))\n>\n>    library(microbenchmark)\n>    microbenchmark(fun0(lst), times=10)\n>    ## Unit: milliseconds\n>    ##       expr      min       lq   median      uq      max neval\n>    ##  fun0(lst) 4.153287 4.180659 4.513539 5.19261 5.280481    10\n>\n>    setGeneric(\"paste\")\n>    microbenchmark(fun0(lst), fun1(lst), times=10)\n>    ## >     microbenchmark(fun0(lst), fun1(lst), times=10)\n>    ## Unit: milliseconds\n>    ##       expr       min       lq    median        uq       max neval\n>    ##  fun0(lst) 21.093180 21.27616 21.453174 21.833686 24.758791    10\n>    ##  fun1(lst)  4.517808  4.53067  4.582641  4.682235  5.121856    10\n>\n> Dispatch seems to be especially slow when packages are involved, e.g.,\n> with the Bioconductor IRanges package\n> (http://bioconductor.org/packages/release/bioc/html/IRanges.html)\n>\n>    removeGeneric(\"paste\")\n>    library(IRanges)\n>    showMethods(paste)\n>    ## Function: paste (package BiocGenerics)\n>    ## ...=\"ANY\"\n>    ## ...=\"Rle\"\n>    selectMethod(paste, \"ANY\")\n>    ## Method Definition (Class \"derivedDefaultMethod\"):\n>    ##\n>    ## function (..., sep = \" \", collapse = NULL)\n>    ## .Internal(paste(list(...), sep, collapse))\n>    ## <environment: namespace:base>\n>    ##\n>    ## Signatures:\n>    ##         ...\n>    ## target  \"ANY\"\n>    ## defined \"ANY\"\n>\n>    microbenchmark(fun0(lst), fun1(lst), times=10)\n>    ## Unit: milliseconds\n>    ##       expr        min         lq     median         uq        max\n> neval\n>    ##  fun0(lst) 233.539585 234.592491 236.311209 237.268506 243.181123\n>     10\n>    ##  fun1(lst)   4.564914   4.592996   4.642898   4.729009   5.492706\n>     10\n>\n>    sessionInfo()\n>    ## R version 3.0.0 Patched (2013-04-04 r62492)\n>    ## Platform: x86_64-unknown-linux-gnu (64-bit)\n>    ##\n>    ## locale:\n>    ##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n>    ##  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n>    ##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n>    ##  [7] LC_PAPER=C                 LC_NAME=C\n>    ##  [9] LC_ADDRESS=C               LC_TELEPHONE=C\n>    ## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n>    ##\n>    ## attached base packages:\n>    ## [1] parallel  stats     graphics  grDevices utils     datasets\n> methods\n>    ## [8] base\n>    ##\n>    ## other attached packages:\n>    ## [1] IRanges_1.19.15      BiocGenerics_0.7.2   microbenchmark_1.3-0\n>    ##\n>    ## loaded via a namespace (and not attached):\n>    ## [1] stats4_3.0.0\n>\n>\n> Thanks,\n> Valerie\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nHerv? Pag?s\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
+      "body_plain": "Hi Val,\n\n[off list... I don't want to compromise your chances to start a\nconstructive discussion ;-)]\n\nThanks for reporting this. Just wanted to mention that the reason I\nthink the situation is worst when you use the paste() generic defined\nin BiocGenerics than when you make paste() a generic with\nsetGeneric(\"paste\") is because of the signature of the generic.\nWith the latter dispatch is on the 'sep' and 'collapse' args only\n(which is surprising but that's another story), while\nwith the former it's on ...:\n\n   > setGeneric(\"paste\")\n   [1] \"paste\"\n\n   > paste\n   standardGeneric for \"paste\" defined from package \"base\"\n\n   function (..., sep = \" \", collapse = NULL)\n   standardGeneric(\"paste\")\n   <environment: 0x157a028>\n   Methods may be defined for arguments: sep, collapse\n   Use  showMethods(\"paste\")  for currently available ones.\n\n   ## Note that showMethods() is broken (it contradicts the above\n   ## that indicates dispatch is on 'sep' and 'collapse').\n   > showMethods(\"paste\")\n   Function: paste (package base)\n   ...=\"ANY\"\n\n   > microbenchmark(fun0(lst), fun1(lst), times=10)\n   Unit: milliseconds\n         expr       min        lq    median        uq       max neval\n    fun0(lst) 27.374228 27.508580 28.144858 28.895889 33.528221    10\n    fun1(lst)  5.474173  5.739289  5.803471  6.050482  6.825982    10\n\n   > removeGeneric(\"paste\")\n   [1] TRUE\n\n   > setGeneric(\"paste\", signature=\"...\")  # this how it's defined in \nBiocGenerics\n   Creating a new generic function for ‘paste’ in the global environment\n   [1] \"paste\"\n\n   > microbenchmark(fun0(lst), fun1(lst), times=10)\n   Unit: milliseconds\n         expr        min         lq     median         uq        max neval\n    fun0(lst) 149.828201 153.192866 155.845508 157.916067 176.313906    10\n    fun1(lst)   4.924387   5.088094   5.114532   5.200432   5.332386    10\n\nDispatch on ... seems to have a ridiculously high cost!\n\nH.\n\nOn 07/01/2013 10:04 PM, Valerie Obenchain wrote:\n> Hi,\n>\n> S4 method dispatch can be very slow. Would it be reasonable to cache the\n> most\n> recent dispatch, anticipating the next invocation will be on the same\n> type? This\n> would be very helpful in loops.\n>\n>    fun0 <- function(x)\n>        sapply(x, paste, collapse=\"+\")\n>    fun1 <- function(x) {\n>        paste <- selectMethod(paste, class(x[[1]]))\n>        sapply(x, paste, collapse=\"+\")\n>    }\n>    lst <- split(rep(LETTERS, 100), rep(1:1300, 2))\n>\n>    library(microbenchmark)\n>    microbenchmark(fun0(lst), times=10)\n>    ## Unit: milliseconds\n>    ##       expr      min       lq   median      uq      max neval\n>    ##  fun0(lst) 4.153287 4.180659 4.513539 5.19261 5.280481    10\n>\n>    setGeneric(\"paste\")\n>    microbenchmark(fun0(lst), fun1(lst), times=10)\n>    ## >     microbenchmark(fun0(lst), fun1(lst), times=10)\n>    ## Unit: milliseconds\n>    ##       expr       min       lq    median        uq       max neval\n>    ##  fun0(lst) 21.093180 21.27616 21.453174 21.833686 24.758791    10\n>    ##  fun1(lst)  4.517808  4.53067  4.582641  4.682235  5.121856    10\n>\n> Dispatch seems to be especially slow when packages are involved, e.g.,\n> with the Bioconductor IRanges package\n> (http://bioconductor.org/packages/release/bioc/html/IRanges.html)\n>\n>    removeGeneric(\"paste\")\n>    library(IRanges)\n>    showMethods(paste)\n>    ## Function: paste (package BiocGenerics)\n>    ## ...=\"ANY\"\n>    ## ...=\"Rle\"\n>    selectMethod(paste, \"ANY\")\n>    ## Method Definition (Class \"derivedDefaultMethod\"):\n>    ##\n>    ## function (..., sep = \" \", collapse = NULL)\n>    ## .Internal(paste(list(...), sep, collapse))\n>    ## <environment: namespace:base>\n>    ##\n>    ## Signatures:\n>    ##         ...\n>    ## target  \"ANY\"\n>    ## defined \"ANY\"\n>\n>    microbenchmark(fun0(lst), fun1(lst), times=10)\n>    ## Unit: milliseconds\n>    ##       expr        min         lq     median         uq        max\n> neval\n>    ##  fun0(lst) 233.539585 234.592491 236.311209 237.268506 243.181123\n>     10\n>    ##  fun1(lst)   4.564914   4.592996   4.642898   4.729009   5.492706\n>     10\n>\n>    sessionInfo()\n>    ## R version 3.0.0 Patched (2013-04-04 r62492)\n>    ## Platform: x86_64-unknown-linux-gnu (64-bit)\n>    ##\n>    ## locale:\n>    ##  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n>    ##  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n>    ##  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n>    ##  [7] LC_PAPER=C                 LC_NAME=C\n>    ##  [9] LC_ADDRESS=C               LC_TELEPHONE=C\n>    ## [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n>    ##\n>    ## attached base packages:\n>    ## [1] parallel  stats     graphics  grDevices utils     datasets\n> methods\n>    ## [8] base\n>    ##\n>    ## other attached packages:\n>    ## [1] IRanges_1.19.15      BiocGenerics_0.7.2   microbenchmark_1.3-0\n>    ##\n>    ## loaded via a namespace (and not attached):\n>    ## [1] stats4_3.0.0\n>\n>\n> Thanks,\n> Valerie\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nHervé Pagès\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
       "body_snippet": "Hi Val,\n\n[off list... I don't want to compromise your chances to start a\nconstructive discussion ;-)]\n\nThanks for reporting this. Just wanted to mention that the reason I\nthink the situation is worst ",
       "thread_id": "thread-438d883b15e9",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066917.html"
     },
     {
       "id": "msg-7c48de31c905",
@@ -164,7 +172,8 @@
       "body_snippet": "It's hard to see how repeated dispatch on the same classes can be that \nslow, _if_ the function being called each time is itself doing some \nsubstantial work.\n\nThe first call (in a session) with a par",
       "thread_id": "thread-438d883b15e9",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066918.html"
     },
     {
       "id": "msg-c24391d3caa4",
@@ -181,6 +190,7 @@
       "thread_id": "thread-c24391d3caa4",
       "thread_depth": 0,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066919.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130702/377c801f/attachment.pl"
       ]
@@ -201,7 +211,8 @@
       "body_snippet": "On Jul 2, 2013, at 11:46 AM, Rong lI Li wrote:\n\n> \n> Hi, all,\n> \n> I pressed Ctrl+C in R process, and found that the child process which was\n> spawned by using \"pipe\" is terminated due to this.\n> Are ",
       "thread_id": "thread-c24391d3caa4",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066920.html"
     },
     {
       "id": "msg-0af40ec034f8",
@@ -219,7 +230,8 @@
       "body_snippet": "If you are on a Unix-like machine try using the setsid command to\nrun your command in a 'session' of its own.  E.g.,\n\n  > z <- pipe(\"setsid /usr/bin/yes\", open=\"r\")\n  > length(readLines(z, n=1e6))\n  [",
       "thread_id": "thread-c24391d3caa4",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066921.html"
     },
     {
       "id": "msg-8cc198d5a729",
@@ -239,7 +251,8 @@
       "body_snippet": "Thanks for the background and suggestions.\n\nValerie\n\n\nOn 07/02/2013 08:41 AM, John Chambers wrote:\n> It's hard to see how repeated dispatch on the same classes can be that\n> slow, _if_ the function be",
       "thread_id": "thread-438d883b15e9",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066922.html"
     },
     {
       "id": "msg-b6c7c5c1b0f6",
@@ -262,7 +275,8 @@
       "body_snippet": ">>>>> Berend Hasselman <bhh at xs4all.nl>\n>>>>>     on Mon, 3 Jun 2013 09:01:25 +0200 writes:\n\n    > On 31-05-2013, at 10:34, Martin Maechler\n    > <maechler at stat.math.ethz.ch> wrote:\n\n    > ?..\n  ",
       "thread_id": "thread-b6c7c5c1b0f6",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066923.html"
     },
     {
       "id": "msg-2cbb79358481",
@@ -280,7 +294,8 @@
       "body_snippet": "Hi all,\n\nI have a problem but i am not sure that this is the right mailing list.\n\nI'm writing a R program which call a C++ program, through the function .Call. I use to compile the c++ script with the",
       "thread_id": "thread-2cbb79358481",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066924.html"
     },
     {
       "id": "msg-b28eff8ed93f",
@@ -299,7 +314,8 @@
       "body_snippet": "On Jul 4, 2013, at 09:34 , gianluca mastrantonio wrote:\n\n> Hi all,\n> \n> I have a problem but i am not sure that this is the right mailing list.\n> \n> I'm writing a R program which call a C++ program, t",
       "thread_id": "thread-2cbb79358481",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066925.html"
     },
     {
       "id": "msg-e8bf7810cf4d",
@@ -320,6 +336,7 @@
       "thread_id": "thread-2cbb79358481",
       "thread_depth": 2,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066926.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130704/5caa97ed/attachment.pl"
       ]
@@ -339,6 +356,7 @@
       "thread_id": "thread-76efc0fa5a19",
       "thread_depth": 0,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066927.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130704/72932558/attachment.pl"
       ]
@@ -358,6 +376,7 @@
       "thread_id": "thread-af88e5008cb6",
       "thread_depth": 0,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066928.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130704/05e7ee9c/attachment.pl"
       ]
@@ -376,7 +395,8 @@
       "body_snippet": "Hi, \n\nI am write R extensions in C. Now I have a VECSXP variable, so how can I get\nthe tail of it (all but the first one) as a new VECSXP. I tried CDR(), but\nit gives error. \n\nThanks. \n\n\n\n--\nView this",
       "thread_id": "thread-55502bcd6f9d",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066930.html"
     },
     {
       "id": "msg-ce38f2c89a26",
@@ -392,7 +412,8 @@
       "body_snippet": "Hi,\n\nThe text column for '->' becomes '<-' in the data frame returned by\ngetParseData():\n\n> getParseData(parse(text='1->x'))\n  line1 col1 line2 col2 id parent        token terminal text\n7     1    1  ",
       "thread_id": "thread-ce38f2c89a26",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066929.html"
     },
     {
       "id": "msg-b6b0bac55793",
@@ -410,7 +431,8 @@
       "body_snippet": "On 13-07-05 3:31 AM, Yihui Xie wrote:\n> Hi,\n>\n> The text column for '->' becomes '<-' in the data frame returned by\n> getParseData():\n>\n>> getParseData(parse(text='1->x'))\n>    line1 col1 line2 col2 i",
       "thread_id": "thread-ce38f2c89a26",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066931.html"
     },
     {
       "id": "msg-8ef418676384",
@@ -429,7 +451,8 @@
       "body_snippet": "On Jul 5, 2013, at 13:29 , Duncan Murdoch wrote:\n\n> On 13-07-05 3:31 AM, Yihui Xie wrote:\n>> Hi,\n>> \n>> The text column for '->' becomes '<-' in the data frame returned by\n>> getParseData():\n>> \n>>> g",
       "thread_id": "thread-ce38f2c89a26",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066932.html"
     },
     {
       "id": "msg-14e61521b690",
@@ -449,7 +472,8 @@
       "body_snippet": "On 13-07-05 7:40 AM, peter dalgaard wrote:\n>\n> On Jul 5, 2013, at 13:29 , Duncan Murdoch wrote:\n>\n>> On 13-07-05 3:31 AM, Yihui Xie wrote:\n>>> Hi,\n>>>\n>>> The text column for '->' becomes '<-' in the ",
       "thread_id": "thread-ce38f2c89a26",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066933.html"
     },
     {
       "id": "msg-256349a822a7",
@@ -467,7 +491,8 @@
       "body_snippet": "Le 2013-07-05 07:15, maxpar a ?crit?:\n> Hi,\n>\n> I am write R extensions in C. Now I have a VECSXP variable, so how \n> can I get\n> the tail of it (all but the first one) as a new VECSXP. I tried \n> CDR",
       "thread_id": "thread-55502bcd6f9d",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066934.html"
     },
     {
       "id": "msg-916c55a4ff52",
@@ -488,7 +513,8 @@
       "body_snippet": "On Fri, Jul 5, 2013 at 12:57 PM, Duncan Murdoch\n<murdoch.duncan at gmail.com> wrote:\n\n> R itself doesn't make use of the text column, it's for display of code\n> by highlighters etc.  So if anyone does",
       "thread_id": "thread-916c55a4ff52",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066935.html"
     },
     {
       "id": "msg-ccf8d8c20a17",
@@ -510,7 +536,8 @@
       "body_snippet": ">  Is there any reason right-assign with \"->\" still exists? How much\n> code on CRAN uses it, and how trivially could it be excised?\n\nI use '->' a lot when doing interactive work.  I often first run a ",
       "thread_id": "thread-916c55a4ff52",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066936.html"
     },
     {
       "id": "msg-f82fbdb40a76",
@@ -529,7 +556,8 @@
       "body_snippet": "Thanks. Got it. I need differentiate pairlist and list.\n\n\n\n\n\n--\nView this message in context: http://r.789695.n4.nabble.com/Get-the-tail-of-a-list-in-C-tp4670900p4670958.html\nSent from the R devel mai",
       "thread_id": "thread-55502bcd6f9d",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066942.html"
     },
     {
       "id": "msg-893b62a34140",
@@ -552,7 +580,8 @@
       "body_snippet": "On Jul 5, 2013, at 18:59 , William Dunlap wrote:\n\n>> Is there any reason right-assign with \"->\" still exists? How much\n>> code on CRAN uses it, and how trivially could it be excised?\n> \n> I use '->' a",
       "thread_id": "thread-916c55a4ff52",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066937.html"
     },
     {
       "id": "msg-b90e5362c85e",
@@ -576,7 +605,8 @@
       "body_snippet": "> But up-arrow, ctrl-A then \"z <-\" is not much less convenient, is it?\n\nI didn't know that ctrl-A would bring me to the start of the line, nor\nthat ctrl-E would bring me to the end.  Thanks.\n\nBill Dun",
       "thread_id": "thread-916c55a4ff52",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066938.html"
     },
     {
       "id": "msg-be4e549e8cf8",
@@ -601,7 +631,8 @@
       "body_snippet": "Here are two more standard emacs bindings that work:  Ctrl-K to cut and Ctrl-Y to paste. \n\n?????\nBrian Lee Yung Rowe\n917 496 4583\n\n\nOn Jul 5, 2013, at 2:32 PM, William Dunlap <wdunlap at tibco.com> wr",
       "thread_id": "thread-916c55a4ff52",
       "thread_depth": 4,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066939.html"
     },
     {
       "id": "msg-119290469b33",
@@ -623,7 +654,8 @@
       "body_snippet": "On 05/07/2013 12:29 PM, Barry Rowlingson wrote:\n> On Fri, Jul 5, 2013 at 12:57 PM, Duncan Murdoch\n> <murdoch.duncan at gmail.com> wrote:\n>\n> > R itself doesn't make use of the text column, it's for di",
       "thread_id": "thread-916c55a4ff52",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066940.html"
     },
     {
       "id": "msg-d7defa2c92e4",
@@ -649,7 +681,8 @@
       "body_snippet": "Ctrl-K is delete from here to end of line on Linux-comand-line and Windows-GUI R.\n(My fingers are not nimble enough for emacs, I'll stick with vi.)\n\nBill Dunlap\nSpotfire, TIBCO Software\nwdunlap tibco.",
       "thread_id": "thread-916c55a4ff52",
       "thread_depth": 5,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066941.html"
     },
     {
       "id": "msg-02ceced7bc03",
@@ -673,7 +706,8 @@
       "body_snippet": "On Fri, Jul 5, 2013 at 7:24 PM, peter dalgaard <pdalgd at gmail.com> wrote:\n\n> I have used in with multi-line input, occasionally, though. As in\n>\n> replicate(10000, {\n>    ysim <- rbinom(length(p), n",
       "thread_id": "thread-02ceced7bc03",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066943.html"
     },
     {
       "id": "msg-40f36d46abea",
@@ -700,7 +734,8 @@
       "body_snippet": "That is a more accurate statement regarding Ctrl-K. Nonetheless whatever is killed can be yanked back via Ctrl-Y, so the effect emulates cutting and pasting. I am also a vi user, but these four basic ",
       "thread_id": "thread-916c55a4ff52",
       "thread_depth": 6,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066944.html"
     },
     {
       "id": "msg-a75e20115f61",
@@ -728,7 +763,8 @@
       "body_snippet": "For these programs that use GNU readline, hit Alt-Control-J to switch into vi-like bindings. \n\nOn Jul 5, 2013, at 16:42, Brian Lee Yung Rowe <rowe at muxspace.com> wrote:\n\n> That is a more accurate st",
       "thread_id": "thread-916c55a4ff52",
       "thread_depth": 7,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066945.html"
     },
     {
       "id": "msg-18920f173127",
@@ -749,7 +785,8 @@
       "body_snippet": "On Jul 4, 2013, at 3:53 AM, gianluca mastrantonio wrote:\n\n> I'm just a beginner, so i can make some stupid error.\n> I use the \"-l cov.model.h -l util.h\" because i need to load another two c++ programs",
       "thread_id": "thread-2cbb79358481",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066946.html"
     },
     {
       "id": "msg-7d5ca8d6315d",
@@ -767,7 +804,8 @@
       "body_snippet": "Jon,\n\nOn Jul 4, 2013, at 10:52 AM, Jon Clayden wrote:\n\n> Dear all,\n> \n> I have a simple front-end program which uses the APIs described in section\n> 8 of \"Writing R Extensions\" to deviate from the sta",
       "thread_id": "thread-af88e5008cb6",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066947.html"
     },
     {
       "id": "msg-f1b24f0f5a24",
@@ -786,7 +824,8 @@
       "body_snippet": "On 06/07/2013 03:19, Simon Urbanek wrote:\n> Jon,\n>\n> On Jul 4, 2013, at 10:52 AM, Jon Clayden wrote:\n>\n>> Dear all,\n>>\n>> I have a simple front-end program which uses the APIs described in section\n>> ",
       "thread_id": "thread-af88e5008cb6",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066948.html"
     },
     {
       "id": "msg-7373bed0785f",
@@ -803,6 +842,7 @@
       "thread_id": "thread-7373bed0785f",
       "thread_depth": 0,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066949.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130706/ee57d5c8/attachment.pl"
       ]
@@ -823,7 +863,8 @@
       "body_snippet": "Peter:\n\n(Your function doesn't work -- you need to specify runif(1))\n\nWhat ambiguity?\n\nIn the assignment within f(), x <- x+1,\n\nthe \"x\" on the rhs is a free variable in the function, and is\ntherefore ",
       "thread_id": "thread-7373bed0785f",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066951.html"
     },
     {
       "id": "msg-fc6424a2b9cd",
@@ -843,6 +884,7 @@
       "thread_id": "thread-7373bed0785f",
       "thread_depth": 2,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066950.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130706/2c0ef746/attachment.pl"
       ]
@@ -865,7 +907,8 @@
       "body_snippet": "Thanks, Peter. Now I get it.\n\nIt _was_ obvious!\n\n-- Bert\n\nOn Sat, Jul 6, 2013 at 10:22 PM, Peter Meilstrup\n<peter.meilstrup at gmail.com> wrote:\n> The R interpreter does what it does at run time. The ",
       "thread_id": "thread-7373bed0785f",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066952.html"
     },
     {
       "id": "msg-1cf7a234fdf1",
@@ -882,6 +925,7 @@
       "thread_id": "thread-1cf7a234fdf1",
       "thread_depth": 0,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066953.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130707/b9747236/attachment.pl"
       ]
@@ -902,7 +946,8 @@
       "body_snippet": "On 13-07-07 11:09 PM, Peter Meilstrup wrote:\n> The formal list for subset.data.frame accepts a \"...\"\n>\n>> args(subset.data.frame)\n> function (x, subset, select, drop = FALSE, ...)\n> NULL\n>\n> But it ap",
       "thread_id": "thread-1cf7a234fdf1",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066954.html"
     },
     {
       "id": "msg-27485559f1c8",
@@ -923,6 +968,7 @@
       "thread_id": "thread-af88e5008cb6",
       "thread_depth": 3,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066955.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130708/a894259d/attachment.pl"
       ]
@@ -941,7 +987,8 @@
       "body_snippet": "I am trying to write S4 methods with \"difftime\" in the signature but\nam being \"informed\" (? not a warning or error) that \"difftime\" is not\na class. Nevertheless, dispatch takes place. Should I simply ",
       "thread_id": "thread-9a2744961e77",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066956.html"
     },
     {
       "id": "msg-20aed1885cce",
@@ -959,7 +1006,8 @@
       "body_snippet": "difftime is an S3 class, not an S4 class. To convert it, include the line\n\nsetOldClass(\"difftime\")\n\nand the setMethod call should work.\n\nOn 7/9/2013 6:03 AM, Dan Murphy wrote:\n> I am trying to write S",
       "thread_id": "thread-9a2744961e77",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066957.html"
     },
     {
       "id": "msg-9cd31f6e0f80",
@@ -975,7 +1023,8 @@
       "body_snippet": "In running the following example of a loglinear model for the Titanic data,\nI was surprised to see NaN reported for the\nPearson chisq\n\n > loglin(Titanic, margin=list(1:3, 4))\n2 iterations: deviation 2",
       "thread_id": "thread-9cd31f6e0f80",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066958.html"
     },
     {
       "id": "msg-26720e89ea69",
@@ -1004,7 +1053,8 @@
       "body_snippet": "On Sat, Jun 15, 2013 at 4:38 PM, Simon Urbanek\n<simon.urbanek at r-project.org> wrote:\n>\n> On Jun 15, 2013, at 2:42 PM, Martin Maechler wrote:\n>\n>>>>>>> Dirk Eddelbuettel <edd at debian.org>\n>>>>>>>  ",
       "thread_id": "thread-26720e89ea69",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066959.html"
     },
     {
       "id": "msg-79d8c8792d2c",
@@ -1034,7 +1084,8 @@
       "body_snippet": "Hi Dan,\n\nOn 9 July 2013 at 19:52, Dan Tenenbaum wrote:\n| Picking up a somewhat old thread...what is the final status of this?\n\nIn r-patched and r-devel, check the NEWS file.\n\n| It doesn't look like an",
       "thread_id": "thread-26720e89ea69",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066960.html"
     },
     {
       "id": "msg-6d1bb7b17989",
@@ -1053,7 +1104,8 @@
       "body_snippet": "> It needs to have ... in the formal argument list because the generic\n> subset() does.\n>\n> It could enforce a run-time warning that some arguments were being skipped\n> (by testing length(list(...)) f",
       "thread_id": "thread-1cf7a234fdf1",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066961.html"
     },
     {
       "id": "msg-987ef286702b",
@@ -1073,7 +1125,8 @@
       "body_snippet": "On 13-07-11 12:59 PM, Hadley Wickham wrote:\n>> It needs to have ... in the formal argument list because the generic\n>> subset() does.\n>>\n>> It could enforce a run-time warning that some arguments were",
       "thread_id": "thread-1cf7a234fdf1",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066962.html"
     },
     {
       "id": "msg-5fa4d8f946da",
@@ -1089,7 +1142,8 @@
       "body_snippet": "With a recent SVN build (R Under development (unstable) (2013-07-10\nr63264) -- \"Unsuffered Consequences\"), I'm having trouble installing the\nrobustbase package.  The bottom line is that I *think* it's",
       "thread_id": "thread-5fa4d8f946da",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066963.html"
     },
     {
       "id": "msg-87449fd542c6",
@@ -1107,7 +1161,8 @@
       "body_snippet": "On Jul 11, 2013, at 10:57 PM, Ben Bolker wrote:\n\n> \n> With a recent SVN build (R Under development (unstable) (2013-07-10\n> r63264) -- \"Unsuffered Consequences\"), I'm having trouble installing the\n> r",
       "thread_id": "thread-5fa4d8f946da",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066964.html"
     },
     {
       "id": "msg-706a5359acc1",
@@ -1123,7 +1178,8 @@
       "body_snippet": "R-developers:\n\nI'm working on updating my R package \"spatial.tools\", and one thing I\nwas wondering was the proper way to have hidden functions -- should I\nsimply not export them to the namespace and u",
       "thread_id": "thread-706a5359acc1",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066965.html"
     },
     {
       "id": "msg-7e1b8347622a",
@@ -1141,7 +1197,8 @@
       "body_snippet": "On 13-07-12 5:52 PM, Jonathan Greenberg wrote:\n> R-developers:\n>\n> I'm working on updating my R package \"spatial.tools\", and one thing I\n> was wondering was the proper way to have hidden functions -- ",
       "thread_id": "thread-706a5359acc1",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066966.html"
     },
     {
       "id": "msg-f2f0c33c2820",
@@ -1160,7 +1217,8 @@
       "body_snippet": "I think part of this may be my (possibly flawed) understanding of\ndocumentation requirements for CRAN -- if a function is exported to\nthe namespace, does CRAN require documentation of that function?  ",
       "thread_id": "thread-f2f0c33c2820",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066967.html"
     },
     {
       "id": "msg-22c1dc8a04b8",
@@ -1181,6 +1239,7 @@
       "thread_id": "thread-f2f0c33c2820",
       "thread_depth": 1,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066968.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130712/2adf6742/attachment.pl"
       ]
@@ -1195,11 +1254,12 @@
       "subject_clean": "missing PROTECT() in src/main/arithmetic.c",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "at lines 651 & 653 (integer_binary function):\n\n     if (code == DIVOP || code == POWOP)\n         ans = allocVector(REALSXP, n);\n     else\n         ans = allocVector(INTSXP, n);\n\nThere are calls to warningcall() later in the function, which can\ntrigger garbbage collection.\n\nLooks like the typical scenario where it seemed pretty safe to not\nPROTECT in the original version of the function but became very\nunsafe 3 years later when the calls to warningcall() were added to\nthe function.\n\nCheers,\nH.\n\n-- \nHerv? Pag?s\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
+      "body_plain": "at lines 651 & 653 (integer_binary function):\n\n     if (code == DIVOP || code == POWOP)\n         ans = allocVector(REALSXP, n);\n     else\n         ans = allocVector(INTSXP, n);\n\nThere are calls to warningcall() later in the function, which can\ntrigger garbbage collection.\n\nLooks like the typical scenario where it seemed pretty safe to not\nPROTECT in the original version of the function but became very\nunsafe 3 years later when the calls to warningcall() were added to\nthe function.\n\nCheers,\nH.\n\n-- \nHervé Pagès\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
       "body_snippet": "at lines 651 & 653 (integer_binary function):\n\n     if (code == DIVOP || code == POWOP)\n         ans = allocVector(REALSXP, n);\n     else\n         ans = allocVector(INTSXP, n);\n\nThere are calls to war",
       "thread_id": "thread-6e570b36e50a",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066969.html"
     },
     {
       "id": "msg-4598f125f10e",
@@ -1211,11 +1271,12 @@
       "subject_clean": "Alternative to eval(cl, parent.frame()) ?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Dear developeRs,\n\nI maintain a package 'pls', which has a main fit function mvr(), and\nfunctions plsr() and pcr() which are meant to take the same arguments as\nmvr() and do exactly the same, but have different default values for the\n'method' argument.  The three functions are all exported from the name\nspace.\n\nIn the 'pre namespace' era, I took inspiration from lm() and implemented\nit like this:\n\nplsr <- function(..., method = pls.options()$plsralg) {\n    cl <- match.call()\n    cl$method <- match.arg(method, c(\"kernelpls\", \"widekernelpls\", \"simpls\",\n                                     \"oscorespls\", \"model.frame\"))\n    cl[[1]] <- as.name(\"mvr\")\n    res <- eval(cl, parent.frame())\n    ...\n\n\nRecently, Prof. Brian Ripley kindly pointed out that this doesn't work\nproperly when the 'pls' package in not attached:\n\n> data(yarn, package='pls')\n> pls::plsr(density ~ NIR, 6, data = yarn, validation = \"CV\")\n<environment: R_GlobalEnv>\nError in eval(expr, envir, enclos) : could not find function \"mvr\"\n\nI first believed that\n\n    cl[[1]] <- as.name(\"pls::mvr\")\n\nwould fix the problem, but that did not help.  I have found that the\nfollowing seems to work:\n\nplsr <- function(..., method = pls.options()$plsralg) {\n    cl <- match.call()\n    cl$method <- match.arg(method, c(\"kernelpls\", \"widekernelpls\", \"simpls\",\n                                     \"oscorespls\", \"model.frame\"))\n    arguments <- as.list(cl)[-1]\n    res <- do.call(mvr, arguments, envir = parent.frame())\n    ...\n\nHowever, if I understand correctly, this will evaluate the arguments\nbefore handing them over to mvr().  Currently, mvr() doesn't need the\nunevaluated arguments, but if it were to, this would be a problem.\n\nIs there an 'R best practice' for achieving what I want (several\nversions of the same function, with different default value for an\nargument)?\n\n-- \nRegards,\nBj?rn-Helge Mevik",
+      "body_plain": "Dear developeRs,\n\nI maintain a package 'pls', which has a main fit function mvr(), and\nfunctions plsr() and pcr() which are meant to take the same arguments as\nmvr() and do exactly the same, but have different default values for the\n'method' argument.  The three functions are all exported from the name\nspace.\n\nIn the 'pre namespace' era, I took inspiration from lm() and implemented\nit like this:\n\nplsr <- function(..., method = pls.options()$plsralg) {\n    cl <- match.call()\n    cl$method <- match.arg(method, c(\"kernelpls\", \"widekernelpls\", \"simpls\",\n                                     \"oscorespls\", \"model.frame\"))\n    cl[[1]] <- as.name(\"mvr\")\n    res <- eval(cl, parent.frame())\n    ...\n\n\nRecently, Prof. Brian Ripley kindly pointed out that this doesn't work\nproperly when the 'pls' package in not attached:\n\n> data(yarn, package='pls')\n> pls::plsr(density ~ NIR, 6, data = yarn, validation = \"CV\")\n<environment: R_GlobalEnv>\nError in eval(expr, envir, enclos) : could not find function \"mvr\"\n\nI first believed that\n\n    cl[[1]] <- as.name(\"pls::mvr\")\n\nwould fix the problem, but that did not help.  I have found that the\nfollowing seems to work:\n\nplsr <- function(..., method = pls.options()$plsralg) {\n    cl <- match.call()\n    cl$method <- match.arg(method, c(\"kernelpls\", \"widekernelpls\", \"simpls\",\n                                     \"oscorespls\", \"model.frame\"))\n    arguments <- as.list(cl)[-1]\n    res <- do.call(mvr, arguments, envir = parent.frame())\n    ...\n\nHowever, if I understand correctly, this will evaluate the arguments\nbefore handing them over to mvr().  Currently, mvr() doesn't need the\nunevaluated arguments, but if it were to, this would be a problem.\n\nIs there an 'R best practice' for achieving what I want (several\nversions of the same function, with different default value for an\nargument)?\n\n-- \nRegards,\nBjørn-Helge Mevik",
       "body_snippet": "Dear developeRs,\n\nI maintain a package 'pls', which has a main fit function mvr(), and\nfunctions plsr() and pcr() which are meant to take the same arguments as\nmvr() and do exactly the same, but have ",
       "thread_id": "thread-4598f125f10e",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066970.html"
     },
     {
       "id": "msg-fa4f26cb8df6",
@@ -1229,11 +1290,12 @@
       "references": [
         "<s3sk3kubzya.fsf@slagelg.uio.no>"
       ],
-      "body_plain": "On Jul 13, 2013, at 10:56 , Bj?rn-Helge Mevik wrote:\n\n> Dear developeRs,\n> \n> I maintain a package 'pls', which has a main fit function mvr(), and\n> functions plsr() and pcr() which are meant to take the same arguments as\n> mvr() and do exactly the same, but have different default values for the\n> 'method' argument.  The three functions are all exported from the name\n> space.\n> \n> In the 'pre namespace' era, I took inspiration from lm() and implemented\n> it like this:\n> \n> plsr <- function(..., method = pls.options()$plsralg) {\n>    cl <- match.call()\n>    cl$method <- match.arg(method, c(\"kernelpls\", \"widekernelpls\", \"simpls\",\n>                                     \"oscorespls\", \"model.frame\"))\n>    cl[[1]] <- as.name(\"mvr\")\n>    res <- eval(cl, parent.frame())\n>    ...\n> \n> \n> Recently, Prof. Brian Ripley kindly pointed out that this doesn't work\n> properly when the 'pls' package in not attached:\n> \n>> data(yarn, package='pls')\n>> pls::plsr(density ~ NIR, 6, data = yarn, validation = \"CV\")\n> <environment: R_GlobalEnv>\n> Error in eval(expr, envir, enclos) : could not find function \"mvr\"\n> \n> I first believed that\n> \n>    cl[[1]] <- as.name(\"pls::mvr\")\n> \n> would fix the problem, but that did not help.  I have found that the\n> following seems to work:\n> \n> plsr <- function(..., method = pls.options()$plsralg) {\n>    cl <- match.call()\n>    cl$method <- match.arg(method, c(\"kernelpls\", \"widekernelpls\", \"simpls\",\n>                                     \"oscorespls\", \"model.frame\"))\n>    arguments <- as.list(cl)[-1]\n>    res <- do.call(mvr, arguments, envir = parent.frame())\n>    ...\n> \n> However, if I understand correctly, this will evaluate the arguments\n> before handing them over to mvr().  Currently, mvr() doesn't need the\n> unevaluated arguments, but if it were to, this would be a problem.\n> \n> Is there an 'R best practice' for achieving what I want (several\n> versions of the same function, with different default value for an\n> argument)?\n\nWe discussed this recently, and I believe the winner was \n\ncl[[1]] <- quote(pls::mvr)\n\n(notice that :: is an operator, so this is profoundly different from as.name(\"pls::mvr\"), which is a symbol with two colons inside!)\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com",
-      "body_snippet": "On Jul 13, 2013, at 10:56 , Bj?rn-Helge Mevik wrote:\n\n> Dear developeRs,\n> \n> I maintain a package 'pls', which has a main fit function mvr(), and\n> functions plsr() and pcr() which are meant to take ",
+      "body_plain": "On Jul 13, 2013, at 10:56 , Bjørn-Helge Mevik wrote:\n\n> Dear developeRs,\n> \n> I maintain a package 'pls', which has a main fit function mvr(), and\n> functions plsr() and pcr() which are meant to take the same arguments as\n> mvr() and do exactly the same, but have different default values for the\n> 'method' argument.  The three functions are all exported from the name\n> space.\n> \n> In the 'pre namespace' era, I took inspiration from lm() and implemented\n> it like this:\n> \n> plsr <- function(..., method = pls.options()$plsralg) {\n>    cl <- match.call()\n>    cl$method <- match.arg(method, c(\"kernelpls\", \"widekernelpls\", \"simpls\",\n>                                     \"oscorespls\", \"model.frame\"))\n>    cl[[1]] <- as.name(\"mvr\")\n>    res <- eval(cl, parent.frame())\n>    ...\n> \n> \n> Recently, Prof. Brian Ripley kindly pointed out that this doesn't work\n> properly when the 'pls' package in not attached:\n> \n>> data(yarn, package='pls')\n>> pls::plsr(density ~ NIR, 6, data = yarn, validation = \"CV\")\n> <environment: R_GlobalEnv>\n> Error in eval(expr, envir, enclos) : could not find function \"mvr\"\n> \n> I first believed that\n> \n>    cl[[1]] <- as.name(\"pls::mvr\")\n> \n> would fix the problem, but that did not help.  I have found that the\n> following seems to work:\n> \n> plsr <- function(..., method = pls.options()$plsralg) {\n>    cl <- match.call()\n>    cl$method <- match.arg(method, c(\"kernelpls\", \"widekernelpls\", \"simpls\",\n>                                     \"oscorespls\", \"model.frame\"))\n>    arguments <- as.list(cl)[-1]\n>    res <- do.call(mvr, arguments, envir = parent.frame())\n>    ...\n> \n> However, if I understand correctly, this will evaluate the arguments\n> before handing them over to mvr().  Currently, mvr() doesn't need the\n> unevaluated arguments, but if it were to, this would be a problem.\n> \n> Is there an 'R best practice' for achieving what I want (several\n> versions of the same function, with different default value for an\n> argument)?\n\nWe discussed this recently, and I believe the winner was \n\ncl[[1]] <- quote(pls::mvr)\n\n(notice that :: is an operator, so this is profoundly different from as.name(\"pls::mvr\"), which is a symbol with two colons inside!)\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com",
+      "body_snippet": "On Jul 13, 2013, at 10:56 , Bjørn-Helge Mevik wrote:\n\n> Dear developeRs,\n> \n> I maintain a package 'pls', which has a main fit function mvr(), and\n> functions plsr() and pcr() which are meant to take ",
       "thread_id": "thread-4598f125f10e",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066971.html"
     },
     {
       "id": "msg-134603538066",
@@ -1248,11 +1310,12 @@
         "<s3sk3kubzya.fsf@slagelg.uio.no>",
         "<A047A4FA-A260-4484-9864-1EB1C20CDC4B@gmail.com>"
       ],
-      "body_plain": "peter dalgaard <pdalgd at gmail.com> writes:\n\n> We discussed this recently, and I believe the winner was \n>\n> cl[[1]] <- quote(pls::mvr)\n\nThank you!\n\n> (notice that :: is an operator, so this is profoundly different from\n> as.name(\"pls::mvr\"), which is a symbol with two colons inside!)\n\nAh.  Of course!\n\n-- \nRegards,\nBj?rn-Helge Mevik",
+      "body_plain": "peter dalgaard <pdalgd at gmail.com> writes:\n\n> We discussed this recently, and I believe the winner was \n>\n> cl[[1]] <- quote(pls::mvr)\n\nThank you!\n\n> (notice that :: is an operator, so this is profoundly different from\n> as.name(\"pls::mvr\"), which is a symbol with two colons inside!)\n\nAh.  Of course!\n\n-- \nRegards,\nBjørn-Helge Mevik",
       "body_snippet": "peter dalgaard <pdalgd at gmail.com> writes:\n\n> We discussed this recently, and I believe the winner was \n>\n> cl[[1]] <- quote(pls::mvr)\n\nThank you!\n\n> (notice that :: is an operator, so this is profo",
       "thread_id": "thread-4598f125f10e",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066972.html"
     },
     {
       "id": "msg-006e4d0707d0",
@@ -1270,7 +1333,8 @@
       "body_snippet": "> From: Herv? Pag?s <hpages at fhcrc.org>\n\n> at lines 651 & 653 (integer_binary function):\n> \n>      if (code == DIVOP || code == POWOP)\n>          ans = allocVector(REALSXP, n);\n>      else\n>        ",
       "thread_id": "thread-006e4d0707d0",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066973.html"
     },
     {
       "id": "msg-db775a6e25ef",
@@ -1284,11 +1348,12 @@
       "references": [
         "<51E0AF9F.5000001@fhcrc.org>"
       ],
-      "body_plain": "Thanks -- fixed in 63290 (trunk) and 63291 (patched).\n\nluke\n\nOn Fri, 12 Jul 2013, Herv? Pag?s wrote:\n\n> at lines 651 & 653 (integer_binary function):\n>\n>    if (code == DIVOP || code == POWOP)\n>        ans = allocVector(REALSXP, n);\n>    else\n>        ans = allocVector(INTSXP, n);\n>\n> There are calls to warningcall() later in the function, which can\n> trigger garbbage collection.\n>\n> Looks like the typical scenario where it seemed pretty safe to not\n> PROTECT in the original version of the function but became very\n> unsafe 3 years later when the calls to warningcall() were added to\n> the function.\n>\n> Cheers,\n> H.\n>\n>\n\n-- \nLuke Tierney\nChair, Statistics and Actuarial Science\nRalph E. Wareham Professor of Mathematical Sciences\nUniversity of Iowa                  Phone:             319-335-3386\nDepartment of Statistics and        Fax:               319-335-3017\n    Actuarial Science\n241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu\nIowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu",
-      "body_snippet": "Thanks -- fixed in 63290 (trunk) and 63291 (patched).\n\nluke\n\nOn Fri, 12 Jul 2013, Herv? Pag?s wrote:\n\n> at lines 651 & 653 (integer_binary function):\n>\n>    if (code == DIVOP || code == POWOP)\n>      ",
+      "body_plain": "Thanks -- fixed in 63290 (trunk) and 63291 (patched).\n\nluke\n\nOn Fri, 12 Jul 2013, Hervé Pagès wrote:\n\n> at lines 651 & 653 (integer_binary function):\n>\n>    if (code == DIVOP || code == POWOP)\n>        ans = allocVector(REALSXP, n);\n>    else\n>        ans = allocVector(INTSXP, n);\n>\n> There are calls to warningcall() later in the function, which can\n> trigger garbbage collection.\n>\n> Looks like the typical scenario where it seemed pretty safe to not\n> PROTECT in the original version of the function but became very\n> unsafe 3 years later when the calls to warningcall() were added to\n> the function.\n>\n> Cheers,\n> H.\n>\n>\n\n-- \nLuke Tierney\nChair, Statistics and Actuarial Science\nRalph E. Wareham Professor of Mathematical Sciences\nUniversity of Iowa                  Phone:             319-335-3386\nDepartment of Statistics and        Fax:               319-335-3017\n    Actuarial Science\n241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu\nIowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu",
+      "body_snippet": "Thanks -- fixed in 63290 (trunk) and 63291 (patched).\n\nluke\n\nOn Fri, 12 Jul 2013, Hervé Pagès wrote:\n\n> at lines 651 & 653 (integer_binary function):\n>\n>    if (code == DIVOP || code == POWOP)\n>      ",
       "thread_id": "thread-6e570b36e50a",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066974.html"
     },
     {
       "id": "msg-3789e7001658",
@@ -1309,7 +1374,8 @@
       "body_snippet": "On 12 July 2013 at 11:42, Gabriel Becker wrote:\n| Jonathan,\n| \n| All exported functions must have documentation entries to pass R CMD check\n| without warnings.\n| \n| Functions within your package do no",
       "thread_id": "thread-f2f0c33c2820",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066975.html"
     },
     {
       "id": "msg-69e43b08b7ac",
@@ -1326,6 +1392,7 @@
       "thread_id": "thread-69e43b08b7ac",
       "thread_depth": 0,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066976.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130713/50e96da8/attachment.pl"
       ]
@@ -1346,7 +1413,8 @@
       "body_snippet": "On 13 July 2013 at 22:24, ivo welch wrote:\n| dear R developers---I am running a pure R program on the stock binary\n| debian (ubuntu) 64-bit linux distribution, 3.0.1.  for identification,\n[...]\n| recu",
       "thread_id": "thread-69e43b08b7ac",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066977.html"
     },
     {
       "id": "msg-c0c83a6a3921",
@@ -1366,6 +1434,7 @@
       "thread_id": "thread-69e43b08b7ac",
       "thread_depth": 2,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066978.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130714/f99d5df4/attachment.pl"
       ]
@@ -1388,7 +1457,8 @@
       "body_snippet": "On Jul 14, 2013, at 10:51 AM, ivo welch wrote:\n\n> thx.  would be happy to do this, but is it worth the effort?  are you guys\n> interested in potentially chasing this down or is this mundane?\n> \n\nR sho",
       "thread_id": "thread-69e43b08b7ac",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066979.html"
     },
     {
       "id": "msg-804903696a5a",
@@ -1410,6 +1480,7 @@
       "thread_id": "thread-69e43b08b7ac",
       "thread_depth": 4,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066980.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130714/b51e6e47/attachment.pl"
       ]
@@ -1434,7 +1505,8 @@
       "body_snippet": "On 14 July 2013 at 09:04, ivo welch wrote:\n| thanks, simon.  it's replicable even on\n| \n|    R version 3.0.1 Patched (2013-07-13 r63293) -- \"Good Sport\"\n| \n| (I presume that it is loading its own upda",
       "thread_id": "thread-69e43b08b7ac",
       "thread_depth": 5,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066981.html"
     },
     {
       "id": "msg-cfa838bc8140",
@@ -1450,7 +1522,8 @@
       "body_snippet": "According to the manual, the `stdout` argument of the `system2`\nfunction can redirect output to a file. This seems to work on unix,\nhowever I can't get it to work on windows. The toy example below, no",
       "thread_id": "thread-cfa838bc8140",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066982.html"
     },
     {
       "id": "msg-a1d586bcb5ab",
@@ -1474,6 +1547,7 @@
       "thread_id": "thread-69e43b08b7ac",
       "thread_depth": 6,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066983.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130714/772ba8a6/attachment.pl"
       ]
@@ -1500,7 +1574,8 @@
       "body_snippet": "On 14 July 2013 at 11:45, ivo welch wrote:\n| hi dirk---look, it's a fickle bus segfault. ?if you read my email in full, you\n| will note that even eliminating an irrelevant print(head()) statement make",
       "thread_id": "thread-69e43b08b7ac",
       "thread_depth": 7,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066984.html"
     },
     {
       "id": "msg-88d827498732",
@@ -1526,6 +1601,7 @@
       "thread_id": "thread-69e43b08b7ac",
       "thread_depth": 8,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066985.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130714/e5457daf/attachment.pl"
       ]
@@ -1546,7 +1622,8 @@
       "body_snippet": "On Sun, Jul 14, 2013 at 1:18 PM, Jeroen Ooms <jeroen.ooms at stat.ucla.edu> wrote:\n> According to the manual, the `stdout` argument of the `system2`\n> function can redirect output to a file. This seem",
       "thread_id": "thread-cfa838bc8140",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066986.html"
     },
     {
       "id": "msg-c56cb011e2e3",
@@ -1565,7 +1642,8 @@
       "body_snippet": "On Sun, Jul 14, 2013 at 10:24 PM, Gabor Grothendieck wrote:\n> Try:\n> out.txt <- normalizePath(\"./out.txt\", mustWork = FALSE)\n\nDoesn't work either, neither on Win7 nor WinXP.\n\n> sessionInfo()\nR version",
       "thread_id": "thread-cfa838bc8140",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066987.html"
     },
     {
       "id": "msg-39c51c926cb9",
@@ -1585,7 +1663,8 @@
       "body_snippet": "On Sun, Jul 14, 2013 at 5:20 PM, Jeroen Ooms <jeroen.ooms at stat.ucla.edu> wrote:\n> On Sun, Jul 14, 2013 at 10:24 PM, Gabor Grothendieck wrote:\n>> Try:\n>> out.txt <- normalizePath(\"./out.txt\", mustWo",
       "thread_id": "thread-cfa838bc8140",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066988.html"
     },
     {
       "id": "msg-b6ddc31062c4",
@@ -1606,7 +1685,8 @@
       "body_snippet": "Works for me (Win 7 64bit) using R.exe:\n\n> setwd(tempdir())\n> getwd()\n[1] \"C:/Users/hb/AppData/Local/Temp/RtmpSqjCDt\"\n> res <- system2(\"whoami\", stdout=\"out.txt\", stderr=\"err.txt\")\n> res\n[1] 0\n> file.",
       "thread_id": "thread-cfa838bc8140",
       "thread_depth": 4,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066989.html"
     },
     {
       "id": "msg-e6076826bfe4",
@@ -1622,7 +1702,8 @@
       "body_snippet": "The pmatch help (see also section 4.3.2 in the R Language Definition)\nclaims that pmatch with duplicates.ok=FALSE provides the same\nfunctionality as R's argument matching algorithm, modulo how empty\ns",
       "thread_id": "thread-e6076826bfe4",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066992.html"
     },
     {
       "id": "msg-fc736cba34eb",
@@ -1638,7 +1719,8 @@
       "body_snippet": "The CRAN master machines are being moved to the new WU campus in Vienna \ntoday.  The services will be partially or completely unavailable, \nincluding www.r-project.org, ftp uploads for packages and th",
       "thread_id": "thread-fc736cba34eb",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066991.html"
     },
     {
       "id": "msg-ef5b586777e8",
@@ -1656,7 +1738,8 @@
       "body_snippet": "On 01/07/2013 16:37, Stephen Weigand wrote:\n> Hello,\n>\n> In trying to minimize the margin on the left hand side when using\n> dotchart I found what may be a typo in the code.\n>\n> In the lines below fro",
       "thread_id": "thread-b65ac90309bc",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066990.html"
     },
     {
       "id": "msg-ffac076d0c82",
@@ -1674,7 +1757,8 @@
       "body_snippet": "On 13-07-15 1:02 AM, Justin Talbot wrote:\n> The pmatch help (see also section 4.3.2 in the R Language Definition)\n> claims that pmatch with duplicates.ok=FALSE provides the same\n> functionality as R's",
       "thread_id": "thread-e6076826bfe4",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066993.html"
     },
     {
       "id": "msg-e534638f7c3f",
@@ -1690,7 +1774,8 @@
       "body_snippet": "Hi\n\nHopefully this is the correct mailing list. Sorry if not.\n\nI am still fighting to install \"shiny\" on Solaris OS. For this I need the package 'httpuv' which makes troubles during linking.\nR version",
       "thread_id": "thread-e534638f7c3f",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066994.html"
     },
     {
       "id": "msg-aebf721df366",
@@ -1708,7 +1793,8 @@
       "body_snippet": "On 15 July 2013 at 17:05, MAYER Hans wrote:\n| \n| Hi\n| \n| Hopefully this is the correct mailing list. Sorry if not.\n| \n| I am still fighting to install \"shiny\" on Solaris OS. For this I need the packag",
       "thread_id": "thread-e534638f7c3f",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066995.html"
     },
     {
       "id": "msg-5f960bad12b1",
@@ -1726,7 +1812,8 @@
       "body_snippet": "What did the maintainer say when you asked him (see the posting guide)?\n\nBut invocations such as -lsendfile should be in PKG_LIBS (see 'Writing R \nExtensions').\n\n\nOn 15/07/2013 16:05, MAYER Hans wrote",
       "thread_id": "thread-e534638f7c3f",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066996.html"
     },
     {
       "id": "msg-d320ff874d0f",
@@ -1742,7 +1829,8 @@
       "body_snippet": "I have been told by the CRAN administrators that the following code generated\nan error on 64-bit Fedora Linux (gcc, clang) and on Solaris machines (sparc,\nx86), but runs well on all other systems):\n\n ",
       "thread_id": "thread-d320ff874d0f",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066997.html"
     },
     {
       "id": "msg-452694dec821",
@@ -1768,7 +1856,8 @@
       "body_snippet": "On 14 July 2013 at 12:57, ivo welch wrote:\n| hi dirk---it is not 100% clear what causes it. ?it is a segfault. ?the bug\n| does not show up at the head command. ?it shows up at a different place, but\n|",
       "thread_id": "thread-69e43b08b7ac",
       "thread_depth": 9,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066998.html"
     },
     {
       "id": "msg-516efa2b0cd5",
@@ -1788,7 +1877,8 @@
       "body_snippet": "Hi Simon,\n\nI am sorry that for some unknown reasons I did not receive your reply on 27\nJune 2013 in my email boxs. I just randomly searched and read it today on\nNabble.\nThank you for your explaination",
       "thread_id": "thread-516efa2b0cd5",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/066999.html"
     },
     {
       "id": "msg-3ac74a98a51d",
@@ -1804,7 +1894,8 @@
       "body_snippet": "I haven't figured it out entirely, but it looks like there are a\ncouple of small glitches with knitr-based vignettes and\nSweaveParseOptions.\n\n  I posted the tarball of a package with a knitr vignette ",
       "thread_id": "thread-3ac74a98a51d",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067000.html"
     },
     {
       "id": "msg-8271a974a088",
@@ -1822,7 +1913,8 @@
       "body_snippet": "Here is my understanding:\n\nPackage vignettes are built through tools::buildVignettes, which first\ncalls tools::pkgVignettes() to list the vignettes. Due to\nloadVignetteBuilder(dir, mustwork = FALSE) i",
       "thread_id": "thread-3ac74a98a51d",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067001.html"
     },
     {
       "id": "msg-8b134514bb58",
@@ -1841,7 +1933,8 @@
       "body_snippet": "Yihui Xie <xie <at> yihui.name> writes:\n\n> \n  [snip]\n\n  thanks, that all makes sense.\n\n> Two approaches to solve the problem:\n> \n> 1. either you Depends on knitr,\n> 2. or make install.packages() also ",
       "thread_id": "thread-3ac74a98a51d",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067002.html"
     },
     {
       "id": "msg-686ecad9a1af",
@@ -1859,7 +1952,8 @@
       "body_snippet": "On 2013-07-16 07:55, Hans W Borchers wrote:\n> I have been told by the CRAN administrators that the following code generated\n> an error on 64-bit Fedora Linux (gcc, clang) and on Solaris machines (spar",
       "thread_id": "thread-d320ff874d0f",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067012.html"
     },
     {
       "id": "msg-8318a2eb5adf",
@@ -1876,6 +1970,7 @@
       "thread_id": "thread-8318a2eb5adf",
       "thread_depth": 0,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067003.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130717/99436f19/attachment.pl"
       ]
@@ -1896,7 +1991,8 @@
       "body_snippet": "On Wed, Jul 17, 2013 at 9:58 AM, Brian Rowe <rowe at muxspace.com> wrote:\n> Hello,\n>\n> Section 4.3.2 of the R language definition [1] states that argument matching to formal arguments is a 3-pass proc",
       "thread_id": "thread-8318a2eb5adf",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067004.html"
     },
     {
       "id": "msg-65f7bef87722",
@@ -1915,7 +2011,8 @@
       "body_snippet": "Thanks for the lead. Given the example in ?missing though, wouldn't it be safer to explicitly define a default value of NULL:\n\nmyplot <- function(x, y=NULL) {\n  if(is.null(y)) {\n    y <- x\n    x <- 1:",
       "thread_id": "thread-8318a2eb5adf",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067005.html"
     },
     {
       "id": "msg-47011269be94",
@@ -1935,7 +2032,8 @@
       "body_snippet": "Brian Rowe <rowe <at> muxspace.com> writes:\n\n> \n> Thanks for the lead. Given the example in ?missing though,\n>  wouldn't it be safer to explicitly define a\n> default value of NULL:\n> \n> myplot <- func",
       "thread_id": "thread-8318a2eb5adf",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067006.html"
     },
     {
       "id": "msg-ca2778a1118c",
@@ -1953,7 +2051,8 @@
       "body_snippet": "On Tue, 2013-07-16 at 13:55 +0200, Hans W Borchers wrote:\n> I have been told by the CRAN administrators that the following code generated\n> an error on 64-bit Fedora Linux (gcc, clang) and on Solaris ",
       "thread_id": "thread-d320ff874d0f",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067007.html"
     },
     {
       "id": "msg-587b72007365",
@@ -1975,6 +2074,7 @@
       "thread_id": "thread-8318a2eb5adf",
       "thread_depth": 4,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067008.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130717/7d082bf3/attachment.pl"
       ]
@@ -1999,7 +2099,8 @@
       "body_snippet": "I agree that failing fast is a good principle. My initial point led the other way though, i.e. any unmatched formal arguments without default values should be handled in one of two ways:\n\n1. Fail the ",
       "thread_id": "thread-8318a2eb5adf",
       "thread_depth": 5,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067009.html"
     },
     {
       "id": "msg-d730fdba83c7",
@@ -2018,7 +2119,8 @@
       "body_snippet": "Thanks for the help.\n\nWhat bothers me is that it works on most systems and does not work on\nsome more 'exotic' systems -- though it should work everywhere however\nsmall the user chooses the tolerance ",
       "thread_id": "thread-d320ff874d0f",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067013.html"
     },
     {
       "id": "msg-f04de4220053",
@@ -2035,6 +2137,7 @@
       "thread_id": "thread-f04de4220053",
       "thread_depth": 0,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067010.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130718/85084211/attachment.pl"
       ]
@@ -2055,7 +2158,8 @@
       "body_snippet": "On 18/07/2013 07:45, Hodgess, Erin wrote:\n> Dear R development:\n>\n>\n>\n> I'm not sure if this is the appropriate list, but it's a start.\n>\n>\n>\n> I would like to put together a package which contains a ",
       "thread_id": "thread-f04de4220053",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067011.html"
     },
     {
       "id": "msg-f8c4e02196b8",
@@ -2074,7 +2178,8 @@
       "body_snippet": "Now let's try again.  I set up the CYGWIN environment command as kindly suggested by Prof. Ripley.\n\nHere are my next steps:\n\nR CMD build cudasize\n* checking for file 'cudasize/DESCRIPTION' ... OK\n* pr",
       "thread_id": "thread-f04de4220053",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067014.html"
     },
     {
       "id": "msg-b24ccbc08ea8",
@@ -2094,7 +2199,8 @@
       "body_snippet": "You will need a src/Makevars.win to get a .cu file to compile.  It is \nnot a known extension: see ?1.1.4 of 'Writing R Extensions'\n\nMost likely you need something like\n\ncudasize.dll:\n\tnvcc -m32 --shar",
       "thread_id": "thread-f04de4220053",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067015.html"
     },
     {
       "id": "msg-fe192c0934c0",
@@ -2112,7 +2218,8 @@
       "body_snippet": "Hi Erin\n\n Glad you are making progress on this with Brian's help.\n\n I thought I would mention a different approach that might save you some\nprogramming time and actually make the code more flexible at",
       "thread_id": "thread-f04de4220053",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067016.html"
     },
     {
       "id": "msg-d723c9fd1a20",
@@ -2132,7 +2239,8 @@
       "body_snippet": "This, i.e. quadrature, is another area where the \"default\" or \"base\" R functionality needs enhancement, just like the functionality for optimization.  While `integrate' is good, it can be improved.  \n",
       "thread_id": "thread-d320ff874d0f",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067029.html"
     },
     {
       "id": "msg-268c1aa9bb3c",
@@ -2149,6 +2257,7 @@
       "thread_id": "thread-268c1aa9bb3c",
       "thread_depth": 0,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067017.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130718/3bf4ea7d/attachment.pl"
       ]
@@ -2170,7 +2279,8 @@
       "body_snippet": "Hi again:\n\nHere is another problem that I am having.  Hope this will be the last one.  I really want to see if I can put it together.  Sorry for belaboring the issue.\n\nWell, here is my story:\n\nc:\\Prog",
       "thread_id": "thread-f04de4220053",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067018.html"
     },
     {
       "id": "msg-a1475f4f029b",
@@ -2190,7 +2300,8 @@
       "body_snippet": "Hi Erin\n\nIt appears that there is only one file in src that is compile, i.e. cuda4.cu.\n\nThat does not contain a routine named cuda4, which is what you are trying to invoke\nvia the .Call(\"cuda4\") expre",
       "thread_id": "thread-f04de4220053",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067019.html"
     },
     {
       "id": "msg-3d04a78f5c58",
@@ -2211,7 +2322,8 @@
       "body_snippet": "Hi again.\n\nI put in the extern statement.\n\nHowever, I'm not sure what you mean by changing the signature, please.  \n\nI changed out the routine name from \"stuff\" to \"cuda4\" in the cuda4.cu program.\n\nSt",
       "thread_id": "thread-f04de4220053",
       "thread_depth": 4,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067020.html"
     },
     {
       "id": "msg-97bd97f42d42",
@@ -2233,7 +2345,8 @@
       "body_snippet": "Hi Erin\n\nSee the code below.\n\nBasically, I have created a new routine that you will\ncall from R as\n\n .C(\"cuda4\", 1L, \"5\")\n\nwhere 1L is the number of arguments you are passing and \"5\" is the character ",
       "thread_id": "thread-f04de4220053",
       "thread_depth": 5,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067021.html"
     },
     {
       "id": "msg-e26a7e576f5b",
@@ -2256,7 +2369,8 @@
       "body_snippet": "Wow!\n\nThis is just amazing!\n\nThanks so much.  I didn't realize how intense this is.\n\n\n________________________________________\nFrom: Duncan Temple Lang [dtemplelang at ucdavis.edu]\nSent: Thursday, Jul",
       "thread_id": "thread-f04de4220053",
       "thread_depth": 6,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067022.html"
     },
     {
       "id": "msg-8cd1a4a96dda",
@@ -2279,7 +2393,8 @@
       "body_snippet": "All right.  I'm still stuck even with all of the help.\n\nHere is the first part:\n\n>R CMD INSTALL --no-multiarch cudasize_1.0.tar.gz \nR CMD INSTALL --no-multiarch cudasize_1.0.tar.gz \n* installing to li",
       "thread_id": "thread-f04de4220053",
       "thread_depth": 6,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067023.html"
     },
     {
       "id": "msg-60b1b87edb88",
@@ -2297,7 +2412,8 @@
       "body_snippet": "On Thu, Apr 4, 2013 at 2:06 PM, Henrik Bengtsson <hb at biostat.ucsf.edu> wrote:\n> For 'R CMD check', it appears that option '--outdir' is not recognized\n> and generates warning \"unknown option '--out",
       "thread_id": "thread-60b1b87edb88",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067024.html"
     },
     {
       "id": "msg-6ca1eb07d9d4",
@@ -2316,7 +2432,8 @@
       "body_snippet": "So please follow the posting guide at \nhttp://www.r-project.org/posting-guide.html, to wit\n\n'f you are using an old version of R and think it does not work \nproperly, upgrade to the latest version and",
       "thread_id": "thread-60b1b87edb88",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067025.html"
     },
     {
       "id": "msg-c5843f9d1f86",
@@ -2336,7 +2453,8 @@
       "body_snippet": "On Fri, Jul 19, 2013 at 3:04 AM, Prof Brian Ripley\n<ripley at stats.ox.ac.uk> wrote:\n> So please follow the posting guide at\n> http://www.r-project.org/posting-guide.html, to wit\n>\n> 'f you are using ",
       "thread_id": "thread-60b1b87edb88",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067026.html"
     },
     {
       "id": "msg-281a98942dd7",
@@ -2352,7 +2470,8 @@
       "body_snippet": "I have two comments regarding the Posting Guide:\n\n(1) The link in the following sentence did not work for me:\n\n    Take care when you quote other people's comments to respect their\nrights, e.g., as su",
       "thread_id": "thread-281a98942dd7",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067027.html"
     },
     {
       "id": "msg-050a72c13915",
@@ -2368,7 +2487,8 @@
       "body_snippet": "Hi List,\n\nI am building a package for a client to help them create and perform\nanalyses against netcdf files which contain 'a temporal stack' of\ngrids.\n\nFor my examples and test cases, I create an exa",
       "thread_id": "thread-050a72c13915",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067028.html"
     },
     {
       "id": "msg-25b938b18319",
@@ -2386,7 +2506,8 @@
       "body_snippet": "On Fri, Jul 19, 2013 at 10:33 AM, Simon Knapp <sleepingwell at gmail.com> wrote:\n> Hi List,\n>\n> I am building a package for a client to help them create and perform\n> analyses against netcdf files whi",
       "thread_id": "thread-25b938b18319",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067030.html"
     },
     {
       "id": "msg-9f34d3b30e18",
@@ -2405,7 +2526,8 @@
       "body_snippet": "Hi Barry,\n\nThanks for the response, your suggestion was going to be my 'work\naround'... perhaps I took the second paragraph of section 1.1.5 of\nR-exts.pdf the wrong way.\n\nI'd be interested in knowing ",
       "thread_id": "thread-25b938b18319",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067031.html"
     },
     {
       "id": "msg-bb2dfa73c596",
@@ -2425,7 +2547,8 @@
       "body_snippet": "On 20/07/2013 12:01, Simon Knapp wrote:\n> Hi Barry,\n>\n> Thanks for the response, your suggestion was going to be my 'work\n> around'... perhaps I took the second paragraph of section 1.1.5 of\n> R-exts.",
       "thread_id": "thread-25b938b18319",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067032.html"
     },
     {
       "id": "msg-7fade1a13e9c",
@@ -2446,7 +2569,8 @@
       "body_snippet": "Hi Brian,\n\nThanks for the response. My original request contained the code that I\nhave placed in a file in the data directory, though this had been\nremoved in Barry's response. I have copied the origi",
       "thread_id": "thread-25b938b18319",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067033.html"
     },
     {
       "id": "msg-40b1d0a9e5d6",
@@ -2464,7 +2588,8 @@
       "body_snippet": ">>>>> Scott Kostyshak <skostysh at princeton.edu>\n>>>>>     on Fri, 19 Jul 2013 03:34:20 -0400 writes:\n\n    > I have two comments regarding the Posting Guide:\n    > (1) The link in the following sente",
       "thread_id": "thread-281a98942dd7",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067034.html"
     },
     {
       "id": "msg-18bf91b9e5b3",
@@ -2483,7 +2608,8 @@
       "body_snippet": ">>>>> Simon Urbanek <simon.urbanek at r-project.org>\n>>>>>     on Thu, 11 Jul 2013 23:10:21 -0400 writes:\n\n    > On Jul 11, 2013, at 10:57 PM, Ben Bolker wrote:\n\n    >> \n    >> With a recent SVN build",
       "thread_id": "thread-5fa4d8f946da",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067035.html"
     },
     {
       "id": "msg-58fd635426cc",
@@ -2500,11 +2626,12 @@
         "<CAA+5f=2aJ-LEVXrRiwr9B+wV5bRR90bjnfp8k6a7uxzPOJiXqA@mail.gmail.com>",
         "<51EAC813.8010305@stats.ox.ac.uk>"
       ],
-      "body_plain": "Hi there,\n\nOn 07/20/2013 10:25 AM, Prof Brian Ripley wrote:\n> On 20/07/2013 12:01, Simon Knapp wrote:\n>> Hi Barry,\n>>\n>> Thanks for the response, your suggestion was going to be my 'work\n>> around'... perhaps I took the second paragraph of section 1.1.5 of\n>> R-exts.pdf the wrong way.\n>>\n>> I'd be interested in knowing why there is a difference between the\n>> data in a source package (.rda files) and windows binary package (.R\n>> files) if anyone can tell me.\n>\n> We have little idea what you did.  Apparently you feel you are exempted\n> from the request in the posting guide for a reproducible example.\n>\n> At a wild guess, you did not understand the point of R CMD build\n> --no-resave-data and did not want your data resaved as a .rda file (the\n> documented default).  But there is no mention of running 'R CMD build'\n> here.\n\nHaving the data resaved as a .rda file by default seems to defeat the\npurpose of supporting executable code in the data folder. Maybe there\nare good reasons for doing this on CRAN (and it's not even clear what\nthose reasons could be, since the size of the code that generates the\ndata is generally much smaller than the data it generates) but it would\nprobably make more sense to not have 'R CMD build' do this by default\nand to let the author of the package be happy with its decision to\ndynamically generate the data.\n\nThanks,\nH.\n\n>\n>>\n>> On Sat, Jul 20, 2013 at 4:58 PM, Barry Rowlingson\n>> <b.rowlingson at lancaster.ac.uk> wrote:\n>>> On Fri, Jul 19, 2013 at 10:33 AM, Simon Knapp\n>>> <sleepingwell at gmail.com> wrote:\n>>>> Hi List,\n>>>>\n>>>> I am building a package for a client to help them create and perform\n>>>> analyses against netcdf files which contain 'a temporal stack' of\n>>>> grids.\n>>>>\n>>>> For my examples and test cases, I create an example dataset in code\n>>>> (as this is a lot more space efficient than providing raw data). The\n>>>> code creates a netcdf file in tempdir() and an object of class 'ncdf'\n>>>> in the global namespace. I have placed the code in a .R file in the\n>>>> data directory of my package and 'load' it with a call to data().\n>>>\n>>>   Why not just put the function that generates the data file into the\n>>> usual place (/R/ folder) and document it so that the user knows to run\n>>> 'sampledata=makeSampleNCDF()' before doing things that need it?\n>>>\n>>>   Trying to put executable code into the data folder does seem a bit\n>>> perverse!\n>\n> Actually, it seems to be *interpretable* R code in a .R file.\n>\n> The help file for data() says:\n>\n> Details:\n>\n>       Currently, four formats of data files are supported:\n>\n>         1. files ending ?.R? or ?.r? are ?source()?d in, with the R\n>            working directory changed temporarily to the directory\n>            containing the respective file.  (?data? ensures that the\n>            ?utils? package is attached, in case it had been run _via_\n>            ?utils::data?.)\n> ...\n>\n> and (in so far as we can tell without the requested example) that was\n> the 'format' intended to be used.\n>\n>>>\n>>> Barry\n>\n>\n\n-- \nHerv? Pag?s\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
+      "body_plain": "Hi there,\n\nOn 07/20/2013 10:25 AM, Prof Brian Ripley wrote:\n> On 20/07/2013 12:01, Simon Knapp wrote:\n>> Hi Barry,\n>>\n>> Thanks for the response, your suggestion was going to be my 'work\n>> around'... perhaps I took the second paragraph of section 1.1.5 of\n>> R-exts.pdf the wrong way.\n>>\n>> I'd be interested in knowing why there is a difference between the\n>> data in a source package (.rda files) and windows binary package (.R\n>> files) if anyone can tell me.\n>\n> We have little idea what you did.  Apparently you feel you are exempted\n> from the request in the posting guide for a reproducible example.\n>\n> At a wild guess, you did not understand the point of R CMD build\n> --no-resave-data and did not want your data resaved as a .rda file (the\n> documented default).  But there is no mention of running 'R CMD build'\n> here.\n\nHaving the data resaved as a .rda file by default seems to defeat the\npurpose of supporting executable code in the data folder. Maybe there\nare good reasons for doing this on CRAN (and it's not even clear what\nthose reasons could be, since the size of the code that generates the\ndata is generally much smaller than the data it generates) but it would\nprobably make more sense to not have 'R CMD build' do this by default\nand to let the author of the package be happy with its decision to\ndynamically generate the data.\n\nThanks,\nH.\n\n>\n>>\n>> On Sat, Jul 20, 2013 at 4:58 PM, Barry Rowlingson\n>> <b.rowlingson at lancaster.ac.uk> wrote:\n>>> On Fri, Jul 19, 2013 at 10:33 AM, Simon Knapp\n>>> <sleepingwell at gmail.com> wrote:\n>>>> Hi List,\n>>>>\n>>>> I am building a package for a client to help them create and perform\n>>>> analyses against netcdf files which contain 'a temporal stack' of\n>>>> grids.\n>>>>\n>>>> For my examples and test cases, I create an example dataset in code\n>>>> (as this is a lot more space efficient than providing raw data). The\n>>>> code creates a netcdf file in tempdir() and an object of class 'ncdf'\n>>>> in the global namespace. I have placed the code in a .R file in the\n>>>> data directory of my package and 'load' it with a call to data().\n>>>\n>>>   Why not just put the function that generates the data file into the\n>>> usual place (/R/ folder) and document it so that the user knows to run\n>>> 'sampledata=makeSampleNCDF()' before doing things that need it?\n>>>\n>>>   Trying to put executable code into the data folder does seem a bit\n>>> perverse!\n>\n> Actually, it seems to be *interpretable* R code in a .R file.\n>\n> The help file for data() says:\n>\n> Details:\n>\n>       Currently, four formats of data files are supported:\n>\n>         1. files ending ‘.R’ or ‘.r’ are ‘source()’d in, with the R\n>            working directory changed temporarily to the directory\n>            containing the respective file.  (‘data’ ensures that the\n>            ‘utils’ package is attached, in case it had been run _via_\n>            ‘utils::data’.)\n> ...\n>\n> and (in so far as we can tell without the requested example) that was\n> the 'format' intended to be used.\n>\n>>>\n>>> Barry\n>\n>\n\n-- \nHervé Pagès\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
       "body_snippet": "Hi there,\n\nOn 07/20/2013 10:25 AM, Prof Brian Ripley wrote:\n> On 20/07/2013 12:01, Simon Knapp wrote:\n>> Hi Barry,\n>>\n>> Thanks for the response, your suggestion was going to be my 'work\n>> around'...",
       "thread_id": "thread-25b938b18319",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067036.html"
     },
     {
       "id": "msg-d0ea81fa09bb",
@@ -2516,11 +2643,12 @@
       "subject_clean": "cbind error with check.names",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Here is an example where?cbind?fails with an error when?check.names=TRUE?is set.\n\ndata(airquality)\nairQualityBind =cbind(airquality,airquality,check.names =TRUE)\n\n\n?I understand that?cbind?is a call to?data.frame?and the following works:\nairQualityBind =data.frame(airquality,airquality,check.names =TRUE)\nbut I would like to understand why?cbind?throws an error.\n\nI asked this question on SO here:\nhttp://stackoverflow.com/questions/17810470/cbind-error-with-check-names\nand user?Hong Ooi?confirmed my suspicion that cbind was passing check.names = FALSE regardless of my setting that option, even though the help file indicates that this should be possible,?\n\n\"For the \"data.frame\" method of cbind these can be further arguments to data.frame such as stringsAsFactors.\"\n\nIs there some design principle that I am missing here?\n\nThanks.",
-      "body_snippet": "Here is an example where?cbind?fails with an error when?check.names=TRUE?is set.\n\ndata(airquality)\nairQualityBind =cbind(airquality,airquality,check.names =TRUE)\n\n\n?I understand that?cbind?is a call t",
+      "body_plain": "Here is an example where cbind fails with an error when check.names=TRUE is set.\n\ndata(airquality)\nairQualityBind =cbind(airquality,airquality,check.names =TRUE)\n\n\n I understand that cbind is a call to data.frame and the following works:\nairQualityBind =data.frame(airquality,airquality,check.names =TRUE)\nbut I would like to understand why cbind throws an error.\n\nI asked this question on SO here:\nhttp://stackoverflow.com/questions/17810470/cbind-error-with-check-names\nand user Hong Ooi confirmed my suspicion that cbind was passing check.names = FALSE regardless of my setting that option, even though the help file indicates that this should be possible, \n\n\"For the \"data.frame\" method of cbind these can be further arguments to data.frame such as stringsAsFactors.\"\n\nIs there some design principle that I am missing here?\n\nThanks.",
+      "body_snippet": "Here is an example where cbind fails with an error when check.names=TRUE is set.\n\ndata(airquality)\nairQualityBind =cbind(airquality,airquality,check.names =TRUE)\n\n\n I understand that cbind is a call t",
       "thread_id": "thread-d0ea81fa09bb",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067037.html"
     },
     {
       "id": "msg-1f2633cdbde5",
@@ -2538,7 +2666,8 @@
       "body_snippet": "On Tue, Jul 23, 2013 at 9:18 AM, Fg Nu <fgnu32 at yahoo.com> wrote:\n>\n>\n>\n> Here is an example where cbind fails with an error when check.names=TRUE is set.\n>\n> data(airquality)\n> airQualityBind =cbin",
       "thread_id": "thread-d0ea81fa09bb",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067038.html"
     },
     {
       "id": "msg-71c72705c6be",
@@ -2557,7 +2686,8 @@
       "body_snippet": "----- Original Message -----\nFrom: Ista Zahn <istazahn at gmail.com>\nTo: Fg Nu <fgnu32 at yahoo.com>\nCc: \"r-devel at r-project.org\" <r-devel at r-project.org>\nSent: Tuesday, July 23, 2013 9:50 PM\nSubj",
       "thread_id": "thread-d0ea81fa09bb",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067040.html"
     },
     {
       "id": "msg-191aeedc3773",
@@ -2577,7 +2707,8 @@
       "body_snippet": "On Tue, Jul 23, 2013 at 12:54 PM, Fg Nu <fgnu32 at yahoo.com> wrote:\n>\n>\n>\n> ----- Original Message -----\n> From: Ista Zahn <istazahn at gmail.com>\n> To: Fg Nu <fgnu32 at yahoo.com>\n> Cc: \"r-devel at ",
       "thread_id": "thread-d0ea81fa09bb",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067039.html"
     },
     {
       "id": "msg-c3cf3c02917b",
@@ -2598,7 +2729,8 @@
       "body_snippet": "----- Original Message -----\nFrom: Ista Zahn <istazahn at gmail.com>\nTo: Fg Nu <fgnu32 at yahoo.com>\nCc: \"r-devel at r-project.org\" <r-devel at r-project.org>\nSent: Tuesday, July 23, 2013 11:05 PM\nSub",
       "thread_id": "thread-d0ea81fa09bb",
       "thread_depth": 4,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067041.html"
     },
     {
       "id": "msg-9da8016cda89",
@@ -2619,7 +2751,8 @@
       "body_snippet": "> Is there then a reason that overriding the check.names default is forbidden from cbind? I can't tell why this would be the case.\n\nFor the same reason you can't have\n\ndata.frame(x=1:10, x=11:20, chec",
       "thread_id": "thread-d0ea81fa09bb",
       "thread_depth": 4,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067042.html"
     },
     {
       "id": "msg-e2447308f3fa",
@@ -2635,7 +2768,8 @@
       "body_snippet": "Hi all,\n\nTake this simple script, which I'm trying to use to understand when\nmodification in-place occurs, and when a new object is created:\n\nmessage(\"Global\")\nx <- 1:3\n.Internal(inspect(x))\nx[2] <- 1",
       "thread_id": "thread-e2447308f3fa",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067043.html"
     },
     {
       "id": "msg-6d6c1fe3edf9",
@@ -2647,11 +2781,12 @@
       "subject_clean": "Alpha channel in colorRamp() and colorRampPalette()",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Hi all, \n\n I had the need to create a colorbar considering the alpha channel of the colors, but colorRamp() and colorRampPalette() ignored the alpha argument in rgb(). So I performed some minor modifs. in their codes, as to support the interpolation using the alpha channel.\n \n I guess that those simple modifications might be useful for other people, so perhaps it would be worth to add them to colorRamp and colorRampPalette codes in grDevices? the modified functions follows.\n \n Cheers,\n \n Alberto.\n \ncolorRampPalette <- function (colors, ...) {\n    ramp <- colorRamp(colors, ...)\n    function(n) {\n        x <- ramp(seq.int(0, 1, length.out = n))\n        rgb(x[, 1], x[, 2], x[, 3], x[, 4], maxColorValue = 255)\n    }\n}\n\ncolorRamp <- function (colors, bias = 1, space = c(\"rgb\", \"Lab\"), interpolate = c(\"linear\", \"spline\")) {\n    if (bias <= 0) \n        stop(\"'bias' must be positive\")\n    colors <- t(col2rgb(colors, alpha=T)/255)\n    space <- match.arg(space)\n    interpolate <- match.arg(interpolate)\n    if (space == \"Lab\") {\n        colors <- convertColor(colors, from = \"sRGB\", to = \"Lab\")\n    }\n    interpolate <- switch(interpolate, linear = stats::approxfun, spline = stats::splinefun)\n    if ((nc <- nrow(colors)) == 1L) {\n        colors <- colors[c(1L, 1L), ]\n        nc <- 2L\n    }\n    x <- seq.int(0, 1, length.out = nc)^bias\n    palette <- c(interpolate(x, colors[, 1]), interpolate(x, colors[, 2]), interpolate(x, colors[, 3]), interpolate(x, colors[, 4]))\n    roundcolor <- function(rgb) pmax(pmin(rgb, 1), 0)\n    if (space == \"Lab\") {\n        function(x) {\n            roundcolor(convertColor(cbind(palette[[1L]](x), palette[[2L]](x), \n                palette[[3L]](x), palette[[4L]](x)), from = \"Lab\", to = \"sRGB\")) * \n                255\n        }\n    }\n    else {\n        function(x) {\n            roundcolor(cbind(palette[[1L]](x), palette[[2L]](x), \n                palette[[3L]](x), palette[[4L]](x))) * 255\n        }\n    }\n}\n\n____________________________________________________\n\n Universidade de Lisboa - Laborat?rio SIM\n Alberto Krone-Martins\n http://www.astro.iag.usp.br/~algol",
+      "body_plain": "Hi all, \n\n I had the need to create a colorbar considering the alpha channel of the colors, but colorRamp() and colorRampPalette() ignored the alpha argument in rgb(). So I performed some minor modifs. in their codes, as to support the interpolation using the alpha channel.\n \n I guess that those simple modifications might be useful for other people, so perhaps it would be worth to add them to colorRamp and colorRampPalette codes in grDevices… the modified functions follows.\n \n Cheers,\n \n Alberto.\n \ncolorRampPalette <- function (colors, ...) {\n    ramp <- colorRamp(colors, ...)\n    function(n) {\n        x <- ramp(seq.int(0, 1, length.out = n))\n        rgb(x[, 1], x[, 2], x[, 3], x[, 4], maxColorValue = 255)\n    }\n}\n\ncolorRamp <- function (colors, bias = 1, space = c(\"rgb\", \"Lab\"), interpolate = c(\"linear\", \"spline\")) {\n    if (bias <= 0) \n        stop(\"'bias' must be positive\")\n    colors <- t(col2rgb(colors, alpha=T)/255)\n    space <- match.arg(space)\n    interpolate <- match.arg(interpolate)\n    if (space == \"Lab\") {\n        colors <- convertColor(colors, from = \"sRGB\", to = \"Lab\")\n    }\n    interpolate <- switch(interpolate, linear = stats::approxfun, spline = stats::splinefun)\n    if ((nc <- nrow(colors)) == 1L) {\n        colors <- colors[c(1L, 1L), ]\n        nc <- 2L\n    }\n    x <- seq.int(0, 1, length.out = nc)^bias\n    palette <- c(interpolate(x, colors[, 1]), interpolate(x, colors[, 2]), interpolate(x, colors[, 3]), interpolate(x, colors[, 4]))\n    roundcolor <- function(rgb) pmax(pmin(rgb, 1), 0)\n    if (space == \"Lab\") {\n        function(x) {\n            roundcolor(convertColor(cbind(palette[[1L]](x), palette[[2L]](x), \n                palette[[3L]](x), palette[[4L]](x)), from = \"Lab\", to = \"sRGB\")) * \n                255\n        }\n    }\n    else {\n        function(x) {\n            roundcolor(cbind(palette[[1L]](x), palette[[2L]](x), \n                palette[[3L]](x), palette[[4L]](x))) * 255\n        }\n    }\n}\n\n____________________________________________________\n\n Universidade de Lisboa - Laboratório SIM\n Alberto Krone-Martins\n http://www.astro.iag.usp.br/~algol",
       "body_snippet": "Hi all, \n\n I had the need to create a colorbar considering the alpha channel of the colors, but colorRamp() and colorRampPalette() ignored the alpha argument in rgb(). So I performed some minor modifs",
       "thread_id": "thread-6d6c1fe3edf9",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067046.html"
     },
     {
       "id": "msg-826410a25388",
@@ -2673,7 +2808,8 @@
       "body_snippet": "> I meant what is the design principle behind check.names being hardcoded to FALSE.\n> I see no conflict with the purpose of cbind from the ability to specify check.names\n> at the level of cbind.\n\nOne ",
       "thread_id": "thread-d0ea81fa09bb",
       "thread_depth": 5,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067044.html"
     },
     {
       "id": "msg-ab4ad5a05a5d",
@@ -2691,7 +2827,8 @@
       "body_snippet": "On Jul 24, 2013, at 10:35 AM, Hadley Wickham wrote:\n\n> Hi all,\n> \n> Take this simple script, which I'm trying to use to understand when\n> modification in-place occurs, and when a new object is created",
       "thread_id": "thread-e2447308f3fa",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067045.html"
     },
     {
       "id": "msg-c24e37b61f48",
@@ -2708,6 +2845,7 @@
       "thread_id": "thread-c24e37b61f48",
       "thread_depth": 0,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067048.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130724/fbfa62bf/attachment.pl"
       ]
@@ -2724,11 +2862,12 @@
       "references": [
         "<46C499E2-7936-481D-8470-E544ED65868A@sim.ul.pt>"
       ],
-      "body_plain": "Thank you for the suggestion. But editing deparsed code is of almost no \nuse to us: you need to edit the sources.  And even then mailers may \ndistort it, so it really is much easier to file these things as \nattachments on bugs.r-project.org, as a wishlist item.\n\nI have incorporated what I think you intended in R-devel, so please test it.\n\nOn 24/07/2013 16:00, Alberto Krone-Martins wrote:\n>\n>   Hi all,\n>\n>   I had the need to create a colorbar considering the alpha channel of the colors, but colorRamp() and colorRampPalette() ignored the alpha argument in rgb(). So I performed some minor modifs. in their codes, as to support the interpolation using the alpha channel.\n>\n>   I guess that those simple modifications might be useful for other people, so perhaps it would be worth to add them to colorRamp and colorRampPalette codes in grDevices? the modified functions follows.\n>\n>   Cheers,\n>\n>   Alberto.\n>\n> colorRampPalette <- function (colors, ...) {\n>      ramp <- colorRamp(colors, ...)\n>      function(n) {\n>          x <- ramp(seq.int(0, 1, length.out = n))\n>          rgb(x[, 1], x[, 2], x[, 3], x[, 4], maxColorValue = 255)\n>      }\n> }\n>\n> colorRamp <- function (colors, bias = 1, space = c(\"rgb\", \"Lab\"), interpolate = c(\"linear\", \"spline\")) {\n>      if (bias <= 0)\n>          stop(\"'bias' must be positive\")\n>      colors <- t(col2rgb(colors, alpha=T)/255)\n>      space <- match.arg(space)\n>      interpolate <- match.arg(interpolate)\n>      if (space == \"Lab\") {\n>          colors <- convertColor(colors, from = \"sRGB\", to = \"Lab\")\n>      }\n>      interpolate <- switch(interpolate, linear = stats::approxfun, spline = stats::splinefun)\n>      if ((nc <- nrow(colors)) == 1L) {\n>          colors <- colors[c(1L, 1L), ]\n>          nc <- 2L\n>      }\n>      x <- seq.int(0, 1, length.out = nc)^bias\n>      palette <- c(interpolate(x, colors[, 1]), interpolate(x, colors[, 2]), interpolate(x, colors[, 3]), interpolate(x, colors[, 4]))\n>      roundcolor <- function(rgb) pmax(pmin(rgb, 1), 0)\n>      if (space == \"Lab\") {\n>          function(x) {\n>              roundcolor(convertColor(cbind(palette[[1L]](x), palette[[2L]](x),\n>                  palette[[3L]](x), palette[[4L]](x)), from = \"Lab\", to = \"sRGB\")) *\n>                  255\n>          }\n>      }\n>      else {\n>          function(x) {\n>              roundcolor(cbind(palette[[1L]](x), palette[[2L]](x),\n>                  palette[[3L]](x), palette[[4L]](x))) * 255\n>          }\n>      }\n> }\n>\n> ____________________________________________________\n>\n>   Universidade de Lisboa - Laborat?rio SIM\n>   Alberto Krone-Martins\n>   http://www.astro.iag.usp.br/~algol\n>\n>\n>\n>\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n-- \nBrian D. Ripley,                  ripley at stats.ox.ac.uk\nProfessor of Applied Statistics,  http://www.stats.ox.ac.uk/~ripley/\nUniversity of Oxford,             Tel:  +44 1865 272861 (self)\n1 South Parks Road,                     +44 1865 272866 (PA)\nOxford OX1 3TG, UK                Fax:  +44 1865 272595",
+      "body_plain": "Thank you for the suggestion. But editing deparsed code is of almost no \nuse to us: you need to edit the sources.  And even then mailers may \ndistort it, so it really is much easier to file these things as \nattachments on bugs.r-project.org, as a wishlist item.\n\nI have incorporated what I think you intended in R-devel, so please test it.\n\nOn 24/07/2013 16:00, Alberto Krone-Martins wrote:\n>\n>   Hi all,\n>\n>   I had the need to create a colorbar considering the alpha channel of the colors, but colorRamp() and colorRampPalette() ignored the alpha argument in rgb(). So I performed some minor modifs. in their codes, as to support the interpolation using the alpha channel.\n>\n>   I guess that those simple modifications might be useful for other people, so perhaps it would be worth to add them to colorRamp and colorRampPalette codes in grDevices… the modified functions follows.\n>\n>   Cheers,\n>\n>   Alberto.\n>\n> colorRampPalette <- function (colors, ...) {\n>      ramp <- colorRamp(colors, ...)\n>      function(n) {\n>          x <- ramp(seq.int(0, 1, length.out = n))\n>          rgb(x[, 1], x[, 2], x[, 3], x[, 4], maxColorValue = 255)\n>      }\n> }\n>\n> colorRamp <- function (colors, bias = 1, space = c(\"rgb\", \"Lab\"), interpolate = c(\"linear\", \"spline\")) {\n>      if (bias <= 0)\n>          stop(\"'bias' must be positive\")\n>      colors <- t(col2rgb(colors, alpha=T)/255)\n>      space <- match.arg(space)\n>      interpolate <- match.arg(interpolate)\n>      if (space == \"Lab\") {\n>          colors <- convertColor(colors, from = \"sRGB\", to = \"Lab\")\n>      }\n>      interpolate <- switch(interpolate, linear = stats::approxfun, spline = stats::splinefun)\n>      if ((nc <- nrow(colors)) == 1L) {\n>          colors <- colors[c(1L, 1L), ]\n>          nc <- 2L\n>      }\n>      x <- seq.int(0, 1, length.out = nc)^bias\n>      palette <- c(interpolate(x, colors[, 1]), interpolate(x, colors[, 2]), interpolate(x, colors[, 3]), interpolate(x, colors[, 4]))\n>      roundcolor <- function(rgb) pmax(pmin(rgb, 1), 0)\n>      if (space == \"Lab\") {\n>          function(x) {\n>              roundcolor(convertColor(cbind(palette[[1L]](x), palette[[2L]](x),\n>                  palette[[3L]](x), palette[[4L]](x)), from = \"Lab\", to = \"sRGB\")) *\n>                  255\n>          }\n>      }\n>      else {\n>          function(x) {\n>              roundcolor(cbind(palette[[1L]](x), palette[[2L]](x),\n>                  palette[[3L]](x), palette[[4L]](x))) * 255\n>          }\n>      }\n> }\n>\n> ____________________________________________________\n>\n>   Universidade de Lisboa - Laboratório SIM\n>   Alberto Krone-Martins\n>   http://www.astro.iag.usp.br/~algol\n>\n>\n>\n>\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\n-- \nBrian D. Ripley,                  ripley at stats.ox.ac.uk\nProfessor of Applied Statistics,  http://www.stats.ox.ac.uk/~ripley/\nUniversity of Oxford,             Tel:  +44 1865 272861 (self)\n1 South Parks Road,                     +44 1865 272866 (PA)\nOxford OX1 3TG, UK                Fax:  +44 1865 272595",
       "body_snippet": "Thank you for the suggestion. But editing deparsed code is of almost no \nuse to us: you need to edit the sources.  And even then mailers may \ndistort it, so it really is much easier to file these thin",
       "thread_id": "thread-6d6c1fe3edf9",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067047.html"
     },
     {
       "id": "msg-d79d09147bec",
@@ -2751,7 +2890,8 @@
       "body_snippet": ">>  I meant what is the design principle behind check.names being hardcoded to \n> FALSE.\n>>  I see no conflict with the purpose of cbind from the ability to specify \n> check.names\n>>  at the level of ",
       "thread_id": "thread-d0ea81fa09bb",
       "thread_depth": 6,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067049.html"
     },
     {
       "id": "msg-82d43040aedb",
@@ -2769,7 +2909,8 @@
       "body_snippet": "On Jul 24, 2013, at 3:35 PM, Jonathan Callahan wrote:\n\n> I am developing a package for analysis of seismic data that relies on a\n> Fortran library.\n> \n> Package compilation works fine on Ubuntu and Re",
       "thread_id": "thread-c24e37b61f48",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067050.html"
     },
     {
       "id": "msg-cb22154fa9bb",
@@ -2788,7 +2929,8 @@
       "body_snippet": ">> If I run it from the command line, I get:\n>>\n>> Global\n>> @1050bb840 13 INTSXP g0c2 [MARK,NAM(1)] (len=3, tl=0) 1,2,3\n>> @1050bb840 13 INTSXP g0c2 [MARK,NAM(1)] (len=3, tl=0) 1,1,3\n>> In function\n>",
       "thread_id": "thread-e2447308f3fa",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067051.html"
     },
     {
       "id": "msg-c5c238aec7f9",
@@ -2805,6 +2947,7 @@
       "thread_id": "thread-c5c238aec7f9",
       "thread_depth": 0,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067052.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130725/04abdcbe/attachment.pl"
       ]
@@ -2823,7 +2966,8 @@
       "body_snippet": "I am curious to know what algorithm R's mean function uses. Is there \nsome reference to the numerical properties of this algorithm?\n\nI found the following C code in summary.c:do_summary():\ncase REALSX",
       "thread_id": "thread-2e94aa89d318",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067053.html"
     },
     {
       "id": "msg-acbe526d753f",
@@ -2841,7 +2985,8 @@
       "body_snippet": "On 25/07/2013 20:35, Ben Warren wrote:\n> All-\n>\n>       I have been hacking on an R 2.15 build on an Ubuntu 10.4 box, and I do\n> not know how to debug R's error message regarding cairo \"working\".\n>   ",
       "thread_id": "thread-c5c238aec7f9",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067054.html"
     },
     {
       "id": "msg-dd591c896891",
@@ -2859,7 +3004,8 @@
       "body_snippet": "This was also asked on StackOverflow:\nhttp://stackoverflow.com/q/17866149/271616.  Here is the answer I\nposted:\n\nThis appears to be the updating method of West, 1979 [1] and it was\nimplemented in R-2.",
       "thread_id": "thread-2e94aa89d318",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067055.html"
     },
     {
       "id": "msg-68cf82aba497",
@@ -2878,7 +3024,8 @@
       "body_snippet": "| On 25/07/2013 20:35, Ben Warren wrote:\n| >       I have been hacking on an R 2.15 build on an Ubuntu 10.4 box, and I do\n| > not know how to debug R's error message regarding cairo \"working\".\n\nWell -",
       "thread_id": "thread-c5c238aec7f9",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067056.html"
     },
     {
       "id": "msg-2d786e0582ec",
@@ -2897,7 +3044,8 @@
       "body_snippet": "This uses the idea of Kahan's summation, if I am not mistaken.\n\nhttp://en.wikipedia.org/wiki/Kahan_summation_algorithm \n\nRavi\n________________________________________\nFrom: r-devel-bounces at r-projec",
       "thread_id": "thread-2e94aa89d318",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067060.html"
     },
     {
       "id": "msg-879263e560f7",
@@ -2909,11 +3057,12 @@
       "subject_clean": "How to best implement package options?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Dear developeRs,\n\nI have a package, pls, that implements package options.  The users are\nsupposed to use a function pls.options() to manipulate them.\n\nIf a user changes the options, they are stored in .GlobalEnv.  I was\nrecently informed that this is against current CRAN submission policies,\nso I need to change that.\n\n\nI have looked at several different packages that implement package\noptions, and found that:\n\n\n1) Many packages simply use the global R options, setting default\n  options with base::options() inside either .onLoad() or .onAttach().\n  Users then are supposed to use base::options() etc. for manipulating\n  the options.\n\n  This has the advantages that users can use the standard options\n  interface, and the package authors don't need to \"reinvent the wheel\".\n\n  One disadvantage is the possibility for name collisions between\n  package options.  Some packages try to minimise that risk by prefixing\n  all options with the package name.\n\n\n2) Some packages implement their own version of options() (like\n  pls.options()), and store a list of options in the package name space.\n\n  This avoids any name collisions, but users have to relate to several\n  options interfaces (the ones I've seen work mostly the same as the\n  standard options(), though).\n\n  AFAIK, this solution neccessitates calling unlockBinding() on the\n  option list, or using assignInMyNamespace() to update it.\n\n\n3) Finally, I've found one package ('pkgmaker') that implements a\n  general mechanism that can be used by other packages to create package\n  options.  The mechanism creates options()-like functions in the\n  package's name space, and the optins are either stored as a single\n  option in base:::.Options, or in the created function's enclosure.\n\n  Again, users need to relate to separate options interfaces, but the\n  package authors don't have to \"reinvent the wheel\".\n\n\nWhat is considered \"best practice\" for implementing package options?\nAny of the above, or something different?\n\n\n-- \nRegaRds,\nBj?rn-Helge Mevik",
+      "body_plain": "Dear developeRs,\n\nI have a package, pls, that implements package options.  The users are\nsupposed to use a function pls.options() to manipulate them.\n\nIf a user changes the options, they are stored in .GlobalEnv.  I was\nrecently informed that this is against current CRAN submission policies,\nso I need to change that.\n\n\nI have looked at several different packages that implement package\noptions, and found that:\n\n\n1) Many packages simply use the global R options, setting default\n  options with base::options() inside either .onLoad() or .onAttach().\n  Users then are supposed to use base::options() etc. for manipulating\n  the options.\n\n  This has the advantages that users can use the standard options\n  interface, and the package authors don't need to \"reinvent the wheel\".\n\n  One disadvantage is the possibility for name collisions between\n  package options.  Some packages try to minimise that risk by prefixing\n  all options with the package name.\n\n\n2) Some packages implement their own version of options() (like\n  pls.options()), and store a list of options in the package name space.\n\n  This avoids any name collisions, but users have to relate to several\n  options interfaces (the ones I've seen work mostly the same as the\n  standard options(), though).\n\n  AFAIK, this solution neccessitates calling unlockBinding() on the\n  option list, or using assignInMyNamespace() to update it.\n\n\n3) Finally, I've found one package ('pkgmaker') that implements a\n  general mechanism that can be used by other packages to create package\n  options.  The mechanism creates options()-like functions in the\n  package's name space, and the optins are either stored as a single\n  option in base:::.Options, or in the created function's enclosure.\n\n  Again, users need to relate to separate options interfaces, but the\n  package authors don't have to \"reinvent the wheel\".\n\n\nWhat is considered \"best practice\" for implementing package options?\nAny of the above, or something different?\n\n\n-- \nRegaRds,\nBjørn-Helge Mevik",
       "body_snippet": "Dear developeRs,\n\nI have a package, pls, that implements package options.  The users are\nsupposed to use a function pls.options() to manipulate them.\n\nIf a user changes the options, they are stored in",
       "thread_id": "thread-879263e560f7",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067057.html"
     },
     {
       "id": "msg-75d35e6ba039",
@@ -2934,6 +3083,7 @@
       "thread_id": "thread-2e94aa89d318",
       "thread_depth": 3,
       "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067059.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20130726/d3cdcee2/attachment.pl"
       ]
@@ -2950,11 +3100,12 @@
       "references": [
         "<s3s7ggda0cu.fsf@slagelg.uio.no>"
       ],
-      "body_plain": "On Jul 26, 2013, at 9:59 AM, Bj?rn-Helge Mevik wrote:\n\n> Dear developeRs,\n> \n> I have a package, pls, that implements package options.  The users are\n> supposed to use a function pls.options() to manipulate them.\n> \n> If a user changes the options, they are stored in .GlobalEnv.  I was\n> recently informed that this is against current CRAN submission policies,\n> so I need to change that.\n> \n> \n> I have looked at several different packages that implement package\n> options, and found that:\n> \n> \n> 1) Many packages simply use the global R options, setting default\n>  options with base::options() inside either .onLoad() or .onAttach().\n>  Users then are supposed to use base::options() etc. for manipulating\n>  the options.\n> \n>  This has the advantages that users can use the standard options\n>  interface, and the package authors don't need to \"reinvent the wheel\".\n> \n>  One disadvantage is the possibility for name collisions between\n>  package options.  Some packages try to minimise that risk by prefixing\n>  all options with the package name.\n> \n> \n> 2) Some packages implement their own version of options() (like\n>  pls.options()), and store a list of options in the package name space.\n> \n>  This avoids any name collisions, but users have to relate to several\n>  options interfaces (the ones I've seen work mostly the same as the\n>  standard options(), though).\n> \n>  AFAIK, this solution neccessitates calling unlockBinding() on the\n>  option list, or using assignInMyNamespace() to update it.\n> \n\nThat is certainly not a good way. If you have the urge to use unlockBinding() or assign*Namespace() then think again as your design is likely bad. If you want to store package-local information, simply create an environment in your package - it's this simple:\n\n.myenv <- new.env(TRUE, emptyenv())\n\nThe environment is independent of the namespace (you don't export it) and thus you don't need any ugly hacks. The code in your package can manipulate it directly, while the user cannot easily mess with it.\n\n\n> 3) Finally, I've found one package ('pkgmaker') that implements a\n>  general mechanism that can be used by other packages to create package\n>  options.  The mechanism creates options()-like functions in the\n>  package's name space, and the optins are either stored as a single\n>  option in base:::.Options, or in the created function's enclosure.\n> \n>  Again, users need to relate to separate options interfaces, but the\n>  package authors don't have to \"reinvent the wheel\".\n> \n> \n> What is considered \"best practice\" for implementing package options?\n> Any of the above, or something different?\n> \n\nPersonally, I hate when packages use their own option management system because it leads to vastly inconsistent behavior, so I prefer using the options() as that is transparent and well defined. But that is just my personal opinion.\n\nCheers,\nSimon\n\n\n> \n> -- \n> RegaRds,\n> Bj?rn-Helge Mevik\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
-      "body_snippet": "On Jul 26, 2013, at 9:59 AM, Bj?rn-Helge Mevik wrote:\n\n> Dear developeRs,\n> \n> I have a package, pls, that implements package options.  The users are\n> supposed to use a function pls.options() to mani",
+      "body_plain": "On Jul 26, 2013, at 9:59 AM, Bjørn-Helge Mevik wrote:\n\n> Dear developeRs,\n> \n> I have a package, pls, that implements package options.  The users are\n> supposed to use a function pls.options() to manipulate them.\n> \n> If a user changes the options, they are stored in .GlobalEnv.  I was\n> recently informed that this is against current CRAN submission policies,\n> so I need to change that.\n> \n> \n> I have looked at several different packages that implement package\n> options, and found that:\n> \n> \n> 1) Many packages simply use the global R options, setting default\n>  options with base::options() inside either .onLoad() or .onAttach().\n>  Users then are supposed to use base::options() etc. for manipulating\n>  the options.\n> \n>  This has the advantages that users can use the standard options\n>  interface, and the package authors don't need to \"reinvent the wheel\".\n> \n>  One disadvantage is the possibility for name collisions between\n>  package options.  Some packages try to minimise that risk by prefixing\n>  all options with the package name.\n> \n> \n> 2) Some packages implement their own version of options() (like\n>  pls.options()), and store a list of options in the package name space.\n> \n>  This avoids any name collisions, but users have to relate to several\n>  options interfaces (the ones I've seen work mostly the same as the\n>  standard options(), though).\n> \n>  AFAIK, this solution neccessitates calling unlockBinding() on the\n>  option list, or using assignInMyNamespace() to update it.\n> \n\nThat is certainly not a good way. If you have the urge to use unlockBinding() or assign*Namespace() then think again as your design is likely bad. If you want to store package-local information, simply create an environment in your package - it's this simple:\n\n.myenv <- new.env(TRUE, emptyenv())\n\nThe environment is independent of the namespace (you don't export it) and thus you don't need any ugly hacks. The code in your package can manipulate it directly, while the user cannot easily mess with it.\n\n\n> 3) Finally, I've found one package ('pkgmaker') that implements a\n>  general mechanism that can be used by other packages to create package\n>  options.  The mechanism creates options()-like functions in the\n>  package's name space, and the optins are either stored as a single\n>  option in base:::.Options, or in the created function's enclosure.\n> \n>  Again, users need to relate to separate options interfaces, but the\n>  package authors don't have to \"reinvent the wheel\".\n> \n> \n> What is considered \"best practice\" for implementing package options?\n> Any of the above, or something different?\n> \n\nPersonally, I hate when packages use their own option management system because it leads to vastly inconsistent behavior, so I prefer using the options() as that is transparent and well defined. But that is just my personal opinion.\n\nCheers,\nSimon\n\n\n> \n> -- \n> RegaRds,\n> Bjørn-Helge Mevik\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "On Jul 26, 2013, at 9:59 AM, Bjørn-Helge Mevik wrote:\n\n> Dear developeRs,\n> \n> I have a package, pls, that implements package options.  The users are\n> supposed to use a function pls.options() to mani",
       "thread_id": "thread-879263e560f7",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067058.html"
     },
     {
       "id": "msg-f8ffeae583b1",
@@ -2972,7 +3123,8 @@
       "body_snippet": "There is quite a literature on related methods for variance. If anyone \nis interested, I did some work (and even published the code in the \nmagazine Interface Age in 1981) on some of these. I could pr",
       "thread_id": "thread-f8ffeae583b1",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067061.html"
     },
     {
       "id": "msg-c73421b90f8e",
@@ -2988,7 +3140,8 @@
       "body_snippet": "On Windows, the following crashes \"R for Windows terminal front-end\":\n\nR -e \"\"\n\nwhereas\n\nRterm -e \"\" or R -e \" \" (a space in the expression) doesn't.\n\nI observe this on:\n\n- R Under development (unstab",
       "thread_id": "thread-c73421b90f8e",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067062.html"
     },
     {
       "id": "msg-a44c129c5250",
@@ -3004,7 +3157,8 @@
       "body_snippet": "Trying to launch R with a *non-existing* encoding core dumps/crashes,\ne.g. R --encoding=foo -e 1.\n\nEXAMPLES:\n\n> R --encoding=foo -e 1\nR version 3.0.1 (2013-05-16) -- \"Good Sport\"\nCopyright (C) 2013 Th",
       "thread_id": "thread-a44c129c5250",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067063.html"
     },
     {
       "id": "msg-d690c76a7506",
@@ -3022,7 +3176,8 @@
       "body_snippet": "On 13-07-28 1:31 PM, Henrik Bengtsson wrote:\n> Trying to launch R with a *non-existing* encoding core dumps/crashes,\n> e.g. R --encoding=foo -e 1.\n>\n> EXAMPLES:\n>\n>> R --encoding=foo -e 1\n> R version ",
       "thread_id": "thread-a44c129c5250",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067064.html"
     },
     {
       "id": "msg-a3e2b59a1b18",
@@ -3041,7 +3196,8 @@
       "body_snippet": "On Sun, Jul 28, 2013 at 10:39 AM, Duncan Murdoch\n<murdoch.duncan at gmail.com> wrote:\n> On 13-07-28 1:31 PM, Henrik Bengtsson wrote:\n>>\n>> Trying to launch R with a *non-existing* encoding core dumps/",
       "thread_id": "thread-a44c129c5250",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067065.html"
     },
     {
       "id": "msg-506c513c5c46",
@@ -3059,7 +3215,8 @@
       "body_snippet": "On Sun, Jul 28, 2013 at 10:22 AM, Henrik Bengtsson <hb at biostat.ucsf.edu> wrote:\n> On Windows, the following crashes \"R for Windows terminal front-end\":\n>\n> R -e \"\"\n>\n> whereas\n>\n> Rterm -e \"\" or R ",
       "thread_id": "thread-c73421b90f8e",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067066.html"
     },
     {
       "id": "msg-0b420d64d1c0",
@@ -3078,7 +3235,8 @@
       "body_snippet": "On 13-07-28 1:55 PM, Henrik Bengtsson wrote:\n> On Sun, Jul 28, 2013 at 10:22 AM, Henrik Bengtsson <hb at biostat.ucsf.edu> wrote:\n>> On Windows, the following crashes \"R for Windows terminal front-end",
       "thread_id": "thread-c73421b90f8e",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067067.html"
     },
     {
       "id": "msg-30e9349f551c",
@@ -3094,7 +3252,8 @@
       "body_snippet": "Hello,\n\nUsing R for Windows, I am able to use the shell function :\n\nR version 3.0.1 (2013-05-16) -- \"Good Sport\"\nCopyright (C) 2013 The R Foundation for Statistical Computing\nPlatform: x86_64-w64-ming",
       "thread_id": "thread-30e9349f551c",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067068.html"
     },
     {
       "id": "msg-1efc53ec3ea0",
@@ -3112,7 +3271,8 @@
       "body_snippet": "You should read the documentation.  shell() is specific to Windows, as \non all other platforms system() runs a shell.  (This is an OS-level \ndifference: Windows is not POSIX compliant.)\n\nSee also the ",
       "thread_id": "thread-30e9349f551c",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067069.html"
     },
     {
       "id": "msg-e99fe8778b35",
@@ -3131,7 +3291,8 @@
       "body_snippet": "I did. Nowhere does it explicitly say it is only for Windows, and one of the arguments also mentions BASH in it, so that made me assume it works for Linux.\n\n\n________________________________________\nF",
       "thread_id": "thread-30e9349f551c",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067070.html"
     },
     {
       "id": "msg-756a490cd49a",
@@ -3143,11 +3304,12 @@
       "subject_clean": "duplicated.data.frame() is broken on data frames containing \\r",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Hi,\n\nThe trick used by duplicated.data.frame() is to transform the supplied\ndata.frame into a character vector by pasting together the columns using\n\"\\r\" as separator. But no precautions are taken to deal with \"\\r\" in\nthe supplied data.frame. As a consequence it's easy to imagine\nsituations where duplicated.data.frame() returns an incorrect answer:\n\n   > df <- data.frame(a=c(\"AA\", \"AA\\r\"), b=c(\"\\rBBB\", \"BBB\"))\n   > df\n        a     b\n   1   AA \\rBBB\n   2 AA\\r   BBB\n   > duplicated(df)\n   [1] FALSE  TRUE\n\nCheers,\nH.\n\n > sessionInfo()\nR version 3.0.1 (2013-05-16)\nPlatform: x86_64-unknown-linux-gnu (64-bit)\n\nlocale:\n  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n  [7] LC_PAPER=C                 LC_NAME=C\n  [9] LC_ADDRESS=C               LC_TELEPHONE=C\n[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n\nattached base packages:\n[1] stats     graphics  grDevices utils     datasets  methods   base\n\n\n-- \nHerv? Pag?s\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
+      "body_plain": "Hi,\n\nThe trick used by duplicated.data.frame() is to transform the supplied\ndata.frame into a character vector by pasting together the columns using\n\"\\r\" as separator. But no precautions are taken to deal with \"\\r\" in\nthe supplied data.frame. As a consequence it's easy to imagine\nsituations where duplicated.data.frame() returns an incorrect answer:\n\n   > df <- data.frame(a=c(\"AA\", \"AA\\r\"), b=c(\"\\rBBB\", \"BBB\"))\n   > df\n        a     b\n   1   AA \\rBBB\n   2 AA\\r   BBB\n   > duplicated(df)\n   [1] FALSE  TRUE\n\nCheers,\nH.\n\n > sessionInfo()\nR version 3.0.1 (2013-05-16)\nPlatform: x86_64-unknown-linux-gnu (64-bit)\n\nlocale:\n  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n  [7] LC_PAPER=C                 LC_NAME=C\n  [9] LC_ADDRESS=C               LC_TELEPHONE=C\n[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n\nattached base packages:\n[1] stats     graphics  grDevices utils     datasets  methods   base\n\n\n-- \nHervé Pagès\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
       "body_snippet": "Hi,\n\nThe trick used by duplicated.data.frame() is to transform the supplied\ndata.frame into a character vector by pasting together the columns using\n\"\\r\" as separator. But no precautions are taken to ",
       "thread_id": "thread-756a490cd49a",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067071.html"
     },
     {
       "id": "msg-13ca8f4c10db",
@@ -3161,11 +3323,12 @@
       "references": [
         "<51F6B9F4.3090503@fhcrc.org>"
       ],
-      "body_plain": "OK it's actually documented:\n\n      The data frame method works by pasting together a character\n      representation of the rows separated by ?\\r?, so may be imperfect\n      if the data frame has characters with embedded carriage returns or\n      columns which do not reliably map to characters.\n\nBut what about fixing it? One possible fix is to use \"\\r\\r\" as\nseparator and to substitute user-supplied \"\\r\" with, say, \"#\\r#\".\nJust an example.\n\nThanks,\nH.\n\n\nOn 07/29/2013 11:52 AM, Herv? Pag?s wrote:\n> Hi,\n>\n> The trick used by duplicated.data.frame() is to transform the supplied\n> data.frame into a character vector by pasting together the columns using\n> \"\\r\" as separator. But no precautions are taken to deal with \"\\r\" in\n> the supplied data.frame. As a consequence it's easy to imagine\n> situations where duplicated.data.frame() returns an incorrect answer:\n>\n>    > df <- data.frame(a=c(\"AA\", \"AA\\r\"), b=c(\"\\rBBB\", \"BBB\"))\n>    > df\n>         a     b\n>    1   AA \\rBBB\n>    2 AA\\r   BBB\n>    > duplicated(df)\n>    [1] FALSE  TRUE\n>\n> Cheers,\n> H.\n>\n>  > sessionInfo()\n> R version 3.0.1 (2013-05-16)\n> Platform: x86_64-unknown-linux-gnu (64-bit)\n>\n> locale:\n>   [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n>   [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n>   [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n>   [7] LC_PAPER=C                 LC_NAME=C\n>   [9] LC_ADDRESS=C               LC_TELEPHONE=C\n> [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n>\n> attached base packages:\n> [1] stats     graphics  grDevices utils     datasets  methods   base\n>\n>\n\n-- \nHerv? Pag?s\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
-      "body_snippet": "OK it's actually documented:\n\n      The data frame method works by pasting together a character\n      representation of the rows separated by ?\\r?, so may be imperfect\n      if the data frame has char",
+      "body_plain": "OK it's actually documented:\n\n      The data frame method works by pasting together a character\n      representation of the rows separated by ‘\\r’, so may be imperfect\n      if the data frame has characters with embedded carriage returns or\n      columns which do not reliably map to characters.\n\nBut what about fixing it? One possible fix is to use \"\\r\\r\" as\nseparator and to substitute user-supplied \"\\r\" with, say, \"#\\r#\".\nJust an example.\n\nThanks,\nH.\n\n\nOn 07/29/2013 11:52 AM, Hervé Pagès wrote:\n> Hi,\n>\n> The trick used by duplicated.data.frame() is to transform the supplied\n> data.frame into a character vector by pasting together the columns using\n> \"\\r\" as separator. But no precautions are taken to deal with \"\\r\" in\n> the supplied data.frame. As a consequence it's easy to imagine\n> situations where duplicated.data.frame() returns an incorrect answer:\n>\n>    > df <- data.frame(a=c(\"AA\", \"AA\\r\"), b=c(\"\\rBBB\", \"BBB\"))\n>    > df\n>         a     b\n>    1   AA \\rBBB\n>    2 AA\\r   BBB\n>    > duplicated(df)\n>    [1] FALSE  TRUE\n>\n> Cheers,\n> H.\n>\n>  > sessionInfo()\n> R version 3.0.1 (2013-05-16)\n> Platform: x86_64-unknown-linux-gnu (64-bit)\n>\n> locale:\n>   [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n>   [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n>   [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n>   [7] LC_PAPER=C                 LC_NAME=C\n>   [9] LC_ADDRESS=C               LC_TELEPHONE=C\n> [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n>\n> attached base packages:\n> [1] stats     graphics  grDevices utils     datasets  methods   base\n>\n>\n\n-- \nHervé Pagès\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
+      "body_snippet": "OK it's actually documented:\n\n      The data frame method works by pasting together a character\n      representation of the rows separated by ‘\\r’, so may be imperfect\n      if the data frame has char",
       "thread_id": "thread-756a490cd49a",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067072.html"
     },
     {
       "id": "msg-76787824b1df",
@@ -3181,7 +3344,8 @@
       "body_snippet": "Dear all,\n\nI'm puzzled by the error I get from R CMD check one of my packages. I'm running R CMD check with the --as-cran flag and it get the error both from running it from the command line as from w",
       "thread_id": "thread-76787824b1df",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067073.html"
     },
     {
       "id": "msg-000e18cc97c7",
@@ -3199,7 +3363,8 @@
       "body_snippet": "On 13-07-30 6:34 AM, ONKELINX, Thierry wrote:\n> Dear all,\n>\n> I'm puzzled by the error I get from R CMD check one of my packages. I'm running R CMD check with the --as-cran flag and it get the error b",
       "thread_id": "thread-76787824b1df",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067074.html"
     },
     {
       "id": "msg-ed0a637b46b7",
@@ -3215,7 +3380,8 @@
       "body_snippet": "Hi,\n\nseveral image file format supports textual/meta data comments in one\nway or the other.  For me an obvious usage would be to add\nsessionInfo() information to PNG and PDF image files, ideally from\n",
       "thread_id": "thread-ed0a637b46b7",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067075.html"
     },
     {
       "id": "msg-c9dc4aff9586",
@@ -3233,7 +3399,8 @@
       "body_snippet": "Hi Henrik\n\n I have some extensions of Simon U's png package\nto read and write metadata elements for PNG.\nThey are at\n   https://github.com/duncantl/png.git\n\nWhen I have time to completely test them, m",
       "thread_id": "thread-ed0a637b46b7",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067076.html"
     },
     {
       "id": "msg-813e58e1c4d6",
@@ -3252,7 +3419,8 @@
       "body_snippet": "Hi Duncan,\n\nthis is perfect timing.  Your\nhttps://github.com/duncantl/png/blob/master/testMeta.R example\nillustrates what I'm looking for.\n\nYes, it would be great if this would be incorporated into th",
       "thread_id": "thread-ed0a637b46b7",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067077.html"
     },
     {
       "id": "msg-185c161371c4",
@@ -3271,7 +3439,8 @@
       "body_snippet": "On Jul 30, 2013, at 11:04 PM, Duncan Temple Lang wrote:\n\n> \n> Hi Henrik\n> \n> I have some extensions of Simon U's png package\n> to read and write metadata elements for PNG.\n> They are at\n>   https://gi",
       "thread_id": "thread-ed0a637b46b7",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067078.html"
     },
     {
       "id": "msg-df42e35a5c82",
@@ -3291,7 +3460,8 @@
       "body_snippet": "On Jul 31, 2013, at 12:12 AM, Henrik Bengtsson wrote:\n\n> Hi Duncan,\n> \n> this is perfect timing.  Your\n> https://github.com/duncantl/png/blob/master/testMeta.R example\n> illustrates what I'm looking f",
       "thread_id": "thread-ed0a637b46b7",
       "thread_depth": 3,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067079.html"
     },
     {
       "id": "msg-61cc490fe02b",
@@ -3307,7 +3477,8 @@
       "body_snippet": "Hi all,\n\nI've noticed a couple of small bugs/documentation errors related to S3\ninternal and group generics:\n\n* In ?S3groupGeneric, log2 and log10 are not listed as group generics,\neven though they ar",
       "thread_id": "thread-61cc490fe02b",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-July/067080.html"
     },
     {
       "id": "msg-c8618f64a742",
@@ -3323,7 +3494,8 @@
       "body_snippet": "I am being asked to modernize the Depends line in the DESCRIPTION file \nof some packages. Writing R Extensions says:\n\n   The general rules are\n\n      Packages whose namespace only is needed to load th",
       "thread_id": "thread-c8618f64a742",
       "thread_depth": 0,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-August/067081.html"
     },
     {
       "id": "msg-c486d11246e1",
@@ -3341,7 +3513,8 @@
       "body_snippet": "On Jul 31, 2013, at 7:14 PM, Paul Gilbert wrote:\n\n> I am being asked to modernize the Depends line in the DESCRIPTION file of some packages. Writing R Extensions says:\n> \n>  The general rules are\n> \n>",
       "thread_id": "thread-c8618f64a742",
       "thread_depth": 1,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-August/067082.html"
     },
     {
       "id": "msg-b9fdf937788e",
@@ -3360,7 +3533,8 @@
       "body_snippet": "On Wed, Jul 31, 2013 at 7:35 PM, Simon Urbanek\n<simon.urbanek at r-project.org> wrote:\n>\n> On Jul 31, 2013, at 7:14 PM, Paul Gilbert wrote:\n>\n>> I am being asked to modernize the Depends line in the D",
       "thread_id": "thread-c8618f64a742",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-August/067083.html"
     },
     {
       "id": "msg-8ae705cd8c4b",
@@ -3379,7 +3553,8 @@
       "body_snippet": "Simon\n\nThanks, that helps a lot, but see below ..\n\nOn 13-07-31 08:35 PM, Simon Urbanek wrote:\n>\n> On Jul 31, 2013, at 7:14 PM, Paul Gilbert wrote:\n>\n>> I am being asked to modernize the Depends line i",
       "thread_id": "thread-c8618f64a742",
       "thread_depth": 2,
-      "month": "2013-07"
+      "month": "2013-07",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2013-August/067084.html"
     }
   ],
   "threads": [

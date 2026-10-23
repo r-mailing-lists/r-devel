@@ -21,7 +21,8 @@
       "body_snippet": "I have a package on CRAN and now have a modest update that's passing build checks on R-forge. \n\nIs there a mechanism on R-forge for updating an existing CRAN package, analogous to the 'submit to cran'",
       "thread_id": "thread-d70206aab918",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064930.html"
     },
     {
       "id": "msg-dc4d0b841c20",
@@ -42,7 +43,8 @@
       "body_snippet": "On 12-10-01 7:38 AM, S Ellison wrote:\n> I have a package on CRAN and now have a modest update that's passing build checks on R-forge.\n>\n> Is there a mechanism on R-forge for updating an existing CRAN ",
       "thread_id": "thread-d70206aab918",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064931.html"
     },
     {
       "id": "msg-dcfbb991923c",
@@ -63,7 +65,8 @@
       "body_snippet": "On 1 October 2012 at 12:38, S Ellison wrote:\n| I have a package on CRAN and now have a modest update that's passing build checks on R-forge. \n| \n| Is there a mechanism on R-forge for updating an exist",
       "thread_id": "thread-d70206aab918",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064932.html"
     },
     {
       "id": "msg-cbdb0d55bcd0",
@@ -85,7 +88,8 @@
       "body_snippet": "On 10/1/2012 4:47 AM, Duncan Murdoch wrote:\n> On 12-10-01 7:38 AM, S Ellison wrote:\n>> I have a package on CRAN and now have a modest update that's passing \n>> build checks on R-forge.\n>>\n>> Is there ",
       "thread_id": "thread-d70206aab918",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064933.html"
     },
     {
       "id": "msg-c5448f20bd22",
@@ -108,7 +112,8 @@
       "body_snippet": "Yes, the button is still there if you are logged in and unhide it. (You \nprobably also need the appropriate developer permission.) Beware that \nR-forge needs to indicate the package build status is cu",
       "thread_id": "thread-d70206aab918",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064934.html"
     },
     {
       "id": "msg-77b4d9c78c3c",
@@ -132,7 +137,8 @@
       "body_snippet": "On 10/1/2012 9:30 AM, Paul Gilbert wrote:\n> Yes, the button is still there if you are logged in and unhide it. \n> (You probably also need the appropriate developer permission.) Beware \n> that R-forge ",
       "thread_id": "thread-d70206aab918",
       "thread_depth": 4,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064935.html"
     },
     {
       "id": "msg-eba58971cc51",
@@ -144,11 +150,12 @@
       "subject_clean": "False positive note about ambiguous dispatch",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Hi,\n\nIn the situation below the note issued by the dispatch algo doesn't\nseem right:\n\n   setClass(\"A\", representation(stuff=\"complex\"))\n   setAs(\"ANY\", \"A\", function(from) new(\"A\", stuff=as.complex(from)))\n\n   > as(6, \"A\")\n   An object of class \"A\"\n   Slot \"stuff\":\n   [1] 6+0i\n\n   > as(6L, \"A\")\n   Note: Method with signature ?numeric#A? chosen for function ?coerce?,\n  target signature ?integer#A?.\n    \"ANY#A\" would also be valid\n   An object of class \"A\"\n   Slot \"stuff\":\n   [1] 6+0i\n\nFirst thing is that the note is in contradiction with the output of\nselectMethod (seems like it's the method with signature \"ANY#A\" that\nwas chosen, not the method with signature \"numeric#A\"):\n\n   > selectMethod(\"coerce\", c(\"integer\", \"A\"))\n   Method Definition:\n\n   function (from, to = \"A\", strict = TRUE)\n   new(\"A\", stuff = as.complex(from))\n\n   Signatures:\n           from      to\n   target  \"integer\" \"A\"\n   defined \"ANY\"     \"A\"\n\nSecond, and more importantly, there is no need for a note in the first\nplace because there is no ambiguity at all (the method for \"numeric#A\"\nitself is inherited from \"ANY#A\"):\n\n   > selectMethod(\"coerce\", c(\"numeric\", \"A\"))\n   Method Definition:\n\n   function (from, to = \"A\", strict = TRUE)\n   new(\"A\", stuff = as.complex(from))\n\n   Signatures:\n           from      to\n   target  \"numeric\" \"A\"\n   defined \"ANY\"     \"A\"\n\nshowMethod gives me an overview of the situation (which is much\nsimpler/cleaner than what the note is suggesting):\n\n   > showMethods(\"coerce\")\n   Function: coerce (package methods)\n   from=\"ANY\", to=\"A\"\n   ...\n   from=\"integer\", to=\"A\"\n       (inherited from: from=\"ANY\", to=\"A\")\n   ...\n   from=\"numeric\", to=\"A\"\n       (inherited from: from=\"ANY\", to=\"A\")\n\nFinally, if I switch the order (i.e. if I do 'as(6L, \"A\")' before\n'as(6, \"A\")'), I don't get the note.\n\nI get this with R 2.15.1 and a recent R devel (2012-09-22 r60777).\nIt looks like a regression because I was not able to reproduce with\nR <= 2.14.\n\nThanks,\nH.\n\n\n-- \nHerv? Pag?s\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
+      "body_plain": "Hi,\n\nIn the situation below the note issued by the dispatch algo doesn't\nseem right:\n\n   setClass(\"A\", representation(stuff=\"complex\"))\n   setAs(\"ANY\", \"A\", function(from) new(\"A\", stuff=as.complex(from)))\n\n   > as(6, \"A\")\n   An object of class \"A\"\n   Slot \"stuff\":\n   [1] 6+0i\n\n   > as(6L, \"A\")\n   Note: Method with signature ‘numeric#A’ chosen for function ‘coerce’,\n  target signature ‘integer#A’.\n    \"ANY#A\" would also be valid\n   An object of class \"A\"\n   Slot \"stuff\":\n   [1] 6+0i\n\nFirst thing is that the note is in contradiction with the output of\nselectMethod (seems like it's the method with signature \"ANY#A\" that\nwas chosen, not the method with signature \"numeric#A\"):\n\n   > selectMethod(\"coerce\", c(\"integer\", \"A\"))\n   Method Definition:\n\n   function (from, to = \"A\", strict = TRUE)\n   new(\"A\", stuff = as.complex(from))\n\n   Signatures:\n           from      to\n   target  \"integer\" \"A\"\n   defined \"ANY\"     \"A\"\n\nSecond, and more importantly, there is no need for a note in the first\nplace because there is no ambiguity at all (the method for \"numeric#A\"\nitself is inherited from \"ANY#A\"):\n\n   > selectMethod(\"coerce\", c(\"numeric\", \"A\"))\n   Method Definition:\n\n   function (from, to = \"A\", strict = TRUE)\n   new(\"A\", stuff = as.complex(from))\n\n   Signatures:\n           from      to\n   target  \"numeric\" \"A\"\n   defined \"ANY\"     \"A\"\n\nshowMethod gives me an overview of the situation (which is much\nsimpler/cleaner than what the note is suggesting):\n\n   > showMethods(\"coerce\")\n   Function: coerce (package methods)\n   from=\"ANY\", to=\"A\"\n   ...\n   from=\"integer\", to=\"A\"\n       (inherited from: from=\"ANY\", to=\"A\")\n   ...\n   from=\"numeric\", to=\"A\"\n       (inherited from: from=\"ANY\", to=\"A\")\n\nFinally, if I switch the order (i.e. if I do 'as(6L, \"A\")' before\n'as(6, \"A\")'), I don't get the note.\n\nI get this with R 2.15.1 and a recent R devel (2012-09-22 r60777).\nIt looks like a regression because I was not able to reproduce with\nR <= 2.14.\n\nThanks,\nH.\n\n\n-- \nHervé Pagès\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
       "body_snippet": "Hi,\n\nIn the situation below the note issued by the dispatch algo doesn't\nseem right:\n\n   setClass(\"A\", representation(stuff=\"complex\"))\n   setAs(\"ANY\", \"A\", function(from) new(\"A\", stuff=as.complex(fr",
       "thread_id": "thread-eba58971cc51",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064936.html"
     },
     {
       "id": "msg-1e87d7a92e6a",
@@ -162,11 +169,12 @@
       "references": [
         "<506A1719.2010904@fhcrc.org>"
       ],
-      "body_plain": "The as() function does some non-standard stuff, and it appears in this \nexample to set up methods for coerce() in a way that fools the \ndisambiguation code (which is newer than the as() code, I think).\n\nPending a rewrite of as() (not imminent) the Note has been deactivated \nfor the coerce() generic. (rev 60859)\n\nThanks for the catch.\n   John\n\n\nOn 10/1/12 3:20 PM, Herv? Pag?s wrote:\n> Hi,\n>\n> In the situation below the note issued by the dispatch algo doesn't\n> seem right:\n>\n>    setClass(\"A\", representation(stuff=\"complex\"))\n>    setAs(\"ANY\", \"A\", function(from) new(\"A\", stuff=as.complex(from)))\n>\n>    > as(6, \"A\")\n>    An object of class \"A\"\n>    Slot \"stuff\":\n>    [1] 6+0i\n>\n>    > as(6L, \"A\")\n>    Note: Method with signature ?numeric#A? chosen for function ?coerce?,\n>   target signature ?integer#A?.\n>     \"ANY#A\" would also be valid\n>    An object of class \"A\"\n>    Slot \"stuff\":\n>    [1] 6+0i\n>\n> First thing is that the note is in contradiction with the output of\n> selectMethod (seems like it's the method with signature \"ANY#A\" that\n> was chosen, not the method with signature \"numeric#A\"):\n>\n>    > selectMethod(\"coerce\", c(\"integer\", \"A\"))\n>    Method Definition:\n>\n>    function (from, to = \"A\", strict = TRUE)\n>    new(\"A\", stuff = as.complex(from))\n>\n>    Signatures:\n>            from      to\n>    target  \"integer\" \"A\"\n>    defined \"ANY\"     \"A\"\n>\n> Second, and more importantly, there is no need for a note in the first\n> place because there is no ambiguity at all (the method for \"numeric#A\"\n> itself is inherited from \"ANY#A\"):\n>\n>    > selectMethod(\"coerce\", c(\"numeric\", \"A\"))\n>    Method Definition:\n>\n>    function (from, to = \"A\", strict = TRUE)\n>    new(\"A\", stuff = as.complex(from))\n>\n>    Signatures:\n>            from      to\n>    target  \"numeric\" \"A\"\n>    defined \"ANY\"     \"A\"\n>\n> showMethod gives me an overview of the situation (which is much\n> simpler/cleaner than what the note is suggesting):\n>\n>    > showMethods(\"coerce\")\n>    Function: coerce (package methods)\n>    from=\"ANY\", to=\"A\"\n>    ...\n>    from=\"integer\", to=\"A\"\n>        (inherited from: from=\"ANY\", to=\"A\")\n>    ...\n>    from=\"numeric\", to=\"A\"\n>        (inherited from: from=\"ANY\", to=\"A\")\n>\n> Finally, if I switch the order (i.e. if I do 'as(6L, \"A\")' before\n> 'as(6, \"A\")'), I don't get the note.\n>\n> I get this with R 2.15.1 and a recent R devel (2012-09-22 r60777).\n> It looks like a regression because I was not able to reproduce with\n> R <= 2.14.\n>\n> Thanks,\n> H.\n>\n>",
+      "body_plain": "The as() function does some non-standard stuff, and it appears in this \nexample to set up methods for coerce() in a way that fools the \ndisambiguation code (which is newer than the as() code, I think).\n\nPending a rewrite of as() (not imminent) the Note has been deactivated \nfor the coerce() generic. (rev 60859)\n\nThanks for the catch.\n   John\n\n\nOn 10/1/12 3:20 PM, Hervé Pagès wrote:\n> Hi,\n>\n> In the situation below the note issued by the dispatch algo doesn't\n> seem right:\n>\n>    setClass(\"A\", representation(stuff=\"complex\"))\n>    setAs(\"ANY\", \"A\", function(from) new(\"A\", stuff=as.complex(from)))\n>\n>    > as(6, \"A\")\n>    An object of class \"A\"\n>    Slot \"stuff\":\n>    [1] 6+0i\n>\n>    > as(6L, \"A\")\n>    Note: Method with signature ‘numeric#A’ chosen for function ‘coerce’,\n>   target signature ‘integer#A’.\n>     \"ANY#A\" would also be valid\n>    An object of class \"A\"\n>    Slot \"stuff\":\n>    [1] 6+0i\n>\n> First thing is that the note is in contradiction with the output of\n> selectMethod (seems like it's the method with signature \"ANY#A\" that\n> was chosen, not the method with signature \"numeric#A\"):\n>\n>    > selectMethod(\"coerce\", c(\"integer\", \"A\"))\n>    Method Definition:\n>\n>    function (from, to = \"A\", strict = TRUE)\n>    new(\"A\", stuff = as.complex(from))\n>\n>    Signatures:\n>            from      to\n>    target  \"integer\" \"A\"\n>    defined \"ANY\"     \"A\"\n>\n> Second, and more importantly, there is no need for a note in the first\n> place because there is no ambiguity at all (the method for \"numeric#A\"\n> itself is inherited from \"ANY#A\"):\n>\n>    > selectMethod(\"coerce\", c(\"numeric\", \"A\"))\n>    Method Definition:\n>\n>    function (from, to = \"A\", strict = TRUE)\n>    new(\"A\", stuff = as.complex(from))\n>\n>    Signatures:\n>            from      to\n>    target  \"numeric\" \"A\"\n>    defined \"ANY\"     \"A\"\n>\n> showMethod gives me an overview of the situation (which is much\n> simpler/cleaner than what the note is suggesting):\n>\n>    > showMethods(\"coerce\")\n>    Function: coerce (package methods)\n>    from=\"ANY\", to=\"A\"\n>    ...\n>    from=\"integer\", to=\"A\"\n>        (inherited from: from=\"ANY\", to=\"A\")\n>    ...\n>    from=\"numeric\", to=\"A\"\n>        (inherited from: from=\"ANY\", to=\"A\")\n>\n> Finally, if I switch the order (i.e. if I do 'as(6L, \"A\")' before\n> 'as(6, \"A\")'), I don't get the note.\n>\n> I get this with R 2.15.1 and a recent R devel (2012-09-22 r60777).\n> It looks like a regression because I was not able to reproduce with\n> R <= 2.14.\n>\n> Thanks,\n> H.\n>\n>",
       "body_snippet": "The as() function does some non-standard stuff, and it appears in this \nexample to set up methods for coerce() in a way that fools the \ndisambiguation code (which is newer than the as() code, I think)",
       "thread_id": "thread-eba58971cc51",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064937.html"
     },
     {
       "id": "msg-535a3e83392b",
@@ -182,7 +190,8 @@
       "body_snippet": "Hello,\n\nThe second paragraph of Chapter 2: .Internal vs .Primitive of R-ints\nuses axis() as an example of a function that uses .Internal(). Here's\nthe quote:\n\n> Functions using .Internal() wrapped in ",
       "thread_id": "thread-535a3e83392b",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064939.html"
     },
     {
       "id": "msg-eb15d278f117",
@@ -197,11 +206,12 @@
         "<506A1719.2010904@fhcrc.org>",
         "<506B54F7.20803@r-project.org>"
       ],
-      "body_plain": "Thanks you.\n\nH.\n\nOn 10/02/2012 01:56 PM, John Chambers wrote:\n> The as() function does some non-standard stuff, and it appears in this\n> example to set up methods for coerce() in a way that fools the\n> disambiguation code (which is newer than the as() code, I think).\n>\n> Pending a rewrite of as() (not imminent) the Note has been deactivated\n> for the coerce() generic. (rev 60859)\n>\n> Thanks for the catch.\n>    John\n>\n>\n> On 10/1/12 3:20 PM, Herv? Pag?s wrote:\n>> Hi,\n>>\n>> In the situation below the note issued by the dispatch algo doesn't\n>> seem right:\n>>\n>>    setClass(\"A\", representation(stuff=\"complex\"))\n>>    setAs(\"ANY\", \"A\", function(from) new(\"A\", stuff=as.complex(from)))\n>>\n>>    > as(6, \"A\")\n>>    An object of class \"A\"\n>>    Slot \"stuff\":\n>>    [1] 6+0i\n>>\n>>    > as(6L, \"A\")\n>>    Note: Method with signature ?numeric#A? chosen for function ?coerce?,\n>>   target signature ?integer#A?.\n>>     \"ANY#A\" would also be valid\n>>    An object of class \"A\"\n>>    Slot \"stuff\":\n>>    [1] 6+0i\n>>\n>> First thing is that the note is in contradiction with the output of\n>> selectMethod (seems like it's the method with signature \"ANY#A\" that\n>> was chosen, not the method with signature \"numeric#A\"):\n>>\n>>    > selectMethod(\"coerce\", c(\"integer\", \"A\"))\n>>    Method Definition:\n>>\n>>    function (from, to = \"A\", strict = TRUE)\n>>    new(\"A\", stuff = as.complex(from))\n>>\n>>    Signatures:\n>>            from      to\n>>    target  \"integer\" \"A\"\n>>    defined \"ANY\"     \"A\"\n>>\n>> Second, and more importantly, there is no need for a note in the first\n>> place because there is no ambiguity at all (the method for \"numeric#A\"\n>> itself is inherited from \"ANY#A\"):\n>>\n>>    > selectMethod(\"coerce\", c(\"numeric\", \"A\"))\n>>    Method Definition:\n>>\n>>    function (from, to = \"A\", strict = TRUE)\n>>    new(\"A\", stuff = as.complex(from))\n>>\n>>    Signatures:\n>>            from      to\n>>    target  \"numeric\" \"A\"\n>>    defined \"ANY\"     \"A\"\n>>\n>> showMethod gives me an overview of the situation (which is much\n>> simpler/cleaner than what the note is suggesting):\n>>\n>>    > showMethods(\"coerce\")\n>>    Function: coerce (package methods)\n>>    from=\"ANY\", to=\"A\"\n>>    ...\n>>    from=\"integer\", to=\"A\"\n>>        (inherited from: from=\"ANY\", to=\"A\")\n>>    ...\n>>    from=\"numeric\", to=\"A\"\n>>        (inherited from: from=\"ANY\", to=\"A\")\n>>\n>> Finally, if I switch the order (i.e. if I do 'as(6L, \"A\")' before\n>> 'as(6, \"A\")'), I don't get the note.\n>>\n>> I get this with R 2.15.1 and a recent R devel (2012-09-22 r60777).\n>> It looks like a regression because I was not able to reproduce with\n>> R <= 2.14.\n>>\n>> Thanks,\n>> H.\n>>\n>>\n\n-- \nHerv? Pag?s\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
+      "body_plain": "Thanks you.\n\nH.\n\nOn 10/02/2012 01:56 PM, John Chambers wrote:\n> The as() function does some non-standard stuff, and it appears in this\n> example to set up methods for coerce() in a way that fools the\n> disambiguation code (which is newer than the as() code, I think).\n>\n> Pending a rewrite of as() (not imminent) the Note has been deactivated\n> for the coerce() generic. (rev 60859)\n>\n> Thanks for the catch.\n>    John\n>\n>\n> On 10/1/12 3:20 PM, Hervé Pagès wrote:\n>> Hi,\n>>\n>> In the situation below the note issued by the dispatch algo doesn't\n>> seem right:\n>>\n>>    setClass(\"A\", representation(stuff=\"complex\"))\n>>    setAs(\"ANY\", \"A\", function(from) new(\"A\", stuff=as.complex(from)))\n>>\n>>    > as(6, \"A\")\n>>    An object of class \"A\"\n>>    Slot \"stuff\":\n>>    [1] 6+0i\n>>\n>>    > as(6L, \"A\")\n>>    Note: Method with signature ‘numeric#A’ chosen for function ‘coerce’,\n>>   target signature ‘integer#A’.\n>>     \"ANY#A\" would also be valid\n>>    An object of class \"A\"\n>>    Slot \"stuff\":\n>>    [1] 6+0i\n>>\n>> First thing is that the note is in contradiction with the output of\n>> selectMethod (seems like it's the method with signature \"ANY#A\" that\n>> was chosen, not the method with signature \"numeric#A\"):\n>>\n>>    > selectMethod(\"coerce\", c(\"integer\", \"A\"))\n>>    Method Definition:\n>>\n>>    function (from, to = \"A\", strict = TRUE)\n>>    new(\"A\", stuff = as.complex(from))\n>>\n>>    Signatures:\n>>            from      to\n>>    target  \"integer\" \"A\"\n>>    defined \"ANY\"     \"A\"\n>>\n>> Second, and more importantly, there is no need for a note in the first\n>> place because there is no ambiguity at all (the method for \"numeric#A\"\n>> itself is inherited from \"ANY#A\"):\n>>\n>>    > selectMethod(\"coerce\", c(\"numeric\", \"A\"))\n>>    Method Definition:\n>>\n>>    function (from, to = \"A\", strict = TRUE)\n>>    new(\"A\", stuff = as.complex(from))\n>>\n>>    Signatures:\n>>            from      to\n>>    target  \"numeric\" \"A\"\n>>    defined \"ANY\"     \"A\"\n>>\n>> showMethod gives me an overview of the situation (which is much\n>> simpler/cleaner than what the note is suggesting):\n>>\n>>    > showMethods(\"coerce\")\n>>    Function: coerce (package methods)\n>>    from=\"ANY\", to=\"A\"\n>>    ...\n>>    from=\"integer\", to=\"A\"\n>>        (inherited from: from=\"ANY\", to=\"A\")\n>>    ...\n>>    from=\"numeric\", to=\"A\"\n>>        (inherited from: from=\"ANY\", to=\"A\")\n>>\n>> Finally, if I switch the order (i.e. if I do 'as(6L, \"A\")' before\n>> 'as(6, \"A\")'), I don't get the note.\n>>\n>> I get this with R 2.15.1 and a recent R devel (2012-09-22 r60777).\n>> It looks like a regression because I was not able to reproduce with\n>> R <= 2.14.\n>>\n>> Thanks,\n>> H.\n>>\n>>\n\n-- \nHervé Pagès\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
       "body_snippet": "Thanks you.\n\nH.\n\nOn 10/02/2012 01:56 PM, John Chambers wrote:\n> The as() function does some non-standard stuff, and it appears in this\n> example to set up methods for coerce() in a way that fools the\n",
       "thread_id": "thread-eba58971cc51",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064938.html"
     },
     {
       "id": "msg-a0d5bd33e920",
@@ -217,7 +227,8 @@
       "body_snippet": "Hi,\n\nI'm looking for a super-duper fast mean/sum binning implementation\navailable in R, and before implementing z = binnedMeans(x y) in native\ncode myself, does any one know of an existing function/pa",
       "thread_id": "thread-a0d5bd33e920",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064940.html"
     },
     {
       "id": "msg-a67d431427c3",
@@ -231,11 +242,12 @@
       "references": [
         "<CAFDcVCQ0SPAYLsgtVxyYoakWQCJavj2QSfLwtNuzwH_U-AR8_g@mail.gmail.com>"
       ],
-      "body_plain": "Hi Henrik,\n\nOn 10/02/2012 05:19 PM, Henrik Bengtsson wrote:\n> Hi,\n>\n> I'm looking for a super-duper fast mean/sum binning implementation\n> available in R, and before implementing z = binnedMeans(x y) in native\n> code myself, does any one know of an existing function/package for\n> this?  I'm sure it already exists.  So, given data (x,y) and B bins\n> bx[1] < bx[2] < ... < bx[B] < bx[B+1], I'd like to calculate the\n> binned means (or sums) 'z' such that z[1] = mean(x[bx[1] <= x & x <\n> bx[2]]), z[2] = mean(x[bx[2] <= x & x < bx[3]]), .... z[B].  Let's\n> assume there are no missing values and 'x' and 'bx' is already\n> ordered.  The length of 'x' is in the order of 10,000-millions.  The\n> number of elements in each bin vary.\n\nYou didn't say if you have a lot of bins or not. If you don't have a lot\nof bins (e.g. < 10000), something like\n\n   aggregate(x, by=list(bin=findInterval(x, bx)), FUN=mean)\n\nmight not be too bad:\n\n   > x <- seq(0, 8, by=0.1)\n   > bx <- c(2, 2.5, 4, 5.8)\n   > aggregate(x, by=list(bin=findInterval(x, bx)), FUN=mean)\n     bin    x\n   1   0 0.95\n   2   1 2.20\n   3   2 3.20\n   4   3 4.85\n   5   4 6.90\n\nI didn't try it on a 10,000-millions-elements vector though (and I've\nno idea how I could do this).\n\nH.\n\n\n>\n> Thanks,\n>\n> Henrik\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n-- \nHerv? Pag?s\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
+      "body_plain": "Hi Henrik,\n\nOn 10/02/2012 05:19 PM, Henrik Bengtsson wrote:\n> Hi,\n>\n> I'm looking for a super-duper fast mean/sum binning implementation\n> available in R, and before implementing z = binnedMeans(x y) in native\n> code myself, does any one know of an existing function/package for\n> this?  I'm sure it already exists.  So, given data (x,y) and B bins\n> bx[1] < bx[2] < ... < bx[B] < bx[B+1], I'd like to calculate the\n> binned means (or sums) 'z' such that z[1] = mean(x[bx[1] <= x & x <\n> bx[2]]), z[2] = mean(x[bx[2] <= x & x < bx[3]]), .... z[B].  Let's\n> assume there are no missing values and 'x' and 'bx' is already\n> ordered.  The length of 'x' is in the order of 10,000-millions.  The\n> number of elements in each bin vary.\n\nYou didn't say if you have a lot of bins or not. If you don't have a lot\nof bins (e.g. < 10000), something like\n\n   aggregate(x, by=list(bin=findInterval(x, bx)), FUN=mean)\n\nmight not be too bad:\n\n   > x <- seq(0, 8, by=0.1)\n   > bx <- c(2, 2.5, 4, 5.8)\n   > aggregate(x, by=list(bin=findInterval(x, bx)), FUN=mean)\n     bin    x\n   1   0 0.95\n   2   1 2.20\n   3   2 3.20\n   4   3 4.85\n   5   4 6.90\n\nI didn't try it on a 10,000-millions-elements vector though (and I've\nno idea how I could do this).\n\nH.\n\n\n>\n> Thanks,\n>\n> Henrik\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n-- \nHervé Pagès\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
       "body_snippet": "Hi Henrik,\n\nOn 10/02/2012 05:19 PM, Henrik Bengtsson wrote:\n> Hi,\n>\n> I'm looking for a super-duper fast mean/sum binning implementation\n> available in R, and before implementing z = binnedMeans(x y) ",
       "thread_id": "thread-a0d5bd33e920",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064941.html"
     },
     {
       "id": "msg-21f89e20cce3",
@@ -250,11 +262,12 @@
         "<CAFDcVCQ0SPAYLsgtVxyYoakWQCJavj2QSfLwtNuzwH_U-AR8_g@mail.gmail.com>",
         "<506B90B2.3010602@fhcrc.org>"
       ],
-      "body_plain": "On 10/02/2012 06:11 PM, Herv? Pag?s wrote:\n> Hi Henrik,\n>\n> On 10/02/2012 05:19 PM, Henrik Bengtsson wrote:\n>> Hi,\n>>\n>> I'm looking for a super-duper fast mean/sum binning implementation\n>> available in R, and before implementing z = binnedMeans(x y) in native\n>> code myself, does any one know of an existing function/package for\n>> this?  I'm sure it already exists.  So, given data (x,y) and B bins\n>> bx[1] < bx[2] < ... < bx[B] < bx[B+1], I'd like to calculate the\n>> binned means (or sums) 'z' such that z[1] = mean(x[bx[1] <= x & x <\n>> bx[2]]), z[2] = mean(x[bx[2] <= x & x < bx[3]]), .... z[B].  Let's\n>> assume there are no missing values and 'x' and 'bx' is already\n>> ordered.  The length of 'x' is in the order of 10,000-millions.  The\n>> number of elements in each bin vary.\n>\n> You didn't say if you have a lot of bins or not. If you don't have a lot\n> of bins (e.g. < 10000), something like\n>\n>    aggregate(x, by=list(bin=findInterval(x, bx)), FUN=mean)\n>\n> might not be too bad:\n>\n>    > x <- seq(0, 8, by=0.1)\n>    > bx <- c(2, 2.5, 4, 5.8)\n>    > aggregate(x, by=list(bin=findInterval(x, bx)), FUN=mean)\n>      bin    x\n>    1   0 0.95\n>    2   1 2.20\n>    3   2 3.20\n>    4   3 4.85\n>    5   4 6.90\n\nOf course, if you have a lot of bins, using aggregate() is not optimal.\nBut you can replace it by your own optimized version e.g.:\n\n   ## 'bin' must be a sorted vector of non-negative integers of the\n   ## same length as 'x'.\n   fast_aggregate_mean <- function(x, bin, nbins)\n   {\n     bin_count <- tabulate(bin + 1L, nbins=nbins)\n     diff(c(0L, cumsum(x)[cumsum(bin_count)])) / bin_count\n   }\n\nThen:\n\n   bin <- findInterval(x, bx)\n   fast_aggregate_mean(x, bin, nbins=length(bx)+1L)\n\nOn my machine this is 100x faster or more than using aggregate() when\nthe number of bins is > 100k. Memory usage is also reduced a lot.\nAnother benefit of using fast_aggregate_mean() over aggregate() is\nthat all the bins are represented in the output (aggregate() ignores\nempty bins).\n\nCheers,\nH.\n\n>\n> I didn't try it on a 10,000-millions-elements vector though (and I've\n> no idea how I could do this).\n>\n> H.\n>\n>\n>>\n>> Thanks,\n>>\n>> Henrik\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>\n\n-- \nHerv? Pag?s\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
-      "body_snippet": "On 10/02/2012 06:11 PM, Herv? Pag?s wrote:\n> Hi Henrik,\n>\n> On 10/02/2012 05:19 PM, Henrik Bengtsson wrote:\n>> Hi,\n>>\n>> I'm looking for a super-duper fast mean/sum binning implementation\n>> available",
+      "body_plain": "On 10/02/2012 06:11 PM, Hervé Pagès wrote:\n> Hi Henrik,\n>\n> On 10/02/2012 05:19 PM, Henrik Bengtsson wrote:\n>> Hi,\n>>\n>> I'm looking for a super-duper fast mean/sum binning implementation\n>> available in R, and before implementing z = binnedMeans(x y) in native\n>> code myself, does any one know of an existing function/package for\n>> this?  I'm sure it already exists.  So, given data (x,y) and B bins\n>> bx[1] < bx[2] < ... < bx[B] < bx[B+1], I'd like to calculate the\n>> binned means (or sums) 'z' such that z[1] = mean(x[bx[1] <= x & x <\n>> bx[2]]), z[2] = mean(x[bx[2] <= x & x < bx[3]]), .... z[B].  Let's\n>> assume there are no missing values and 'x' and 'bx' is already\n>> ordered.  The length of 'x' is in the order of 10,000-millions.  The\n>> number of elements in each bin vary.\n>\n> You didn't say if you have a lot of bins or not. If you don't have a lot\n> of bins (e.g. < 10000), something like\n>\n>    aggregate(x, by=list(bin=findInterval(x, bx)), FUN=mean)\n>\n> might not be too bad:\n>\n>    > x <- seq(0, 8, by=0.1)\n>    > bx <- c(2, 2.5, 4, 5.8)\n>    > aggregate(x, by=list(bin=findInterval(x, bx)), FUN=mean)\n>      bin    x\n>    1   0 0.95\n>    2   1 2.20\n>    3   2 3.20\n>    4   3 4.85\n>    5   4 6.90\n\nOf course, if you have a lot of bins, using aggregate() is not optimal.\nBut you can replace it by your own optimized version e.g.:\n\n   ## 'bin' must be a sorted vector of non-negative integers of the\n   ## same length as 'x'.\n   fast_aggregate_mean <- function(x, bin, nbins)\n   {\n     bin_count <- tabulate(bin + 1L, nbins=nbins)\n     diff(c(0L, cumsum(x)[cumsum(bin_count)])) / bin_count\n   }\n\nThen:\n\n   bin <- findInterval(x, bx)\n   fast_aggregate_mean(x, bin, nbins=length(bx)+1L)\n\nOn my machine this is 100x faster or more than using aggregate() when\nthe number of bins is > 100k. Memory usage is also reduced a lot.\nAnother benefit of using fast_aggregate_mean() over aggregate() is\nthat all the bins are represented in the output (aggregate() ignores\nempty bins).\n\nCheers,\nH.\n\n>\n> I didn't try it on a 10,000-millions-elements vector though (and I've\n> no idea how I could do this).\n>\n> H.\n>\n>\n>>\n>> Thanks,\n>>\n>> Henrik\n>>\n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n>>\n>\n\n-- \nHervé Pagès\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
+      "body_snippet": "On 10/02/2012 06:11 PM, Hervé Pagès wrote:\n> Hi Henrik,\n>\n> On 10/02/2012 05:19 PM, Henrik Bengtsson wrote:\n>> Hi,\n>>\n>> I'm looking for a super-duper fast mean/sum binning implementation\n>> available",
       "thread_id": "thread-a0d5bd33e920",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064942.html"
     },
     {
       "id": "msg-e4d19273781a",
@@ -272,7 +285,8 @@
       "body_snippet": "On 02/10/2012 22:17, Josh O'Brien wrote:\n> Hello,\n>\n> The second paragraph of Chapter 2: .Internal vs .Primitive of R-ints\n> uses axis() as an example of a function that uses .Internal(). Here's\n> the",
       "thread_id": "thread-535a3e83392b",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064943.html"
     },
     {
       "id": "msg-2fa2c4c3d65e",
@@ -290,7 +304,8 @@
       "body_snippet": "Look at rowsum.  It's pretty fast C code.\n\nTerry T\n\nOn 10/03/2012 05:00 AM, r-devel-request at r-project.org wrote:\n> Hi,\n>\n> I'm looking for a super-duper fast mean/sum binning implementation\n> avail",
       "thread_id": "thread-2fa2c4c3d65e",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064944.html"
     },
     {
       "id": "msg-593e5a0c2f8b",
@@ -308,7 +323,8 @@
       "body_snippet": "On 10/02/2012 05:19 PM, Henrik Bengtsson wrote:\n> Hi,\n>\n> I'm looking for a super-duper fast mean/sum binning implementation\n> available in R, and before implementing z = binnedMeans(x y) in native\n> ",
       "thread_id": "thread-a0d5bd33e920",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064945.html"
     },
     {
       "id": "msg-ae0cc4d59fd5",
@@ -324,7 +340,8 @@
       "body_snippet": "Hi all,\n\nA function has three components: arguments, body and environment. Is\nthere no base function that allows us to create a function from those\nthree components?\n\nThe best I could come up with is:",
       "thread_id": "thread-ae0cc4d59fd5",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064946.html"
     },
     {
       "id": "msg-9722fbd003c5",
@@ -342,7 +359,8 @@
       "body_snippet": "> Am I missing a built in way to do this?  Also, is there a built in\n> equivalent to my mquote (= multiquote, for producing a named list of\n> quoted inputs)?\n\nOops, built in equivalent to mquote is al",
       "thread_id": "thread-ae0cc4d59fd5",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064947.html"
     },
     {
       "id": "msg-8a91ed0d098b",
@@ -360,7 +378,8 @@
       "body_snippet": "On 03/10/2012 10:16 AM, Hadley Wickham wrote:\n> Hi all,\n>\n> A function has three components: arguments, body and environment. Is\n> there no base function that allows us to create a function from those",
       "thread_id": "thread-ae0cc4d59fd5",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064948.html"
     },
     {
       "id": "msg-d0527757935c",
@@ -380,6 +399,7 @@
       "thread_id": "thread-ae0cc4d59fd5",
       "thread_depth": 2,
       "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064949.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20121003/c8b1bf87/attachment.pl"
       ]
@@ -401,7 +421,8 @@
       "body_snippet": "> There is:  it is `function`.  The parser converts your function definitions\n> into a call to it.  (It has 3 arguments: the formals, the body, and the\n> srcref.  The environment is added when it is e",
       "thread_id": "thread-ae0cc4d59fd5",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064950.html"
     },
     {
       "id": "msg-4dede97608d0",
@@ -421,7 +442,8 @@
       "body_snippet": "On Wed, Oct 3, 2012 at 9:33 AM, Gabriel Becker <gmbecker at ucdavis.edu> wrote:\n> Hadley,\n>\n> You could do this:\n>\n> make_fun = function(args, body, env)\n> {\n> f = function()\n> formals(f) = args\n> bod",
       "thread_id": "thread-ae0cc4d59fd5",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064951.html"
     },
     {
       "id": "msg-1ee49f5175ed",
@@ -443,6 +465,7 @@
       "thread_id": "thread-ae0cc4d59fd5",
       "thread_depth": 4,
       "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064952.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20121003/843e0f30/attachment.pl"
       ]
@@ -466,7 +489,8 @@
       "body_snippet": "On Oct 3, 2012, at 16:49 , Hadley Wickham wrote:\n\n> On Wed, Oct 3, 2012 at 9:33 AM, Gabriel Becker <gmbecker at ucdavis.edu> wrote:\n>> Hadley,\n>> \n>> You could do this:\n>> \n>> make_fun = function(args",
       "thread_id": "thread-ae0cc4d59fd5",
       "thread_depth": 4,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064953.html"
     },
     {
       "id": "msg-5939f3735f26",
@@ -488,7 +512,8 @@
       "body_snippet": ">> | Is there a mechanism on R-forge for updating an existing \n>> CRAN package, analogous to the 'submit to cran' link on the \n>> R-forge package page, ....\n\n> I prefer to do this 'by hand' but my und",
       "thread_id": "thread-d70206aab918",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064954.html"
     },
     {
       "id": "msg-85af0fa7a7e3",
@@ -507,7 +532,8 @@
       "body_snippet": "On 10/3/2012 6:47 AM, Martin Morgan wrote:\n> On 10/02/2012 05:19 PM, Henrik Bengtsson wrote:\n>> Hi,\n>>\n>> I'm looking for a super-duper fast mean/sum binning implementation\n>> available in R, and befo",
       "thread_id": "thread-a0d5bd33e920",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064955.html"
     },
     {
       "id": "msg-f51c2e0f0760",
@@ -527,7 +553,8 @@
       "body_snippet": "On Wed, Oct 3, 2012 at 7:47 AM, Hadley Wickham <h.wickham at gmail.com> wrote:\n>> There is:  it is `function`.  The parser converts your function definitions\n>> into a call to it.  (It has 3 arguments",
       "thread_id": "thread-ae0cc4d59fd5",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064956.html"
     },
     {
       "id": "msg-1810d05539cc",
@@ -548,7 +575,8 @@
       "body_snippet": "> I think `function` does not eval its arguments, and it demands a\n> pairlist. So this works:\n>\n> f <- eval(substitute(`function`(args, body),\n> list(args=as.pairlist(alist(a=1)), body=quote(a+1))))\n>",
       "thread_id": "thread-ae0cc4d59fd5",
       "thread_depth": 4,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064957.html"
     },
     {
       "id": "msg-feed74906aef",
@@ -564,7 +592,8 @@
       "body_snippet": "This is tangentially related to Hadley's question.\n\nSuppose I'm building a function programmatically; I have assembled an\nexpression for the body and I know the names of the arguments it wants\nto take",
       "thread_id": "thread-feed74906aef",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064958.html"
     },
     {
       "id": "msg-4f7271caf08e",
@@ -582,7 +611,8 @@
       "body_snippet": "On Wed, Oct 3, 2012 at 9:37 PM, Peter Meilstrup\n<peter.meilstrup at gmail.com> wrote:\n> This is tangentially related to Hadley's question.\n>\n> Suppose I'm building a function programmatically; I have ",
       "thread_id": "thread-feed74906aef",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064959.html"
     },
     {
       "id": "msg-575c9421e594",
@@ -600,7 +630,8 @@
       "body_snippet": ">Say I have argnames <- c(\"a\", \"b\", \"c\").\n>From that I want to construct the equivalent of alist(a=, b=, c=).\n\nHere's a one liner that'll do that for you:\n\nargnames <- letters[1:3]\nsetNames(rep(list(b",
       "thread_id": "thread-feed74906aef",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064960.html"
     },
     {
       "id": "msg-8926c1200cd7",
@@ -619,7 +650,8 @@
       "body_snippet": "Why not just use the list constructor:\n\ntheList <- setNames(vector(\"list\",3),letters[1:3])\n\n## The list components are empty = NULL, not NA)\n\nThis also doesn't seem to be an R-devel topic.\n\n-- Bert\n\nO",
       "thread_id": "thread-feed74906aef",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064970.html"
     },
     {
       "id": "msg-d286c32d63e7",
@@ -639,7 +671,8 @@
       "body_snippet": "Thank you all - I appreciate all your suggestions.  My post was mainly\nto check if there's already an existing and fast implementation out\nthere.  I've ended up adopting Martin's first proposal.  Some",
       "thread_id": "thread-a0d5bd33e920",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064961.html"
     },
     {
       "id": "msg-07e0b29ecbe8",
@@ -655,7 +688,8 @@
       "body_snippet": "> setClass(\"A\", \"integer\")\n > isS4(new(\"A\"))\n[1] TRUE\n > identical(isS4(new(\"A\")), TRUE)\n[1] FALSE\n\n > sessionInfo()\nR Under development (unstable) (2012-10-04 r60876)\nPlatform: x86_64-unknown-linux-g",
       "thread_id": "thread-07e0b29ecbe8",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064962.html"
     },
     {
       "id": "msg-ed1c95f53468",
@@ -673,7 +707,8 @@
       "body_snippet": "On 12-10-04 4:57 PM, Martin Morgan wrote:\n>\n>   > setClass(\"A\", \"integer\")\n>   > isS4(new(\"A\"))\n> [1] TRUE\n>   > identical(isS4(new(\"A\")), TRUE)\n> [1] FALSE\n>\n>   > sessionInfo()\n> R Under development",
       "thread_id": "thread-07e0b29ecbe8",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064963.html"
     },
     {
       "id": "msg-d59765ba5cec",
@@ -692,7 +727,8 @@
       "body_snippet": "On 10/04/2012 02:23 PM, Duncan Murdoch wrote:\n> On 12-10-04 4:57 PM, Martin Morgan wrote:\n>>\n>>   > setClass(\"A\", \"integer\")\n>>   > isS4(new(\"A\"))\n>> [1] TRUE\n>>   > identical(isS4(new(\"A\")), TRUE)\n>>",
       "thread_id": "thread-07e0b29ecbe8",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064964.html"
     },
     {
       "id": "msg-741bee7950e6",
@@ -711,7 +747,8 @@
       "body_snippet": "On Wed, Oct 3, 2012 at 11:21 PM, Josh O'Brien <joshmobrien at gmail.com> wrote:\n>\n>>Say I have argnames <- c(\"a\", \"b\", \"c\").\n> >From that I want to construct the equivalent of alist(a=, b=, c=).\n>\n> H",
       "thread_id": "thread-feed74906aef",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064965.html"
     },
     {
       "id": "msg-9a120f899125",
@@ -731,7 +768,8 @@
       "body_snippet": "On 12-10-04 5:50 PM, Martin Morgan wrote:\n> On 10/04/2012 02:23 PM, Duncan Murdoch wrote:\n>> On 12-10-04 4:57 PM, Martin Morgan wrote:\n>>>\n>>>    > setClass(\"A\", \"integer\")\n>>>    > isS4(new(\"A\"))\n>>>",
       "thread_id": "thread-07e0b29ecbe8",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064966.html"
     },
     {
       "id": "msg-687931d9ba08",
@@ -752,7 +790,8 @@
       "body_snippet": "On 10/04/2012 04:05 PM, Duncan Murdoch wrote:\n> On 12-10-04 5:50 PM, Martin Morgan wrote:\n>> On 10/04/2012 02:23 PM, Duncan Murdoch wrote:\n>>> On 12-10-04 4:57 PM, Martin Morgan wrote:\n>>>>\n>>>>    > ",
       "thread_id": "thread-07e0b29ecbe8",
       "thread_depth": 4,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064967.html"
     },
     {
       "id": "msg-15cde846c03f",
@@ -772,7 +811,8 @@
       "body_snippet": "The R Language definition manual explains all of this. Read it.\n\n-- Bert\n\nOn Thu, Oct 4, 2012 at 3:53 PM, Peter Meilstrup\n<peter.meilstrup at gmail.com> wrote:\n> On Wed, Oct 3, 2012 at 11:21 PM, Josh ",
       "thread_id": "thread-feed74906aef",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064971.html"
     },
     {
       "id": "msg-655ba76b6097",
@@ -793,7 +833,8 @@
       "body_snippet": "On Thu, Oct 4, 2012 at 6:12 PM, Bert Gunter <gunter.berton at gene.com> wrote:\n> The R Language definition manual explains all of this. Read it.\n\nI always reread that before I post to this list.\n\nThe ",
       "thread_id": "thread-feed74906aef",
       "thread_depth": 4,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064968.html"
     },
     {
       "id": "msg-c76885b307ee",
@@ -815,7 +856,8 @@
       "body_snippet": "On Thu, Oct 4, 2012 at 6:31 PM, Peter Meilstrup\n<peter.meilstrup at gmail.com> wrote:\n> On Thu, Oct 4, 2012 at 6:12 PM, Bert Gunter <gunter.berton at gene.com> wrote:\n>> The R Language definition manu",
       "thread_id": "thread-feed74906aef",
       "thread_depth": 5,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064972.html"
     },
     {
       "id": "msg-3cb6582cf5d5",
@@ -837,7 +879,8 @@
       "body_snippet": "On Oct 5, 2012, at 03:31 , Peter Meilstrup wrote:\n\n> On Thu, Oct 4, 2012 at 6:12 PM, Bert Gunter <gunter.berton at gene.com> wrote:\n>> The R Language definition manual explains all of this. Read it.\n>",
       "thread_id": "thread-feed74906aef",
       "thread_depth": 5,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064969.html"
     },
     {
       "id": "msg-036c095b4939",
@@ -859,7 +902,8 @@
       "body_snippet": "On 10/04/2012 05:56 PM, Martin Morgan wrote:\n> On 10/04/2012 04:05 PM, Duncan Murdoch wrote:\n>> On 12-10-04 5:50 PM, Martin Morgan wrote:\n>>> On 10/04/2012 02:23 PM, Duncan Murdoch wrote:\n>>>> On 12-1",
       "thread_id": "thread-07e0b29ecbe8",
       "thread_depth": 5,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064973.html"
     },
     {
       "id": "msg-a27058cb231d",
@@ -875,7 +919,8 @@
       "body_snippet": "I have a Ubuntu Linux 12.04.1 machine running R 2.15.1. I'm trying to\nrun tests building packages, so install.packages() is trying to\ninstall about about 1000 packages from source. I'm running into so",
       "thread_id": "thread-a27058cb231d",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064974.html"
     },
     {
       "id": "msg-337f58591ed2",
@@ -893,7 +938,8 @@
       "body_snippet": "On 06/10/2012 05:42, Winston Chang wrote:\n> I have a Ubuntu Linux 12.04.1 machine running R 2.15.1. I'm trying to\n> run tests building packages, so install.packages() is trying to\n> install about abou",
       "thread_id": "thread-a27058cb231d",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064975.html"
     },
     {
       "id": "msg-40fab1546491",
@@ -912,7 +958,8 @@
       "body_snippet": ">> In the code for install.packages, I see that if Ncpus>1, it passes the\n>> Ncpus to make, as in 'make -k -j 32'. Is it possible that these\n>> packages are failing because of this option to make?\n>\n>",
       "thread_id": "thread-a27058cb231d",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064976.html"
     },
     {
       "id": "msg-11f1990b3292",
@@ -932,7 +979,8 @@
       "body_snippet": "On 06.10.2012 18:02, Winston Chang wrote:\n>>> In the code for install.packages, I see that if Ncpus>1, it passes the\n>>> Ncpus to make, as in 'make -k -j 32'. Is it possible that these\n>>> packages ar",
       "thread_id": "thread-a27058cb231d",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064977.html"
     },
     {
       "id": "msg-f01c572bd907",
@@ -948,7 +996,8 @@
       "body_snippet": "I've just built R-devel (r60889) from source on my Mac OS X 10.6.8\nusing gcc from Xcode and gfortran from Simon. I didn't use all the\nrecommended configuration flags only\n\n./configure && make\n\nStill, ",
       "thread_id": "thread-f01c572bd907",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064978.html"
     },
     {
       "id": "msg-4380f10b312b",
@@ -966,7 +1015,8 @@
       "body_snippet": "On 07-10-2012, at 17:34, R. Michael Weylandt wrote:\n\n> I've just built R-devel (r60889) from source on my Mac OS X 10.6.8\n> using gcc from Xcode and gfortran from Simon. I didn't use all the\n> recomme",
       "thread_id": "thread-f01c572bd907",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064979.html"
     },
     {
       "id": "msg-335c6d7e3974",
@@ -985,7 +1035,8 @@
       "body_snippet": "On 07/10/2012 18:11, Berend Hasselman wrote:\n>\n> On 07-10-2012, at 17:34, R. Michael Weylandt wrote:\n>\n>> I've just built R-devel (r60889) from source on my Mac OS X 10.6.8\n>> using gcc from Xcode and",
       "thread_id": "thread-f01c572bd907",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064980.html"
     },
     {
       "id": "msg-8953254e3c8b",
@@ -1003,7 +1054,8 @@
       "body_snippet": "I would check the version of libreadline you compiled against.  Tab \ncompletion involves that library.\n\nIt works correctly for all my local builds, and nothing in that area in \nthe R sources has chang",
       "thread_id": "thread-f01c572bd907",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064981.html"
     },
     {
       "id": "msg-ee20a413124e",
@@ -1026,7 +1078,8 @@
       "body_snippet": "On Fri, Oct 5, 2012 at 4:07 PM, Bert Gunter <gunter.berton at gene.com> wrote:\n> On Thu, Oct 4, 2012 at 6:31 PM, Peter Meilstrup\n\n>> explain some things, such as under what circumstances one would get",
       "thread_id": "thread-feed74906aef",
       "thread_depth": 6,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064982.html"
     },
     {
       "id": "msg-bfd98d1270ec",
@@ -1045,7 +1098,8 @@
       "body_snippet": "On Oct 7, 2012, at 21:00 , Prof Brian Ripley wrote:\n\n> I would check the version of libreadline you compiled against.  Tab completion involves that library.\n> \n> It works correctly for all my local bu",
       "thread_id": "thread-f01c572bd907",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064983.html"
     },
     {
       "id": "msg-5c4f76ebcd19",
@@ -1061,7 +1115,8 @@
       "body_snippet": "Hi all,\n\nIt's possible to capture the expression associated with a promise\n(using substitute). Is there any way to capture the environment\nassociated with a promise?  Similarly, is there any way to te",
       "thread_id": "thread-5c4f76ebcd19",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064984.html"
     },
     {
       "id": "msg-626b2e4020b2",
@@ -1079,7 +1134,8 @@
       "body_snippet": "On 12-10-08 9:22 AM, Hadley Wickham wrote:\n> Hi all,\n>\n> It's possible to capture the expression associated with a promise\n> (using substitute). Is there any way to capture the environment\n> associate",
       "thread_id": "thread-5c4f76ebcd19",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064985.html"
     },
     {
       "id": "msg-382610ce8f3d",
@@ -1091,11 +1147,12 @@
       "subject_clean": "Effect of the R framework on ctype.c",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Dear all,\n\nI'm facing a strange behavior in the the C code of a R package. This package, \"rcqp\", is a wrapper on an existing program that I did not write, \"CWB\".\n\nIn this package, on a linux (ubuntu and debian) system, the code :\n     printf(%d\\n\", isupper('A'));\noutputs :\n    0\nWhen compiled with the R framework (It behaves correctly when CWB is compiled as a standalone program).\n\nOn mac osx, the code produce the expected output.\n\nThis unexpected output is observed only in the context of CWB compiled through rcqp, only on linux (not mac osx), and only under certains circumstances, since a minimal R package produce the expected output. Even in CWB, this strange behavior is not observed in any part of the code.\n\nWhen observed, a work-around for this problem is to remove the include in which this very function, isupper, is defined:\n    #include <ctype.h>\n\nSince the program is compiled and run correctly without this \"include\", isupper() seems to be also declared elsewhere or ctype to be found by another mechanism, and the problem seems be due to interactions between the R headers (?) and the include of the CWB code?\n\nHave you already observed such an effect or do you have any hint?\nBest,\nSylvain\n\n\n-----\nSylvain Loiseau\nsylvain.loiseau at univ-paris13.fr\n\nUniversit? Paris 13-Nord\nLaboratoire Lexiques, Dictionnaires, Informatique\n(UMR 7187 CNRS/Universit? Paris 13-Nord)\n99 avenue Jean-Baptiste Cl?ment\nF-93410 Villetaneuse",
+      "body_plain": "Dear all,\n\nI'm facing a strange behavior in the the C code of a R package. This package, \"rcqp\", is a wrapper on an existing program that I did not write, \"CWB\".\n\nIn this package, on a linux (ubuntu and debian) system, the code :\n     printf(%d\\n\", isupper('A'));\noutputs :\n    0\nWhen compiled with the R framework (It behaves correctly when CWB is compiled as a standalone program).\n\nOn mac osx, the code produce the expected output.\n\nThis unexpected output is observed only in the context of CWB compiled through rcqp, only on linux (not mac osx), and only under certains circumstances, since a minimal R package produce the expected output. Even in CWB, this strange behavior is not observed in any part of the code.\n\nWhen observed, a work-around for this problem is to remove the include in which this very function, isupper, is defined:\n    #include <ctype.h>\n\nSince the program is compiled and run correctly without this \"include\", isupper() seems to be also declared elsewhere or ctype to be found by another mechanism, and the problem seems be due to interactions between the R headers (?) and the include of the CWB code…\n\nHave you already observed such an effect or do you have any hint?\nBest,\nSylvain\n\n\n-----\nSylvain Loiseau\nsylvain.loiseau at univ-paris13.fr\n\nUniversité Paris 13-Nord\nLaboratoire Lexiques, Dictionnaires, Informatique\n(UMR 7187 CNRS/Université Paris 13-Nord)\n99 avenue Jean-Baptiste Clément\nF-93410 Villetaneuse",
       "body_snippet": "Dear all,\n\nI'm facing a strange behavior in the the C code of a R package. This package, \"rcqp\", is a wrapper on an existing program that I did not write, \"CWB\".\n\nIn this package, on a linux (ubuntu a",
       "thread_id": "thread-382610ce8f3d",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064986.html"
     },
     {
       "id": "msg-8f299d20f6ee",
@@ -1113,7 +1170,8 @@
       "body_snippet": "Promises are an implementation detail -- we need to be able to change\nthem, optimize them away, etc, so there is a limit on what we want to\nexpose.  Allowing a query of whether a binding is delayed or",
       "thread_id": "thread-5c4f76ebcd19",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064987.html"
     },
     {
       "id": "msg-4538d809f3f5",
@@ -1127,11 +1185,12 @@
       "references": [
         "<F6DDF0FF-58EB-4D94-97A5-2E290BA4A48F@univ-paris13.fr>"
       ],
-      "body_plain": "Sylvain,\n\nI can see two possible reasons for this (both just speculative without an actual example):\n\na) it could be a conflict in (probably system) headers. isupper is typically a macro so I suspect what happens is that you have two definitions and depending on the sequence of includes and only the first one wins. By including/removing ctype.h you probably just change its sequence. Check the pre-processed .c files containing the isupper() for each of the two cases to see how they differ.\n\nb) locale issues in your system. The implementation of isupper() may respect locales and R will setup the locale according to the environment, so maybe the locale is not defining isupper as you think. Maybe a) is only triggered by b) since the two versions may differ by locale.\n\nThere are other reasons one could think of (compiler bug when optimizing the isupper('A') constant) - it's hard to tell without a way to reproduce it.\n\nCheers,\nSimon\n\n\nOn Oct 8, 2012, at 10:11 AM, Sylvain Loiseau wrote:\n\n> Dear all,\n> \n> I'm facing a strange behavior in the the C code of a R package. This package, \"rcqp\", is a wrapper on an existing program that I did not write, \"CWB\".\n> \n> In this package, on a linux (ubuntu and debian) system, the code :\n>     printf(%d\\n\", isupper('A'));\n> outputs :\n>    0\n> When compiled with the R framework (It behaves correctly when CWB is compiled as a standalone program).\n> \n> On mac osx, the code produce the expected output.\n> \n> This unexpected output is observed only in the context of CWB compiled through rcqp, only on linux (not mac osx), and only under certains circumstances, since a minimal R package produce the expected output. Even in CWB, this strange behavior is not observed in any part of the code.\n> \n> When observed, a work-around for this problem is to remove the include in which this very function, isupper, is defined:\n>    #include <ctype.h>\n> \n> Since the program is compiled and run correctly without this \"include\", isupper() seems to be also declared elsewhere or ctype to be found by another mechanism, and the problem seems be due to interactions between the R headers (?) and the include of the CWB code?\n> \n> Have you already observed such an effect or do you have any hint?\n> Best,\n> Sylvain\n> \n> \n> -----\n> Sylvain Loiseau\n> sylvain.loiseau at univ-paris13.fr\n> \n> Universit? Paris 13-Nord\n> Laboratoire Lexiques, Dictionnaires, Informatique\n> (UMR 7187 CNRS/Universit? Paris 13-Nord)\n> 99 avenue Jean-Baptiste Cl?ment\n> F-93410 Villetaneuse\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n> \n>",
+      "body_plain": "Sylvain,\n\nI can see two possible reasons for this (both just speculative without an actual example):\n\na) it could be a conflict in (probably system) headers. isupper is typically a macro so I suspect what happens is that you have two definitions and depending on the sequence of includes and only the first one wins. By including/removing ctype.h you probably just change its sequence. Check the pre-processed .c files containing the isupper() for each of the two cases to see how they differ.\n\nb) locale issues in your system. The implementation of isupper() may respect locales and R will setup the locale according to the environment, so maybe the locale is not defining isupper as you think. Maybe a) is only triggered by b) since the two versions may differ by locale.\n\nThere are other reasons one could think of (compiler bug when optimizing the isupper('A') constant) - it's hard to tell without a way to reproduce it.\n\nCheers,\nSimon\n\n\nOn Oct 8, 2012, at 10:11 AM, Sylvain Loiseau wrote:\n\n> Dear all,\n> \n> I'm facing a strange behavior in the the C code of a R package. This package, \"rcqp\", is a wrapper on an existing program that I did not write, \"CWB\".\n> \n> In this package, on a linux (ubuntu and debian) system, the code :\n>     printf(%d\\n\", isupper('A'));\n> outputs :\n>    0\n> When compiled with the R framework (It behaves correctly when CWB is compiled as a standalone program).\n> \n> On mac osx, the code produce the expected output.\n> \n> This unexpected output is observed only in the context of CWB compiled through rcqp, only on linux (not mac osx), and only under certains circumstances, since a minimal R package produce the expected output. Even in CWB, this strange behavior is not observed in any part of the code.\n> \n> When observed, a work-around for this problem is to remove the include in which this very function, isupper, is defined:\n>    #include <ctype.h>\n> \n> Since the program is compiled and run correctly without this \"include\", isupper() seems to be also declared elsewhere or ctype to be found by another mechanism, and the problem seems be due to interactions between the R headers (?) and the include of the CWB code…\n> \n> Have you already observed such an effect or do you have any hint?\n> Best,\n> Sylvain\n> \n> \n> -----\n> Sylvain Loiseau\n> sylvain.loiseau at univ-paris13.fr\n> \n> Université Paris 13-Nord\n> Laboratoire Lexiques, Dictionnaires, Informatique\n> (UMR 7187 CNRS/Université Paris 13-Nord)\n> 99 avenue Jean-Baptiste Clément\n> F-93410 Villetaneuse\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n> \n>",
       "body_snippet": "Sylvain,\n\nI can see two possible reasons for this (both just speculative without an actual example):\n\na) it could be a conflict in (probably system) headers. isupper is typically a macro so I suspect ",
       "thread_id": "thread-382610ce8f3d",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064988.html"
     },
     {
       "id": "msg-5f8cd26a7165",
@@ -1149,7 +1208,8 @@
       "body_snippet": "On Mon, Oct 8, 2012 at 9:22 AM, Hadley Wickham <h.wickham at gmail.com> wrote:\n> Hi all,\n>\n> It's possible to capture the expression associated with a promise\n> (using substitute). Is there any way to",
       "thread_id": "thread-5c4f76ebcd19",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064989.html"
     },
     {
       "id": "msg-ba3df965918c",
@@ -1168,7 +1228,8 @@
       "body_snippet": "> Promises are an implementation detail -- we need to be able to change\n> them, optimize them away, etc, so there is a limit on what we want to\n> expose.  Allowing a query of whether a binding is dela",
       "thread_id": "thread-5c4f76ebcd19",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064990.html"
     },
     {
       "id": "msg-1cd0d1c98b41",
@@ -1187,7 +1248,8 @@
       "body_snippet": "> Both of these are possible in C. See:\n>\n> https://stat.ethz.ch/pipermail/r-devel/2007-September/046943.html\n\nCool, thanks.\n\n> It shows how to query an object to see if its a promise and but rather\n>",
       "thread_id": "thread-5c4f76ebcd19",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064991.html"
     },
     {
       "id": "msg-e6e49599d2d1",
@@ -1203,7 +1265,8 @@
       "body_snippet": "I'd like to set a temporary time limit with setTimeLimit() and then\nundo these set time limits, i.e. return back to whatever the time\nlimits were before.  Is it possible to get the current time limits",
       "thread_id": "thread-e6e49599d2d1",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064992.html"
     },
     {
       "id": "msg-19e35954733a",
@@ -1215,11 +1278,12 @@
       "subject_clean": "as.data.frame.matrix() returns an invalid object",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Hi,\n\nTwo ways to create what should normally be the same data frame:\n\n   > df1 <- data.frame(a=character(0), b=character(0))> df1\n   [1] a b\n   <0 rows> (or 0-length row.names)\n\n   > df2 <- as.data.frame(matrix(character(0), ncol=2, \ndimnames=list(NULL, letters[1:2])))\n   > df2\n   [1] a b\n   <0 rows> (or 0-length row.names)\n\nunique() works as expected except that I get a warning on 'df2':\n\n   > unique(df1)\n   [1] a b\n   <0 rows> (or 0-length row.names)\n\n   > unique(df2)\n   [1] a b\n   <0 rows> (or 0-length row.names)\n   Warning message:\n   In is.na(rows) : is.na() applied to non-(list or vector) of type 'NULL'\n\nLook like the two data frames are not identical:\n\n   > identical(df1, df2)\n   [1] FALSE\n\n   > all.equal(df1, df2)\n   [1] \"Attributes: < Length mismatch: comparison on first 1 components >\"\n\n   > attributes(df1)\n   $names\n   [1] \"a\" \"b\"\n\n   $row.names\n   integer(0)\n\n   $class\n   [1] \"data.frame\"\n\n   > attributes(df2)\n   $names\n   [1] \"a\" \"b\"\n\n   $class\n   [1] \"data.frame\"\n\nActually 'df2' is considered broken by validObject():\n\n   > validObject(df1)\n   [1] TRUE\n\n   > validObject(df2)\n   Error in validObject(df2) :\n     invalid class ?data.frame? object: slots in class definition but \nnot in object: \"row.names\"\n\nThis is with R 2.15 and recent R devel.\n\nCheers,\nH.\n\n-- \nHerv? Pag?s\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
+      "body_plain": "Hi,\n\nTwo ways to create what should normally be the same data frame:\n\n   > df1 <- data.frame(a=character(0), b=character(0))> df1\n   [1] a b\n   <0 rows> (or 0-length row.names)\n\n   > df2 <- as.data.frame(matrix(character(0), ncol=2, \ndimnames=list(NULL, letters[1:2])))\n   > df2\n   [1] a b\n   <0 rows> (or 0-length row.names)\n\nunique() works as expected except that I get a warning on 'df2':\n\n   > unique(df1)\n   [1] a b\n   <0 rows> (or 0-length row.names)\n\n   > unique(df2)\n   [1] a b\n   <0 rows> (or 0-length row.names)\n   Warning message:\n   In is.na(rows) : is.na() applied to non-(list or vector) of type 'NULL'\n\nLook like the two data frames are not identical:\n\n   > identical(df1, df2)\n   [1] FALSE\n\n   > all.equal(df1, df2)\n   [1] \"Attributes: < Length mismatch: comparison on first 1 components >\"\n\n   > attributes(df1)\n   $names\n   [1] \"a\" \"b\"\n\n   $row.names\n   integer(0)\n\n   $class\n   [1] \"data.frame\"\n\n   > attributes(df2)\n   $names\n   [1] \"a\" \"b\"\n\n   $class\n   [1] \"data.frame\"\n\nActually 'df2' is considered broken by validObject():\n\n   > validObject(df1)\n   [1] TRUE\n\n   > validObject(df2)\n   Error in validObject(df2) :\n     invalid class “data.frame” object: slots in class definition but \nnot in object: \"row.names\"\n\nThis is with R 2.15 and recent R devel.\n\nCheers,\nH.\n\n-- \nHervé Pagès\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
       "body_snippet": "Hi,\n\nTwo ways to create what should normally be the same data frame:\n\n   > df1 <- data.frame(a=character(0), b=character(0))> df1\n   [1] a b\n   <0 rows> (or 0-length row.names)\n\n   > df2 <- as.data.fr",
       "thread_id": "thread-19e35954733a",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064993.html"
     },
     {
       "id": "msg-cc8f5bf8ce49",
@@ -1233,11 +1297,12 @@
       "references": [
         "<507665BF.9040000@fhcrc.org>"
       ],
-      "body_plain": "... and further\n\n> identical(as.list(df2),as.list(df1))\n[1] TRUE\n\nin R 2.15.0\n\nNot sure whether these sorts of degenerate cases are of much value,\nthough. But I'll leave that for the wizards.\n\n-- Bert\n\nOn Wed, Oct 10, 2012 at 11:22 PM, Herv? Pag?s <hpages at fhcrc.org> wrote:\n> Hi,\n>\n> Two ways to create what should normally be the same data frame:\n>\n>   > df1 <- data.frame(a=character(0), b=character(0))> df1\n>   [1] a b\n>   <0 rows> (or 0-length row.names)\n>\n>   > df2 <- as.data.frame(matrix(character(0), ncol=2, dimnames=list(NULL,\n> letters[1:2])))\n>   > df2\n>   [1] a b\n>   <0 rows> (or 0-length row.names)\n>\n> unique() works as expected except that I get a warning on 'df2':\n>\n>   > unique(df1)\n>   [1] a b\n>   <0 rows> (or 0-length row.names)\n>\n>   > unique(df2)\n>   [1] a b\n>   <0 rows> (or 0-length row.names)\n>   Warning message:\n>   In is.na(rows) : is.na() applied to non-(list or vector) of type 'NULL'\n>\n> Look like the two data frames are not identical:\n>\n>   > identical(df1, df2)\n>   [1] FALSE\n>\n>   > all.equal(df1, df2)\n>   [1] \"Attributes: < Length mismatch: comparison on first 1 components >\"\n>\n>   > attributes(df1)\n>   $names\n>   [1] \"a\" \"b\"\n>\n>   $row.names\n>   integer(0)\n>\n>   $class\n>   [1] \"data.frame\"\n>\n>   > attributes(df2)\n>   $names\n>   [1] \"a\" \"b\"\n>\n>   $class\n>   [1] \"data.frame\"\n>\n> Actually 'df2' is considered broken by validObject():\n>\n>   > validObject(df1)\n>   [1] TRUE\n>\n>   > validObject(df2)\n>   Error in validObject(df2) :\n>     invalid class ?data.frame? object: slots in class definition but not in\n> object: \"row.names\"\n>\n> This is with R 2.15 and recent R devel.\n>\n> Cheers,\n> H.\n>\n> --\n> Herv? Pag?s\n>\n> Program in Computational Biology\n> Division of Public Health Sciences\n> Fred Hutchinson Cancer Research Center\n> 1100 Fairview Ave. N, M1-B514\n> P.O. Box 19024\n> Seattle, WA 98109-1024\n>\n> E-mail: hpages at fhcrc.org\n> Phone:  (206) 667-5791\n> Fax:    (206) 667-1319\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n\n-- \n\nBert Gunter\nGenentech Nonclinical Biostatistics\n\nInternal Contact Info:\nPhone: 467-7374\nWebsite:\nhttp://pharmadevelopment.roche.com/index/pdb/pdb-functional-groups/pdb-biostatistics/pdb-ncb-home.htm",
+      "body_plain": "... and further\n\n> identical(as.list(df2),as.list(df1))\n[1] TRUE\n\nin R 2.15.0\n\nNot sure whether these sorts of degenerate cases are of much value,\nthough. But I'll leave that for the wizards.\n\n-- Bert\n\nOn Wed, Oct 10, 2012 at 11:22 PM, Hervé Pagès <hpages at fhcrc.org> wrote:\n> Hi,\n>\n> Two ways to create what should normally be the same data frame:\n>\n>   > df1 <- data.frame(a=character(0), b=character(0))> df1\n>   [1] a b\n>   <0 rows> (or 0-length row.names)\n>\n>   > df2 <- as.data.frame(matrix(character(0), ncol=2, dimnames=list(NULL,\n> letters[1:2])))\n>   > df2\n>   [1] a b\n>   <0 rows> (or 0-length row.names)\n>\n> unique() works as expected except that I get a warning on 'df2':\n>\n>   > unique(df1)\n>   [1] a b\n>   <0 rows> (or 0-length row.names)\n>\n>   > unique(df2)\n>   [1] a b\n>   <0 rows> (or 0-length row.names)\n>   Warning message:\n>   In is.na(rows) : is.na() applied to non-(list or vector) of type 'NULL'\n>\n> Look like the two data frames are not identical:\n>\n>   > identical(df1, df2)\n>   [1] FALSE\n>\n>   > all.equal(df1, df2)\n>   [1] \"Attributes: < Length mismatch: comparison on first 1 components >\"\n>\n>   > attributes(df1)\n>   $names\n>   [1] \"a\" \"b\"\n>\n>   $row.names\n>   integer(0)\n>\n>   $class\n>   [1] \"data.frame\"\n>\n>   > attributes(df2)\n>   $names\n>   [1] \"a\" \"b\"\n>\n>   $class\n>   [1] \"data.frame\"\n>\n> Actually 'df2' is considered broken by validObject():\n>\n>   > validObject(df1)\n>   [1] TRUE\n>\n>   > validObject(df2)\n>   Error in validObject(df2) :\n>     invalid class “data.frame” object: slots in class definition but not in\n> object: \"row.names\"\n>\n> This is with R 2.15 and recent R devel.\n>\n> Cheers,\n> H.\n>\n> --\n> Hervé Pagès\n>\n> Program in Computational Biology\n> Division of Public Health Sciences\n> Fred Hutchinson Cancer Research Center\n> 1100 Fairview Ave. N, M1-B514\n> P.O. Box 19024\n> Seattle, WA 98109-1024\n>\n> E-mail: hpages at fhcrc.org\n> Phone:  (206) 667-5791\n> Fax:    (206) 667-1319\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n\n\n-- \n\nBert Gunter\nGenentech Nonclinical Biostatistics\n\nInternal Contact Info:\nPhone: 467-7374\nWebsite:\nhttp://pharmadevelopment.roche.com/index/pdb/pdb-functional-groups/pdb-biostatistics/pdb-ncb-home.htm",
       "body_snippet": "... and further\n\n> identical(as.list(df2),as.list(df1))\n[1] TRUE\n\nin R 2.15.0\n\nNot sure whether these sorts of degenerate cases are of much value,\nthough. But I'll leave that for the wizards.\n\n-- Bert",
       "thread_id": "thread-19e35954733a",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064997.html"
     },
     {
       "id": "msg-f2c86dfc51b6",
@@ -1253,7 +1318,8 @@
       "body_snippet": "Should simplify2array(higher=TRUE) treat 1 by 1 matrices differently than others?\nI expected a 3-dimensional array from all of the following 3 examples, not just the last 2.\n\n  > str(simplify2array(li",
       "thread_id": "thread-f2c86dfc51b6",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064994.html"
     },
     {
       "id": "msg-3b83f841b279",
@@ -1269,7 +1335,8 @@
       "body_snippet": "Hi there,\n\nI'm having trouble to compile the R + C/C++ codes for this project from\nYahoo folks on latent factor models: \nhttps://github.com/yahoo/Latent-Factor-Models#readme\n\nAfter downloading the pac",
       "thread_id": "thread-3b83f841b279",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064996.html"
     },
     {
       "id": "msg-ea8c2ec4f256",
@@ -1285,7 +1352,8 @@
       "body_snippet": "Hi all,\n\nIs there an equivalent to .Call that passes the unevaluated arguments?\n(e.g. like the equivalent of .Interval + eval = 10 in names.c)\n\nIf not, are there any disadvantages to doing something l",
       "thread_id": "thread-ea8c2ec4f256",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064995.html"
     },
     {
       "id": "msg-4b7e09892296",
@@ -1303,7 +1371,8 @@
       "body_snippet": "1) Cygwin is not a supported platform. See the 'R Installation and \nAdministration Manual'.\n\n2) C:\\Program Files\\R\\R-2.15.1\\etc\\i386\\Makeconf is for the Windows port \nof R, not Cygwin.\n\nAre you percha",
       "thread_id": "thread-3b83f841b279",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064998.html"
     },
     {
       "id": "msg-04abdfb800ab",
@@ -1320,6 +1389,7 @@
       "thread_id": "thread-04abdfb800ab",
       "thread_depth": 0,
       "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/064999.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20121013/aa482751/attachment.pl"
       ]
@@ -1337,11 +1407,12 @@
         "<507665BF.9040000@fhcrc.org>",
         "<CACk-te39O9M3XZ=MFBLSht1XP09N2Ce0iBDiFM66YEuLouGOeg@mail.gmail.com>"
       ],
-      "body_plain": "On Oct 11, 2012, at 16:02 , Bert Gunter wrote:\n\n> ... and further\n> \n>> identical(as.list(df2),as.list(df1))\n> [1] TRUE\n> \n> in R 2.15.0\n> \n> Not sure whether these sorts of degenerate cases are of much value,\n> though. But I'll leave that for the wizards.\n\nLooks like this is easier to fix that to argue pro/con fixing it...\n\nAFAICS, there's a gap in the logic in as.data.frame.matrix:\n\n    if (length(row.names) != nrows) \n        row.names <- .set_row_names(nrows)\n\nbut length(NULL) is 0 so we can end up leaving row.names at NULL and eventually nulling it in the result. An explicit check for is.null(row.names) should help.\n\n-pd\n> \n> -- Bert\n> \n> On Wed, Oct 10, 2012 at 11:22 PM, Herv? Pag?s <hpages at fhcrc.org> wrote:\n>> Hi,\n>> \n>> Two ways to create what should normally be the same data frame:\n>> \n>>> df1 <- data.frame(a=character(0), b=character(0))> df1\n>>  [1] a b\n>>  <0 rows> (or 0-length row.names)\n>> \n>>> df2 <- as.data.frame(matrix(character(0), ncol=2, dimnames=list(NULL,\n>> letters[1:2])))\n>>> df2\n>>  [1] a b\n>>  <0 rows> (or 0-length row.names)\n>> \n>> unique() works as expected except that I get a warning on 'df2':\n>> \n>>> unique(df1)\n>>  [1] a b\n>>  <0 rows> (or 0-length row.names)\n>> \n>>> unique(df2)\n>>  [1] a b\n>>  <0 rows> (or 0-length row.names)\n>>  Warning message:\n>>  In is.na(rows) : is.na() applied to non-(list or vector) of type 'NULL'\n>> \n>> Look like the two data frames are not identical:\n>> \n>>> identical(df1, df2)\n>>  [1] FALSE\n>> \n>>> all.equal(df1, df2)\n>>  [1] \"Attributes: < Length mismatch: comparison on first 1 components >\"\n>> \n>>> attributes(df1)\n>>  $names\n>>  [1] \"a\" \"b\"\n>> \n>>  $row.names\n>>  integer(0)\n>> \n>>  $class\n>>  [1] \"data.frame\"\n>> \n>>> attributes(df2)\n>>  $names\n>>  [1] \"a\" \"b\"\n>> \n>>  $class\n>>  [1] \"data.frame\"\n>> \n>> Actually 'df2' is considered broken by validObject():\n>> \n>>> validObject(df1)\n>>  [1] TRUE\n>> \n>>> validObject(df2)\n>>  Error in validObject(df2) :\n>>    invalid class ?data.frame? object: slots in class definition but not in\n>> object: \"row.names\"\n>> \n>> This is with R 2.15 and recent R devel.\n>> \n>> Cheers,\n>> H.\n>> \n>> --\n>> Herv? Pag?s\n>> \n>> Program in Computational Biology\n>> Division of Public Health Sciences\n>> Fred Hutchinson Cancer Research Center\n>> 1100 Fairview Ave. N, M1-B514\n>> P.O. Box 19024\n>> Seattle, WA 98109-1024\n>> \n>> E-mail: hpages at fhcrc.org\n>> Phone:  (206) 667-5791\n>> Fax:    (206) 667-1319\n>> \n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n> \n> \n> \n> -- \n> \n> Bert Gunter\n> Genentech Nonclinical Biostatistics\n> \n> Internal Contact Info:\n> Phone: 467-7374\n> Website:\n> http://pharmadevelopment.roche.com/index/pdb/pdb-functional-groups/pdb-biostatistics/pdb-ncb-home.htm\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com",
+      "body_plain": "On Oct 11, 2012, at 16:02 , Bert Gunter wrote:\n\n> ... and further\n> \n>> identical(as.list(df2),as.list(df1))\n> [1] TRUE\n> \n> in R 2.15.0\n> \n> Not sure whether these sorts of degenerate cases are of much value,\n> though. But I'll leave that for the wizards.\n\nLooks like this is easier to fix that to argue pro/con fixing it...\n\nAFAICS, there's a gap in the logic in as.data.frame.matrix:\n\n    if (length(row.names) != nrows) \n        row.names <- .set_row_names(nrows)\n\nbut length(NULL) is 0 so we can end up leaving row.names at NULL and eventually nulling it in the result. An explicit check for is.null(row.names) should help.\n\n-pd\n> \n> -- Bert\n> \n> On Wed, Oct 10, 2012 at 11:22 PM, Hervé Pagès <hpages at fhcrc.org> wrote:\n>> Hi,\n>> \n>> Two ways to create what should normally be the same data frame:\n>> \n>>> df1 <- data.frame(a=character(0), b=character(0))> df1\n>>  [1] a b\n>>  <0 rows> (or 0-length row.names)\n>> \n>>> df2 <- as.data.frame(matrix(character(0), ncol=2, dimnames=list(NULL,\n>> letters[1:2])))\n>>> df2\n>>  [1] a b\n>>  <0 rows> (or 0-length row.names)\n>> \n>> unique() works as expected except that I get a warning on 'df2':\n>> \n>>> unique(df1)\n>>  [1] a b\n>>  <0 rows> (or 0-length row.names)\n>> \n>>> unique(df2)\n>>  [1] a b\n>>  <0 rows> (or 0-length row.names)\n>>  Warning message:\n>>  In is.na(rows) : is.na() applied to non-(list or vector) of type 'NULL'\n>> \n>> Look like the two data frames are not identical:\n>> \n>>> identical(df1, df2)\n>>  [1] FALSE\n>> \n>>> all.equal(df1, df2)\n>>  [1] \"Attributes: < Length mismatch: comparison on first 1 components >\"\n>> \n>>> attributes(df1)\n>>  $names\n>>  [1] \"a\" \"b\"\n>> \n>>  $row.names\n>>  integer(0)\n>> \n>>  $class\n>>  [1] \"data.frame\"\n>> \n>>> attributes(df2)\n>>  $names\n>>  [1] \"a\" \"b\"\n>> \n>>  $class\n>>  [1] \"data.frame\"\n>> \n>> Actually 'df2' is considered broken by validObject():\n>> \n>>> validObject(df1)\n>>  [1] TRUE\n>> \n>>> validObject(df2)\n>>  Error in validObject(df2) :\n>>    invalid class “data.frame” object: slots in class definition but not in\n>> object: \"row.names\"\n>> \n>> This is with R 2.15 and recent R devel.\n>> \n>> Cheers,\n>> H.\n>> \n>> --\n>> Hervé Pagès\n>> \n>> Program in Computational Biology\n>> Division of Public Health Sciences\n>> Fred Hutchinson Cancer Research Center\n>> 1100 Fairview Ave. N, M1-B514\n>> P.O. Box 19024\n>> Seattle, WA 98109-1024\n>> \n>> E-mail: hpages at fhcrc.org\n>> Phone:  (206) 667-5791\n>> Fax:    (206) 667-1319\n>> \n>> ______________________________________________\n>> R-devel at r-project.org mailing list\n>> https://stat.ethz.ch/mailman/listinfo/r-devel\n> \n> \n> \n> -- \n> \n> Bert Gunter\n> Genentech Nonclinical Biostatistics\n> \n> Internal Contact Info:\n> Phone: 467-7374\n> Website:\n> http://pharmadevelopment.roche.com/index/pdb/pdb-functional-groups/pdb-biostatistics/pdb-ncb-home.htm\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com",
       "body_snippet": "On Oct 11, 2012, at 16:02 , Bert Gunter wrote:\n\n> ... and further\n> \n>> identical(as.list(df2),as.list(df1))\n> [1] TRUE\n> \n> in R 2.15.0\n> \n> Not sure whether these sorts of degenerate cases are of mu",
       "thread_id": "thread-19e35954733a",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065000.html"
     },
     {
       "id": "msg-51832d8a2f6a",
@@ -1359,7 +1430,8 @@
       "body_snippet": "On 13/10/2012 08:09, Rob Anderson wrote:\n> Hi,\n>\n> I was wondering if it is safe to call R functions and/or R BLAS functions\n> from within multithreaded C/C++ code(.Call interface)? It is not in case\n",
       "thread_id": "thread-04abdfb800ab",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065001.html"
     },
     {
       "id": "msg-f44a3f5a00dc",
@@ -1375,7 +1447,8 @@
       "body_snippet": "Hello,\n\nI'm trying to install R from sources on two Linux machines (both with Suse 12.2):\n\n1.\n> uname -a\nLinux cs-wsok 3.4.6-2.10-desktop #1 SMP PREEMPT Thu Jul 26 09:36:26 UTC\n2012 (641c197) x86_64 x",
       "thread_id": "thread-f44a3f5a00dc",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065002.html"
     },
     {
       "id": "msg-036734fd829f",
@@ -1391,7 +1464,8 @@
       "body_snippet": "I started idly wondering how deeply lists could be nested, and\ncouldn't find an explicit limit in the documentation.  With this\nsimple test\n\na_list <- list()\ncount <- 0\nrepeat\n{\n  a_list[[1]] <- a_lis",
       "thread_id": "thread-036734fd829f",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065003.html"
     },
     {
       "id": "msg-3ed58864d8c1",
@@ -1409,7 +1483,8 @@
       "body_snippet": "On 12-10-14 7:06 AM, Richard Cotton wrote:\n> I started idly wondering how deeply lists could be nested, and\n> couldn't find an explicit limit in the documentation.  With this\n> simple test\n>\n> a_list ",
       "thread_id": "thread-036734fd829f",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065004.html"
     },
     {
       "id": "msg-1f3f838718a5",
@@ -1428,7 +1503,8 @@
       "body_snippet": "On 14/10/2012 12:53, Duncan Murdoch wrote:\n> On 12-10-14 7:06 AM, Richard Cotton wrote:\n>> I started idly wondering how deeply lists could be nested, and\n>> couldn't find an explicit limit in the docu",
       "thread_id": "thread-036734fd829f",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065005.html"
     },
     {
       "id": "msg-76691efe8acb",
@@ -1444,7 +1520,8 @@
       "body_snippet": "I noticed that my package BayesFactor \n(http://cran.r-project.org/web/packages/BayesFactor/index.html) is not \navailable on Mac OS, and the note says to see the check log. The only \nissue in the check",
       "thread_id": "thread-76691efe8acb",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065008.html"
     },
     {
       "id": "msg-3a0622099d04",
@@ -1464,7 +1541,8 @@
       "body_snippet": "I agree that real-world uses of nesting this deep are rare enough to\nnot worry about fixing code (unless there is something extremely\ntrivial that can done).\n\nMy main concern is that it doesn't seem t",
       "thread_id": "thread-036734fd829f",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065006.html"
     },
     {
       "id": "msg-1e608a178367",
@@ -1480,7 +1558,8 @@
       "body_snippet": "This year we have done a refresh of the translations mid-cycle: all \nthe updates are now in R-patched for release in R 2.15.2 on the 26th. \nThis includes several of the recommended packages.\n\nIf you u",
       "thread_id": "thread-1e608a178367",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065007.html"
     },
     {
       "id": "msg-ea8ef3628b90",
@@ -1498,7 +1577,8 @@
       "body_snippet": "On 14.10.2012 15:33, Richard D. Morey wrote:\n> I noticed that my package BayesFactor\n> (http://cran.r-project.org/web/packages/BayesFactor/index.html) is not\n> available on Mac OS, and the note says t",
       "thread_id": "thread-76691efe8acb",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065009.html"
     },
     {
       "id": "msg-a4ffe94fa37a",
@@ -1516,7 +1596,8 @@
       "body_snippet": "On Oct 14, 2012, at 9:33 AM, Richard D. Morey wrote:\n\n> I noticed that my package BayesFactor (http://cran.r-project.org/web/packages/BayesFactor/index.html) is not available on Mac OS, and the note s",
       "thread_id": "thread-76691efe8acb",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065010.html"
     },
     {
       "id": "msg-48b2ce89eb60",
@@ -1535,7 +1616,8 @@
       "body_snippet": "Yes, I was looking at the right package. At some point last night it \nchanged from \"not available (see check log)\" to available.\n\nPrevious to \"not available (see check log)\" it was \"not available (the",
       "thread_id": "thread-76691efe8acb",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065011.html"
     },
     {
       "id": "msg-23aea0855363",
@@ -1555,6 +1637,7 @@
       "thread_id": "thread-04abdfb800ab",
       "thread_depth": 2,
       "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065012.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20121015/ca726cd8/attachment.pl"
       ]
@@ -1574,6 +1657,7 @@
       "thread_id": "thread-01c3bf6a3cf4",
       "thread_depth": 0,
       "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065013.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20121015/30e4cb9d/attachment.pl"
       ]
@@ -1594,7 +1678,8 @@
       "body_snippet": "On 12-10-15 8:38 PM, Chris Green wrote:\n> I used S-Plus for many years, and developed lots of code for my research.\n> When I switched to R a few years ago, I ported most of my S-Plus code over\n> to R ",
       "thread_id": "thread-01c3bf6a3cf4",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065014.html"
     },
     {
       "id": "msg-5f5b2a5d266d",
@@ -1610,7 +1695,8 @@
       "body_snippet": "bsseq is a Bioconductor package.  I think the main issue here is that\nCITATION has a volume field, like\n\nbibentry(\"Article\",\n         title = \"{BSmooth: from whole genome bisulfite sequencing\nreads to",
       "thread_id": "thread-5f5b2a5d266d",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065015.html"
     },
     {
       "id": "msg-b59d1075e530",
@@ -1626,7 +1712,8 @@
       "body_snippet": "Hi,\n\nalthough I've done S3 dispatching for more than a decade now, I think\nI managed to overlook/avoid the following pitfall when using\nNextMethod():\n\nIf you explicitly pass argument '...' to NextMeth",
       "thread_id": "thread-b59d1075e530",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065016.html"
     },
     {
       "id": "msg-85a584127526",
@@ -1644,7 +1731,8 @@
       "body_snippet": "On Oct 16, 2012, at 9:53 PM, Henrik Bengtsson wrote:\n\n> Hi,\n> \n> although I've done S3 dispatching for more than a decade now, I think\n> I managed to overlook/avoid the following pitfall when using\n> ",
       "thread_id": "thread-b59d1075e530",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065017.html"
     },
     {
       "id": "msg-33b5e2112704",
@@ -1660,7 +1748,8 @@
       "body_snippet": "Hi,\n\nThe Transparency Layer feature of Oracle R Enterprise overcomes the\nRAM limitation of R, and can take advantage of multiple core\nprocessing of the database server by translating R expression into",
       "thread_id": "thread-33b5e2112704",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065019.html"
     },
     {
       "id": "msg-9f8b9e1841d7",
@@ -1679,7 +1768,8 @@
       "body_snippet": "Hi Simon,\n\nthanks for the prompt reply.  Comments below...\n\nOn Tue, Oct 16, 2012 at 7:35 PM, Simon Urbanek\n<simon.urbanek at r-project.org> wrote:\n>\n> On Oct 16, 2012, at 9:53 PM, Henrik Bengtsson wro",
       "thread_id": "thread-b59d1075e530",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065018.html"
     },
     {
       "id": "msg-46f6c9af6e82",
@@ -1695,7 +1785,8 @@
       "body_snippet": "Is there a fundamental reason why I cannot set either one of\n\n  ## add local library path -- doesn't work either\n  R_LIBS_USER=\"c:/opt/R-library\"\n  R_LIBS_SITE=\"c:/opt/R-library\"\n\nin $R_HOME/etc/Rcmd_",
       "thread_id": "thread-46f6c9af6e82",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065020.html"
     },
     {
       "id": "msg-f964ae94269f",
@@ -1713,7 +1804,8 @@
       "body_snippet": "Xiaobo Gu <guxiaobo1982 <at> gmail.com> writes:\n\n> \n> Hi,\n> \n> The Transparency Layer feature of Oracle R Enterprise overcomes the\n> RAM limitation of R, and can take advantage of multiple core\n> proc",
       "thread_id": "thread-33b5e2112704",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065021.html"
     },
     {
       "id": "msg-34a9cfe4a70d",
@@ -1734,7 +1826,8 @@
       "body_snippet": "Hi Chris\n\nThanks for asking about this. In general, 3rd parties aren't allowed to modify Insightful (now TIBCO) code and then re-release it under a different license, since we own the copyright to the",
       "thread_id": "thread-34a9cfe4a70d",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065022.html"
     },
     {
       "id": "msg-5c62ed8735ec",
@@ -1752,7 +1845,8 @@
       "body_snippet": "No reply in a number of hours, so here is a suggestion from ignorance :-}\n\n?Startup refers to a number of other \"site and user files to process for \nsetting environment variables\" but not to Rcmd_envi",
       "thread_id": "thread-46f6c9af6e82",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065023.html"
     },
     {
       "id": "msg-f2b5f5f2f1bc",
@@ -1768,7 +1862,8 @@
       "body_snippet": "Initialization of this simple hierarchy\n\n   A = setClass(\"A\", representation(x=\"numeric\"))\n   setClass(\"B\", contains=c(\"VIRTUAL\", \"A\"))\n   C = setClass(\"C\", contains=\"B\")\n\nfails (neat that setClass re",
       "thread_id": "thread-f2b5f5f2f1bc",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065024.html"
     },
     {
       "id": "msg-27f0c213c829",
@@ -1787,7 +1882,8 @@
       "body_snippet": "Keith,\n\nOn 18 October 2012 at 09:14, Keith Jewell wrote:\n| No reply in a number of hours, so here is a suggestion from ignorance :-}\n| \n| ?Startup refers to a number of other \"site and user files to p",
       "thread_id": "thread-46f6c9af6e82",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065025.html"
     },
     {
       "id": "msg-8b5faeb95ec9",
@@ -1807,7 +1903,8 @@
       "body_snippet": "Dirk,\n\nI set my user libraries in .Rprofile for this very reason.  I agree it\nis weird that .Renviron is not always read etc.\n\nKasper\n\nOn Thu, Oct 18, 2012 at 10:12 AM, Dirk Eddelbuettel <edd at debia",
       "thread_id": "thread-46f6c9af6e82",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065026.html"
     },
     {
       "id": "msg-2d0863689266",
@@ -1828,7 +1925,8 @@
       "body_snippet": "Kasper,\n\nOn 18 October 2012 at 10:41, Kasper Daniel Hansen wrote:\n| I set my user libraries in .Rprofile for this very reason.  I agree it\n| is weird that .Renviron is not always read etc.\n\nSorry, no ",
       "thread_id": "thread-46f6c9af6e82",
       "thread_depth": 4,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065027.html"
     },
     {
       "id": "msg-179e046844f9",
@@ -1845,6 +1943,7 @@
       "thread_id": "thread-179e046844f9",
       "thread_depth": 0,
       "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065031.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20121018/76c6ba73/attachment.pl"
       ]
@@ -1865,7 +1964,8 @@
       "body_snippet": "On 10/18/12 6:31 AM, Martin Morgan wrote:\n> Initialization of this simple hierarchy\n>\n>    A = setClass(\"A\", representation(x=\"numeric\"))\n>    setClass(\"B\", contains=c(\"VIRTUAL\", \"A\"))\n>    C = setCla",
       "thread_id": "thread-f2b5f5f2f1bc",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065028.html"
     },
     {
       "id": "msg-6d6d3e0a8cd5",
@@ -1879,11 +1979,12 @@
       "references": [
         "<2F1B0A66E8124A4DA5B4C4D3EC18BA2633530274@MAIL02.TUCKER.CATALYSIS.com>"
       ],
-      "body_plain": "Seeking confirmation/disconfirmation that R 64bit for Windows will run on Windows 2012 server running Microsoft?s Hyper-V 2012 server virtualization software and advice on building this on AMD 16 core or Intel 8 core processors where we want to put up a 64 core VM. We have not built this yet, we are seeking advice on whether R will run in this environment. \n\nThank you;\n\nMatthew Schall\nMatthew at Catalysis.com\n\ncatalysis? 1601 East John Street ? Seattle, Washington ?98112 matthew at catalysis.com ? 206.860.2534 (direct) ? catalysis.com",
-      "body_snippet": "Seeking confirmation/disconfirmation that R 64bit for Windows will run on Windows 2012 server running Microsoft?s Hyper-V 2012 server virtualization software and advice on building this on AMD 16 core",
+      "body_plain": "Seeking confirmation/disconfirmation that R 64bit for Windows will run on Windows 2012 server running Microsoft’s Hyper-V 2012 server virtualization software and advice on building this on AMD 16 core or Intel 8 core processors where we want to put up a 64 core VM. We have not built this yet, we are seeking advice on whether R will run in this environment. \n\nThank you;\n\nMatthew Schall\nMatthew at Catalysis.com\n\ncatalysis® 1601 East John Street ∙ Seattle, Washington  98112 matthew at catalysis.com ∙ 206.860.2534 (direct) ∙ catalysis.com",
+      "body_snippet": "Seeking confirmation/disconfirmation that R 64bit for Windows will run on Windows 2012 server running Microsoft’s Hyper-V 2012 server virtualization software and advice on building this on AMD 16 core",
       "thread_id": "thread-6d6d3e0a8cd5",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065032.html"
     },
     {
       "id": "msg-77685483c5e3",
@@ -1903,7 +2004,8 @@
       "body_snippet": "Alright, now I'm even more confused about passing argument via\nNextMethod().  Here is another example where an argument is duplicated\ndespite '...' is *not* explicitly passed to NextMethod().\n\nbar <- ",
       "thread_id": "thread-b59d1075e530",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065029.html"
     },
     {
       "id": "msg-2852e4c50bd8",
@@ -1915,11 +2017,12 @@
       "subject_clean": "Mac and Windows binaries of rJava broken for R-devel?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Hi,\n\nHere is a problem we see with the Mac and Windows binaries of\nrJava (0.9-3) currently available on CRAN for R-devel (i.e. under\nbin/macosx/leopard/contrib/2.16/ and bin/windows/contrib/2.16/):\n\n   > library(rJava)\n   > .jinit(\"gaggle/inst/jars/gaggleRShell.jar\")\n   Error in .Call(\"R_do_new_object\", ClassDef, PACKAGE = \"base\") :\n     \"R_do_new_object\" not available for .Call() for package \"base\"\n\nThe same code works fine with R-devel on Linux and the same version\nof rJava, or with R-2.15 on all platforms and the same version of\nrJava (Mac or Windows binaries installed from CRAN).\n\nThe binaries currently available on CRAN for R-devel seem to predate\nsome important changes in R-devel with respect to the exposure of\nsome .Call entry points. Could it be that those binaries just need\nto be rebuilt with a more recent version of R-devel?\n\nFWIW, we have a few packages in the development version of Bioconductor\nthat are affected by this issue.\n\nThanks in advance,\nH.\n\n > sessionInfo()\nR Under development (unstable) (2012-10-17 r60955)\nPlatform: i386-apple-darwin9.8.0/i386 (32-bit)\n\nlocale:\n[1] en_US/en_US/en_US/C/en_US/en_US\n\nattached base packages:\n[1] stats     graphics  grDevices utils     datasets  methods   base\n\nother attached packages:\n[1] rJava_0.9-3\n\n-- \nHerv? Pag?s\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
+      "body_plain": "Hi,\n\nHere is a problem we see with the Mac and Windows binaries of\nrJava (0.9-3) currently available on CRAN for R-devel (i.e. under\nbin/macosx/leopard/contrib/2.16/ and bin/windows/contrib/2.16/):\n\n   > library(rJava)\n   > .jinit(\"gaggle/inst/jars/gaggleRShell.jar\")\n   Error in .Call(\"R_do_new_object\", ClassDef, PACKAGE = \"base\") :\n     \"R_do_new_object\" not available for .Call() for package \"base\"\n\nThe same code works fine with R-devel on Linux and the same version\nof rJava, or with R-2.15 on all platforms and the same version of\nrJava (Mac or Windows binaries installed from CRAN).\n\nThe binaries currently available on CRAN for R-devel seem to predate\nsome important changes in R-devel with respect to the exposure of\nsome .Call entry points. Could it be that those binaries just need\nto be rebuilt with a more recent version of R-devel?\n\nFWIW, we have a few packages in the development version of Bioconductor\nthat are affected by this issue.\n\nThanks in advance,\nH.\n\n > sessionInfo()\nR Under development (unstable) (2012-10-17 r60955)\nPlatform: i386-apple-darwin9.8.0/i386 (32-bit)\n\nlocale:\n[1] en_US/en_US/en_US/C/en_US/en_US\n\nattached base packages:\n[1] stats     graphics  grDevices utils     datasets  methods   base\n\nother attached packages:\n[1] rJava_0.9-3\n\n-- \nHervé Pagès\n\nProgram in Computational Biology\nDivision of Public Health Sciences\nFred Hutchinson Cancer Research Center\n1100 Fairview Ave. N, M1-B514\nP.O. Box 19024\nSeattle, WA 98109-1024\n\nE-mail: hpages at fhcrc.org\nPhone:  (206) 667-5791\nFax:    (206) 667-1319",
       "body_snippet": "Hi,\n\nHere is a problem we see with the Mac and Windows binaries of\nrJava (0.9-3) currently available on CRAN for R-devel (i.e. under\nbin/macosx/leopard/contrib/2.16/ and bin/windows/contrib/2.16/):\n\n ",
       "thread_id": "thread-2852e4c50bd8",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065030.html"
     },
     {
       "id": "msg-254a34f4fa31",
@@ -1935,7 +2038,8 @@
       "body_snippet": "A couple of years ago (in 2008, using R 2.7.x, I believe) I noted that\nusing the configure switch --enable-R-shlib when buildig R made\nconfigure ignore any specified external LAPACK library and use th",
       "thread_id": "thread-254a34f4fa31",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065033.html"
     },
     {
       "id": "msg-2c0ad84607cd",
@@ -1953,7 +2057,8 @@
       "body_snippet": ">>>>> William Dunlap <wdunlap at tibco.com>\n>>>>>     on Thu, 11 Oct 2012 18:59:52 +0000 writes:\n\n    > Should simplify2array(higher=TRUE) treat 1 by 1 matrices differently than others?\n    > I expect",
       "thread_id": "thread-f2c86dfc51b6",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065034.html"
     },
     {
       "id": "msg-19ebd1717f41",
@@ -1975,7 +2080,8 @@
       "body_snippet": "On Thu, 2012-10-18 at 10:18 -0500, Dirk Eddelbuettel wrote:\n> Kasper,\n> \n> On 18 October 2012 at 10:41, Kasper Daniel Hansen wrote:\n> | I set my user libraries in .Rprofile for this very reason.  I ag",
       "thread_id": "thread-46f6c9af6e82",
       "thread_depth": 5,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065035.html"
     },
     {
       "id": "msg-25e074e4cb52",
@@ -1998,7 +2104,8 @@
       "body_snippet": "On 19 October 2012 at 12:39, Gavin Simpson wrote:\n| On Thu, 2012-10-18 at 10:18 -0500, Dirk Eddelbuettel wrote:\n| > Kasper,\n| > \n| > On 18 October 2012 at 10:41, Kasper Daniel Hansen wrote:\n| > | I se",
       "thread_id": "thread-46f6c9af6e82",
       "thread_depth": 6,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065036.html"
     },
     {
       "id": "msg-e4cd7cf1d760",
@@ -2016,7 +2123,8 @@
       "body_snippet": "On Oct 18, 2012, at 12:17 PM, Russell G. Almond wrote:\n\n> I'm having problems getting R CMD check to work correctly on Windows 7 (64 bit) in a package that uses C code.  What I want to do is to be abl",
       "thread_id": "thread-179e046844f9",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065037.html"
     },
     {
       "id": "msg-3f48f1f4d8e0",
@@ -2035,7 +2143,8 @@
       "body_snippet": "On 19/10/2012 15:00, Simon Urbanek wrote:\n>\n> On Oct 18, 2012, at 12:17 PM, Russell G. Almond wrote:\n>\n>> I'm having problems getting R CMD check to work correctly on Windows 7 (64 bit) in a package t",
       "thread_id": "thread-179e046844f9",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065038.html"
     },
     {
       "id": "msg-89b80c1f041a",
@@ -2054,7 +2163,8 @@
       "body_snippet": "On 19.10.2012 01:24, Matthew Schall wrote:\n> Seeking confirmation/disconfirmation that R 64bit for Windows will run on Windows 2012 server running Microsoft?s Hyper-V 2012 server virtualization softwa",
       "thread_id": "thread-6d6d3e0a8cd5",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065039.html"
     },
     {
       "id": "msg-6ace31412f3a",
@@ -2072,7 +2182,8 @@
       "body_snippet": "Thanks for letting me know.\nCurrently the ./2.16 Window binary tree on CRAN is still a link to \n./2.15. We will work to get binaries up within a week.\n\nUwe Ligges\n\n\n\n\n\nOn 19.10.2012 07:52, Herv? Pag?s",
       "thread_id": "thread-2852e4c50bd8",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065040.html"
     },
     {
       "id": "msg-b61d93b0d7a0",
@@ -2088,7 +2199,8 @@
       "body_snippet": "I have a suggested addition to termplot.\nWe have a local mod that is used whenever none of the termplot options is quite right.  It \nis used here almost daily for Cox models in order to put the y axis",
       "thread_id": "thread-b61d93b0d7a0",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065041.html"
     },
     {
       "id": "msg-5cf8eb8a40c1",
@@ -2106,7 +2218,8 @@
       "body_snippet": "On 19/10/2012 18:15, Terry Therneau wrote:\n> I have a suggested addition to termplot.\n> We have a local mod that is used whenever none of the termplot options\n> is quite right.  It is used here almost",
       "thread_id": "thread-b61d93b0d7a0",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065042.html"
     },
     {
       "id": "msg-62acf05af622",
@@ -2130,7 +2243,8 @@
       "body_snippet": "Dirk,\n\nif you ask R to\n\nR CMD check foo_1.2-3.tar.gz\n\n\nand the output is\n\n\"no package called 'foo'\"\n\nthen something went wrong with your setup or your package.\n\nCan we have details?\n\nBest,\nUwe\n\n\n\n\nOn ",
       "thread_id": "thread-46f6c9af6e82",
       "thread_depth": 7,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065043.html"
     },
     {
       "id": "msg-05acbb2831e6",
@@ -2146,7 +2260,8 @@
       "body_snippet": "Hi,\n\nI mentioned this at useR! 2012 but I guess the relevant R core members\nwere not there (presumably Fritz, Duncan and Brian), so I'm making\nthis wishlist again:\n\nCurrently package vignettes have to",
       "thread_id": "thread-05acbb2831e6",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065044.html"
     },
     {
       "id": "msg-1a649c6170fc",
@@ -2162,7 +2277,8 @@
       "body_snippet": "is it possible to set an option inside a function ((I want to set\nna.action = na.fail) and have the previous state restored if there is\nan error so that the function doesn't change the option behind t",
       "thread_id": "thread-1a649c6170fc",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065045.html"
     },
     {
       "id": "msg-2efae6aad87c",
@@ -2187,7 +2303,8 @@
       "body_snippet": "Hi Uwe,\n\nOn 19 October 2012 at 19:25, Uwe Ligges wrote:\n| Dirk,\n| \n| if you ask R to\n| \n| R CMD check foo_1.2-3.tar.gz\n| \n| \n| and the output is\n| \n| \"no package called 'foo'\"\n| \n| then something went",
       "thread_id": "thread-46f6c9af6e82",
       "thread_depth": 8,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065046.html"
     },
     {
       "id": "msg-318b2d29095f",
@@ -2205,7 +2322,8 @@
       "body_snippet": "old_options <- options(na.action=na.fail)\non.exit(options(old_options))\n\nYou can also use this to define a wrapper that executes an expression\nusing special options\n\nwithOptions<-function(optlist,expr",
       "thread_id": "thread-1a649c6170fc",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065047.html"
     },
     {
       "id": "msg-94050e07e647",
@@ -2224,7 +2342,8 @@
       "body_snippet": "On 10/19/2012 10:02 AM, Uwe Ligges wrote:\n> Thanks for letting me know.\n> Currently the ./2.16 Window binary tree on CRAN is still a link to\n> ./2.15. We will work to get binaries up within a week.\n\nS",
       "thread_id": "thread-2852e4c50bd8",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065048.html"
     },
     {
       "id": "msg-cb56447664b8",
@@ -2244,6 +2363,7 @@
       "thread_id": "thread-1a649c6170fc",
       "thread_depth": 2,
       "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065051.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20121019/54e5f715/attachment.pl"
       ]
@@ -2262,7 +2382,8 @@
       "body_snippet": "Hi,\n\nLooks like the implementation of random number generation changed in\nR-devel with respect to R-2.15.1.\n\nWith R-2.15.1:\n\n   > set.seed(33)\n   > sample(49821115, 10)\n    [1] 22217252 19661919 24099",
       "thread_id": "thread-50c614f8e089",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065049.html"
     },
     {
       "id": "msg-e5758d55a085",
@@ -2280,7 +2401,8 @@
       "body_snippet": "Hi Charley,\n\nYou can use the idiom\n   oldNaAction <- options(na.action=na.fail)\n   on.exit(options(oldNaAction))\nor the slightly safer (protected again an interrupt\nbetween the first two lines or an e",
       "thread_id": "thread-1a649c6170fc",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065050.html"
     },
     {
       "id": "msg-28acb612b73a",
@@ -2298,7 +2420,8 @@
       "body_snippet": "On 12-10-19 7:04 PM, Herv? Pag?s wrote:\n> Hi,\n>\n> Looks like the implementation of random number generation changed in\n> R-devel with respect to R-2.15.1.\n>\n> With R-2.15.1:\n>\n>     > set.seed(33)\n>  ",
       "thread_id": "thread-50c614f8e089",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065052.html"
     },
     {
       "id": "msg-53af21edce4b",
@@ -2321,7 +2444,8 @@
       "body_snippet": "jcharlto,\n\nThank you thank you thank you, you just saved me about 7.9 hours!\n\n\n\n--\nView this message in context: http://r.789695.n4.nabble.com/Wait-for-user-input-with-readline-tp3054517p4646826.html\n",
       "thread_id": "thread-53af21edce4b",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065053.html"
     },
     {
       "id": "msg-6d592401995d",
@@ -2337,7 +2461,8 @@
       "body_snippet": "Hi guRus,\ni'm running R-2.15.1 and the R CMD CHECK output appears to have changed substantially, in that instead of pointing me to the offending functions or files, I get lots of 'call sequence' trace",
       "thread_id": "thread-6d592401995d",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065054.html"
     },
     {
       "id": "msg-6f7ad0346c84",
@@ -2355,7 +2480,8 @@
       "body_snippet": "On Sat, 20 Oct 2012, Mark Cowley wrote:\n\n> Hi guRus,\n\n> i'm running R-2.15.1 and the R CMD CHECK output appears to have \n> changed substantially, in that instead of pointing me to the\n\nChanged since w",
       "thread_id": "thread-6d592401995d",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065055.html"
     },
     {
       "id": "msg-d09ce5b95403",
@@ -2381,7 +2507,8 @@
       "body_snippet": "Dirk,\n\nif you are checking \"foo\", then \"foo\" is found in the examples (on all \nOSs), even if it is NOT installed at all!\n\nCan you make the sources available for me?\n\nUwe\n\n\n\n\n\n\n\nOn 19.10.2012 23:58, Di",
       "thread_id": "thread-46f6c9af6e82",
       "thread_depth": 9,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065056.html"
     },
     {
       "id": "msg-de8361b5a1f3",
@@ -2408,7 +2535,8 @@
       "body_snippet": "Hi Uwe,\n\nOn 20 October 2012 at 16:57, Uwe Ligges wrote:\n| Dirk,\n| \n| if you are checking \"foo\", then \"foo\" is found in the examples (on all \n| OSs), even if it is NOT installed at all!\n\nWell the log y",
       "thread_id": "thread-46f6c9af6e82",
       "thread_depth": 10,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065057.html"
     },
     {
       "id": "msg-d15c5e039caf",
@@ -2427,7 +2555,8 @@
       "body_snippet": ">>>>> Duncan Murdoch <murdoch.duncan at gmail.com>\n>>>>>     on Fri, 19 Oct 2012 19:26:39 -0400 writes:\n\n    > On 12-10-19 7:04 PM, Herv? Pag?s wrote:\n    >> Hi,\n    >> \n    >> Looks like the implemen",
       "thread_id": "thread-50c614f8e089",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065058.html"
     },
     {
       "id": "msg-86f75dfc822c",
@@ -2447,6 +2576,7 @@
       "thread_id": "thread-6d592401995d",
       "thread_depth": 2,
       "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065059.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20121021/7509599b/attachment.pl"
       ]
@@ -2465,7 +2595,8 @@
       "body_snippet": "Not desperately important, but nice to have and possibly of use to\nothers, is the ability to suppress specific warnings rather than\nsuppressing warnings indiscriminately.  I often know of a specific\nw",
       "thread_id": "thread-e5166569462b",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065060.html"
     },
     {
       "id": "msg-48ec7f68db1c",
@@ -2483,7 +2614,8 @@
       "body_snippet": "On 10/21/2012 12:28 PM, Ben Bolker wrote:\n>\n>    Not desperately important, but nice to have and possibly of use to\n> others, is the ability to suppress specific warnings rather than\n> suppressing war",
       "thread_id": "thread-e5166569462b",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065061.html"
     },
     {
       "id": "msg-50d785c48bc2",
@@ -2502,7 +2634,8 @@
       "body_snippet": "On 12-10-21 09:08 PM, Martin Morgan wrote:\n> On 10/21/2012 12:28 PM, Ben Bolker wrote:\n>>\n>>    Not desperately important, but nice to have and possibly of use to\n>> others, is the ability to suppress",
       "thread_id": "thread-e5166569462b",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065062.html"
     },
     {
       "id": "msg-f62aceed9bc4",
@@ -2522,7 +2655,8 @@
       "body_snippet": "Hi Duncan, Martin,\n\nThanks for your answers.\n\nFor my real case I was generating millions of random positions\non a genome.\n\nI compared sample.int() performance between R-2.15.1 and R-devel,\nand, for me",
       "thread_id": "thread-50c614f8e089",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065063.html"
     },
     {
       "id": "msg-f9114e90698f",
@@ -2541,7 +2675,8 @@
       "body_snippet": "On Sun, 21 Oct 2012, Martin Morgan wrote:\n\n> On 10/21/2012 12:28 PM, Ben Bolker wrote:\n>>\n>>    Not desperately important, but nice to have and possibly of use to\n>> others, is the ability to suppress",
       "thread_id": "thread-e5166569462b",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065064.html"
     },
     {
       "id": "msg-22b7e0a6c20a",
@@ -2557,7 +2692,8 @@
       "body_snippet": "Hi,\n\nWe have recently been using the tiff package for reading tiff images into the Bioconductor Package EBImage. This has been extremely helpful in conjunction with other steps to eliminate dependenci",
       "thread_id": "thread-22b7e0a6c20a",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065065.html"
     },
     {
       "id": "msg-35770721e223",
@@ -2577,7 +2713,8 @@
       "body_snippet": "On 10/22/2012 09:57 AM, luke-tierney at uiowa.edu wrote:\n> On Sun, 21 Oct 2012, Martin Morgan wrote:\n>\n>> On 10/21/2012 12:28 PM, Ben Bolker wrote:\n>>>\n>>>    Not desperately important, but nice to ha",
       "thread_id": "thread-e5166569462b",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065066.html"
     },
     {
       "id": "msg-67b1dcc46803",
@@ -2596,7 +2733,8 @@
       "body_snippet": "Thank you so much Prof Ripley.\n\nYou are right. So instead of using Windows R, I tried to compile binary R\nunder Cygwin, but it errored out everytime at different places when I tried\ndifferent options ",
       "thread_id": "thread-3b83f841b279",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065067.html"
     },
     {
       "id": "msg-511cfd6233da",
@@ -2612,7 +2750,8 @@
       "body_snippet": "Hi,\n\nWhen calling data, a warning seems to have been left behind\n\n> data(package=\"stats\", verbose=FALSE)\nWarning message:\nIn data(package = \"stats\", verbose = FALSE) :\n   datasets have been moved from",
       "thread_id": "thread-511cfd6233da",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065068.html"
     },
     {
       "id": "msg-b040f1639151",
@@ -2630,7 +2769,8 @@
       "body_snippet": "On 23/10/2012 3:20 PM, Laurent Gautier wrote:\n> Hi,\n>\n> When calling data, a warning seems to have been left behind\n>\n> > data(package=\"stats\", verbose=FALSE)\n> Warning message:\n> In data(package = \"s",
       "thread_id": "thread-511cfd6233da",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065069.html"
     },
     {
       "id": "msg-8f1f127b8743",
@@ -2649,7 +2789,8 @@
       "body_snippet": "On 2012-10-23 21:43, Duncan Murdoch wrote:\n> On 23/10/2012 3:20 PM, Laurent Gautier wrote:\n>> Hi,\n>>\n>> When calling data, a warning seems to have been left behind\n>>\n>> > data(package=\"stats\", verbos",
       "thread_id": "thread-511cfd6233da",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065070.html"
     },
     {
       "id": "msg-ddd4fb2f2445",
@@ -2667,7 +2808,8 @@
       "body_snippet": "On 23/10/2012 20:20, Laurent Gautier wrote:\n> Hi,\n>\n> When calling data, a warning seems to have been left behind\n>\n>> data(package=\"stats\", verbose=FALSE)\n> Warning message:\n> In data(package = \"stat",
       "thread_id": "thread-511cfd6233da",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065071.html"
     },
     {
       "id": "msg-0f236da01ed0",
@@ -2685,7 +2827,8 @@
       "body_snippet": "Joseph Barry <joseph.barry <at> embl.de> writes:\n\n\n> We have recently been using the tiff package for reading tiff images\n> into the Bioconductor Package EBImage. This has been extremely\n> helpful in ",
       "thread_id": "thread-22b7e0a6c20a",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065072.html"
     },
     {
       "id": "msg-0a0f9bffdff6",
@@ -2705,6 +2848,7 @@
       "thread_id": "thread-22b7e0a6c20a",
       "thread_depth": 2,
       "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065073.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20121023/041525c7/attachment.pl"
       ]
@@ -2723,7 +2867,8 @@
       "body_snippet": "Hi,\n\nHere are the issues I found:\n\nTypos\n-----\n\n   (a) Found: It a parallel version of ?evalq?,\n\n\"is\" missing.\n\n   (b) Found: 'parLapplyLB', 'parSapplyLB' are load-balancing versions,\n       intended ",
       "thread_id": "thread-e67df4bc6510",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065074.html"
     },
     {
       "id": "msg-c004fe4f7ca3",
@@ -2743,7 +2888,8 @@
       "body_snippet": "On Oct 23, 2012, at 10:58 AM, smzyij wrote:\n\n> Thank you so much Prof Ripley.\n> \n> You are right. So instead of using Windows R, I tried to compile binary R\n> under Cygwin, but it errored out everytim",
       "thread_id": "thread-3b83f841b279",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065075.html"
     },
     {
       "id": "msg-d3c73e5f3864",
@@ -2759,7 +2905,8 @@
       "body_snippet": "This question involves Rook, but I think the answer will be general \nenough that it pays to post here. At any rate, I don't know enough to \nknow whether this is a Rook only issue or a general R issue.",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065076.html"
     },
     {
       "id": "msg-fc4143920486",
@@ -2775,7 +2922,8 @@
       "body_snippet": "I'm working on an R package in C and can't seem to get the same level information about a factor that the R console displays.\n\nIf I define a factor as:\n\nlvls <- factor(c('red','blue','blue','green','r",
       "thread_id": "thread-fc4143920486",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065082.html"
     },
     {
       "id": "msg-3f31257178bb",
@@ -2793,7 +2941,8 @@
       "body_snippet": "On Wed, Oct 24, 2012 at 11:13 AM, Richard D. Morey <r.d.morey at rug.nl> wrote:\n> This question involves Rook, but I think the answer will be general enough\n> that it pays to post here. At any rate, I",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065077.html"
     },
     {
       "id": "msg-f49caebc87a9",
@@ -2811,7 +2960,8 @@
       "body_snippet": "On Oct 24, 2012, at 2:13 PM, Richard D. Morey wrote:\n\n> This question involves Rook, but I think the answer will be general enough that it pays to post here. At any rate, I don't know enough to know w",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065078.html"
     },
     {
       "id": "msg-bf92a5803f51",
@@ -2830,7 +2980,8 @@
       "body_snippet": "On 24/10/12 8:53 PM, Simon Urbanek wrote:\n> On Oct 24, 2012, at 2:13 PM, Richard D. Morey wrote:\n>\n>> This question involves Rook, but I think the answer will be general enough that it pays to post he",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065079.html"
     },
     {
       "id": "msg-2be9b53b7bf2",
@@ -2850,7 +3001,8 @@
       "body_snippet": "On Oct 24, 2012, at 3:09 PM, Richard D. Morey wrote:\n\n> On 24/10/12 8:53 PM, Simon Urbanek wrote:\n>> On Oct 24, 2012, at 2:13 PM, Richard D. Morey wrote:\n>> \n>>> This question involves Rook, but I thi",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065080.html"
     },
     {
       "id": "msg-8b75f85b4b22",
@@ -2871,7 +3023,8 @@
       "body_snippet": "Richard D. Morey\nAssistant Professor\nPsychometrics and Statistics\nRijksuniversiteit Groningen / University of Groningen\nhttp://drsmorey.org/research/rdmorey\n\nOn 24/10/12 9:23 PM, Simon Urbanek wrote:\n",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 4,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065081.html"
     },
     {
       "id": "msg-816d3e62d92b",
@@ -2893,7 +3046,8 @@
       "body_snippet": "On Oct 24, 2012, at 3:47 PM, Richard D. Morey wrote:\n\n> \n> Richard D. Morey\n> Assistant Professor\n> Psychometrics and Statistics\n> Rijksuniversiteit Groningen / University of Groningen\n> http://drsmor",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 5,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065083.html"
     },
     {
       "id": "msg-758cd0d2c248",
@@ -2909,7 +3063,8 @@
       "body_snippet": "Hi,\n\nThe signature of mget() changed between R-2.15.1 and recent R-devel.\n\nIn R-2.15.1:\n\n   > args(mget)\n   function (x, envir, mode = \"any\", ifnotfound = list(function(x) \nstop(paste0(\"value for '\",\n",
       "thread_id": "thread-758cd0d2c248",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065084.html"
     },
     {
       "id": "msg-ff7a7c23ae40",
@@ -2927,7 +3082,8 @@
       "body_snippet": "On Oct 24, 2012, at 2:14 PM, Mark Lilback wrote:\n\n> I'm working on an R package in C and can't seem to get the same level information about a factor that the R console displays.\n> \n> If I define a fac",
       "thread_id": "thread-fc4143920486",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065085.html"
     },
     {
       "id": "msg-290c581eab51",
@@ -2950,7 +3106,8 @@
       "body_snippet": "On 24/10/12 10:07 PM, Simon Urbanek wrote:\n> On Oct 24, 2012, at 3:47 PM, Richard D. Morey wrote:\n>\n>> I'd be fine with the poor man's solution (maybe with tempfile()?) if I can get access to the loca",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 6,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065086.html"
     },
     {
       "id": "msg-e98fa29eec0a",
@@ -2974,7 +3131,8 @@
       "body_snippet": "On Oct 24, 2012, at 4:35 PM, Richard D. Morey wrote:\n\n> On 24/10/12 10:07 PM, Simon Urbanek wrote:\n>> On Oct 24, 2012, at 3:47 PM, Richard D. Morey wrote:\n>> \n>>> I'd be fine with the poor man's solut",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 7,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065087.html"
     },
     {
       "id": "msg-c643c52dcfb0",
@@ -2993,7 +3151,8 @@
       "body_snippet": "I was banging my head for an hour on this. I just pasted the code into an email and see that I was getting the contents of the SEXP for the factor, not the one returned by getAttrib. Sorry for the was",
       "thread_id": "thread-fc4143920486",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065088.html"
     },
     {
       "id": "msg-1f2d99550037",
@@ -3014,7 +3173,8 @@
       "body_snippet": "Sorry guys, for coming late,\nbut *please* don't go there.\n\nI've been there years ago,\nand found later why the approach is flawed \"by design\" :\n\nInternationalization / Localization:\n\n- If the warning c",
       "thread_id": "thread-e5166569462b",
       "thread_depth": 4,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065089.html"
     },
     {
       "id": "msg-f59456e39f8f",
@@ -3036,7 +3196,8 @@
       "body_snippet": "On 12-10-25 5:28 AM, Martin Maechler wrote:\n> Sorry guys, for coming late,\n> but *please* don't go there.\n>\n> I've been there years ago,\n> and found later why the approach is flawed \"by design\" :\n>\n> ",
       "thread_id": "thread-e5166569462b",
       "thread_depth": 5,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065090.html"
     },
     {
       "id": "msg-171fc3eaccdb",
@@ -3061,7 +3222,8 @@
       "body_snippet": "On 24/10/12 10:55 PM, Simon Urbanek wrote:\n>\n> The point is that you need a separate monitoring process or threads. That process can be R, Rserve or any thing else.\n>\n>\n>\n\nThanks for the tips. This is",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 8,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065091.html"
     },
     {
       "id": "msg-70a40ccfc884",
@@ -3087,7 +3249,8 @@
       "body_snippet": "On Thu, Oct 25, 2012 at 8:45 AM, Richard D. Morey <r.d.morey at rug.nl> wrote:\n> On 24/10/12 10:55 PM, Simon Urbanek wrote:\n>>\n>>\n>> The point is that you need a separate monitoring process or threads",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 9,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065092.html"
     },
     {
       "id": "msg-44f4e244317e",
@@ -3114,7 +3277,8 @@
       "body_snippet": "On 25/10/12 7:14 PM, Dan Tenenbaum wrote:\n> On Thu, Oct 25, 2012 at 8:45 AM, Richard D. Morey <r.d.morey at rug.nl> wrote:\n>> On 24/10/12 10:55 PM, Simon Urbanek wrote:\n>>>\n>>> The point is that you n",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 10,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065093.html"
     },
     {
       "id": "msg-d15b3e0aa996",
@@ -3140,7 +3304,8 @@
       "body_snippet": "Richard,\n\nthat is not what I had in mind :). Also Rserve 0.x doesn't have built-in HTTP, only the 1.x series does. Unfortunately I don't have any time today to write example code, but I would suggest ",
       "thread_id": "thread-d3c73e5f3864",
       "thread_depth": 9,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065094.html"
     },
     {
       "id": "msg-e37b1403fd8c",
@@ -3156,7 +3321,8 @@
       "body_snippet": "in src/library/utils/man/relist.Rd, line 50:\n\n  objects into a vector representation.  \\code{relist()}, it's methods and\n\n  spurious apostrophe ...\n\n  Ben Bolker",
       "thread_id": "thread-e37b1403fd8c",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065095.html"
     },
     {
       "id": "msg-51ed89d47fd7",
@@ -3174,7 +3340,8 @@
       "body_snippet": "On 12-10-25 7:18 PM, Ben Bolker wrote:\n> in src/library/utils/man/relist.Rd, line 50:\n>\n>    objects into a vector representation.  \\code{relist()}, it's methods and\n>\n>    spurious apostrophe ...\n>\n\n",
       "thread_id": "thread-e37b1403fd8c",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065096.html"
     },
     {
       "id": "msg-e638cbe70700",
@@ -3192,7 +3359,8 @@
       "body_snippet": "In pvec(list(1, 2), FUN, mc.cores=2) FUN sees integer() arguments whereas \npvec(list(1, 2, 3), FUN, mc.cores=2) FUN sees list() arguments; the latter seems \nconsistent with pvec's description.\n\nThis c",
       "thread_id": "thread-e638cbe70700",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065097.html"
     },
     {
       "id": "msg-5f84bf460883",
@@ -3215,7 +3383,8 @@
       "body_snippet": ">>>>> Duncan Murdoch <murdoch.duncan at gmail.com>\n>>>>>     on Thu, 25 Oct 2012 06:51:25 -0400 writes:\n\n    > On 12-10-25 5:28 AM, Martin Maechler wrote:\n    >> Sorry guys, for coming late,\n    >> bu",
       "thread_id": "thread-e5166569462b",
       "thread_depth": 6,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065098.html"
     },
     {
       "id": "msg-01e64d21328e",
@@ -3232,6 +3401,7 @@
       "thread_id": "thread-01e64d21328e",
       "thread_depth": 0,
       "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065099.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20121026/fefb9d81/attachment.pl"
       ]
@@ -3258,7 +3428,8 @@
       "body_snippet": "On Oct 26, 2012, at 11:17 , Martin Maechler wrote:\n\n>>>>>> Duncan Murdoch <murdoch.duncan at gmail.com>\n>>>>>>    on Thu, 25 Oct 2012 06:51:25 -0400 writes:\n> \n>> On 12-10-25 5:28 AM, Martin Maechler ",
       "thread_id": "thread-e5166569462b",
       "thread_depth": 7,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065100.html"
     },
     {
       "id": "msg-6c0b0ee091ba",
@@ -3283,7 +3454,8 @@
       "body_snippet": "On 26/10/2012 12:04, peter dalgaard wrote:\n>\n> On Oct 26, 2012, at 11:17 , Martin Maechler wrote:\n>\n>>>>>>> Duncan Murdoch <murdoch.duncan at gmail.com>\n>>>>>>>     on Thu, 25 Oct 2012 06:51:25 -0400 ",
       "thread_id": "thread-e5166569462b",
       "thread_depth": 8,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065101.html"
     },
     {
       "id": "msg-b5001b350ba0",
@@ -3299,7 +3471,8 @@
       "body_snippet": "Congrats on getting 2.15.2 out on schedule. Debian builds have been uploaded.\n\nIt is my understanding that Phil's patch for the X11 logo -- so promimently\nfeatured as the first item in the NEWS file f",
       "thread_id": "thread-b5001b350ba0",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065102.html"
     },
     {
       "id": "msg-2a16ee4792c6",
@@ -3317,7 +3490,8 @@
       "body_snippet": "Glad to see this as well.\n\nTwo notes on Dirk's comments:\n\n   1) As Dirk wrote, the changes in 2.15.2 apply to almost any X11 \nsystem (although, as the NEWS says, this change is particularly crucial \nw",
       "thread_id": "thread-b5001b350ba0",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065106.html"
     },
     {
       "id": "msg-3667c72569f9",
@@ -3335,7 +3509,8 @@
       "body_snippet": "Is --with-blas=\"-lgoto2\"  a known problem (other than possibly not being \nthe preferred choice)?\n\nI thought I had been testing RC with the same setup I regularly use, but \nI now see there was a slight",
       "thread_id": "thread-3667c72569f9",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065103.html"
     },
     {
       "id": "msg-1885f52227f8",
@@ -3354,7 +3529,8 @@
       "body_snippet": "On 26/10/2012 16:37, Paul Gilbert wrote:\n> Is --with-blas=\"-lgoto2\"  a known problem (other than possibly not being\n> the preferred choice)?\n\nAnd what precisely is it? And what chipset are you using?\n",
       "thread_id": "thread-3667c72569f9",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065104.html"
     },
     {
       "id": "msg-6c071a00d80a",
@@ -3374,7 +3550,8 @@
       "body_snippet": "On 12-10-26 12:15 PM, Prof Brian Ripley wrote:\n> On 26/10/2012 16:37, Paul Gilbert wrote:\n>> Is --with-blas=\"-lgoto2\"  a known problem (other than possibly not being\n>> the preferred choice)?\n>\n> And ",
       "thread_id": "thread-3667c72569f9",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065105.html"
     },
     {
       "id": "msg-d383bce9f92b",
@@ -3390,7 +3567,8 @@
       "body_snippet": "Hi!\n\nI would like to suggest to make it possible, in one way or another, to\nget meaningful contrast names when using contr.sum(). Currently, when\nusing contr.treatment(), one gets factor levels as con",
       "thread_id": "thread-d383bce9f92b",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065107.html"
     },
     {
       "id": "msg-3643965143c6",
@@ -3408,7 +3586,8 @@
       "body_snippet": "Hi Milan,\n\nTake a look at the contr.Sum() and contr.Treatment() functions in the car package.\n\n(I recall, BTW, the sometimes acrimonious previous discussion of this issue.)\n\nBest,\n John\n\n-------------",
       "thread_id": "thread-d383bce9f92b",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065108.html"
     },
     {
       "id": "msg-e2351c52867e",
@@ -3424,7 +3603,8 @@
       "body_snippet": "As of rev. 61035 in r-devel, setRefClass() now returns a generator \nfunction, as setClass() has done since 2.15.0.\n\nThe convenient style is now:\n   mEdit <- setRefClass(\"mEdit\",......)\n   xx <- mEdit(",
       "thread_id": "thread-e2351c52867e",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065109.html"
     },
     {
       "id": "msg-a464f9fda048",
@@ -3441,6 +3621,7 @@
       "thread_id": "thread-a464f9fda048",
       "thread_depth": 0,
       "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065110.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20121029/93fdf30f/attachment.pl"
       ]
@@ -3459,7 +3640,8 @@
       "body_snippet": "Hi. I'm trying to write an application to retrieve financial data\n(specially bonds data) from FINRA. The web page is served dynamically\nfrom an asp.net application:\n\nhttp://cxa.gtm.idmanagedsolutions.",
       "thread_id": "thread-bc56a23af8ea",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065112.html"
     },
     {
       "id": "msg-6c65dfaa63e4",
@@ -3475,7 +3657,8 @@
       "body_snippet": "Reproducible example:\n\ndir.create(\"test\")\n.libPaths(\"test\")\ninstall.packages(\"relations\", type = \"source\")\n\nFails with:\n\n...\n* installing *source* package ?relations? ...\n...\n** testing if installed p",
       "thread_id": "thread-6c65dfaa63e4",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065111.html"
     },
     {
       "id": "msg-edf9c9536c6f",
@@ -3494,7 +3677,8 @@
       "body_snippet": "Le samedi 27 octobre 2012 ? 10:44 -0400, John Fox a ?crit :\n> Hi Milan,\n> \n> Take a look at the contr.Sum() and contr.Treatment() functions in the\n> car package.\nYeah, this is the kind of function I h",
       "thread_id": "thread-d383bce9f92b",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065113.html"
     },
     {
       "id": "msg-02be9f77ed78",
@@ -3512,7 +3696,8 @@
       "body_snippet": "Hi Jose,\n\nI think this is more of an r-help question so I'm going to forward\nyour question there: R-devel is really for the development of R\nitself, not development with R.\n\nCheers,\nMichael\n\nOn Mon, O",
       "thread_id": "thread-bc56a23af8ea",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065114.html"
     },
     {
       "id": "msg-66db6012f10a",
@@ -3531,7 +3716,8 @@
       "body_snippet": "On Oct 30, 2012, at 10:44 , R. Michael Weylandt wrote:\n\n> Hi Jose,\n> \n> I think this is more of an r-help question so I'm going to forward\n> your question there: R-devel is really for the development ",
       "thread_id": "thread-bc56a23af8ea",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065115.html"
     },
     {
       "id": "msg-cb945dd30403",
@@ -3547,7 +3733,8 @@
       "body_snippet": "Hi,\n\nPlease consider the following :\n\nx = c(1,3,NA,5)\ny = c(2,NA,4,1)\n\nmin(x,y,na.rm=TRUE)    # ok\n[1] 1\nmax(x,y,na.rm=TRUE)    # ok\n[1] 5\nsum(x,y,na.rm=TRUE)    # ok\n[1] 16\n\npmin(x,y,na.rm=TRUE)   # ",
       "thread_id": "thread-cb945dd30403",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065116.html"
     },
     {
       "id": "msg-ff6ff78731a0",
@@ -3567,7 +3754,8 @@
       "body_snippet": "Hi Milan,\n\nOn Tue, 30 Oct 2012 10:25:56 +0100\n Milan Bouchet-Valat <nalimilan at club.fr> wrote:\n> Le samedi 27 octobre 2012 ? 10:44 -0400, John Fox a ?crit :\n> > Hi Milan,\n> > \n> > Take a look at the",
       "thread_id": "thread-d383bce9f92b",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065117.html"
     },
     {
       "id": "msg-05ed21ca6f12",
@@ -3585,7 +3773,8 @@
       "body_snippet": "Why don't you make a matrix and use colSums or rowSums?\n\nx = c(1,3,NA,5)\ny = c(2,NA,4,1)\ncolSums(rbind(x, y), na.rm = TRUE)\n\n\nir. Thierry Onkelinx\nInstituut voor natuur- en bosonderzoek / Research Ins",
       "thread_id": "thread-cb945dd30403",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065118.html"
     },
     {
       "id": "msg-1f878583c9e4",
@@ -3604,7 +3793,8 @@
       "body_snippet": "Because that's inconsistent with pmin and pmax when two NAs are summed.\n\nx = c(1,3,NA,NA,5)\ny = c(2,NA,4,NA,1)\ncolSums(rbind(x, y), na.rm = TRUE)\n[1] 3 3 4 0 6    # actual\n[1] 3 3 4 NA 6   # desired\n\n",
       "thread_id": "thread-cb945dd30403",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065119.html"
     },
     {
       "id": "msg-d863c7c44319",
@@ -3622,7 +3812,8 @@
       "body_snippet": "I don't know of an easy way to do this in R. I've been doing something \nsimilar with python scripts called from R. If anyone knows how to do \nthis with just R, I would appreciate hearing too.\n\nPaul\n\nO",
       "thread_id": "thread-bc56a23af8ea",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065120.html"
     },
     {
       "id": "msg-c83cbf8c6636",
@@ -3642,6 +3833,7 @@
       "thread_id": "thread-bc56a23af8ea",
       "thread_depth": 2,
       "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065121.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20121030/587e3d93/attachment.pl"
       ]
@@ -3664,7 +3856,8 @@
       "body_snippet": "I think RHTMLForms works if you have a single form, but I have not been \nable to see how to use it when you need to go through a sequence of \ndynamically generated forms (like you can do with Python m",
       "thread_id": "thread-bc56a23af8ea",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065122.html"
     },
     {
       "id": "msg-50db3bafe7de",
@@ -3682,7 +3875,8 @@
       "body_snippet": "> Is there a case to add psum? Or have I missed something.\n\nIf psum, then why not pdiff (-), pprod (*) and precip (/) ?  And\nsimilarly, what about equivalent functions for ^, %%, %/%, &, and | ?\n\nHadl",
       "thread_id": "thread-cb945dd30403",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065123.html"
     },
     {
       "id": "msg-3cbe6f5245c5",
@@ -3700,7 +3894,8 @@
       "body_snippet": "On 29.10.2012 23:35, Hadley Wickham wrote:\n> Reproducible example:\n>\n> dir.create(\"test\")\n> .libPaths(\"test\")\n> install.packages(\"relations\", type = \"source\")\n>\n> Fails with:\n>\n> ...\n> * installing *s",
       "thread_id": "thread-6c65dfaa63e4",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065124.html"
     },
     {
       "id": "msg-99ff474c42fc",
@@ -3719,7 +3914,8 @@
       "body_snippet": ">> * installing *source* package ?relations? ...\n>> ...\n>> ** testing if installed package can be loaded\n>> *** arch - i386\n>> Error : package ?sets? required by ?relations? could not be found\n>> Erro",
       "thread_id": "thread-6c65dfaa63e4",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065125.html"
     },
     {
       "id": "msg-0b7e82c967d4",
@@ -3739,7 +3935,8 @@
       "body_snippet": "On 30.10.2012 15:01, Hadley Wickham wrote:\n>>> * installing *source* package ?relations? ...\n>>> ...\n>>> ** testing if installed package can be loaded\n>>> *** arch - i386\n>>> Error : package ?sets? re",
       "thread_id": "thread-6c65dfaa63e4",
       "thread_depth": 3,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065126.html"
     },
     {
       "id": "msg-21db8a0119d7",
@@ -3760,7 +3957,8 @@
       "body_snippet": ">> I'm not sure I follow. I thought install.packages() installs into the\n>> first element of .libPaths(), and indeed I get this message:\n>>\n>> Installing package into ?/Users/hadley/Desktop/test?\n>> (",
       "thread_id": "thread-6c65dfaa63e4",
       "thread_depth": 4,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065127.html"
     },
     {
       "id": "msg-17887c465ec4",
@@ -3779,7 +3977,8 @@
       "body_snippet": "Not pdiff because i) psum(x,-y,na.rm=TRUE) would do that and ii) diff is\nquite unlike -. Yes, pprod too, but not pdiv (or precip) because\npprod(x,y^-1,na.rm=TRUE) would dominate that.\n\n> what about eq",
       "thread_id": "thread-cb945dd30403",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065128.html"
     },
     {
       "id": "msg-28021f8dff24",
@@ -3800,7 +3999,8 @@
       "body_snippet": "Thanks for your interest, Paul.\nI've checked the source code of TSjson and I've seen that what it does\nis to call a Python script to retrieve the data. In fact, I've already\ndone this with Java using ",
       "thread_id": "thread-bc56a23af8ea",
       "thread_depth": 4,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065139.html"
     },
     {
       "id": "msg-92a5149c6dfb",
@@ -3822,7 +4022,8 @@
       "body_snippet": "Jose\n\nAs far as getting to the data, I think the best way to do this sort of \nthing would be if the site supports a SOAP or REST interface. When they \ndon't (yet) then one is faced with clicking throu",
       "thread_id": "thread-bc56a23af8ea",
       "thread_depth": 5,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065129.html"
     },
     {
       "id": "msg-cd64d40831dc",
@@ -3840,7 +4041,8 @@
       "body_snippet": "A heads up for those using Rcpp and perhaps other packages related to \nreference classes.\n\nThe changes in 61035 cause a problem for classes defined with a slot \nusing the return value of setRefClass()",
       "thread_id": "thread-e2351c52867e",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065130.html"
     },
     {
       "id": "msg-e81ee5a7b07a",
@@ -3858,7 +4060,8 @@
       "body_snippet": "> As of rev. 61035 in r-devel, setRefClass() now returns a generator function,\n> as setClass() has done since 2.15.0.\n>\n> The convenient style is now:\n>   mEdit <- setRefClass(\"mEdit\",......)\n>   xx <",
       "thread_id": "thread-e2351c52867e",
       "thread_depth": 1,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065131.html"
     },
     {
       "id": "msg-74ec123deb71",
@@ -3880,7 +4083,8 @@
       "body_snippet": "It appears that this problem only happens when R_LIBS is specified in\n~/.Renviron. When it compiles 'relations', it's somehow not passing\nalong the correct lib paths.\n\n\nThis is the test code:\ndir.crea",
       "thread_id": "thread-6c65dfaa63e4",
       "thread_depth": 5,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065132.html"
     },
     {
       "id": "msg-4fcdaf6888f0",
@@ -3896,7 +4100,8 @@
       "body_snippet": "Hi,\n\nsrc/unix/Rscript.c on R trunk stopped building with a compiler error of \"unknown not defined/declared\" on line 160-ish, where R_SVN_REVISION is , on my system.\n\nI see trunk r60972, trunk r60975 c",
       "thread_id": "thread-4fcdaf6888f0",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065133.html"
     },
     {
       "id": "msg-a212f927c736",
@@ -3912,7 +4117,8 @@
       "body_snippet": "> Because that's inconsistent with pmin and pmax when two NAs are summed.\n>\n> x = c(1,3,NA,NA,5)\n> y = c(2,NA,4,NA,1)\n> colSums(rbind(x, y), na.rm = TRUE)\n> [1] 3 3 4 0 6    # actual\n> [1] 3 3 4 NA 6 ",
       "thread_id": "thread-a212f927c736",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065138.html"
     },
     {
       "id": "msg-fbeeb017b2f4",
@@ -3935,7 +4141,8 @@
       "body_snippet": "I'd like to make you note that I've discovered that package RCurl\nalready provides a utility that allows interaction via POST requests\nwith servers. In fact, the FAQ for RCurl contains specifically an",
       "thread_id": "thread-bc56a23af8ea",
       "thread_depth": 6,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065140.html"
     },
     {
       "id": "msg-3e07c7bd92ed",
@@ -3959,7 +4166,8 @@
       "body_snippet": "I must be really dense, I know RCurl provides a POST capability, but I \ndon't see how this allows \"interaction\". Suppose the example actually \nworked, which it does not. (Unfortunately many of the exa",
       "thread_id": "thread-bc56a23af8ea",
       "thread_depth": 7,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065134.html"
     },
     {
       "id": "msg-95993a0340f6",
@@ -3975,7 +4183,8 @@
       "body_snippet": "With R 2.15.2 patched (2012-10-29 r61044) and R devel\n(2012-10-29r61044) on **Windows 7 w/ NTFS ** running in admin mode, I\nget:\n\nEXAMPLE:\n> cat(\"Hello world\", file=\"foo.txt\")\n> file.exists(\"foo-lnk.t",
       "thread_id": "thread-95993a0340f6",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065135.html"
     },
     {
       "id": "msg-a9fa6b994fb8",
@@ -3994,7 +4203,8 @@
       "body_snippet": "The values returned by setRefClass(), getRefClass() now  (rev. 61058) \nhave  class \"refObjectGenerator\" as they do in 2.15.2, for the sake of \nback compatibility.\n\nThis is only a reversion of the clas",
       "thread_id": "thread-e2351c52867e",
       "thread_depth": 2,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065136.html"
     },
     {
       "id": "msg-c654840973a9",
@@ -4010,7 +4220,8 @@
       "body_snippet": "Hi,\n\nFound in available.packages man page:\n\n   Value:\n\n      A matrix with one row per package, row names the package names and\n      column names ?\"Package\"?, ?\"Version\"?, ?\"Priority\"?, ?\"Depends\"?,\n",
       "thread_id": "thread-c654840973a9",
       "thread_depth": 0,
-      "month": "2012-10"
+      "month": "2012-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2012-October/065137.html"
     }
   ],
   "threads": [
