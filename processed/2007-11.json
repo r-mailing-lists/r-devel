@@ -17,7 +17,8 @@
       "body_snippet": "Running under Windows XP 64 bit, as.POSIXlt()/as.POSIXct() seem\nto think that US time zones (EST5EDT, MST7MDT) switched from daylight\nsavings back to standard time on Oct 28, 2007, whereas the switch\n",
       "thread_id": "thread-7f36d93d6f06",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047315.html"
     },
     {
       "id": "msg-9b728039041c",
@@ -35,7 +36,8 @@
       "body_snippet": "tplate at acm.org wrote:\n> Running under Windows XP 64 bit, as.POSIXlt()/as.POSIXct() seem\n> to think that US time zones (EST5EDT, MST7MDT) switched from daylight\n> savings back to standard time on Oc",
       "thread_id": "thread-7f36d93d6f06",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047316.html"
     },
     {
       "id": "msg-4df2b7a80bad",
@@ -51,7 +53,8 @@
       "body_snippet": "tplate at acm.org wrote:\n> Running under Windows XP 64 bit, as.POSIXlt()/as.POSIXct() seem\n> to think that US time zones (EST5EDT, MST7MDT) switched from daylight\n> savings back to standard time on Oc",
       "thread_id": "thread-4df2b7a80bad",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047317.html"
     },
     {
       "id": "msg-51e3733518c6",
@@ -67,7 +70,8 @@
       "body_snippet": "Hi all (especially R-core) I suppose,\n\nWith the introduction of the new functional programming functions into\nbase I thought I'd ask for a Curry() function. I use a simple one that\nlooks this:\n\nCurry ",
       "thread_id": "thread-51e3733518c6",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047318.html"
     },
     {
       "id": "msg-86edec9ce7bf",
@@ -86,7 +90,8 @@
       "body_snippet": "On Thu, 1 Nov 2007, Peter Dalgaard wrote:\n\n> tplate at acm.org wrote:\n>> Running under Windows XP 64 bit, as.POSIXlt()/as.POSIXct() seem\n>> to think that US time zones (EST5EDT, MST7MDT) switched from",
       "thread_id": "thread-7f36d93d6f06",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047320.html"
     },
     {
       "id": "msg-035a9c123901",
@@ -102,7 +107,8 @@
       "body_snippet": "Hello everyone\n\nLots of my packages have been the subject of\njournal articles either in JSS or Rnews or (in one\ncase) elsewhere.\n\nI would like to add these articles\nto my packages as vignettes.\n\nRepro",
       "thread_id": "thread-035a9c123901",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047321.html"
     },
     {
       "id": "msg-856eeab972c1",
@@ -114,11 +120,12 @@
       "subject_clean": "applying duplicated, unique and match to lists?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Dear R developers,\n\nWhile improving duplicated.array() and friends and developing equivalents for the new ff package for large datasets I came across two questions:\n\n1) is it safe to use duplicated.default(), unique.default() and match() on arbitrary lists? If so, we can speed up duplicated.array and friends considerably by using list() instead of paste(collapse=\"\\r\")\n\n2) while duplicated.default() is very fast even on lists, match() is very slow on lists. Why is the internal conversion to character necessary? If the hashtable behind duplicated() in unique.c work for lists, why can't we use them for match()? If conversion to character is unavoidable, a better scaling alternative could be serializing and compressing to md5: even with final identity check agains unlikely collisions this is much faster in many cases (break even seems to be for quite small list elements like 2 doubles).\n\n1) the new versions should also work for lists with a dim attribute (old versions has as.vector() which does not work for lists)\nFactor 10 speedup for row duplicates (here atomic matrices)\n>   system.time(duplicated(x, hashFUN=function(x)paste(x, collapse=\"\\r\")))\n   user  system elapsed \n   2.37    0.02    2.45 \n>   system.time(duplicated(x, hashFUN=md5))\n   user  system elapsed \n   0.51    0.00    0.51 \n>   system.time(duplicated(x, hashFUN=list))\n   user  system elapsed \n   0.17    0.00    0.17\n\n2) Speedup potential for list matching (md5 results below)\n> x <- as.list(runif(100000))\n> system.time(duplicated(x))\n   user  system elapsed \n   0.01    0.00    0.02 \n> system.time(match(x,x))\n   user  system elapsed \n   2.01    0.00    2.03\n\nPlease find below more comments and tests, new code for duplicated.array() and friends, suggestions for new classes 'hash' (requiring digest) and 'id' (and if you are curious: first code drafts for the respective ff methods).\n\nBest regards\n\n\n\nJens Oehlschl?gel\n\n\n----\n\n\n# Hashing of large objects in ff\n# (c) 2007 Jens Oehlsch?gel\n# Licence: GPL2\n# Created: 2007-10-30\n# Last changed: 2007-10-30\n\nrequire(digest) # digest maintainer: Dirk Eddelbuettel <edd at debian.org>\n\n# { --- available hash functions ---\n\n# perfect projection: list\n# NOTE that the 'easiest hash function' is 'list'\n# it is faster than everything else when calculating duplicated or unique, but it is extremely slow for 'match' (currently, R-2.6.0)\n# thus for matching list elements, it is faster converting the list elements with md5\n\n# no projection for vectors only\nnone <- function(x)x\n\n# concatenation of as.character as currently (R-2.6.1) in duplicated.array, match.array (pairs of projections may erroneously apear as identical when the vectors are very similar, RAM expensive)\npasteid <- function(x)paste(x, collapse=\"\\r\")\n\n# perfectly identity preserving projection (but even more RAM expensive)\nid1 <- function(x)paste(.Call(\"R_serialize\", x, NULL, FALSE, NULL, PACKAGE = \"base\")[-(1:14)], collapse=\"\")\n\n# 32 byte projection\nmd5 <- function(x).Call(\"digest\", .Call(\"R_serialize\", x, NULL, FALSE, NULL, PACKAGE = \"base\"), 1L, -1L, 14L, PACKAGE = \"digest\")\n\n# 40 byte projection\nsha1 <- function(x).Call(\"digest\", .Call(\"R_serialize\", x, NULL, FALSE, NULL, PACKAGE = \"base\"), 2L, -1L, 14L, PACKAGE = \"digest\")\n\n# 8 byte projection: more collisions\ncrc32 <- function(x).Call(\"digest\", .Call(\"R_serialize\", x, NULL, FALSE, NULL, PACKAGE = \"base\"), 3L, -1L, 14L, PACKAGE = \"digest\")\n\n\n#! \\name{md5}\n#! \\alias{md5}\n#! \\title{ faster shortcut functions for in-memory digest }\n#! \\description{\n#!   These functions project (serialize or hash) their input object and return a string. Because they avoid any R overhead they are better suitable for sapply() than using the more general function 'digest'\n#! }\n#! \\usage{\n#! md5(x)\n#! sha1(x)\n#! crc32(x)\n#! id1(x)\n#! }\n#! %- maybe also 'usage' for other objects documented here.\n#! \\arguments{\n#!   \\item{x}{ a fully serializable R object }\n#! }\n#! \\value{\n#!   character scalar\n#! }\n#! \\seealso{ \\code{\\link{digest}}, \\code{\\link[base]{serialize}} }\n#! \\examples{\n#!   md5(pi)\n#!   sha1(pi)\n#!   crc32(pi)\n#!   id1(pi)\n#!\n#!   dontshow{\n#!     if (!identical(paste(serialize(list(str=\"a string\", double=pi), connection=NULL)[-(1:14)], collapse=\"\"), id1(list(str=\"a string\", double=pi))))\n#!       stop(\"something has changed in serialization, please fix the internal .Calls in function 'id1', 'md5, 'sha1', 'crc32'\")\n#!\n#!     if (!identical(digest(list(str=\"a string\", double=pi), algo=\"md5\"), md5(list(str=\"a string\", double=pi))))\n#!       stop(\"something has changed in package 'digest' or in serialization, please fix the internal .Calls in function 'md5'\")\n#!\n#!     if (!identical(digest(list(str=\"a string\", double=pi), algo=\"sha1\"), sha1(list(str=\"a string\", double=pi))))\n#!       stop(\"something has changed in package 'digest' or in serialization, please fix the internal .Calls in function 'sha1'\")\n#!\n#!     if (!identical(digest(list(str=\"a string\", double=pi), algo=\"crc32\"), crc32(list(str=\"a string\", double=pi))))\n#!       stop(\"something has changed in package 'digest' or in serialization, please fix the internal .Calls in function 'crc32'\")\n#!   }\n#! }\n#! \\keyword{misc}\n\n# } --- available hash functions ---\n\n\n\nif (FALSE){\n\n  # current (R-2.6.0) versions of duplicated.* and unique.* can fail for very similar rows\n  x <- matrix(1, 2, 2)\n  x[1,1] <- 1 + 1e-15\n  x[2,1] <- 1 + 2e-15\n  x[1,1]==x[2,1]\n  duplicated(x)\n  apply(x, 1, paste, collapse=\"\\r\")\n  # is using md5 is safer?\n  apply(x, 1, md5)\n\n  # atomic data\n  n <- 10000\n  x <- matrix(runif(n*20),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  # using list or md5 is faster than pasteid or digest or even serialize via id1\n  system.time(apply(x, 1, pasteid))\n  system.time(apply(x, 1, digest))\n  system.time(apply(x, 1, id1))\n  system.time(apply(x, 1, md5))\n  system.time(apply(x, 1, list))\n\n  # using md5 takes less RAM for strings\n  object.size(x)\n  object.size(apply(x, 1, pasteid))\n  object.size(apply(x, 1, md5))\n  object.size(apply(x, 1, id1))\n  object.size(apply(x, 1, list))\n\n  # atomic matrix performance\n  system.time(duplicated(x, hashFUN=pasteid))\n  system.time(duplicated(x, hashFUN=id1))\n  system.time(duplicated(x, hashFUN=md5))\n  system.time(duplicated(x, hashFUN=list))\n\n  # list data\n  n <- 1000\n  x <- matrix(as.list(runif(n*20)),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  # list matrix performance\n  system.time(duplicated(x, hashFUN=pasteid))\n  system.time(duplicated(x, hashFUN=id1))\n  system.time(duplicated(x, hashFUN=md5))\n  system.time(duplicated(x, hashFUN=list))\n\n\n  n <- 100000\n  # match works fine for atomic and list character data\n  x <- as.character(runif(n))\n  system.time(duplicated(x))\n  system.time(match(x,x))\n  y <- as.list(x)\n  system.time(duplicated(y))\n  system.time(match(y,y))\n\n  # but is very slow for numeric (double and integer) lists (although duplicated on numeric lists is fast, doesn't use match the same hashtable?)\n  x <- runif(n)\n  system.time(duplicated(x))\n  system.time(match(x,x))\n  y <- as.list(x)\n  system.time(duplicated(y))\n  system.time(match(y,y))\n  # try some alternatives\n  system.time({z <- sapply(y, id1); zt <- sapply(y, id1); match(z,zt)})\n  system.time({z <- sapply(y, md5); zt <- sapply(y, md5); match(z,zt)})\n  system.time({z <- sapply(y, md5); zt <- sapply(y, md5); pos<-match(z,zt); all(sapply(seq(along=pos), function(i)identical(z[i],zt[pos[i]])))})\n\n  n <- 100000\n  m <- 50\n  # even worse: lists with vectors of numeric\n  x <- matrix(runif(n), m)\n  y <- lapply(1:ncol(x), function(i)x[,i])\n  system.time(duplicated(y))\n  system.time(match(y,y))\n  # is so slow that md5 converting can speed up match considerably, even with final identity check (break-even is at m=2, for longer vectors md5 is faster)\n  system.time({z <- sapply(y, md5); zt <- sapply(y, md5); match(z,z)})\n  system.time({z <- sapply(y, md5); zt <- sapply(y, md5); pos<-match(z,zt); all(sapply(seq(along=pos), function(i)identical(z[i],zt[pos[i]])))})\n\n  # less impressive but still so for strings\n  x <- matrix(as.character(runif(n)), m)\n  y <- lapply(1:ncol(x), function(i)x[,i])\n  system.time(duplicated(y))\n  system.time(match(y,y))\n  # is so slow that md5 converting speeds up match\n  system.time({z <- lapply(y, md5); match(z,zt)})\n  system.time({z <- sapply(y, md5); zt <- sapply(y, md5); pos<-match(z,zt); all(sapply(seq(along=pos), function(i)identical(z[i],zt[pos[i]])))})\n\n  rm(x)\n\n\n}\n\n\nduplicated.matrix <- duplicated.array <-\nfunction (x, incomparables = FALSE, fromLast = FALSE, MARGIN = 1, hashFUN=list, ...)\n{\n    if (!is.logical(incomparables) || incomparables)\n        .NotYetUsed(\"incomparables != FALSE\")\n    ndim <- length(dim(x))\n    if (length(MARGIN) > ndim || any(MARGIN > ndim))\n        stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", dim(x))\n    temp <- apply(x, MARGIN, hashFUN)\n    d <- dim(temp)\n    dn <- dimnames(temp)\n    dim(temp) <- NULL   # we had as.vector here, but that fails for lists with dim attributes\n    res <- duplicated(temp, fromLast = fromLast)\n    dim(res) <- d\n    dimnames(res) <- dn\n    res\n}\n\nduplicated.data.frame <-\nfunction (x, incomparables = FALSE, fromLast = FALSE, hashFUN=list, ...)\n{\n    if (!is.logical(incomparables) || incomparables)\n        .NotYetUsed(\"incomparables != FALSE\")\n    ndim <- length(dim(x))\n    temp <- apply(x, 1, hashFUN)\n    d <- dim(temp)\n    dn <- dimnames(temp)\n    dim(temp) <- NULL  # we had as.vector here, but that fails for lists with dim attributes\n    res <- duplicated(temp, fromLast = fromLast)\n    dim(res) <- d\n    dimnames(res) <- dn\n    res\n}\n\nunique.matrix <- unique.array <-\nfunction (x, incomparables = FALSE, fromLast = FALSE, MARGIN = 1, hashFUN=list, ...)\n{\n    if (!is.logical(incomparables) || incomparables)\n        .NotYetUsed(\"incomparables != FALSE\")\n    ndim <- length(dim(x))\n    if (length(MARGIN) > 1 || any(MARGIN > ndim))\n        stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", dim(x))\n    temp <- apply(x, MARGIN, hashFUN)\n    args <- rep(alist(a = ), ndim)\n    names(args) <- NULL\n    dim(temp) <- NULL  # we had as.vector here, but that fails for lists with dim attributes\n    args[[MARGIN]] <- !duplicated(temp, fromLast = fromLast)\n    do.call(\"[\", c(list(x = x), args, list(drop = FALSE)))\n}\n\nunique.data.frame <-\nfunction (x, incomparables = FALSE, fromLast = FALSE, hashFUN=list, ...)\n{\n    if (!is.logical(incomparables) || incomparables)\n        .NotYetUsed(\"incomparables != FALSE\")\n    x[!duplicated(x, fromLast = fromLast, hashFUN = hashFUN), , drop = FALSE]\n}\n\n\n# like duplicated but return hash value instead of logical\nhash <- function(x, ...)\n    UseMethod(\"hash\")\n\nhash.default <- function(x, hashFUN=md5, ...)\n    sapply(x, hashFUN)\n\nhash.matrix <- hash.array <-\nfunction (x, MARGIN = 1, hashFUN=md5, ...)\n{\n    ndim <- length(dim(x))\n    if (length(MARGIN) > ndim || any(MARGIN > ndim))\n        stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", dim(x))\n    apply(x, MARGIN, hashFUN)\n}\n\nhash.data.frame <-\nfunction (x, hashFUN=md5, ...)\n{\n    ndim <- length(dim(x))\n    apply(x, 1, hashFUN)\n}\n\n\n# like duplicated but return the position of first occurence instead of logical\nid <- function(x, ...)\n    UseMethod(\"id\")\n\nid.default <- function(x, fromLast = FALSE, hashFUN=NULL, ...){\n  if (is.null(hashFUN)){\n    if (is.list(x)) x <- sapply(x, md5)  # fix the slow performance of match on lists (R-2.6.0) by converting to md5\n    d <- (1:length(x))[!duplicated(x, fromLast = fromLast)]\n    d[match(x,x[d])]\n  }else{\n    x <- lapply(x, hashFUN)\n    d <- (1:length(x))[!duplicated(x, fromLast = fromLast)]\n    d[match(x,x[d])]\n  }\n}\n\nid.matrix <- id.array <-\nfunction (x, fromLast = FALSE, MARGIN = 1, hashFUN=md5, ...)\n{\n    ndim <- length(dim(x))\n    nmarg <- length(MARGIN)\n    if (nmarg > ndim || any(MARGIN > ndim))\n        stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", dim(x))\n    h <- apply(x, MARGIN, hashFUN)\n    d <- (1:length(h))[!duplicated(h, fromLast = fromLast)]\n    i <- d[match(h,h[d])]\n    dim(i) <- dim(h)\n    dimnames(i) <- dimnames(h)\n    i\n}\n\nid.data.frame <-\nfunction (x, fromLast = FALSE, hashFUN=md5, ...)\n{\n    h <- apply(x, 1, hashFUN)\n    d <- (1:length(h))[!duplicated(h, fromLast = fromLast)]\n    d[match(h,h[d])]\n}\n\n\n\n\nif (FALSE){\n  n <- 10000\n\n  # test duplicated\n  x <- matrix(runif(n*20),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  d1 <- duplicated.matrix(x, hashFUN=list)\n  d2 <- duplicated.matrix(x, hashFUN=md5)\n  all.equal(d1,d2)\n  table(d1)\n  rm(d1,d2)\n\n  system.time(duplicated.matrix(x, hashFUN=list))\n  system.time(duplicated.matrix(x, hashFUN=md5))\n\n  x <- matrix(as.list(runif(n*20)),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  d1 <- duplicated.matrix(x, hashFUN=list)\n  d2 <- duplicated.matrix(x, hashFUN=md5)\n  all.equal(d1,d2)\n  table(d1)\n  rm(d1,d2)\n\n  system.time(duplicated.matrix(x, hashFUN=list))\n  system.time(duplicated.matrix(x, hashFUN=md5))\n\n  # test unique\n  x <- matrix(runif(n*20),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  d1 <- unique.matrix(x, hashFUN=list)\n  d2 <- unique.matrix(x, hashFUN=md5)\n  all.equal(d1,d2)\n  dim(d1)\n  rm(d1,d2)\n\n  system.time(unique.matrix(x, hashFUN=list))\n  system.time(unique.matrix(x, hashFUN=md5))\n\n  x <- matrix(as.list(runif(n*20)),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  d1 <- unique.matrix(x, hashFUN=list)\n  d2 <- unique.matrix(x, hashFUN=md5)\n  all.equal(d1,d2)\n  all.equal(md5(d1),md5(d2))\n  dim(d1)\n  rm(d1,d2)\n\n  system.time(unique.matrix(x, hashFUN=list))\n  system.time(unique.matrix(x, hashFUN=md5))\n\n  # test id\n  x <- matrix(runif(n*20),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  d1 <- id.matrix(x, hashFUN=md5)\n  d2 <- id.matrix(x, hashFUN=list)\n  all.equal(d1,d2)\n  length(unique(d1))\n  rm(d1,d2)\n\n  system.time(id.matrix(x, hashFUN=md5))\n  system.time(id.matrix(x, hashFUN=list))\n\n\n  x <- matrix(as.list(runif(n*20)),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  d1 <- id.matrix(x, hashFUN=md5)\n  d2 <- id.matrix(x, hashFUN=list)\n  all.equal(d1,d2)\n  length(unique(d1))\n  rm(d1,d2)\n\n  system.time(id.matrix(x, hashFUN=md5))\n  system.time(id.matrix(x, hashFUN=list))\n\n\n}\n\n\n\n# BTW, the following are methods for the upcoming package/class 'ff'\n# they limit the chunk size of RAM needed for reading the data from disk\n# yet they assume that the result fits into RAM (and is returned as such)\n# they rely on ffapply which helps with chunked indexing\n\nhash.ff <- function (x, MARGIN = NULL, hashFUN=md5\n, return.ff = FALSE\n, ...   # passed to ffapply\n)\n{\n    if (!is.logical(return.ff) || return.ff)\n        .NotYetUsed(\"return.ff = TRUE\")\n    d <- dim(x)\n    if (is.null(MARGIN))\n      MARGIN <- if (is.null(d)) integer() else 1L\n    nmarg <- length(MARGIN)\n    if (nmarg){\n      ndim <- length(d)\n      if (nmarg > ndim || any(MARGIN > ndim))\n          stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", d)\n      if (nmarg==ndim){\n        ret <- apply(x[], MARGIN, hashFUN)\n      }else{\n        args <- rep(alist(a = ), ndim)\n        names(args) <- NULL\n        ret <- ffapply(x, {\n          args[MARGIN] <- lapply(seq(along=MARGIN), function(i)i1[i]:i2[i])\n          temp <- do.call(\"[\", c(list(x = x), args, list(drop = FALSE)))\n          apply(temp, MARGIN, hashFUN)\n        }, margin=MARGIN, return=\"unlist\", ...)\n        if (nmarg>1){\n          dim(ret) <- d[MARGIN]\n          dimnames(ret) <- dimnames(x)[MARGIN]\n        }\n      }\n    }else{\n      ret <- ffapply(x, sapply(x[i1:i2], hashFUN), return=\"unlist\", ...)\n    }\n    ret\n}\n\n\n# xx this is yet without a final identity check agains md5 collisions\nduplicated.ff <-\nfunction (x, incomparables = FALSE, fromLast = FALSE, MARGIN = 1, hashFUN=md5\n, return.ff = FALSE\n, ...   # passed to ffapply\n)\n{\n    if (!is.logical(incomparables) || incomparables)\n        .NotYetUsed(\"incomparables != FALSE\")\n    if (!is.logical(return.ff) || return.ff)\n        .NotYetUsed(\"return.ff = TRUE\")\n    d <- dim(x)\n    if (is.null(MARGIN))\n      MARGIN <- if (is.null(d)) integer() else 1L\n    ndim <- length(d)\n    nmarg <- length(MARGIN)\n    if (nmarg > ndim || any(MARGIN > ndim))\n        stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", dim(x))\n    if (nmarg){\n      if (nmarg==ndim){ # no hashFUN needed\n        h <- aperm(x[], MARGIN)\n      }else{\n        h <- hash(x, MARGIN=MARGIN, return.ff=return.ff, hashFUN=hashFUN, ...)\n      }\n      d <- dim(h)\n      dn <- dimnames(h)\n      dim(h) <- NULL\n      dup <- duplicated(h, fromLast = fromLast)\n      dim(dup) <- d\n      dimnames(dup) <- dn\n    }else{\n      # yet no RAM savings in this case\n      n <- length(x)                                  # 1:length(n) WOULD be expanded\n      dup <- duplicated(x[1:n], fromLast = fromLast)  # 1:n is NOT expanded and returns a simple vector (faster than as.vector(x[]))\n    }\n    dup\n}\n\n\n# xx this is yet without a final identity check agains md5 collisions\nunique.ff <-\nfunction (x, incomparables = FALSE, fromLast = FALSE, MARGIN = NULL, hashFUN=md5\n, return.ff = FALSE\n, ...   # passed to ffapply\n)\n{\n    if (!is.logical(incomparables) || incomparables)\n        .NotYetUsed(\"incomparables != FALSE\")\n    if (!is.logical(return.ff) || return.ff)\n        .NotYetUsed(\"return.ff = TRUE\")\n    d <- dim(x)\n    if (is.null(MARGIN))\n      MARGIN <- if (is.null(d)) integer() else 1L\n    ndim <- length(d)\n    nmarg <- length(MARGIN)\n    if (nmarg > 1 || any(MARGIN > ndim))\n        stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", dim(x))\n    if (nmarg){\n      if (nmarg==ndim){ # no hashFUN needed\n        h <- aperm(x[], MARGIN)\n      }else{\n        h <- hash(x, MARGIN=MARGIN, return.ff=return.ff, hashFUN=hashFUN, ...)\n      }\n      d <- dim(h)\n      dn <- dimnames(h)\n      dim(h) <- NULL\n      args <- rep(alist(a = ), ndim)\n      names(args) <- NULL\n      args[[MARGIN]] <- !duplicated(h, fromLast = fromLast)\n      do.call(\"[\", c(list(x = x), args, list(drop = FALSE)))\n    }else{\n      # yet no RAM savings in this case\n      n <- length(x)\n      unique(x[1:n], fromLast = fromLast) # 1:n is NOT expanded and returns a simple vector (faster than as.vector(x[]))\n    }\n}\n\n\n\n# xx this is yet without a final identity check agains md5 collisions\nid.ff <- function (x, fromLast = FALSE, MARGIN = NULL, hashFUN=NULL\n, return.ff = FALSE\n, ...   # passed to ffapply\n)\n{\n    if (!is.logical(return.ff) || return.ff)\n        .NotYetUsed(\"return.ff = TRUE\")\n    d <- dim(x)\n    if (is.null(MARGIN))\n      MARGIN <- if (is.null(d)) integer() else 1L\n    nmarg <- length(MARGIN)\n    if (nmarg){\n      if (is.null(hashFUN))\n        hashFUN <- md5\n      ndim <- length(d)\n      if (nmarg > ndim || any(MARGIN > ndim))\n          stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", d)\n      if (nmarg==ndim){\n        if (is.list(x[1]))\n          h <- apply(x[], MARGIN, hashFUN)\n        else\n          h <- aperm(x[], MARGIN)\n        dim(h) <- NULL\n      }else{\n        args <- rep(alist(a = ), ndim)\n        names(args) <- NULL\n        h <- ffapply(x, {\n          args[MARGIN] <- lapply(seq(along=MARGIN), function(i)i1[i]:i2[i])\n          temp <- do.call(\"[\", c(list(x = x), args, list(drop = FALSE)))\n          apply(temp, MARGIN, hashFUN)\n        }, margin=MARGIN, return=\"unlist\", ...)\n      }\n      nd <- (1:length(h))[!duplicated(h, fromLast = fromLast)]\n      i <- nd[match(h,h[nd])]\n      if (nmarg>1){\n        # yet no RAM savings in this case\n        dim(i) <- d[MARGIN]\n        dimnames(i) <- dimnames(x)[MARGIN]\n      }\n    }else{\n      i <- id(x, fromLast = fromLast, hashFUN=hashFUN)\n    }\n    i\n}\n\n# xx this is yet without a final identity check agains md5 collisions\n# row identity for ff and R matrices (less overhead compared to id.ff via ffapply )\nffrowid <- function(x, ...){\n  id(ffrowapply(x, apply(x[i1:i2,,drop=FALSE], 1, md5), return=\"unlist\", use.names=FALSE, ...))\n}\n\nif (FALSE){\n  a <- ff(0, dim=c(100000,10),dimorder=2:1)\n  ffapply(a, a[i1:i2]<-runif(i2-i1+1))\n  r <- ffrowhash(a)\n}\n\n\nif (FALSE){\n  n <- 100000\n  m <- 10\n  x <- ff(0, dim=c(n,m))\n  x[,dimorder=2:1] <- 1:(m*n/2)\n\n  hash(x, MARGIN=integer()) # hash single cells, no RAM optimization\n  hash(x)                   # hash rows, RAM savings because rows are read and md5ed i chunks\n  duplicated(x)             #\n  id(x)                     # positions of first occurences\n  ffrowid(x)                # faster positions\n  unique(x)                 # unique rows\n\n}\n\n\n--",
+      "body_plain": "Dear R developers,\n\nWhile improving duplicated.array() and friends and developing equivalents for the new ff package for large datasets I came across two questions:\n\n1) is it safe to use duplicated.default(), unique.default() and match() on arbitrary lists? If so, we can speed up duplicated.array and friends considerably by using list() instead of paste(collapse=\"\\r\")\n\n2) while duplicated.default() is very fast even on lists, match() is very slow on lists. Why is the internal conversion to character necessary? If the hashtable behind duplicated() in unique.c work for lists, why can't we use them for match()? If conversion to character is unavoidable, a better scaling alternative could be serializing and compressing to md5: even with final identity check agains unlikely collisions this is much faster in many cases (break even seems to be for quite small list elements like 2 doubles).\n\n1) the new versions should also work for lists with a dim attribute (old versions has as.vector() which does not work for lists)\nFactor 10 speedup for row duplicates (here atomic matrices)\n>   system.time(duplicated(x, hashFUN=function(x)paste(x, collapse=\"\\r\")))\n   user  system elapsed \n   2.37    0.02    2.45 \n>   system.time(duplicated(x, hashFUN=md5))\n   user  system elapsed \n   0.51    0.00    0.51 \n>   system.time(duplicated(x, hashFUN=list))\n   user  system elapsed \n   0.17    0.00    0.17\n\n2) Speedup potential for list matching (md5 results below)\n> x <- as.list(runif(100000))\n> system.time(duplicated(x))\n   user  system elapsed \n   0.01    0.00    0.02 \n> system.time(match(x,x))\n   user  system elapsed \n   2.01    0.00    2.03\n\nPlease find below more comments and tests, new code for duplicated.array() and friends, suggestions for new classes 'hash' (requiring digest) and 'id' (and if you are curious: first code drafts for the respective ff methods).\n\nBest regards\n\n\n\nJens Oehlschlägel\n\n\n----\n\n\n# Hashing of large objects in ff\n# (c) 2007 Jens Oehlschägel\n# Licence: GPL2\n# Created: 2007-10-30\n# Last changed: 2007-10-30\n\nrequire(digest) # digest maintainer: Dirk Eddelbuettel <edd at debian.org>\n\n# { --- available hash functions ---\n\n# perfect projection: list\n# NOTE that the 'easiest hash function' is 'list'\n# it is faster than everything else when calculating duplicated or unique, but it is extremely slow for 'match' (currently, R-2.6.0)\n# thus for matching list elements, it is faster converting the list elements with md5\n\n# no projection for vectors only\nnone <- function(x)x\n\n# concatenation of as.character as currently (R-2.6.1) in duplicated.array, match.array (pairs of projections may erroneously apear as identical when the vectors are very similar, RAM expensive)\npasteid <- function(x)paste(x, collapse=\"\\r\")\n\n# perfectly identity preserving projection (but even more RAM expensive)\nid1 <- function(x)paste(.Call(\"R_serialize\", x, NULL, FALSE, NULL, PACKAGE = \"base\")[-(1:14)], collapse=\"\")\n\n# 32 byte projection\nmd5 <- function(x).Call(\"digest\", .Call(\"R_serialize\", x, NULL, FALSE, NULL, PACKAGE = \"base\"), 1L, -1L, 14L, PACKAGE = \"digest\")\n\n# 40 byte projection\nsha1 <- function(x).Call(\"digest\", .Call(\"R_serialize\", x, NULL, FALSE, NULL, PACKAGE = \"base\"), 2L, -1L, 14L, PACKAGE = \"digest\")\n\n# 8 byte projection: more collisions\ncrc32 <- function(x).Call(\"digest\", .Call(\"R_serialize\", x, NULL, FALSE, NULL, PACKAGE = \"base\"), 3L, -1L, 14L, PACKAGE = \"digest\")\n\n\n#! \\name{md5}\n#! \\alias{md5}\n#! \\title{ faster shortcut functions for in-memory digest }\n#! \\description{\n#!   These functions project (serialize or hash) their input object and return a string. Because they avoid any R overhead they are better suitable for sapply() than using the more general function 'digest'\n#! }\n#! \\usage{\n#! md5(x)\n#! sha1(x)\n#! crc32(x)\n#! id1(x)\n#! }\n#! %- maybe also 'usage' for other objects documented here.\n#! \\arguments{\n#!   \\item{x}{ a fully serializable R object }\n#! }\n#! \\value{\n#!   character scalar\n#! }\n#! \\seealso{ \\code{\\link{digest}}, \\code{\\link[base]{serialize}} }\n#! \\examples{\n#!   md5(pi)\n#!   sha1(pi)\n#!   crc32(pi)\n#!   id1(pi)\n#!\n#!   dontshow{\n#!     if (!identical(paste(serialize(list(str=\"a string\", double=pi), connection=NULL)[-(1:14)], collapse=\"\"), id1(list(str=\"a string\", double=pi))))\n#!       stop(\"something has changed in serialization, please fix the internal .Calls in function 'id1', 'md5, 'sha1', 'crc32'\")\n#!\n#!     if (!identical(digest(list(str=\"a string\", double=pi), algo=\"md5\"), md5(list(str=\"a string\", double=pi))))\n#!       stop(\"something has changed in package 'digest' or in serialization, please fix the internal .Calls in function 'md5'\")\n#!\n#!     if (!identical(digest(list(str=\"a string\", double=pi), algo=\"sha1\"), sha1(list(str=\"a string\", double=pi))))\n#!       stop(\"something has changed in package 'digest' or in serialization, please fix the internal .Calls in function 'sha1'\")\n#!\n#!     if (!identical(digest(list(str=\"a string\", double=pi), algo=\"crc32\"), crc32(list(str=\"a string\", double=pi))))\n#!       stop(\"something has changed in package 'digest' or in serialization, please fix the internal .Calls in function 'crc32'\")\n#!   }\n#! }\n#! \\keyword{misc}\n\n# } --- available hash functions ---\n\n\n\nif (FALSE){\n\n  # current (R-2.6.0) versions of duplicated.* and unique.* can fail for very similar rows\n  x <- matrix(1, 2, 2)\n  x[1,1] <- 1 + 1e-15\n  x[2,1] <- 1 + 2e-15\n  x[1,1]==x[2,1]\n  duplicated(x)\n  apply(x, 1, paste, collapse=\"\\r\")\n  # is using md5 is safer?\n  apply(x, 1, md5)\n\n  # atomic data\n  n <- 10000\n  x <- matrix(runif(n*20),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  # using list or md5 is faster than pasteid or digest or even serialize via id1\n  system.time(apply(x, 1, pasteid))\n  system.time(apply(x, 1, digest))\n  system.time(apply(x, 1, id1))\n  system.time(apply(x, 1, md5))\n  system.time(apply(x, 1, list))\n\n  # using md5 takes less RAM for strings\n  object.size(x)\n  object.size(apply(x, 1, pasteid))\n  object.size(apply(x, 1, md5))\n  object.size(apply(x, 1, id1))\n  object.size(apply(x, 1, list))\n\n  # atomic matrix performance\n  system.time(duplicated(x, hashFUN=pasteid))\n  system.time(duplicated(x, hashFUN=id1))\n  system.time(duplicated(x, hashFUN=md5))\n  system.time(duplicated(x, hashFUN=list))\n\n  # list data\n  n <- 1000\n  x <- matrix(as.list(runif(n*20)),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  # list matrix performance\n  system.time(duplicated(x, hashFUN=pasteid))\n  system.time(duplicated(x, hashFUN=id1))\n  system.time(duplicated(x, hashFUN=md5))\n  system.time(duplicated(x, hashFUN=list))\n\n\n  n <- 100000\n  # match works fine for atomic and list character data\n  x <- as.character(runif(n))\n  system.time(duplicated(x))\n  system.time(match(x,x))\n  y <- as.list(x)\n  system.time(duplicated(y))\n  system.time(match(y,y))\n\n  # but is very slow for numeric (double and integer) lists (although duplicated on numeric lists is fast, doesn't use match the same hashtable?)\n  x <- runif(n)\n  system.time(duplicated(x))\n  system.time(match(x,x))\n  y <- as.list(x)\n  system.time(duplicated(y))\n  system.time(match(y,y))\n  # try some alternatives\n  system.time({z <- sapply(y, id1); zt <- sapply(y, id1); match(z,zt)})\n  system.time({z <- sapply(y, md5); zt <- sapply(y, md5); match(z,zt)})\n  system.time({z <- sapply(y, md5); zt <- sapply(y, md5); pos<-match(z,zt); all(sapply(seq(along=pos), function(i)identical(z[i],zt[pos[i]])))})\n\n  n <- 100000\n  m <- 50\n  # even worse: lists with vectors of numeric\n  x <- matrix(runif(n), m)\n  y <- lapply(1:ncol(x), function(i)x[,i])\n  system.time(duplicated(y))\n  system.time(match(y,y))\n  # is so slow that md5 converting can speed up match considerably, even with final identity check (break-even is at m=2, for longer vectors md5 is faster)\n  system.time({z <- sapply(y, md5); zt <- sapply(y, md5); match(z,z)})\n  system.time({z <- sapply(y, md5); zt <- sapply(y, md5); pos<-match(z,zt); all(sapply(seq(along=pos), function(i)identical(z[i],zt[pos[i]])))})\n\n  # less impressive but still so for strings\n  x <- matrix(as.character(runif(n)), m)\n  y <- lapply(1:ncol(x), function(i)x[,i])\n  system.time(duplicated(y))\n  system.time(match(y,y))\n  # is so slow that md5 converting speeds up match\n  system.time({z <- lapply(y, md5); match(z,zt)})\n  system.time({z <- sapply(y, md5); zt <- sapply(y, md5); pos<-match(z,zt); all(sapply(seq(along=pos), function(i)identical(z[i],zt[pos[i]])))})\n\n  rm(x)\n\n\n}\n\n\nduplicated.matrix <- duplicated.array <-\nfunction (x, incomparables = FALSE, fromLast = FALSE, MARGIN = 1, hashFUN=list, ...)\n{\n    if (!is.logical(incomparables) || incomparables)\n        .NotYetUsed(\"incomparables != FALSE\")\n    ndim <- length(dim(x))\n    if (length(MARGIN) > ndim || any(MARGIN > ndim))\n        stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", dim(x))\n    temp <- apply(x, MARGIN, hashFUN)\n    d <- dim(temp)\n    dn <- dimnames(temp)\n    dim(temp) <- NULL   # we had as.vector here, but that fails for lists with dim attributes\n    res <- duplicated(temp, fromLast = fromLast)\n    dim(res) <- d\n    dimnames(res) <- dn\n    res\n}\n\nduplicated.data.frame <-\nfunction (x, incomparables = FALSE, fromLast = FALSE, hashFUN=list, ...)\n{\n    if (!is.logical(incomparables) || incomparables)\n        .NotYetUsed(\"incomparables != FALSE\")\n    ndim <- length(dim(x))\n    temp <- apply(x, 1, hashFUN)\n    d <- dim(temp)\n    dn <- dimnames(temp)\n    dim(temp) <- NULL  # we had as.vector here, but that fails for lists with dim attributes\n    res <- duplicated(temp, fromLast = fromLast)\n    dim(res) <- d\n    dimnames(res) <- dn\n    res\n}\n\nunique.matrix <- unique.array <-\nfunction (x, incomparables = FALSE, fromLast = FALSE, MARGIN = 1, hashFUN=list, ...)\n{\n    if (!is.logical(incomparables) || incomparables)\n        .NotYetUsed(\"incomparables != FALSE\")\n    ndim <- length(dim(x))\n    if (length(MARGIN) > 1 || any(MARGIN > ndim))\n        stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", dim(x))\n    temp <- apply(x, MARGIN, hashFUN)\n    args <- rep(alist(a = ), ndim)\n    names(args) <- NULL\n    dim(temp) <- NULL  # we had as.vector here, but that fails for lists with dim attributes\n    args[[MARGIN]] <- !duplicated(temp, fromLast = fromLast)\n    do.call(\"[\", c(list(x = x), args, list(drop = FALSE)))\n}\n\nunique.data.frame <-\nfunction (x, incomparables = FALSE, fromLast = FALSE, hashFUN=list, ...)\n{\n    if (!is.logical(incomparables) || incomparables)\n        .NotYetUsed(\"incomparables != FALSE\")\n    x[!duplicated(x, fromLast = fromLast, hashFUN = hashFUN), , drop = FALSE]\n}\n\n\n# like duplicated but return hash value instead of logical\nhash <- function(x, ...)\n    UseMethod(\"hash\")\n\nhash.default <- function(x, hashFUN=md5, ...)\n    sapply(x, hashFUN)\n\nhash.matrix <- hash.array <-\nfunction (x, MARGIN = 1, hashFUN=md5, ...)\n{\n    ndim <- length(dim(x))\n    if (length(MARGIN) > ndim || any(MARGIN > ndim))\n        stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", dim(x))\n    apply(x, MARGIN, hashFUN)\n}\n\nhash.data.frame <-\nfunction (x, hashFUN=md5, ...)\n{\n    ndim <- length(dim(x))\n    apply(x, 1, hashFUN)\n}\n\n\n# like duplicated but return the position of first occurence instead of logical\nid <- function(x, ...)\n    UseMethod(\"id\")\n\nid.default <- function(x, fromLast = FALSE, hashFUN=NULL, ...){\n  if (is.null(hashFUN)){\n    if (is.list(x)) x <- sapply(x, md5)  # fix the slow performance of match on lists (R-2.6.0) by converting to md5\n    d <- (1:length(x))[!duplicated(x, fromLast = fromLast)]\n    d[match(x,x[d])]\n  }else{\n    x <- lapply(x, hashFUN)\n    d <- (1:length(x))[!duplicated(x, fromLast = fromLast)]\n    d[match(x,x[d])]\n  }\n}\n\nid.matrix <- id.array <-\nfunction (x, fromLast = FALSE, MARGIN = 1, hashFUN=md5, ...)\n{\n    ndim <- length(dim(x))\n    nmarg <- length(MARGIN)\n    if (nmarg > ndim || any(MARGIN > ndim))\n        stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", dim(x))\n    h <- apply(x, MARGIN, hashFUN)\n    d <- (1:length(h))[!duplicated(h, fromLast = fromLast)]\n    i <- d[match(h,h[d])]\n    dim(i) <- dim(h)\n    dimnames(i) <- dimnames(h)\n    i\n}\n\nid.data.frame <-\nfunction (x, fromLast = FALSE, hashFUN=md5, ...)\n{\n    h <- apply(x, 1, hashFUN)\n    d <- (1:length(h))[!duplicated(h, fromLast = fromLast)]\n    d[match(h,h[d])]\n}\n\n\n\n\nif (FALSE){\n  n <- 10000\n\n  # test duplicated\n  x <- matrix(runif(n*20),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  d1 <- duplicated.matrix(x, hashFUN=list)\n  d2 <- duplicated.matrix(x, hashFUN=md5)\n  all.equal(d1,d2)\n  table(d1)\n  rm(d1,d2)\n\n  system.time(duplicated.matrix(x, hashFUN=list))\n  system.time(duplicated.matrix(x, hashFUN=md5))\n\n  x <- matrix(as.list(runif(n*20)),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  d1 <- duplicated.matrix(x, hashFUN=list)\n  d2 <- duplicated.matrix(x, hashFUN=md5)\n  all.equal(d1,d2)\n  table(d1)\n  rm(d1,d2)\n\n  system.time(duplicated.matrix(x, hashFUN=list))\n  system.time(duplicated.matrix(x, hashFUN=md5))\n\n  # test unique\n  x <- matrix(runif(n*20),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  d1 <- unique.matrix(x, hashFUN=list)\n  d2 <- unique.matrix(x, hashFUN=md5)\n  all.equal(d1,d2)\n  dim(d1)\n  rm(d1,d2)\n\n  system.time(unique.matrix(x, hashFUN=list))\n  system.time(unique.matrix(x, hashFUN=md5))\n\n  x <- matrix(as.list(runif(n*20)),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  d1 <- unique.matrix(x, hashFUN=list)\n  d2 <- unique.matrix(x, hashFUN=md5)\n  all.equal(d1,d2)\n  all.equal(md5(d1),md5(d2))\n  dim(d1)\n  rm(d1,d2)\n\n  system.time(unique.matrix(x, hashFUN=list))\n  system.time(unique.matrix(x, hashFUN=md5))\n\n  # test id\n  x <- matrix(runif(n*20),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  d1 <- id.matrix(x, hashFUN=md5)\n  d2 <- id.matrix(x, hashFUN=list)\n  all.equal(d1,d2)\n  length(unique(d1))\n  rm(d1,d2)\n\n  system.time(id.matrix(x, hashFUN=md5))\n  system.time(id.matrix(x, hashFUN=list))\n\n\n  x <- matrix(as.list(runif(n*20)),n,20)\n  x <- x[rep(1:nrow(x),rep(2,nrow(x))),]\n\n  d1 <- id.matrix(x, hashFUN=md5)\n  d2 <- id.matrix(x, hashFUN=list)\n  all.equal(d1,d2)\n  length(unique(d1))\n  rm(d1,d2)\n\n  system.time(id.matrix(x, hashFUN=md5))\n  system.time(id.matrix(x, hashFUN=list))\n\n\n}\n\n\n\n# BTW, the following are methods for the upcoming package/class 'ff'\n# they limit the chunk size of RAM needed for reading the data from disk\n# yet they assume that the result fits into RAM (and is returned as such)\n# they rely on ffapply which helps with chunked indexing\n\nhash.ff <- function (x, MARGIN = NULL, hashFUN=md5\n, return.ff = FALSE\n, ...   # passed to ffapply\n)\n{\n    if (!is.logical(return.ff) || return.ff)\n        .NotYetUsed(\"return.ff = TRUE\")\n    d <- dim(x)\n    if (is.null(MARGIN))\n      MARGIN <- if (is.null(d)) integer() else 1L\n    nmarg <- length(MARGIN)\n    if (nmarg){\n      ndim <- length(d)\n      if (nmarg > ndim || any(MARGIN > ndim))\n          stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", d)\n      if (nmarg==ndim){\n        ret <- apply(x[], MARGIN, hashFUN)\n      }else{\n        args <- rep(alist(a = ), ndim)\n        names(args) <- NULL\n        ret <- ffapply(x, {\n          args[MARGIN] <- lapply(seq(along=MARGIN), function(i)i1[i]:i2[i])\n          temp <- do.call(\"[\", c(list(x = x), args, list(drop = FALSE)))\n          apply(temp, MARGIN, hashFUN)\n        }, margin=MARGIN, return=\"unlist\", ...)\n        if (nmarg>1){\n          dim(ret) <- d[MARGIN]\n          dimnames(ret) <- dimnames(x)[MARGIN]\n        }\n      }\n    }else{\n      ret <- ffapply(x, sapply(x[i1:i2], hashFUN), return=\"unlist\", ...)\n    }\n    ret\n}\n\n\n# xx this is yet without a final identity check agains md5 collisions\nduplicated.ff <-\nfunction (x, incomparables = FALSE, fromLast = FALSE, MARGIN = 1, hashFUN=md5\n, return.ff = FALSE\n, ...   # passed to ffapply\n)\n{\n    if (!is.logical(incomparables) || incomparables)\n        .NotYetUsed(\"incomparables != FALSE\")\n    if (!is.logical(return.ff) || return.ff)\n        .NotYetUsed(\"return.ff = TRUE\")\n    d <- dim(x)\n    if (is.null(MARGIN))\n      MARGIN <- if (is.null(d)) integer() else 1L\n    ndim <- length(d)\n    nmarg <- length(MARGIN)\n    if (nmarg > ndim || any(MARGIN > ndim))\n        stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", dim(x))\n    if (nmarg){\n      if (nmarg==ndim){ # no hashFUN needed\n        h <- aperm(x[], MARGIN)\n      }else{\n        h <- hash(x, MARGIN=MARGIN, return.ff=return.ff, hashFUN=hashFUN, ...)\n      }\n      d <- dim(h)\n      dn <- dimnames(h)\n      dim(h) <- NULL\n      dup <- duplicated(h, fromLast = fromLast)\n      dim(dup) <- d\n      dimnames(dup) <- dn\n    }else{\n      # yet no RAM savings in this case\n      n <- length(x)                                  # 1:length(n) WOULD be expanded\n      dup <- duplicated(x[1:n], fromLast = fromLast)  # 1:n is NOT expanded and returns a simple vector (faster than as.vector(x[]))\n    }\n    dup\n}\n\n\n# xx this is yet without a final identity check agains md5 collisions\nunique.ff <-\nfunction (x, incomparables = FALSE, fromLast = FALSE, MARGIN = NULL, hashFUN=md5\n, return.ff = FALSE\n, ...   # passed to ffapply\n)\n{\n    if (!is.logical(incomparables) || incomparables)\n        .NotYetUsed(\"incomparables != FALSE\")\n    if (!is.logical(return.ff) || return.ff)\n        .NotYetUsed(\"return.ff = TRUE\")\n    d <- dim(x)\n    if (is.null(MARGIN))\n      MARGIN <- if (is.null(d)) integer() else 1L\n    ndim <- length(d)\n    nmarg <- length(MARGIN)\n    if (nmarg > 1 || any(MARGIN > ndim))\n        stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", dim(x))\n    if (nmarg){\n      if (nmarg==ndim){ # no hashFUN needed\n        h <- aperm(x[], MARGIN)\n      }else{\n        h <- hash(x, MARGIN=MARGIN, return.ff=return.ff, hashFUN=hashFUN, ...)\n      }\n      d <- dim(h)\n      dn <- dimnames(h)\n      dim(h) <- NULL\n      args <- rep(alist(a = ), ndim)\n      names(args) <- NULL\n      args[[MARGIN]] <- !duplicated(h, fromLast = fromLast)\n      do.call(\"[\", c(list(x = x), args, list(drop = FALSE)))\n    }else{\n      # yet no RAM savings in this case\n      n <- length(x)\n      unique(x[1:n], fromLast = fromLast) # 1:n is NOT expanded and returns a simple vector (faster than as.vector(x[]))\n    }\n}\n\n\n\n# xx this is yet without a final identity check agains md5 collisions\nid.ff <- function (x, fromLast = FALSE, MARGIN = NULL, hashFUN=NULL\n, return.ff = FALSE\n, ...   # passed to ffapply\n)\n{\n    if (!is.logical(return.ff) || return.ff)\n        .NotYetUsed(\"return.ff = TRUE\")\n    d <- dim(x)\n    if (is.null(MARGIN))\n      MARGIN <- if (is.null(d)) integer() else 1L\n    nmarg <- length(MARGIN)\n    if (nmarg){\n      if (is.null(hashFUN))\n        hashFUN <- md5\n      ndim <- length(d)\n      if (nmarg > ndim || any(MARGIN > ndim))\n          stop(\"MARGIN = \", MARGIN, \" is invalid for dim = \", d)\n      if (nmarg==ndim){\n        if (is.list(x[1]))\n          h <- apply(x[], MARGIN, hashFUN)\n        else\n          h <- aperm(x[], MARGIN)\n        dim(h) <- NULL\n      }else{\n        args <- rep(alist(a = ), ndim)\n        names(args) <- NULL\n        h <- ffapply(x, {\n          args[MARGIN] <- lapply(seq(along=MARGIN), function(i)i1[i]:i2[i])\n          temp <- do.call(\"[\", c(list(x = x), args, list(drop = FALSE)))\n          apply(temp, MARGIN, hashFUN)\n        }, margin=MARGIN, return=\"unlist\", ...)\n      }\n      nd <- (1:length(h))[!duplicated(h, fromLast = fromLast)]\n      i <- nd[match(h,h[nd])]\n      if (nmarg>1){\n        # yet no RAM savings in this case\n        dim(i) <- d[MARGIN]\n        dimnames(i) <- dimnames(x)[MARGIN]\n      }\n    }else{\n      i <- id(x, fromLast = fromLast, hashFUN=hashFUN)\n    }\n    i\n}\n\n# xx this is yet without a final identity check agains md5 collisions\n# row identity for ff and R matrices (less overhead compared to id.ff via ffapply )\nffrowid <- function(x, ...){\n  id(ffrowapply(x, apply(x[i1:i2,,drop=FALSE], 1, md5), return=\"unlist\", use.names=FALSE, ...))\n}\n\nif (FALSE){\n  a <- ff(0, dim=c(100000,10),dimorder=2:1)\n  ffapply(a, a[i1:i2]<-runif(i2-i1+1))\n  r <- ffrowhash(a)\n}\n\n\nif (FALSE){\n  n <- 100000\n  m <- 10\n  x <- ff(0, dim=c(n,m))\n  x[,dimorder=2:1] <- 1:(m*n/2)\n\n  hash(x, MARGIN=integer()) # hash single cells, no RAM optimization\n  hash(x)                   # hash rows, RAM savings because rows are read and md5ed i chunks\n  duplicated(x)             #\n  id(x)                     # positions of first occurences\n  ffrowid(x)                # faster positions\n  unique(x)                 # unique rows\n\n}\n\n\n--",
       "body_snippet": "Dear R developers,\n\nWhile improving duplicated.array() and friends and developing equivalents for the new ff package for large datasets I came across two questions:\n\n1) is it safe to use duplicated.de",
       "thread_id": "thread-856eeab972c1",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047322.html"
     },
     {
       "id": "msg-1657e5066490",
@@ -134,7 +141,8 @@
       "body_snippet": "Robin:\n\n> Lots of my packages have been the subject of\n> journal articles either in JSS or Rnews or (in one\n> case) elsewhere.\n>\n> I would like to add these articles\n> to my packages as vignettes.\n>\n>",
       "thread_id": "thread-035a9c123901",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047323.html"
     },
     {
       "id": "msg-19ed8e2efd36",
@@ -152,7 +160,8 @@
       "body_snippet": "I have been experimenting with ways of parallelizing many of the\nfunctions in the math library.  There are two experimental packages\navailable in http://www.stat.uiowa.edu/~luke/R/experimental: pnmath",
       "thread_id": "thread-19ed8e2efd36",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047324.html"
     },
     {
       "id": "msg-2ee75a168e29",
@@ -171,7 +180,8 @@
       "body_snippet": "The main core of the Cell (the PPE) uses IBM's version of hyperthreading \nto expose two logical, main CPU's to the OS, so code that is \"simply\" \nmulti-threaded should still see an advantage.  In addit",
       "thread_id": "thread-19ed8e2efd36",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047325.html"
     },
     {
       "id": "msg-0095c71a0950",
@@ -187,7 +197,8 @@
       "body_snippet": "Dear all,\n\nI got stuck with a weird behavior of pretty:\n    pretty(c(-1,1),n=1)\nyields -2, 0, 2 instead of the desired result -1 1.\nLikewise, \n    pretty(c(-2,2),n=1)\nyields -5, 0, 5 instead of the de",
       "thread_id": "thread-0095c71a0950",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047326.html"
     },
     {
       "id": "msg-8ec9c0689080",
@@ -255,11 +266,12 @@
       "subject_clean": "namespace crash on S3method(\"as.ff\",function)",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Dear all,\n\nI have defined a generic as.ff(x, ...) and a method as.ff.function(x, ...) which converts a standard R function x into a chunked version operating on large ff objects. Everything works fine, but when registering \n\nS3method(\"as.ff\",function)\n\nin NAMESPACE, the installation fails with some kind of parsing error:\n\n  adding build stamp to DESCRIPTION\n  installing NAMESPACE file and metadata\nFehler in parse(nsFile) : Unerwartetes ')' bei\n348:\n349: S3method(\"as.ff\",function)\nCalls: <Anonymous> -> parseNamespaceFile -> parse\nAusf?hrung angehalten\nmake[2]: *** [nmspace] Error 1\nmake[1]: *** [all] Error 2\nmake: *** [pkg-ff] Error 2\n*** Installation of ff failed ***\n\nIs this a bug? Any ideas?\n\nBest regards\n\n\nJens\n\n\nP.S. with as.ff() we can do things like\nffx <- as.ff(x) # as.ff.default() turns a standard R object into an ff object stored on disk\nas.ff(log)(ffx) # as.ff.function() turns 'log' into a function that we can call on ffx: taking the log of an almost arbitrarily large object\n\n\n> version\n               _                           \nplatform       i386-pc-mingw32             \narch           i386                        \nos             mingw32                     \nsystem         i386, mingw32               \nstatus                                     \nmajor          2                           \nminor          6.0                         \nyear           2007                        \nmonth          10                          \nday            03                          \nsvn rev        43063                       \nlanguage       R                           \nversion.string R version 2.6.0 (2007-10-03)\n\n-- \nPsssst! Schon vom neuen GMX MultiMessenger geh?rt?\nDer kann`s mit allen: http://www.gmx.net/de/go/multimessenger",
+      "body_plain": "Dear all,\n\nI have defined a generic as.ff(x, ...) and a method as.ff.function(x, ...) which converts a standard R function x into a chunked version operating on large ff objects. Everything works fine, but when registering \n\nS3method(\"as.ff\",function)\n\nin NAMESPACE, the installation fails with some kind of parsing error:\n\n  adding build stamp to DESCRIPTION\n  installing NAMESPACE file and metadata\nFehler in parse(nsFile) : Unerwartetes ')' bei\n348:\n349: S3method(\"as.ff\",function)\nCalls: <Anonymous> -> parseNamespaceFile -> parse\nAusf³hrung angehalten\nmake[2]: *** [nmspace] Error 1\nmake[1]: *** [all] Error 2\nmake: *** [pkg-ff] Error 2\n*** Installation of ff failed ***\n\nIs this a bug? Any ideas?\n\nBest regards\n\n\nJens\n\n\nP.S. with as.ff() we can do things like\nffx <- as.ff(x) # as.ff.default() turns a standard R object into an ff object stored on disk\nas.ff(log)(ffx) # as.ff.function() turns 'log' into a function that we can call on ffx: taking the log of an almost arbitrarily large object\n\n\n> version\n               _                           \nplatform       i386-pc-mingw32             \narch           i386                        \nos             mingw32                     \nsystem         i386, mingw32               \nstatus                                     \nmajor          2                           \nminor          6.0                         \nyear           2007                        \nmonth          10                          \nday            03                          \nsvn rev        43063                       \nlanguage       R                           \nversion.string R version 2.6.0 (2007-10-03)\n\n-- \nPsssst! Schon vom neuen GMX MultiMessenger gehört?\nDer kann`s mit allen: http://www.gmx.net/de/go/multimessenger",
       "body_snippet": "Dear all,\n\nI have defined a generic as.ff(x, ...) and a method as.ff.function(x, ...) which converts a standard R function x into a chunked version operating on large ff objects. Everything works fine",
       "thread_id": "thread-8a6802780fb3",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047330.html"
     },
     {
       "id": "msg-4bc0307b7920",
@@ -312,6 +324,7 @@
       "thread_id": "thread-286c1a79ad4a",
       "thread_depth": 0,
       "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047333.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20071105/7b6b23c6/attachment.pl"
       ]
@@ -332,7 +345,8 @@
       "body_snippet": "On Mon, 5 Nov 2007, Fabian Scheipl wrote:\n\n> Wouldn't it make programming more error-resistant if vectors were\n> initialized with missing data, instad of zeroes or \"\"?\n\nLots of code relies on this.  I",
       "thread_id": "thread-286c1a79ad4a",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047334.html"
     },
     {
       "id": "msg-6d43593c8f9e",
@@ -348,7 +362,8 @@
       "body_snippet": "Hello everyone,\n\nI'm trying to update the locfit package so that it passes package check\nin R 2.6.0.  However, the check seems to think some of the functions\nwith dot in the names are S3 methods (thus",
       "thread_id": "thread-6d43593c8f9e",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047335.html"
     },
     {
       "id": "msg-b0b080495d2d",
@@ -366,7 +381,8 @@
       "body_snippet": "On 05/11/2007 3:48 PM, Liaw, Andy wrote:\n> Hello everyone,\n> \n> I'm trying to update the locfit package so that it passes package check\n> in R 2.6.0.  However, the check seems to think some of the fun",
       "thread_id": "thread-6d43593c8f9e",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047336.html"
     },
     {
       "id": "msg-58e823426c52",
@@ -382,7 +398,8 @@
       "body_snippet": "I'm not sure if this is the right target to which to direct this post,\nbut I couldn't think of anything more appropriate.\n\nI just downloaded the Hmisc package to the Imac that I use.  When I  \nattempt",
       "thread_id": "thread-58e823426c52",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047342.html"
     },
     {
       "id": "msg-b7ddc2661b4a",
@@ -400,7 +417,8 @@
       "body_snippet": "I recently bought a new Intel Mac with OSX Leopard. I reinstalled the\nlatest version of R and the Xcode tools. I'm trying to compile a C\nsource code with the R compiler in X11, and I receive the follo",
       "thread_id": "thread-b7ddc2661b4a",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047343.html"
     },
     {
       "id": "msg-616e0c0e4f5d",
@@ -416,7 +434,8 @@
       "body_snippet": "This just information of my experience installing R on SunOS 5.9 \ntoday, not a request for help.\n(in case anyone cares, and if not, I apologize for the distraction)\n\nI am building R 2.6.0 (patched; sv",
       "thread_id": "thread-616e0c0e4f5d",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047337.html"
     },
     {
       "id": "msg-bd67bbdb1b99",
@@ -432,7 +451,8 @@
       "body_snippet": "Dear R-developers,\n\nwhen tapply() is invoked on factors that have empty levels, it returns\nNA.  This behaviour is in accord with the tapply documentation, and is\nreasonable in many cases.  However, wh",
       "thread_id": "thread-bd67bbdb1b99",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047338.html"
     },
     {
       "id": "msg-263bfe044335",
@@ -450,7 +470,8 @@
       "body_snippet": "Unfortunately I think it would break too much existing code.  tapply()\nis an old function and many people have gotten used to the way it works\nnow.\n\nThis is not to suggest there could not be another a",
       "thread_id": "thread-bd67bbdb1b99",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047339.html"
     },
     {
       "id": "msg-465b03240303",
@@ -469,7 +490,8 @@
       "body_snippet": "On Tue, 6 Nov 2007, Bill.Venables at csiro.au wrote:\n\n> Unfortunately I think it would break too much existing code.  tapply()\n> is an old function and many people have gotten used to the way it works",
       "thread_id": "thread-bd67bbdb1b99",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047341.html"
     },
     {
       "id": "msg-4ba5fe399510",
@@ -487,7 +509,8 @@
       "body_snippet": "What OS was that compiler built for?  This happened when you had a \nversion of gcc built for the wrong version of the OS, as gcc captures \nsystem headers.  (There's a warning about that in the R-admin",
       "thread_id": "thread-616e0c0e4f5d",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047340.html"
     },
     {
       "id": "msg-4886bb3dd9a4",
@@ -505,7 +528,8 @@
       "body_snippet": "On 06/11/2007, at 8:59 AM, Rolf Turner wrote:\n\n>\n> I'm not sure if this is the right target to which to direct this post,\n> but I couldn't think of anything more appropriate.\n>\n\nR-Sig-Mac https://stat",
       "thread_id": "thread-58e823426c52",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047344.html"
     },
     {
       "id": "msg-523d3ba24ccc",
@@ -523,7 +547,8 @@
       "body_snippet": "Rolf,\n\nOn Nov 5, 2007, at 4:59 PM, Rolf Turner wrote:\n\n> I'm not sure if this is the right target to which to direct this  \n> post, but I couldn't think of anything more appropriate.\n>\n\nR-SIG-Mac, but",
       "thread_id": "thread-58e823426c52",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047345.html"
     },
     {
       "id": "msg-275b06efd514",
@@ -542,7 +567,8 @@
       "body_snippet": "Daniel,\n\nplease read R-SIG-Mac, it has all the details on Leopard support.  \nThere are several different fixes for this, possibly the easiest for  \nyou:\nPKG_LIBS=\"-mmacosx-version-min=10.4\" R CMD SHLI",
       "thread_id": "thread-b7ddc2661b4a",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047346.html"
     },
     {
       "id": "msg-339c1a0e4929",
@@ -558,7 +584,8 @@
       "body_snippet": "Full_Name: Jerome Lemaitre\nVersion: 2.6.0\nOS: Windows XP\nSubmission from: (NULL) (132.203.202.117)\n\n\nHello,\n\nI have recently downloaded the 2.6.0 version of R and I experience troubles that\nnever happ",
       "thread_id": "thread-339c1a0e4929",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047380.html"
     },
     {
       "id": "msg-ac982c7a5a9d",
@@ -574,7 +601,8 @@
       "body_snippet": "Full_Name: Jane L. Harvill\nVersion: 2.6.0\nOS: Microsoft Windows XP Professional, Version 2002, Service Pack 2\nSubmission from: (NULL) (129.62.21.93)\n\n\nPROBLEM: The ability to save the contents of an R",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047347.html"
     },
     {
       "id": "msg-7982b74a58f5",
@@ -592,7 +620,8 @@
       "body_snippet": "This has been reported several times before and has been fixed in \nR-patched some weeks ago.\n\nUwe Ligges\n\n\nJane_Harvill at Baylor.Edu wrote:\n> Full_Name: Jane L. Harvill\n> Version: 2.6.0\n> OS: Microso",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047348.html"
     },
     {
       "id": "msg-31a0c85860d5",
@@ -610,7 +639,8 @@
       "body_snippet": "I have experienced the same behaviour (intermittently) on two\ndifferent WinXP machines.\nAlso savePlot() appears to be affected but not postscript() nor pdf()\nas you mentioned.\n\n\n\nOn 11/6/07, Jane_Harv",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047349.html"
     },
     {
       "id": "msg-992298375e24",
@@ -629,7 +659,8 @@
       "body_snippet": "I looked at the list of bug fixes before writing and I found that the\nonly thing close to it is this\n\n o\tpostscript() was not always ignoring .Postscript.Options in\n\tthe workspace (where it should not",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047350.html"
     },
     {
       "id": "msg-414f4288cdcb",
@@ -645,7 +676,8 @@
       "body_snippet": "This has been discussed extensively on R-help (with a workaround), and is \nalready fixed in R-patched.\n\nOn Tue, 6 Nov 2007, Jane_Harvill at baylor.edu wrote:\n\n> Full_Name: Jane L. Harvill\n> Version: 2",
       "thread_id": "thread-414f4288cdcb",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047351.html"
     },
     {
       "id": "msg-a00ad31b5aad",
@@ -665,7 +697,8 @@
       "body_snippet": "On Tue, 6 Nov 2007, Simone Giannerini wrote:\n\n> I looked at the list of bug fixes before writing and I found that the\n> only thing close to it is this\n>\n> o\tpostscript() was not always ignoring .Posts",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047352.html"
     },
     {
       "id": "msg-cb597b43d2d4",
@@ -686,7 +719,8 @@
       "body_snippet": "Thank you,\n\nI am sorry for my positive contribution to the entropy of R lists ...\nI missed the fact that somewhere there is a separate list of Windows\nspecific bug fixes.\nMaybe it would be useful that",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047353.html"
     },
     {
       "id": "msg-fbbe0f306f80",
@@ -708,7 +742,8 @@
       "body_snippet": "Simone Giannerini wrote:\n> Thank you,\n>\n> I am sorry for my positive contribution to the entropy of R lists ...\n> I missed the fact that somewhere there is a separate list of Windows\n> specific bug fi",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 5,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047354.html"
     },
     {
       "id": "msg-a6b97c7d2045",
@@ -727,7 +762,8 @@
       "body_snippet": "On 6/11/2007, at 10:35 PM, Ken Beath wrote:\n\n> On 06/11/2007, at 8:59 AM, Rolf Turner wrote:\n>\n>>\n>> I'm not sure if this is the right target to which to direct this  \n>> post,\n>> but I couldn't think",
       "thread_id": "thread-a6b97c7d2045",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047367.html"
     },
     {
       "id": "msg-14df29243d7c",
@@ -750,7 +786,8 @@
       "body_snippet": "> (Ideally, people would try the prerelease versions and problems like\n> this would be caught before the actual release, but it seems that they\n> prefer treating x.y.0 as a beta release...)\n\nThe one t",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 6,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047355.html"
     },
     {
       "id": "msg-babf1c6ada1e",
@@ -768,7 +805,8 @@
       "body_snippet": "I do wonder when you would consider something a programming question \nunsuitable for R-help?  See the posting guide.\n\nAt least my answer needs to be on R-devel.\n\nOn Tue, 6 Nov 2007, Jason Liao wrote:\n",
       "thread_id": "thread-babf1c6ada1e",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047356.html"
     },
     {
       "id": "msg-979bb3984dfd",
@@ -784,7 +822,8 @@
       "body_snippet": "dear list,\n\nI stumbled over the follwing strange behaviour/error when\nusing `nls' which I'm tempted (despite the implied \"dangers\")\nto call a bug:\n\nI've written a driver for `nls' which allows specify",
       "thread_id": "thread-979bb3984dfd",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047357.html"
     },
     {
       "id": "msg-b32fb3bc154b",
@@ -801,6 +840,7 @@
       "thread_id": "thread-b32fb3bc154b",
       "thread_depth": 0,
       "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047358.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20071106/bb16feb2/attachment.pl"
       ]
@@ -821,7 +861,8 @@
       "body_snippet": "We need to see the d-p-q-r-tests.Rout file, and perhaps ask for some more \nruns (unfortunately that line number is after massaging).  Can you make it \navailable to us?  Or at least a portion containin",
       "thread_id": "thread-b32fb3bc154b",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047359.html"
     },
     {
       "id": "msg-9ac2946a4bd8",
@@ -840,7 +881,8 @@
       "body_snippet": "Hello Prof Brian Ripley and list\n\nThere is no \"d-p-q-r-tests.Rout\"  file, the following files do exists  \nand are being sent as attachments:\n./tests/d-p-q-r-tests.R ,  ./tests/d-p-q-r-tests.Rout.save ",
       "thread_id": "thread-b32fb3bc154b",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047368.html"
     },
     {
       "id": "msg-60aca107646c",
@@ -860,7 +902,8 @@
       "body_snippet": "These are important concerns.  It seems to me that adding an argument\nas suggested by Bill will allow the user to side-step the problem\nidentified by Brian.\n\nBill, under what kinds of circumstances wo",
       "thread_id": "thread-bd67bbdb1b99",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047360.html"
     },
     {
       "id": "msg-97a112c4e890",
@@ -876,7 +919,8 @@
       "body_snippet": "Dear All,\n\nI tried to write a C++ program that uses R internals and I encounter\n\"undefined reference\" error when linking to libR.so. Here is an small\nexample of the program test.cpp:\n\nextern \"C\" {\n#in",
       "thread_id": "thread-97a112c4e890",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047361.html"
     },
     {
       "id": "msg-402fea436708",
@@ -894,7 +938,8 @@
       "body_snippet": "IOStuff.h is not a public header, and neither are the entry points within \nit.  See 'Writing R Extensions'.  One is in the category:\n\n   Entry points that are where possible (Windows and some modern U",
       "thread_id": "thread-97a112c4e890",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047362.html"
     },
     {
       "id": "msg-71bf204c8090",
@@ -915,7 +960,8 @@
       "body_snippet": "Andrew Robinson wrote:\n> These are important concerns.  It seems to me that adding an argument\n> as suggested by Bill will allow the user to side-step the problem\n> identified by Brian.\n>\n> Bill, unde",
       "thread_id": "thread-bd67bbdb1b99",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047363.html"
     },
     {
       "id": "msg-5e95fc4c98f7",
@@ -938,7 +984,8 @@
       "body_snippet": "[snip]\n> Maybe, but given the way things have been working lately, it might be\n> better to emphasize\n>\n> (a) check the mailinglists\n> (b) try R-patched\n> (c) if in doubt, ask, rather than report as bu",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 6,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047364.html"
     },
     {
       "id": "msg-e1ff360fec48",
@@ -962,7 +1009,8 @@
       "body_snippet": "On Wed, 7 Nov 2007, Simone Giannerini wrote:\n\n> [snip]\n>> Maybe, but given the way things have been working lately, it might be\n>> better to emphasize\n>>\n>> (a) check the mailinglists\n>> (b) try R-pat",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 7,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047365.html"
     },
     {
       "id": "msg-a5f314039f28",
@@ -986,7 +1034,8 @@
       "body_snippet": "On Wed, 2007-11-07 at 10:51 +0100, Simone Giannerini wrote:\n> [snip] (this is from pd = Peter Dalgaard)\n> > Maybe, but given the way things have been working lately, it might be\n> > better to emphasiz",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 7,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047369.html"
     },
     {
       "id": "msg-92e7df7e5f19",
@@ -1011,7 +1060,8 @@
       "body_snippet": "Jari Oksanen wrote:\n> On Wed, 2007-11-07 at 10:51 +0100, Simone Giannerini wrote:\n>   \n>> [snip] (this is from pd = Peter Dalgaard)\n>>     \n>>> Maybe, but given the way things have been working lately",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 8,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047366.html"
     },
     {
       "id": "msg-a903a13e1017",
@@ -1027,7 +1077,8 @@
       "body_snippet": "Full_Name: Bj??rn Bornkamp\nVersion: 2.6.0\nOS: Windows XP\nSubmission from: (NULL) (129.217.207.144)\n\n\nThe literature reference in the documentation for the function kruskal.test is:\n\nMyles Hollander & ",
       "thread_id": "thread-a903a13e1017",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047381.html"
     },
     {
       "id": "msg-8b5b988e59ae",
@@ -1052,7 +1103,8 @@
       "body_snippet": "On Nov 7, 2007, at 5:21 AM, Jari Oksanen wrote:\n\n>\n> On Wed, 2007-11-07 at 10:51 +0100, Simone Giannerini wrote:\n>> [snip] (this is from pd = Peter Dalgaard)\n>>> Maybe, but given the way things have b",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 8,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047370.html"
     },
     {
       "id": "msg-5cc4079adcf0",
@@ -1071,7 +1123,8 @@
       "body_snippet": "Of course. It was built for Solaris 2.7.\n(I did look at R-admin, but not carefully and thoroughly enough.)\n\nThank you.\n-Don\n\nAt 7:33 AM +0000 11/6/07, Prof Brian Ripley wrote:\n>What OS was that compil",
       "thread_id": "thread-616e0c0e4f5d",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047371.html"
     },
     {
       "id": "msg-d1ce74c37ff7",
@@ -1091,7 +1144,8 @@
       "body_snippet": "On Wed, 7 Nov 2007, Don MacQueen wrote:\n\n> Of course. It was built for Solaris 2.7.\n> (I did look at R-admin, but not carefully and thoroughly enough.)\n\nGood to know (and I didn't expect you to know i",
       "thread_id": "thread-616e0c0e4f5d",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047372.html"
     },
     {
       "id": "msg-5fab017eb57b",
@@ -1116,7 +1170,8 @@
       "body_snippet": "Hi Jari,\n\n(and interested readers)\n\n>>>>> \"JO\" == Jari Oksanen <jari.oksanen at oulu.fi>\n>>>>>     on Wed, 07 Nov 2007 12:21:10 +0200 writes:\n\n  [..........................]\n  [...some very good stuff",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 8,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047373.html"
     },
     {
       "id": "msg-afb20a93026e",
@@ -1141,7 +1196,8 @@
       "body_snippet": ">>>>> \"JO\" == Jari Oksanen <jari.oksanen at oulu.fi>\n>>>>>     on Wed, 07 Nov 2007 12:21:10 +0200 writes:\n\n    JO> On Wed, 2007-11-07 at 10:51 +0100, Simone Giannerini wrote:\n    >> [snip] (this is fr",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 8,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047374.html"
     },
     {
       "id": "msg-a630d1d88206",
@@ -1157,7 +1213,8 @@
       "body_snippet": "Full_Name: Christoph Bonitz\nVersion: 2.5.1\nOS: Mac OS 10.4\nSubmission from: (NULL) (84.112.127.131)\n\n\nWhen trying something like this:\n\nquartz.save(\"/path/and/filename.pdf\",type=pdf)\n(notice: type=pdf",
       "thread_id": "thread-a630d1d88206",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047382.html"
     },
     {
       "id": "msg-9eafe3ee3d43",
@@ -1173,7 +1230,8 @@
       "body_snippet": "Dear Martin, Jari, et al.,\n\nAnother relevant point (which I haven't seen in this discussion -- perhaps I\nmissed it) is that one can read the CHANGES and NEWS files on CRAN without\ndownloading or insta",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 9,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047375.html"
     },
     {
       "id": "msg-68afacb0806c",
@@ -1199,7 +1257,8 @@
       "body_snippet": "There is a simple solution to this kind of problem - for my\nnon-day-job-related software stuff, I usually subscribe under\nmy sourceforge address. Sourceforge's is simple re-direction service\nso I actu",
       "thread_id": "thread-ac982c7a5a9d",
       "thread_depth": 9,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047376.html"
     },
     {
       "id": "msg-9a15616689be",
@@ -1221,7 +1280,8 @@
       "body_snippet": "On Wed, Nov 07, 2007 at 08:15:17AM +0100, Peter Dalgaard wrote:\n> Andrew Robinson wrote:\n> >These are important concerns.  It seems to me that adding an argument\n> >as suggested by Bill will allow the",
       "thread_id": "thread-bd67bbdb1b99",
       "thread_depth": 5,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047377.html"
     },
     {
       "id": "msg-801d87b076be",
@@ -1237,7 +1297,8 @@
       "body_snippet": "Hi all,\n\nI compiled 64-bit R on an Apple Mac G5 running OS X, but it failed \nmake check.  Simon Urbanek suggested I post results to R-devel.\n\n> On Nov 6, 2007, at 10:23 PM, Steven McKinney wrote:\n> \n\n",
       "thread_id": "thread-801d87b076be",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047378.html"
     },
     {
       "id": "msg-f36d9dd287d9",
@@ -1255,7 +1316,8 @@
       "body_snippet": "I am not sure why Simon thought you should ask here (and not on R-sig-mac, \nsay): it is almost certain these are problems with your system not R. \nFor the first, use your debugger to find where the se",
       "thread_id": "thread-801d87b076be",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047379.html"
     },
     {
       "id": "msg-29522b4d2cde",
@@ -1275,7 +1337,8 @@
       "body_snippet": ">>>>> \"kM\" == kamil Marcinkowski <kamil at ualberta.ca>\n>>>>>     on Tue, 6 Nov 2007 17:02:56 -0700 writes:\n\n    kM> Hello Prof Brian Ripley and list\n    kM> There is no \"d-p-q-r-tests.Rout\" file, the",
       "thread_id": "thread-b32fb3bc154b",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047383.html"
     },
     {
       "id": "msg-02e6ccdac6e2",
@@ -1293,7 +1356,8 @@
       "body_snippet": "On 06/11/2007 9:05 AM, jerome.lemaitre.1 at ulaval.ca wrote:\n> Full_Name: Jerome Lemaitre\n> Version: 2.6.0\n> OS: Windows XP\n> Submission from: (NULL) (132.203.202.117)\n> \n> \n> Hello,\n> \n> I have recen",
       "thread_id": "thread-339c1a0e4929",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047384.html"
     },
     {
       "id": "msg-36ee7e45236a",
@@ -1312,7 +1376,8 @@
       "body_snippet": "On Nov 8, 2007, at 2:22 AM, Prof Brian Ripley wrote:\n\n> I am not sure why Simon thought you should ask here\n\nmainly because of the d-p-q-r-test - I was wondering whether it falls  \nin the category of ",
       "thread_id": "thread-801d87b076be",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047385.html"
     },
     {
       "id": "msg-b3d4581bcda2",
@@ -1334,6 +1399,7 @@
       "thread_id": "thread-b32fb3bc154b",
       "thread_depth": 4,
       "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047386.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20071108/f5e0108c/attachment.pl"
       ]
@@ -1352,7 +1418,8 @@
       "body_snippet": "Full_Name: Simon de Bernard\nVersion: \nOS: \nSubmission from: (NULL) (140.77.34.213)\n\n\nIn src/main/dotcode.c, function RObjToCPtr, test for naok should be transferred\noutside of the loops...",
       "thread_id": "thread-36bf2fa029cf",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047389.html"
     },
     {
       "id": "msg-656890b7a66e",
@@ -1374,7 +1441,8 @@
       "body_snippet": "Thanks a lot Kamil,\nfor the confirmation:\n\n>>>>> \"kM\" == kamil Marcinkowski <kamil at ualberta.ca>\n>>>>>     on Thu, 8 Nov 2007 09:41:05 -0700 writes:\n\n    kM> Hello list\n    kM> Here are the results ",
       "thread_id": "thread-b32fb3bc154b",
       "thread_depth": 5,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047387.html"
     },
     {
       "id": "msg-d2c56e0bd3b6",
@@ -1390,7 +1458,8 @@
       "body_snippet": "Is it is possible for a package to override the default color palette\nused by \"image\". I've tried a few different ways, but was curious if\nthere is an approved method.\n\nTHK\n\n-- \nTimothy H. Keitt, Univ",
       "thread_id": "thread-d2c56e0bd3b6",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047388.html"
     },
     {
       "id": "msg-8342ca4dfac7",
@@ -1406,7 +1475,8 @@
       "body_snippet": "Full_Name: Kingsley Oteng-Amoako\nVersion: 2.5.1\nOS: Windows 5.1.2600 (Windows XP)\nSubmission from: (NULL) (203.185.215.144)\n\n\nThe col.names=false in the write.csv command does not work as documented.\n",
       "thread_id": "thread-8342ca4dfac7",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047390.html"
     },
     {
       "id": "msg-04421e055a30",
@@ -1424,7 +1494,8 @@
       "body_snippet": "kingsley.oteng-amoako at macquarie.com wrote:\n> Full_Name: Kingsley Oteng-Amoako\n> Version: 2.5.1\n> OS: Windows 5.1.2600 (Windows XP)\n> Submission from: (NULL) (203.185.215.144)\n>\n>\n> The col.names=fa",
       "thread_id": "thread-8342ca4dfac7",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047391.html"
     },
     {
       "id": "msg-0b9636f4b95b",
@@ -1440,7 +1511,8 @@
       "body_snippet": "On Fri, 9 Nov 2007, Peter Dalgaard wrote:\n\n> kingsley.oteng-amoako at macquarie.com wrote:\n>> Full_Name: Kingsley Oteng-Amoako\n>> Version: 2.5.1\n>> OS: Windows 5.1.2600 (Windows XP)\n>> Submission from",
       "thread_id": "thread-0b9636f4b95b",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047392.html"
     },
     {
       "id": "msg-9b3da75198a5",
@@ -1456,7 +1528,8 @@
       "body_snippet": ">From the R-2.6.0/doc/README.packages it says:\n\n  Using Visual C++\n  ================\n\n  You may if you prefer use Visual C++ to make the DLLs (unless they use\n  Fortran source!). The notes here were ",
       "thread_id": "thread-9b3da75198a5",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047393.html"
     },
     {
       "id": "msg-beb20fa03c71",
@@ -1474,7 +1547,8 @@
       "body_snippet": "On Fri, 9 Nov 2007, William.Fulton at ubs.com wrote:\n\n>> From the R-2.6.0/doc/README.packages it says:\n>\n>  Using Visual C++\n>  ================\n>\n>  You may if you prefer use Visual C++ to make the D",
       "thread_id": "thread-9b3da75198a5",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047394.html"
     },
     {
       "id": "msg-90269852e1ab",
@@ -1529,7 +1603,8 @@
       "body_snippet": "Hi all,\n\nClean install of F8 yesterday. This was not an upgrade, as I did some\nre-partitioning of my HD to remove Windows (finally...) and no-longer\nhave a dual-boot laptop.\n\nUsing R 2.6.0 patched fro",
       "thread_id": "thread-f36860e7393f",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047397.html"
     },
     {
       "id": "msg-143d20f1d9ce",
@@ -1553,6 +1628,7 @@
       "thread_id": "thread-b32fb3bc154b",
       "thread_depth": 6,
       "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047398.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20071109/e733d76c/attachment.pl"
       ]
@@ -1592,7 +1668,8 @@
       "body_snippet": "I loaded package chron in a newly installed version of R 2.6.0 and the\nyears() function would not work.  (This worked in 2.5).\n\n=20\n\n> x<-as.Date(\"2006-01-01\")\n\n> years(x)\n\nNULL\n\n=20\n\n>sessionInfo()\n\n",
       "thread_id": "thread-cdf0b5d538e7",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047403.html"
     },
     {
       "id": "msg-33cbf44a5eea",
@@ -1610,7 +1687,8 @@
       "body_snippet": "On Fri, 2007-11-09 at 11:41 -0600, Marc Schwartz wrote:\n\n> I have been looking (\"tunnel vision\") at this now for several hours\n> going back to last night, and am probably missing something basic here,",
       "thread_id": "thread-f36860e7393f",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047400.html"
     },
     {
       "id": "msg-a18dac5730de",
@@ -1629,7 +1707,8 @@
       "body_snippet": "On Fri, 2007-11-09 at 16:45 -0500, Tom \"spot\" Callaway wrote:\n> On Fri, 2007-11-09 at 11:41 -0600, Marc Schwartz wrote:\n> \n> > I have been looking (\"tunnel vision\") at this now for several hours\n> > g",
       "thread_id": "thread-f36860e7393f",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047401.html"
     },
     {
       "id": "msg-1c9959bae910",
@@ -1645,7 +1724,8 @@
       "body_snippet": "Please don't use 'assert' in R packages.  If called, this means that an \nerror in your code aborts the whole R process, including your user's work. \nI see several R packages doing this, and one of the",
       "thread_id": "thread-1c9959bae910",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047402.html"
     },
     {
       "id": "msg-b7297e1976b8",
@@ -1663,7 +1743,8 @@
       "body_snippet": "Prof Brian Ripley wrote:\n> Please don't use 'assert' in R packages.  If called, this means that an \n> error in your code aborts the whole R process, including your user's work. \n> I see several R pack",
       "thread_id": "thread-1c9959bae910",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047404.html"
     },
     {
       "id": "msg-ecf24763a1d7",
@@ -1681,7 +1762,8 @@
       "body_snippet": "In chron, ?year says x must be a \"dates\" object and its not in the code below.\n\nOn Nov 9, 2007 3:55 PM,  <jputz at teainc.org> wrote:\n> I loaded package chron in a newly installed version of R 2.6.0 a",
       "thread_id": "thread-cdf0b5d538e7",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047405.html"
     },
     {
       "id": "msg-cea7cf4f092f",
@@ -1700,7 +1782,8 @@
       "body_snippet": "On 10/11/2007 6:38 AM, Duncan Murdoch wrote:\n> Prof Brian Ripley wrote:\n>> Please don't use 'assert' in R packages.  If called, this means that an \n>> error in your code aborts the whole R process, in",
       "thread_id": "thread-1c9959bae910",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047406.html"
     },
     {
       "id": "msg-9c16c7359ee7",
@@ -1719,7 +1802,8 @@
       "body_snippet": "-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA1\n\n\n\nDuncan Murdoch wrote:\n> Prof Brian Ripley wrote:\n>> Please don't use 'assert' in R packages.  If called, this means that an \n>> error in your code abor",
       "thread_id": "thread-1c9959bae910",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047407.html"
     },
     {
       "id": "msg-90c7857ee413",
@@ -1739,7 +1823,8 @@
       "body_snippet": "On 10/11/2007 1:00 PM, Duncan Temple Lang wrote:\n> -----BEGIN PGP SIGNED MESSAGE-----\n> Hash: SHA1\n> \n> \n> \n> Duncan Murdoch wrote:\n>> Prof Brian Ripley wrote:\n>>> Please don't use 'assert' in R packa",
       "thread_id": "thread-1c9959bae910",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047408.html"
     },
     {
       "id": "msg-456682b4ae3a",
@@ -1760,7 +1845,8 @@
       "body_snippet": "-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA1\n\n\n\nDuncan Murdoch wrote:\n> On 10/11/2007 1:00 PM, Duncan Temple Lang wrote:\n> \n> \n> Duncan Murdoch wrote:\n>>>> Prof Brian Ripley wrote:\n>>>>> Please don't",
       "thread_id": "thread-1c9959bae910",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047409.html"
     },
     {
       "id": "msg-8249f123392a",
@@ -1781,7 +1867,8 @@
       "body_snippet": "On Nov 10, 2007, at 1:05 PM, Duncan Murdoch wrote:\n\n> On 10/11/2007 1:00 PM, Duncan Temple Lang wrote:\n>> -----BEGIN PGP SIGNED MESSAGE-----\n>> Hash: SHA1\n>>\n>>\n>>\n>> Duncan Murdoch wrote:\n>>> Prof Br",
       "thread_id": "thread-1c9959bae910",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047410.html"
     },
     {
       "id": "msg-56467c80a8a8",
@@ -1803,7 +1890,8 @@
       "body_snippet": "On 10/11/2007 4:27 PM, Simon Urbanek wrote:\n> On Nov 10, 2007, at 1:05 PM, Duncan Murdoch wrote:\n> \n>> On 10/11/2007 1:00 PM, Duncan Temple Lang wrote:\n>>> -----BEGIN PGP SIGNED MESSAGE-----\n>>> Hash:",
       "thread_id": "thread-1c9959bae910",
       "thread_depth": 5,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047411.html"
     },
     {
       "id": "msg-75ecc2ec3b29",
@@ -1822,7 +1910,8 @@
       "body_snippet": "On Sat, 10 Nov 2007, Duncan Murdoch wrote:\n\n> Prof Brian Ripley wrote:\n> > Please don't use 'assert' in R packages.  If called, this means that an\n> > error in your code aborts the whole R process, in",
       "thread_id": "thread-1c9959bae910",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047412.html"
     },
     {
       "id": "msg-a14c5e3cae4c",
@@ -1842,7 +1931,8 @@
       "body_snippet": "Bill Dunlap wrote:\n> On Sat, 10 Nov 2007, Duncan Murdoch wrote:\n>\n>   \n>> Prof Brian Ripley wrote:\n>>     \n>>> Please don't use 'assert' in R packages.  If called, this means that an\n>>> error in your",
       "thread_id": "thread-1c9959bae910",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047413.html"
     },
     {
       "id": "msg-9b778f81a190",
@@ -1859,6 +1949,7 @@
       "thread_id": "thread-9b778f81a190",
       "thread_depth": 0,
       "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047416.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20071110/05c9f38b/attachment.pl"
       ]
@@ -1884,7 +1975,8 @@
       "body_snippet": "On Nov 10, 2007, at 5:38 PM, Duncan Murdoch wrote:\n\n> On 10/11/2007 4:27 PM, Simon Urbanek wrote:\n>> On Nov 10, 2007, at 1:05 PM, Duncan Murdoch wrote:\n>>> On 10/11/2007 1:00 PM, Duncan Temple Lang wr",
       "thread_id": "thread-1c9959bae910",
       "thread_depth": 6,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047414.html"
     },
     {
       "id": "msg-2dfe362417bc",
@@ -1900,7 +1992,8 @@
       "body_snippet": "Full_Name: Claudio Lupi\nVersion: 2.6.0\nOS: Windows XP\nSubmission from: (NULL) (85.18.14.35)\n\n\nTry the following:\n\nxy <- matrix(rnorm(20),10,2)\nplot(xy)\nsavePlot(\"c:/xy\", type=\"pdf\")\nsavePlot(\"c:/xy\", ",
       "thread_id": "thread-2dfe362417bc",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047415.html"
     },
     {
       "id": "msg-3c8da74e7d3a",
@@ -1918,7 +2011,8 @@
       "body_snippet": "This is the same as PR#10403.  See\n\nhttps://stat.ethz.ch/pipermail/r-devel/2007-November/047352.html\n\nwhich links to a workaround: it has long been fixed in R-patched.\n\n\nOn Sun, 11 Nov 2007, lupi at u",
       "thread_id": "thread-2dfe362417bc",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047417.html"
     },
     {
       "id": "msg-f64c3a8b6241",
@@ -1937,7 +2031,8 @@
       "body_snippet": ">-----Original Message-----\n>From: Prof Brian Ripley\n>Sent: 09 November 2007 12:17\n>To: Fulton, William\n>Cc: R-devel at r-project.org\n>Subject: Re: [Rd] Building Rdll.lib with Visual C++\n>\n>On Fri, 9 ",
       "thread_id": "thread-9b3da75198a5",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047418.html"
     },
     {
       "id": "msg-adad0f2ce6ab",
@@ -1953,7 +2048,8 @@
       "body_snippet": "Hi,\n\nAny idea why S4 doesn't allow slots of type \"double\"?\n\n  > setClass(\"A\", representation(a=\"double\"))\n  Error in makePrototypeFromClassDef(properties, ClassDef, immediate, where) : \n    in making ",
       "thread_id": "thread-adad0f2ce6ab",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047419.html"
     },
     {
       "id": "msg-2ce5a9a1073a",
@@ -1965,11 +2061,12 @@
       "subject_clean": "How to overload the assignment operator?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Dear all,\n\nwhat is the proper way to make the assignment operator generic and define methods depending on the class of the assigned value?\n\nBest regards\n\n\nJens Oehlschl?gel\n\nP.S. I vaguely remember that this was possible in S+. In R I tried to no avail: \n\n  # using this like h<-1:3 gives Error: in `<-.default`(h, 1:3) : invalid (do_set) left-hand side to assignment\n  \"<-.default\" <- get(\"<-\") \n\n  # using this does fail on subassignments like: h <- 1:3 ; h[1] <- 7 (h still is 1:3)\n  \"<-.default\" <- function(x, value){\n    assign(deparse(substitute(x)), value, parent.frame())\n    invisible(x)\n  }\n\n  # this seems to work\n  \"<-\" <- function(x, value){\n    UseMethod(\"<-\", value)\n  }\n\n  # whenever the assigned value has class 'ff' I want to do execute something like\n  \"<-.ff\" <- function(x, value){\n    y <- clone(value)\n    assign(deparse(substitute(x)), y, parent.frame())\n    y\n  }\n\n\n> version\n               _                           \nplatform       i386-pc-mingw32             \narch           i386                        \nos             mingw32                     \nsystem         i386, mingw32               \nstatus                                     \nmajor          2                           \nminor          6.0                         \nyear           2007                        \nmonth          10                          \nday            03                          \nsvn rev        43063                       \nlanguage       R                           \nversion.string R version 2.6.0 (2007-10-03)\n\n--",
-      "body_snippet": "Dear all,\n\nwhat is the proper way to make the assignment operator generic and define methods depending on the class of the assigned value?\n\nBest regards\n\n\nJens Oehlschl?gel\n\nP.S. I vaguely remember th",
+      "body_plain": "Dear all,\n\nwhat is the proper way to make the assignment operator generic and define methods depending on the class of the assigned value?\n\nBest regards\n\n\nJens Oehlschlägel\n\nP.S. I vaguely remember that this was possible in S+. In R I tried to no avail: \n\n  # using this like h<-1:3 gives Error: in `<-.default`(h, 1:3) : invalid (do_set) left-hand side to assignment\n  \"<-.default\" <- get(\"<-\") \n\n  # using this does fail on subassignments like: h <- 1:3 ; h[1] <- 7 (h still is 1:3)\n  \"<-.default\" <- function(x, value){\n    assign(deparse(substitute(x)), value, parent.frame())\n    invisible(x)\n  }\n\n  # this seems to work\n  \"<-\" <- function(x, value){\n    UseMethod(\"<-\", value)\n  }\n\n  # whenever the assigned value has class 'ff' I want to do execute something like\n  \"<-.ff\" <- function(x, value){\n    y <- clone(value)\n    assign(deparse(substitute(x)), y, parent.frame())\n    y\n  }\n\n\n> version\n               _                           \nplatform       i386-pc-mingw32             \narch           i386                        \nos             mingw32                     \nsystem         i386, mingw32               \nstatus                                     \nmajor          2                           \nminor          6.0                         \nyear           2007                        \nmonth          10                          \nday            03                          \nsvn rev        43063                       \nlanguage       R                           \nversion.string R version 2.6.0 (2007-10-03)\n\n--",
+      "body_snippet": "Dear all,\n\nwhat is the proper way to make the assignment operator generic and define methods depending on the class of the assigned value?\n\nBest regards\n\n\nJens Oehlschlägel\n\nP.S. I vaguely remember th",
       "thread_id": "thread-2ce5a9a1073a",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047420.html"
     },
     {
       "id": "msg-c25b91ec716c",
@@ -2018,11 +2115,12 @@
       "subject_clean": "How to overload the assignment operator?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Thanks Matthias,\n\n> are you looking for \"setReplaceMethod\"?\n\nSo far the package I m writing has avoided using anything from S4 and the implications of touching S4 are not clear to me. The package aims on providing an alternative to 'atomic' data stored in ram, i.e. large atomic data stored on disk. I need some advice how to do this maximally performant, which probably means pure S3!?\n\nBest regards\n\n\nJens Oehlschl?gel\n--",
+      "body_plain": "Thanks Matthias,\n\n> are you looking for \"setReplaceMethod\"?\n\nSo far the package I m writing has avoided using anything from S4 and the implications of touching S4 are not clear to me. The package aims on providing an alternative to 'atomic' data stored in ram, i.e. large atomic data stored on disk. I need some advice how to do this maximally performant, which probably means pure S3!?\n\nBest regards\n\n\nJens Oehlschlägel\n--",
       "body_snippet": "Thanks Matthias,\n\n> are you looking for \"setReplaceMethod\"?\n\nSo far the package I m writing has avoided using anything from S4 and the implications of touching S4 are not clear to me. The package aims",
       "thread_id": "thread-aa0233276eb3",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047423.html"
     },
     {
       "id": "msg-10240bfdfcea",
@@ -2040,7 +2138,8 @@
       "body_snippet": "On Nov 13, 2007, at 3:36 AM, hpages at fhcrc.org wrote:\n\n> Any idea why S4 doesn't allow slots of type \"double\"?\n>\n\nType (as in storage type and \"double\" is a storage type) has nothing  \nto do with cl",
       "thread_id": "thread-adad0f2ce6ab",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047424.html"
     },
     {
       "id": "msg-7aebe8536ea9",
@@ -2113,7 +2212,8 @@
       "body_snippet": "On Tue, 13 Nov 2007, Simon Urbanek wrote:\n\n>\n> On Nov 13, 2007, at 3:36 AM, hpages at fhcrc.org wrote:\n>\n>> Any idea why S4 doesn't allow slots of type \"double\"?\n>>\n>\n> Type (as in storage type and \"d",
       "thread_id": "thread-adad0f2ce6ab",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047428.html"
     },
     {
       "id": "msg-cc5c21576b1f",
@@ -2125,11 +2225,12 @@
       "subject_clean": "How to overload the assignment operator?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Thanks Simon,\n\n> You cannot use S3 here, because you want to dispatch on the *second*  \n> argument.\n\n\"<-\" <- function(x, value)UseMethod(\"<-\", value)\nDOES dispatch on the second argument (see the dispatchsecond example below)\n\n> Why don't you take the external pointer approach that many others take  \n> to provide proxy objects to external data? (DB access, mem-mapped  \n> files, cross-language objects, etc.) That allows you to define your  \n> storage semantics very efficiently in C. You can still choose to  \n> define any syntactic sugar you want in either S3 or S4.\n\nI AM using the external pointer approach and this works verly well - if one tolerates that the external data is not duplicated when the proxy object is copied. I was wondering however, if it is possible to perfectly mimic R's copying semantics: duplicate external object (and the external pointer) on assignment (or even better only on modify after assignment).\n\nBest regards\n\nJens Oehlschl?gel\n\n> dispatchsecond <- function(first, second)\n+ UseMethod(\"dispatchsecond\", second)\n> \n> dispatchsecond.default <- function(first, second){\n+ cat(\"here default\\n\")\n+ }\n> \n> dispatchsecond.ff <- function(first, second){\n+ cat(\"here ff\\n\")\n+ }\n> \n> default <- 1\n> ff <- 1\n> class(ff) <- \"ff\"\n> \n> dispatchsecond(1,default)\nhere default\n> dispatchsecond(1,ff)\nhere ff\n> \n--",
+      "body_plain": "Thanks Simon,\n\n> You cannot use S3 here, because you want to dispatch on the *second*  \n> argument.\n\n\"<-\" <- function(x, value)UseMethod(\"<-\", value)\nDOES dispatch on the second argument (see the dispatchsecond example below)\n\n> Why don't you take the external pointer approach that many others take  \n> to provide proxy objects to external data? (DB access, mem-mapped  \n> files, cross-language objects, etc.) That allows you to define your  \n> storage semantics very efficiently in C. You can still choose to  \n> define any syntactic sugar you want in either S3 or S4.\n\nI AM using the external pointer approach and this works verly well - if one tolerates that the external data is not duplicated when the proxy object is copied. I was wondering however, if it is possible to perfectly mimic R's copying semantics: duplicate external object (and the external pointer) on assignment (or even better only on modify after assignment).\n\nBest regards\n\nJens Oehlschlägel\n\n> dispatchsecond <- function(first, second)\n+ UseMethod(\"dispatchsecond\", second)\n> \n> dispatchsecond.default <- function(first, second){\n+ cat(\"here default\\n\")\n+ }\n> \n> dispatchsecond.ff <- function(first, second){\n+ cat(\"here ff\\n\")\n+ }\n> \n> default <- 1\n> ff <- 1\n> class(ff) <- \"ff\"\n> \n> dispatchsecond(1,default)\nhere default\n> dispatchsecond(1,ff)\nhere ff\n> \n--",
       "body_snippet": "Thanks Simon,\n\n> You cannot use S3 here, because you want to dispatch on the *second*  \n> argument.\n\n\"<-\" <- function(x, value)UseMethod(\"<-\", value)\nDOES dispatch on the second argument (see the disp",
       "thread_id": "thread-cc5c21576b1f",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047431.html"
     },
     {
       "id": "msg-c1edc570a240",
@@ -2141,11 +2242,12 @@
       "subject_clean": "How to overload the assignment operator?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Thank you Brian,\n\n> setReplaceMethod() is just syntactic sugar for setting an S4 method on a \n> replacement function (read the function definition to see so).  You can \n> set S3 replacement methods, and the S4 mechanism just piggy-backs on that.\n\nSo I understand that setReplaceMethod will not help.\n\n> I think the conceptual problem is that the assignment operator does not \n> actually do any copying: it creates a binding of a symbol to a value. \n> Any copying which occurs happens when the value is (potentially) changed. \n\nI would be even happier if the cloning would only occur on any attempt to change the external pointer / proxy-object. \n\n> There is no provision for that to depend on the class (rather than the \n> type) of the object.  \n\nMh, unless the internal copying mechanism would call a clone generic for non-atomic objects\n\n> Since external pointers are never duplicated, you \n> ought to be able to take advantage of that to design the copying semantics \n> you want.\n\nHow that? How do I know that any user has assigned/modified the external pointer (or a proxy object containing the external pointer) such that I can invoke the cloning?\n\nBest regards\n\n\nJens Oehlschl?gel\n--",
+      "body_plain": "Thank you Brian,\n\n> setReplaceMethod() is just syntactic sugar for setting an S4 method on a \n> replacement function (read the function definition to see so).  You can \n> set S3 replacement methods, and the S4 mechanism just piggy-backs on that.\n\nSo I understand that setReplaceMethod will not help.\n\n> I think the conceptual problem is that the assignment operator does not \n> actually do any copying: it creates a binding of a symbol to a value. \n> Any copying which occurs happens when the value is (potentially) changed. \n\nI would be even happier if the cloning would only occur on any attempt to change the external pointer / proxy-object. \n\n> There is no provision for that to depend on the class (rather than the \n> type) of the object.  \n\nMh, unless the internal copying mechanism would call a clone generic for non-atomic objects\n\n> Since external pointers are never duplicated, you \n> ought to be able to take advantage of that to design the copying semantics \n> you want.\n\nHow that? How do I know that any user has assigned/modified the external pointer (or a proxy object containing the external pointer) such that I can invoke the cloning?\n\nBest regards\n\n\nJens Oehlschlägel\n--",
       "body_snippet": "Thank you Brian,\n\n> setReplaceMethod() is just syntactic sugar for setting an S4 method on a \n> replacement function (read the function definition to see so).  You can \n> set S3 replacement methods, a",
       "thread_id": "thread-c1edc570a240",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047429.html"
     },
     {
       "id": "msg-bc1a16e3be32",
@@ -2157,11 +2259,12 @@
       "subject_clean": "How to overload the assignment operator?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Thanks Simon,\n\n> You cannot use S3 here, because you want to dispatch on the *second*  \n> argument.\n\n\"<-\" <- function(x, value)UseMethod(\"<-\", value)\nDOES dispatch on the second argument (see the dispatchsecond example below)\n\n> Why don't you take the external pointer approach that many others take  \n> to provide proxy objects to external data? (DB access, mem-mapped  \n> files, cross-language objects, etc.) That allows you to define your  \n> storage semantics very efficiently in C. You can still choose to  \n> define any syntactic sugar you want in either S3 or S4.\n\nI AM using the external pointer approach and this works verly well - if one tolerates that the external data is not duplicated when the proxy object is copied. I was wondering however, if it is possible to perfectly mimic R's copying semantics: duplicate external object (and the external pointer) on assignment (or even better only on modify after assignment).\n\nBest regards\n\nJens Oehlschl?gel\n\n> dispatchsecond <- function(first, second)\n+ UseMethod(\"dispatchsecond\", second)\n> \n> dispatchsecond.default <- function(first, second){\n+ cat(\"here default\\n\")\n+ }\n> \n> dispatchsecond.ff <- function(first, second){\n+ cat(\"here ff\\n\")\n+ }\n> \n> default <- 1\n> ff <- 1\n> class(ff) <- \"ff\"\n> \n> dispatchsecond(1,default)\nhere default\n> dispatchsecond(1,ff)\nhere ff\n> \n--",
+      "body_plain": "Thanks Simon,\n\n> You cannot use S3 here, because you want to dispatch on the *second*  \n> argument.\n\n\"<-\" <- function(x, value)UseMethod(\"<-\", value)\nDOES dispatch on the second argument (see the dispatchsecond example below)\n\n> Why don't you take the external pointer approach that many others take  \n> to provide proxy objects to external data? (DB access, mem-mapped  \n> files, cross-language objects, etc.) That allows you to define your  \n> storage semantics very efficiently in C. You can still choose to  \n> define any syntactic sugar you want in either S3 or S4.\n\nI AM using the external pointer approach and this works verly well - if one tolerates that the external data is not duplicated when the proxy object is copied. I was wondering however, if it is possible to perfectly mimic R's copying semantics: duplicate external object (and the external pointer) on assignment (or even better only on modify after assignment).\n\nBest regards\n\nJens Oehlschlägel\n\n> dispatchsecond <- function(first, second)\n+ UseMethod(\"dispatchsecond\", second)\n> \n> dispatchsecond.default <- function(first, second){\n+ cat(\"here default\\n\")\n+ }\n> \n> dispatchsecond.ff <- function(first, second){\n+ cat(\"here ff\\n\")\n+ }\n> \n> default <- 1\n> ff <- 1\n> class(ff) <- \"ff\"\n> \n> dispatchsecond(1,default)\nhere default\n> dispatchsecond(1,ff)\nhere ff\n> \n--",
       "body_snippet": "Thanks Simon,\n\n> You cannot use S3 here, because you want to dispatch on the *second*  \n> argument.\n\n\"<-\" <- function(x, value)UseMethod(\"<-\", value)\nDOES dispatch on the second argument (see the disp",
       "thread_id": "thread-bc1a16e3be32",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047430.html"
     },
     {
       "id": "msg-19f423e7e13a",
@@ -2182,6 +2285,7 @@
       "thread_id": "thread-adad0f2ce6ab",
       "thread_depth": 3,
       "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047432.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20071113/f13be655/attachment.pl"
       ]
@@ -2205,7 +2309,8 @@
       "body_snippet": "On Tue, 13 Nov 2007, John Chambers wrote:\n\n> What's the proposal here?  To eliminate \"double\" as a class?  No objection\n\nEliminate \"double\" and \"single\".\n\n> from this corner.  As I remember, it was pu",
       "thread_id": "thread-adad0f2ce6ab",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047433.html"
     },
     {
       "id": "msg-315e3979b79d",
@@ -2248,6 +2353,7 @@
       "thread_id": "thread-b32fb3bc154b",
       "thread_depth": 7,
       "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047435.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20071113/548c1a0e/attachment.pl"
       ]
@@ -2275,7 +2381,8 @@
       "body_snippet": "The perl-related warnings have gone in R-devel: we now take the view that \nsince we need perl to make the test suite, perl >= 5.8.0 is compulsory. \n(5.6.1 is now over 7 years' old, and 5.8.0 is more t",
       "thread_id": "thread-b32fb3bc154b",
       "thread_depth": 8,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047436.html"
     },
     {
       "id": "msg-b380247de5d3",
@@ -2302,6 +2409,7 @@
       "thread_id": "thread-b32fb3bc154b",
       "thread_depth": 9,
       "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047437.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20071113/e3180132/attachment.pl"
       ]
@@ -2331,7 +2439,8 @@
       "body_snippet": "On Tue, 13 Nov 2007, kamil Marcinkowski wrote:\n\n> Hello List, Prof Brian Ripley\n>\n> How would the inefficiencies in IEC60559 arithmetic handling affect a user,\n> Slow computations or compromised data ",
       "thread_id": "thread-b32fb3bc154b",
       "thread_depth": 10,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047438.html"
     },
     {
       "id": "msg-97b691dd1741",
@@ -2353,7 +2462,8 @@
       "body_snippet": "On Tue, 13 Nov 2007, Prof Brian Ripley wrote:\n\n> On Tue, 13 Nov 2007, John Chambers wrote:\n>\n>> What's the proposal here?  To eliminate \"double\" as a class?  No objection\n>\n> Eliminate \"double\" and \"s",
       "thread_id": "thread-adad0f2ce6ab",
       "thread_depth": 5,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047439.html"
     },
     {
       "id": "msg-5f8d520a5353",
@@ -2370,6 +2480,7 @@
       "thread_id": "thread-5f8d520a5353",
       "thread_depth": 0,
       "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047454.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20071114/199b187f/attachment.pl"
       ]
@@ -2384,11 +2495,12 @@
       "subject_clean": "When to use LazyLoad, LazyData and ZipData?",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Dear developeRs,\n\nI've searched the documentation, FAQ, and mailing lists, but haven't\nfound the answer(*) to the following:\n\nWhen should one specify LazyLoad, LazyData, and ZipData?\n\nAnd what is the default if they are left unspecified?\n\n\n(*)Except that\n1) If the package you are writing uses the methods package, specify\nLazyLoad: yes, and\n2) The optional ZipData field controls whether the automatic Windows\nbuild will zip up the data directory or no: set this to no if your\npackage will not work with a zipped data directory.\n\n-- \nSincerely,\nBj?rn-Helge Mevik",
+      "body_plain": "Dear developeRs,\n\nI've searched the documentation, FAQ, and mailing lists, but haven't\nfound the answer(*) to the following:\n\nWhen should one specify LazyLoad, LazyData, and ZipData?\n\nAnd what is the default if they are left unspecified?\n\n\n(*)Except that\n1) If the package you are writing uses the methods package, specify\nLazyLoad: yes, and\n2) The optional ZipData field controls whether the automatic Windows\nbuild will zip up the data directory or no: set this to no if your\npackage will not work with a zipped data directory.\n\n-- \nSincerely,\nBjørn-Helge Mevik",
       "body_snippet": "Dear developeRs,\n\nI've searched the documentation, FAQ, and mailing lists, but haven't\nfound the answer(*) to the following:\n\nWhen should one specify LazyLoad, LazyData, and ZipData?\n\nAnd what is the ",
       "thread_id": "thread-7368cae6ffec",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047440.html"
     },
     {
       "id": "msg-57211a0410d3",
@@ -2447,7 +2559,8 @@
       "body_snippet": "On Wed, November 14, 2007 09:09, Prof Brian Ripley wrote:\n> On Tue, 13 Nov 2007, Prof Brian Ripley wrote:\n>\n>> On Tue, 13 Nov 2007, John Chambers wrote:\n>>\n>>> What's the proposal here?  To eliminate ",
       "thread_id": "thread-adad0f2ce6ab",
       "thread_depth": 6,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047443.html"
     },
     {
       "id": "msg-389bc71f63ee",
@@ -2500,7 +2613,8 @@
       "body_snippet": "Dear all,\n\nWhen creating new functions in a package, there is a \"See also\" component in \nthe Rd file.\nUsually one uses \\link{otherfun}, if the other function is from the same \npackage, or \\link[otherp",
       "thread_id": "thread-3ddba84971c6",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047455.html"
     },
     {
       "id": "msg-286d3cab94d0",
@@ -2516,7 +2630,8 @@
       "body_snippet": "As far as I can tell, 'isOpen' cannot return FALSE in the case when 'rw = \"\"'. \nIf the connection has already been closed by 'close' or some other function, \nthen isOpen will produce an error.  The pr",
       "thread_id": "thread-286d3cab94d0",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047446.html"
     },
     {
       "id": "msg-9056bbe30c60",
@@ -2532,7 +2647,8 @@
       "body_snippet": "I have roughly 80 or so packages sources. These were obtained by taking\na snapshot of certain CRAN packages a few months ago using \n\n   install.packages(\n      pkgs = pckNames,\n      destdir = \"/home/",
       "thread_id": "thread-9056bbe30c60",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047447.html"
     },
     {
       "id": "msg-c3db095c1e10",
@@ -2550,7 +2666,8 @@
       "body_snippet": "Hi Max,\n\nOn 14 November 2007 at 09:34, Kuhn, Max wrote:\n| I have roughly 80 or so packages sources. These were obtained by taking\n| a snapshot of certain CRAN packages a few months ago using \n| \n|    ",
       "thread_id": "thread-9056bbe30c60",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047448.html"
     },
     {
       "id": "msg-db5925fd26c4",
@@ -2568,7 +2685,8 @@
       "body_snippet": "On Wed, 14 Nov 2007, Kuhn, Max wrote:\n\n> I have roughly 80 or so packages sources. These were obtained by taking\n> a snapshot of certain CRAN packages a few months ago using\n>\n>   install.packages(\n> ",
       "thread_id": "thread-9056bbe30c60",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047449.html"
     },
     {
       "id": "msg-265c0df6b397",
@@ -2584,7 +2702,8 @@
       "body_snippet": "Dirk,\n\nThanks for the email. \n\n> When trying to package the by-now-gargantuan Rmetrics for Debian\n(which is\n> still ongoing), I looked around for some Depends builders. Turns out\nthat\n> BioC has this.",
       "thread_id": "thread-9056bbe30c60",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047450.html"
     },
     {
       "id": "msg-7f59e2db04e4",
@@ -2600,7 +2719,8 @@
       "body_snippet": "Professor Ripley,\n\n> You need the information from available.packages() to do the ordering,\nso \n> you need a non-NULL repository.  This works if you convert your local \n> collection into a local repos",
       "thread_id": "thread-9056bbe30c60",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047451.html"
     },
     {
       "id": "msg-3735e7622e44",
@@ -2618,7 +2738,8 @@
       "body_snippet": "On Wed, 14 Nov 2007, Kuhn, Max wrote:\n\n> Professor Ripley,\n>\n>> You need the information from available.packages() to do the ordering,\n> so\n>> you need a non-NULL repository.  This works if you conver",
       "thread_id": "thread-9056bbe30c60",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047452.html"
     },
     {
       "id": "msg-d9363a9fe3ec",
@@ -2634,7 +2755,8 @@
       "body_snippet": "Professor Ripley,\n\n> It does say 'URL(s)', hence\n>\n> repos = \"file:///home/max/tmp/r-2.5.1-pkgs-updated\"\n\nThat works. Thanks for your expertise.\n\nMax",
       "thread_id": "thread-9056bbe30c60",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047453.html"
     },
     {
       "id": "msg-63055f1ff677",
@@ -2652,7 +2774,8 @@
       "body_snippet": "On 11/14/2007 8:49 AM, Adrian Dusa wrote:\n> Dear all,\n> \n> When creating new functions in a package, there is a \"See also\" component in \n> the Rd file.\n> Usually one uses \\link{otherfun}, if the other",
       "thread_id": "thread-3ddba84971c6",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047456.html"
     },
     {
       "id": "msg-e9c57c5f789e",
@@ -2694,7 +2817,8 @@
       "body_snippet": "On Wed, 14 Nov 2007, Adrian Dusa wrote:\n\n>\n> Dear all,\n>\n> When creating new functions in a package, there is a \"See also\" component in\n> the Rd file.\n> Usually one uses \\link{otherfun}, if the other ",
       "thread_id": "thread-3ddba84971c6",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047458.html"
     },
     {
       "id": "msg-eebb08d9bee2",
@@ -2710,7 +2834,8 @@
       "body_snippet": "Dear R developers,\n\nconcerning the stats package,\nis there a way to access more of the 'internal'\nparameters of the optim() methods (e.g. BFGS),\nwithout me rewriting optim code and using it as\nan inte",
       "thread_id": "thread-eebb08d9bee2",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047459.html"
     },
     {
       "id": "msg-134bc9e39584",
@@ -2728,7 +2853,8 @@
       "body_snippet": "On Wed, 14 Nov 2007, Mike Preuss wrote:\n\n> Dear R developers,\n>\n> concerning the stats package,\n> is there a way to access more of the 'internal'\n> parameters of the optim() methods (e.g. BFGS),\n> wit",
       "thread_id": "thread-eebb08d9bee2",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047460.html"
     },
     {
       "id": "msg-085da638e117",
@@ -2747,7 +2873,8 @@
       "body_snippet": "Dear Brian,\n\nthanks for the hint. But my question is more\nconcerned with the technical procedure. Of\ncourse, I can change the C code locally. And\nthen use a locally changed package. But then\nnobody el",
       "thread_id": "thread-eebb08d9bee2",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047461.html"
     },
     {
       "id": "msg-8837bc737d80",
@@ -2766,7 +2893,8 @@
       "body_snippet": "On Wednesday 14 November 2007, Duncan Murdoch wrote:\n> On 11/14/2007 8:49 AM, Adrian Dusa wrote:\n> > [...]\n> >\n> > Is there a method to create links to functions from the base package, for\n> > example",
       "thread_id": "thread-3ddba84971c6",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047500.html"
     },
     {
       "id": "msg-440ffdab13b7",
@@ -2786,7 +2914,8 @@
       "body_snippet": "On Thu, 15 Nov 2007, Adrian Dusa wrote:\n\n> Dear Prof. Ripley,\n>\n> On Wednesday 14 November 2007, Prof Brian Ripley wrote:\n>> On Wed, 14 Nov 2007, Adrian Dusa wrote:\n>>> Dear all,\n>>>\n>>> When creating",
       "thread_id": "thread-440ffdab13b7",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047462.html"
     },
     {
       "id": "msg-059d41324089",
@@ -2806,7 +2935,8 @@
       "body_snippet": "On 14/11/2007 6:09 PM, Adrian Dusa wrote:\n> On Wednesday 14 November 2007, Duncan Murdoch wrote:\n>> On 11/14/2007 8:49 AM, Adrian Dusa wrote:\n>>> [...]\n>>>\n>>> Is there a method to create links to fun",
       "thread_id": "thread-3ddba84971c6",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047463.html"
     },
     {
       "id": "msg-21cba00c9e88",
@@ -2826,7 +2956,8 @@
       "body_snippet": "On Thursday 15 November 2007, Prof Brian Ripley wrote:\n> [...]\n> >\n> > Using as above:\n> > \\code{\\link{anova}}\n> >\n> > the html help file directs to\n> > file:///home/adi/myRlibrary/stats/html/anova.ht",
       "thread_id": "thread-440ffdab13b7",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047464.html"
     },
     {
       "id": "msg-7c4e3ff5369e",
@@ -2847,7 +2978,8 @@
       "body_snippet": "On 14/11/2007 6:44 PM, Adrian Dusa wrote:\n> On Thursday 15 November 2007, Prof Brian Ripley wrote:\n>> [...]\n>>> Using as above:\n>>> \\code{\\link{anova}}\n>>>\n>>> the html help file directs to\n>>> file:/",
       "thread_id": "thread-440ffdab13b7",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047465.html"
     },
     {
       "id": "msg-b4f90878464e",
@@ -2867,7 +2999,8 @@
       "body_snippet": "On Thursday 15 November 2007, Duncan Murdoch wrote:\n> [...]\n> >\n> > I understand, thank you. I learned from Prof. Ripley's answer that\n> > Windows has link.html.help() function to resolve the html hel",
       "thread_id": "thread-3ddba84971c6",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047466.html"
     },
     {
       "id": "msg-d8b4ebd8c4d6",
@@ -2887,7 +3020,8 @@
       "body_snippet": "On Thursday 15 November 2007, Duncan Murdoch wrote:\n> [...]\n> > I tried using help.start() in .Rprofile, but it throws a (probably\n> > obvious) error:\n> > Error: could not find function \"help.start\"\n>",
       "thread_id": "thread-440ffdab13b7",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047467.html"
     },
     {
       "id": "msg-755480329346",
@@ -2906,7 +3040,8 @@
       "body_snippet": "On Nov 14, 2007 4:36 PM, Duncan Murdoch <murdoch at stats.uwo.ca> wrote:\n>\n> On Unix-alikes, the workaround is to build soft links to all the\n> packages in a standard location; but soft links don't wo",
       "thread_id": "thread-3ddba84971c6",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047468.html"
     },
     {
       "id": "msg-ca571a1f7b31",
@@ -2922,7 +3057,8 @@
       "body_snippet": "An extremely modest proposal:\n\nIt would be nice if packages could have a FAQ and if\n\n\tfaq(package.name)\n\nwould produce this faq.  And if, by default\n\n\tfaq()\n\tFAQ()\n\nwould produce the admirable R faq..",
       "thread_id": "thread-ca571a1f7b31",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047469.html"
     },
     {
       "id": "msg-5dd9f4c1806c",
@@ -2960,7 +3096,8 @@
       "body_snippet": "On 14/11/2007 7:44 PM, Gabor Grothendieck wrote:\n> On Nov 14, 2007 4:36 PM, Duncan Murdoch <murdoch at stats.uwo.ca> wrote:\n>> On Unix-alikes, the workaround is to build soft links to all the\n>> packa",
       "thread_id": "thread-3ddba84971c6",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047471.html"
     },
     {
       "id": "msg-0db4d7435a07",
@@ -2998,7 +3135,8 @@
       "body_snippet": "Dirk Eddelbuettel <edd at debian.org> writes:\n> When trying to package the by-now-gargantuan Rmetrics for Debian (which is\n> still ongoing), I looked around for some Depends builders. Turns out that\n>",
       "thread_id": "thread-9056bbe30c60",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047473.html"
     },
     {
       "id": "msg-fe8d40d77f1a",
@@ -3039,7 +3177,8 @@
       "body_snippet": "I think that's right -- it only works on NTFS systems.  This page\nrefers to it as an NTFS symbolic link:\nhttp://en.wikipedia.org/wiki/NTFS_symbolic_link\n\nOn Nov 14, 2007 10:00 PM, Duncan Murdoch <murd",
       "thread_id": "thread-3ddba84971c6",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047476.html"
     },
     {
       "id": "msg-4b446829c76d",
@@ -3057,7 +3196,8 @@
       "body_snippet": "\"Roger D. Peng\" <rpeng at jhsph.edu> writes:\n\n> As far as I can tell, 'isOpen' cannot return FALSE in the case when 'rw = \"\"'. \n> If the connection has already been closed by 'close' or some other fun",
       "thread_id": "thread-286d3cab94d0",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047474.html"
     },
     {
       "id": "msg-b62c7457dcfb",
@@ -3076,7 +3216,8 @@
       "body_snippet": "I think the confusion here is over close(): that closes *and destroys* a \nconnection, so it no longer exists.\n\nisOpen applies to existing connections: you cannot close but not destroy \nthem at R level",
       "thread_id": "thread-286d3cab94d0",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047477.html"
     },
     {
       "id": "msg-324fdf1a8c2a",
@@ -3097,7 +3238,8 @@
       "body_snippet": "On Thu, 15 Nov 2007, Adrian Dusa wrote:\n\n> On Thursday 15 November 2007, Prof Brian Ripley wrote:\n>> [...]\n>>>\n>>> Using as above:\n>>> \\code{\\link{anova}}\n>>>\n>>> the html help file directs to\n>>> fil",
       "thread_id": "thread-440ffdab13b7",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047478.html"
     },
     {
       "id": "msg-44b774413b3d",
@@ -3118,6 +3260,7 @@
       "thread_id": "thread-286d3cab94d0",
       "thread_depth": 3,
       "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047479.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20071115/3f7d124b/attachment.pl"
       ]
@@ -3142,7 +3285,8 @@
       "body_snippet": "On Thu, 15 Nov 2007, Prof Brian Ripley wrote:\n\n> On Thu, 15 Nov 2007, Adrian Dusa wrote:\n>\n>> On Thursday 15 November 2007, Prof Brian Ripley wrote:\n>>> [...]\n>>>>\n>>>> Using as above:\n>>>> \\code{\\lin",
       "thread_id": "thread-440ffdab13b7",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047480.html"
     },
     {
       "id": "msg-00f9963d3294",
@@ -3163,7 +3307,8 @@
       "body_snippet": "Gabor Grothendieck <ggrothendieck <at> gmail.com> writes:\n> inst/NEWS would have the advantage of consistency with R itself\n> which also has a NEWS file.\n> \n...\n> > My vote is for inst/ChangeLog.\n\nI w",
       "thread_id": "thread-ca571a1f7b31",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047481.html"
     },
     {
       "id": "msg-e4e007b748a3",
@@ -3202,7 +3347,8 @@
       "body_snippet": "On Thursday 15 November 2007, Prof Brian Ripley wrote:\n> [...]\n> >>>> help.start()\n> >>\n> >> I got it.\n> >> Perhaps it would be useful to have another startup option, something\n> >> like: options(html",
       "thread_id": "thread-440ffdab13b7",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047483.html"
     },
     {
       "id": "msg-7621169cd63a",
@@ -3222,7 +3368,8 @@
       "body_snippet": "Upon further consideration, I realized there is a philosophical element \nhere---if a connection is closed and hence does not exist, is it open?\n\nThe practical issue for me is that when you do somethin",
       "thread_id": "thread-286d3cab94d0",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047484.html"
     },
     {
       "id": "msg-be9c570b42b8",
@@ -3290,7 +3437,8 @@
       "body_snippet": "On Nov 15, 2007 9:57 AM, Simon Urbanek <simon.urbanek at r-project.org> wrote:\n>\n> On Nov 14, 2007, at 11:55 PM, Gabor Grothendieck wrote:\n>\n> > inst/NEWS would have the advantage of consistency with ",
       "thread_id": "thread-ca571a1f7b31",
       "thread_depth": 5,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047489.html"
     },
     {
       "id": "msg-54ff98388c7b",
@@ -3356,7 +3504,8 @@
       "body_snippet": "I'd support a change, to having a closed-but-not-invalid status for a\n'rw' connection, and to have a usable 'isOpen'. The suggestion of\nrelying on user-code to always \"housekeep\" after calling 'close'",
       "thread_id": "thread-286d3cab94d0",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047490.html"
     },
     {
       "id": "msg-645c5fc58426",
@@ -3372,7 +3521,8 @@
       "body_snippet": "Hey All,\n\nI was wondering if I could solicit a little advice.  I have been\nexperiencing some quirkiness in my C code through .Call.\nUnfortunately, my program is rather large, so I'm trying to create a",
       "thread_id": "thread-645c5fc58426",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047491.html"
     },
     {
       "id": "msg-ff61ac9e3f76",
@@ -3390,7 +3540,8 @@
       "body_snippet": "You assume that when you call any of those functions its arguments are\nprotected (as it is the case when the function is called from within R).\nHowever, I do not see why they would be if you do not do",
       "thread_id": "thread-645c5fc58426",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047492.html"
     },
     {
       "id": "msg-1ae707e141be",
@@ -3409,7 +3560,8 @@
       "body_snippet": "On Thu, Nov 15, 2007 at 11:53:53PM +0000, Oleg Sklyar wrote:\n> You assume that when you call any of those functions its arguments are\n> protected (as it is the case when the function is called from wi",
       "thread_id": "thread-645c5fc58426",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047493.html"
     },
     {
       "id": "msg-0007c4c3bc13",
@@ -3433,7 +3585,8 @@
       "body_snippet": "On Thu, 15 Nov 2007, Simon Urbanek wrote:\n\n>\n> On Nov 15, 2007, at 10:53 AM, Duncan Murdoch wrote:\n>\n>> On 11/15/2007 9:57 AM, Simon Urbanek wrote:\n>>> On Nov 14, 2007, at 11:55 PM, Gabor Grothendieck",
       "thread_id": "thread-ca571a1f7b31",
       "thread_depth": 7,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047494.html"
     },
     {
       "id": "msg-4ec5d33b6d78",
@@ -3458,7 +3611,8 @@
       "body_snippet": ">>>>> On Fri, 16 Nov 2007 10:20:36 +0000 (GMT),\n>>>>> Prof Brian Ripley (PBR) wrote:\n\n  > On Thu, 15 Nov 2007, Simon Urbanek wrote:\n  >> \n  >> On Nov 15, 2007, at 10:53 AM, Duncan Murdoch wrote:\n  >> ",
       "thread_id": "thread-ca571a1f7b31",
       "thread_depth": 8,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047495.html"
     },
     {
       "id": "msg-408214b99e5f",
@@ -3474,7 +3628,8 @@
       "body_snippet": "I'm probably going to get in trouble for this, but ... \n\n  What is the best way to get 'important' issues resolved\nby R-core?  There is a category of 'issues' (I won't call\nthem bugs or problems, alth",
       "thread_id": "thread-408214b99e5f",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047496.html"
     },
     {
       "id": "msg-d6f20cc5aeea",
@@ -3491,6 +3646,7 @@
       "thread_id": "thread-d6f20cc5aeea",
       "thread_depth": 0,
       "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047497.html",
       "restored_from": [
         "https://stat.ethz.ch/pipermail/r-devel/attachments/20071116/7fb141fd/attachment.pl"
       ]
@@ -3511,7 +3667,8 @@
       "body_snippet": "On Fri, 16 Nov 2007, Charles Danko wrote:\n\n> Hello,\n>\n> Quick question.\n>\n> I have written a C function - I would like to make it return two vectors to\n> the R environment - one STRSXP vector, and one",
       "thread_id": "thread-d6f20cc5aeea",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047498.html"
     },
     {
       "id": "msg-acf2596984a7",
@@ -3529,7 +3686,8 @@
       "body_snippet": "Charles Danko wrote:\n> Hello,\n> \n> Quick question.\n> \n> I have written a C function - I would like to make it return two vectors to\n> the R environment - one STRSXP vector, and one INTSXP vector.  Is ",
       "thread_id": "thread-d6f20cc5aeea",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047499.html"
     },
     {
       "id": "msg-cd60b7585cee",
@@ -3551,7 +3709,8 @@
       "body_snippet": "On Nov 10, 2007 1:27 PM, Simon Urbanek <simon.urbanek at r-project.org> wrote:\n>\n>\n> On Nov 10, 2007, at 1:05 PM, Duncan Murdoch wrote:\n>\n> > On 10/11/2007 1:00 PM, Duncan Temple Lang wrote:\n> >> ----",
       "thread_id": "thread-1c9959bae910",
       "thread_depth": 5,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047501.html"
     },
     {
       "id": "msg-40d2d7041b57",
@@ -3569,7 +3728,8 @@
       "body_snippet": "On Fri, Nov 16, 2007 at 03:49:09PM -0500, Charles Danko wrote:\n> Hello,\n> \n> Quick question.\n> \n> I have written a C function - I would like to make it return two vectors to\n> the R environment - one ",
       "thread_id": "thread-d6f20cc5aeea",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047502.html"
     },
     {
       "id": "msg-f43c56fcd94b",
@@ -3587,7 +3747,8 @@
       "body_snippet": "SEXP x,y,res;\nPROTECT(res = allocVector(VECSXP, 2));\nSET_VECTOR_ELT(res, 0, x = allocVector(REALSXP, 20)); \nSET_VECTOR_ELT(res, 1, y = allocVector(INTSXP, 10)); \n// code with x,y goes here\n\nUNPROTECT(",
       "thread_id": "thread-d6f20cc5aeea",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047503.html"
     },
     {
       "id": "msg-d298ccbc425a",
@@ -3610,7 +3771,8 @@
       "body_snippet": "On Nov 15, 2007 10:51 AM, Gabor Grothendieck <ggrothendieck at gmail.com> wrote:\n> On Nov 15, 2007 9:57 AM, Simon Urbanek <simon.urbanek at r-project.org> wrote:\n> >\n> > On Nov 14, 2007, at 11:55 PM, ",
       "thread_id": "thread-ca571a1f7b31",
       "thread_depth": 6,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047504.html"
     },
     {
       "id": "msg-f5196cdad749",
@@ -3622,11 +3784,12 @@
       "subject_clean": "Matrix exponential in R",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Dear developeRs,\n\nThe topic has been raised quite a few times in r-devel and r-help  \nbefore: calculation of matrix exponentials in R. We needed it in the  \nactuar package at the C level and ended up cooking up our own solution  \nbased on expm() of package Matrix (which is itself based on Octave's).\n\nIf there is interest from the R Core Team, we (my colleague in CC and  \nI) are offering to contribute an expm() function to base R, with the  \ncorresponding C function part of the R API for package authors to use.  \nWe feel this would be a welcome addition to base R.\n\nPlease share your thoughts.\n\nBest,\n\n---\n   Vincent Goulet, Associate Professor\n   ?cole d'actuariat\n   Universit? Laval, Qu?bec\n   Vincent.Goulet at act.ulaval.ca   http://vgoulet.act.ulaval.ca",
+      "body_plain": "Dear developeRs,\n\nThe topic has been raised quite a few times in r-devel and r-help  \nbefore: calculation of matrix exponentials in R. We needed it in the  \nactuar package at the C level and ended up cooking up our own solution  \nbased on expm() of package Matrix (which is itself based on Octave's).\n\nIf there is interest from the R Core Team, we (my colleague in CC and  \nI) are offering to contribute an expm() function to base R, with the  \ncorresponding C function part of the R API for package authors to use.  \nWe feel this would be a welcome addition to base R.\n\nPlease share your thoughts.\n\nBest,\n\n---\n   Vincent Goulet, Associate Professor\n   École d'actuariat\n   Université Laval, Québec\n   Vincent.Goulet at act.ulaval.ca   http://vgoulet.act.ulaval.ca",
       "body_snippet": "Dear developeRs,\n\nThe topic has been raised quite a few times in r-devel and r-help  \nbefore: calculation of matrix exponentials in R. We needed it in the  \nactuar package at the C level and ended up ",
       "thread_id": "thread-f5196cdad749",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047505.html"
     },
     {
       "id": "msg-a568472e85b3",
@@ -3642,7 +3805,8 @@
       "body_snippet": "This is to announce that we plan to release R version 2.6.1 on Monday,\nNovember 26, 2007. \n\nThe current experience is that beta releases receive very little end-user testing and that most bugs are not",
       "thread_id": "thread-a568472e85b3",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047506.html"
     },
     {
       "id": "msg-6ae14422893f",
@@ -3658,7 +3822,8 @@
       "body_snippet": "Full_Name: Karl Ove Hufthammer\nVersion: 2.6.0\nOS: Linux (Fedora 7)\nSubmission from: (NULL) (129.177.61.84)\n\n\nWhen viewing a function that has its 'source' attribute set to a boolean or a\nnumeric, R cr",
       "thread_id": "thread-6ae14422893f",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047507.html"
     },
     {
       "id": "msg-9f77fac2780c",
@@ -3674,7 +3839,8 @@
       "body_snippet": "Hi all,\n\nR CMD check does not work for me under Windows. This is the error\n\nR CMD check mypackage.tar.gz\n* checking for working latex ... OK\ntar: and: Not found in archive\ntar: Settings/miguez/ ... /0",
       "thread_id": "thread-9f77fac2780c",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047508.html"
     },
     {
       "id": "msg-97ade1bdcb01",
@@ -3692,7 +3858,8 @@
       "body_snippet": "On 11/19/2007 10:37 AM, Fernando Miguez wrote:\n> Hi all,\n> \n> R CMD check does not work for me under Windows. This is the error\n> \n> R CMD check mypackage.tar.gz\n> * checking for working latex ... OK\n",
       "thread_id": "thread-9f77fac2780c",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047509.html"
     },
     {
       "id": "msg-4874a5203d5f",
@@ -3708,7 +3875,8 @@
       "body_snippet": "I am not sure why you would want to do that, but the C code does assume \nsource attributes were put there by R, and changing tests from !isNull to \nisString in a few places will fix that.\n\nIf there is",
       "thread_id": "thread-4874a5203d5f",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047510.html"
     },
     {
       "id": "msg-79ec078e3dc9",
@@ -3728,7 +3896,8 @@
       "body_snippet": "On 14 November 2007 at 20:38, Seth Falcon wrote:\n| Dirk Eddelbuettel <edd at debian.org> writes:\n| > When trying to package the by-now-gargantuan Rmetrics for Debian (which is\n| > still ongoing), I lo",
       "thread_id": "thread-9056bbe30c60",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047511.html"
     },
     {
       "id": "msg-bd9d6976ac4b",
@@ -3747,7 +3916,8 @@
       "body_snippet": "My guess is the that problem is that the current directory is under\nc:\\Documents and Settings\\miguel, and that is not supported.\n\nTry using a directory without spaces in its name.\n\nOn Mon, 19 Nov 2007",
       "thread_id": "thread-9f77fac2780c",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047512.html"
     },
     {
       "id": "msg-515b0690712d",
@@ -3763,7 +3933,8 @@
       "body_snippet": "Hi everybody,\n\nIt would be nice to have Cairo device included in dev.copy2eps() in\norder to avoid RGtk2 developers to use a hacked version of the function.\nI was arealdy done in dev.print().\n\nBest reg",
       "thread_id": "thread-515b0690712d",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047513.html"
     },
     {
       "id": "msg-c5714159b786",
@@ -3803,7 +3974,8 @@
       "body_snippet": "Dear all,\n\nI have been writing during last year at the European Bioinformatics\nInstitute a general unified open source solution for R integration. This\nwork is now available via this link:\nhttp://www.",
       "thread_id": "thread-2846d71cbca9",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047515.html"
     },
     {
       "id": "msg-460cf7666b0f",
@@ -3821,7 +3993,8 @@
       "body_snippet": "It is not as simple as that.  There are two Cairo devices, neither in \npackage RGtk2.  That in package Cairo is not by default a screen device \n(it defaults to type=\"png\").  CairoX11 and CairoWin are ",
       "thread_id": "thread-515b0690712d",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047516.html"
     },
     {
       "id": "msg-6fdbbc58e4e4",
@@ -3837,7 +4010,8 @@
       "body_snippet": "For the record: The reason I used attr(myfun, \"source\") = FALSE, is that I \nmisread the example 'Tidying R Code' in 'Writing R Extensions', which calls \nfor attr(myfun, \"source\") = NULL.\n\nSomehow sett",
       "thread_id": "thread-6fdbbc58e4e4",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047520.html"
     },
     {
       "id": "msg-c722551344c0",
@@ -3856,7 +4030,8 @@
       "body_snippet": "Sorry for the confusion.\nThe Cairo device I made reference to is the one implemented in the\ncairoDevice package.\nIts relation to the RGtk2 package is due to the straightforward manner\nthe Cairo device",
       "thread_id": "thread-515b0690712d",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047517.html"
     },
     {
       "id": "msg-45cbd3fa3124",
@@ -3880,7 +4055,8 @@
       "body_snippet": "And one other thing.  In the GNU docs it says that if your NEWS file gets too\nbig you can create an ONEWS file for the really old stuff.   Is ONEWS supported\ntoo?\n\nOn Nov 16, 2007 11:12 PM, Gabor Grot",
       "thread_id": "thread-ca571a1f7b31",
       "thread_depth": 7,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047518.html"
     },
     {
       "id": "msg-734c09d1ff42",
@@ -3896,7 +4072,8 @@
       "body_snippet": "I'm probably not the first with this idea so I guess that there's a\ncomplex issue behind it but since I couldn't find an answer I just\nthough to ask:\n\nWouldn't it be nice to have color coded objects a",
       "thread_id": "thread-734c09d1ff42",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047519.html"
     },
     {
       "id": "msg-4a32886d2837",
@@ -3914,7 +4091,8 @@
       "body_snippet": "On Tue, 20 Nov 2007, karl at huftis.org wrote:\n\n> For the record: The reason I used attr(myfun, \"source\") = FALSE, is that I\n> misread the example 'Tidying R Code' in 'Writing R Extensions', which cal",
       "thread_id": "thread-6fdbbc58e4e4",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047521.html"
     },
     {
       "id": "msg-0e3cbb9d1737",
@@ -3932,7 +4110,8 @@
       "body_snippet": "Unfortunately, the problem is the way the R output is set up---there's\nno portable way (at the moment) to tag output with different\nattributes.\n\nOn Nov 21, 2007 4:11 AM, Gasper Cankar <gasper.cankar a",
       "thread_id": "thread-734c09d1ff42",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047522.html"
     },
     {
       "id": "msg-0831f2020720",
@@ -3950,7 +4129,8 @@
       "body_snippet": "On Wed, 21 Nov 2007, Gasper Cankar wrote:\n\n> I'm probably not the first with this idea so I guess that there's a\n> complex issue behind it but since I couldn't find an answer I just\n> though to ask:\n>",
       "thread_id": "thread-734c09d1ff42",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047523.html"
     },
     {
       "id": "msg-c7ba66e97d7c",
@@ -3966,7 +4146,8 @@
       "body_snippet": "Dear R-developers,\n\nI'm experiencing a problem with having an example run under R 2.6.1 RC\n(downloaded and installed today, r43513), which does not occur on R 2.6.0:\nThe new version of package relaimp",
       "thread_id": "thread-c7ba66e97d7c",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047524.html"
     },
     {
       "id": "msg-052a0d3403cf",
@@ -4060,7 +4241,8 @@
       "body_snippet": "Full_Name: Levi Waldron\nVersion: 2.5.1\nOS: Ubuntu Gutsy\nSubmission from: (NULL) (206.248.157.88)\n\n\nI installed libgsl0-dev then tried to install the gsl cran package,\nunsuccessfully (see output below)",
       "thread_id": "thread-c6b46db99e6f",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047529.html"
     },
     {
       "id": "msg-1c61bc720280",
@@ -4076,7 +4258,8 @@
       "body_snippet": "Full_Name: Seth Roberts\nVersion: 2.6.0\nOS: Windows XP\nSubmission from: (NULL) (71.139.162.236)\n\n\nUsing getGraphicsEvent produces stack imbalance warnings. This started after I\ninstalled 2.6.0; it did ",
       "thread_id": "thread-1c61bc720280",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047531.html"
     },
     {
       "id": "msg-baaf7d8ade18",
@@ -4092,7 +4275,8 @@
       "body_snippet": "Hello,\n\nIt seems the recent Mac OS X 10.4.11 update installed a new\nlibBLAS.dylib in the Accelerate framework which either contains a bug\nitself or exposes a bug somewhere in R's lapack code on the Po",
       "thread_id": "thread-baaf7d8ade18",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047530.html"
     },
     {
       "id": "msg-08e07471b6d2",
@@ -4108,7 +4292,8 @@
       "body_snippet": "Dear all,\n\nfollowing the thread\n\nhttp://tolstoy.newcastle.edu.au/R/e2/devel/07/09/4338.html\n\nregarding the bug in the partial autocorrelation function for\nmultivariate time series.\nI have prepared a w",
       "thread_id": "thread-08e07471b6d2",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047532.html"
     },
     {
       "id": "msg-7d6e4f15ba4a",
@@ -4124,7 +4309,8 @@
       "body_snippet": "Dear all,\n\nfollowing the thread\n\nhttp://tolstoy.newcastle.edu.au/R/e2/devel/07/09/4338.html\n\nregarding the bug in the partial autocorrelation function for\nmultivariate time series.\nI have prepared a w",
       "thread_id": "thread-7d6e4f15ba4a",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047533.html"
     },
     {
       "id": "msg-b668699322ff",
@@ -4142,7 +4328,8 @@
       "body_snippet": "On 22 November 2007 at 20:00, leviwaldron at gmail.com wrote:\n| Full_Name: Levi Waldron\n| Version: 2.5.1\n| OS: Ubuntu Gutsy\n| Submission from: (NULL) (206.248.157.88)\n| \n| \n| I installed libgsl0-dev t",
       "thread_id": "thread-c6b46db99e6f",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047534.html"
     },
     {
       "id": "msg-a3b66bd8c4f1",
@@ -4158,7 +4345,8 @@
       "body_snippet": "On 22 November 2007 at 20:00, leviwaldron at gmail.com wrote:\n| Full_Name: Levi Waldron\n| Version: 2.5.1\n| OS: Ubuntu Gutsy\n| Submission from: (NULL) (206.248.157.88)\n| \n| \n| I installed libgsl0-dev t",
       "thread_id": "thread-a3b66bd8c4f1",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047535.html"
     },
     {
       "id": "msg-76da48c8e109",
@@ -4176,7 +4364,8 @@
       "body_snippet": "Ren?,\n\nOn Nov 23, 2007, at 6:00 AM, rjvbertin at gmail.com wrote:\n\n> It seems the recent Mac OS X 10.4.11 update installed a new  \n> libBLAS.dylib in the Accelerate framework which either contains a  ",
       "thread_id": "thread-baaf7d8ade18",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047536.html"
     },
     {
       "id": "msg-c851a698a0f6",
@@ -4192,7 +4381,8 @@
       "body_snippet": "Full_Name: Steven McKinney\nVersion: 2.6.0\nOS: OS X\nSubmission from: (NULL) (142.103.207.10)\n\n\n\nFunction ar() in package \"stats\" is showing\na quirky bug.  Some calls to ar() run to\ncompletion, others t",
       "thread_id": "thread-c851a698a0f6",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047537.html"
     },
     {
       "id": "msg-e03035a7c812",
@@ -4208,7 +4398,8 @@
       "body_snippet": "Hi all.\nI have unexpected reshape results on datasets with certain variable\nnames. Here a reproducible example:\n\nd <- matrix(seq_len(7*7), 1, 7*7)\nvnames <- c('acc','ppeGross','CF','ROA','DeltaSales',",
       "thread_id": "thread-e03035a7c812",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047538.html"
     },
     {
       "id": "msg-ef2b3b3b2b20",
@@ -4226,7 +4417,8 @@
       "body_snippet": "I got the problem: dataframe columns are re-ordered alfabetically, but\nvariable names aren't reordered accordingly in the resulting\ndataframe. The problem disappears by specifying the 'varying' argume",
       "thread_id": "thread-e03035a7c812",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047539.html"
     },
     {
       "id": "msg-28dd78644962",
@@ -4242,7 +4434,8 @@
       "body_snippet": "Hi all.\nCurrently, if you try:\n\n> lag.plot(1:10)\n\nyou get superposed labels '1' and '10'. Things go worse in more extreme cases:\n\nx <- ts(1:10)\nx1 <- lag(x, 4)\nplot(x1, x)\n\nThis is due to a mistake in",
       "thread_id": "thread-28dd78644962",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047540.html"
     },
     {
       "id": "msg-12ee5ef5165a",
@@ -4260,7 +4453,8 @@
       "body_snippet": ">>>>> Antonio, Fabio Di Narzo <antonio.fabio at gmail.com>\n>>>>>     on Sat, 24 Nov 2007 12:35:25 +0100 writes:\n\n    > Hi all.  Currently, if you try:\n\n    >> lag.plot(1:10)\n\n    > you get superposed ",
       "thread_id": "thread-28dd78644962",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047541.html"
     },
     {
       "id": "msg-2041aea36ccb",
@@ -4278,7 +4472,8 @@
       "body_snippet": "Steven McKinney wrote:\n> \n> Full_Name: Steven McKinney\n> Version: 2.6.0\n> OS: OS X\n> Submission from: (NULL) (142.103.207.10)\n> \n> \n> \n> Function ar() in package \"stats\" is showing\n> a quirky bug.  So",
       "thread_id": "thread-c851a698a0f6",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047542.html"
     },
     {
       "id": "msg-21ef8aa083d5",
@@ -4296,7 +4491,8 @@
       "body_snippet": "Antonio, Fabio Di Narzo wrote:\n> Hi all.\n> I have unexpected reshape results on datasets with certain variable\n> names. Here a reproducible example:\n>\n> d <- matrix(seq_len(7*7), 1, 7*7)\n> vnames <- c",
       "thread_id": "thread-e03035a7c812",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047543.html"
     },
     {
       "id": "msg-518a6282f3b2",
@@ -4315,7 +4511,8 @@
       "body_snippet": "On 24/11/2007 11:45 AM, Ben Bolker wrote:\n> \n> \n> Steven McKinney wrote:\n>> Full_Name: Steven McKinney\n>> Version: 2.6.0\n>> OS: OS X\n>> Submission from: (NULL) (142.103.207.10)\n>>\n>>\n>>\n>> Function ar",
       "thread_id": "thread-c851a698a0f6",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047544.html"
     },
     {
       "id": "msg-8311cb147caf",
@@ -4335,7 +4532,8 @@
       "body_snippet": ">>>>> \"DM\" == Duncan Murdoch <murdoch at stats.uwo.ca>\n>>>>>     on Sat, 24 Nov 2007 16:08:31 -0500 writes:\n\n    DM> On 24/11/2007 11:45 AM, Ben Bolker wrote:\n    >> \n    >> \n    >> Steven McKinney wr",
       "thread_id": "thread-c851a698a0f6",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047545.html"
     },
     {
       "id": "msg-2a99a6f22354",
@@ -4351,7 +4549,8 @@
       "body_snippet": "Trying to go to http://r-forge.r-project.org/ produces:\n\nAn error occured in the logger. ERROR: could not access status of\ntransaction 0 DETAIL: could not write to file \"pg_subtrans/025C\" at offset\n12",
       "thread_id": "thread-2a99a6f22354",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047546.html"
     },
     {
       "id": "msg-c7809ef0a739",
@@ -4367,7 +4566,8 @@
       "body_snippet": "I never got a response from pcalg's maintainer, so I thought I'd\npublisher a patch here that allows you to specify optional\nnode-labels; when no labels are specified, `plot' falls back on the\ndefault ",
       "thread_id": "thread-c7809ef0a739",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047547.html"
     },
     {
       "id": "msg-194cee491fb2",
@@ -4383,7 +4583,8 @@
       "body_snippet": "Full_Name: Mike Pacey\nVersion: 2.6.0\nOS: SuSe Linux 9.3 x86_64\nSubmission from: (NULL) (194.80.32.10)\n\n\n\nA \"vanilla\" version of R configures and compiles without a problem on my system.\nSwitching to u",
       "thread_id": "thread-194cee491fb2",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047548.html"
     },
     {
       "id": "msg-498d097ed389",
@@ -4399,7 +4600,8 @@
       "body_snippet": "I've no idea about the glob detection, but clearly this is the first \nsystem that allegedly lacks glob that we have encountered: the file needs \nto be\n\n#if defined(HAVE_GLOB) || defined(Win32)\n     gl",
       "thread_id": "thread-498d097ed389",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047549.html"
     },
     {
       "id": "msg-d98e92a7fc4c",
@@ -4415,7 +4617,8 @@
       "body_snippet": "Full_Name: Vincent Remacle\nVersion: 2.5.1\nOS: Windows XP\nSubmission from: (NULL) (81.246.37.50)\n\n\n>  fit = vglm(x ~ 1, levy(idelta=2,igamma=2),trace=TRUE) \nError: cannot allocate vector of size 30.5 M",
       "thread_id": "thread-d98e92a7fc4c",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047550.html"
     },
     {
       "id": "msg-01514c781c09",
@@ -4431,7 +4634,8 @@
       "body_snippet": "Full_Name: Tomas Larsson\nVersion: 2.6.0\nOS: Windows XP\nSubmission from: (NULL) (198.208.251.24)\n\n\nThis is not a bug, it is a performance issue but I think it should have an easy\nfix.\n\nI have a large m",
       "thread_id": "thread-01514c781c09",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047551.html"
     },
     {
       "id": "msg-f60408b24510",
@@ -4449,7 +4653,8 @@
       "body_snippet": "tomas.larsson at gm.com wrote:\n> Full_Name: Tomas Larsson\n> Version: 2.6.0\n> OS: Windows XP\n> Submission from: (NULL) (198.208.251.24)\n> \n> \n> This is not a bug, it is a performance issue but I think ",
       "thread_id": "thread-01514c781c09",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047552.html"
     },
     {
       "id": "msg-d3e56b7b1320",
@@ -4467,7 +4672,8 @@
       "body_snippet": "vincent.remacle at ulb.ac.be wrote:\n> Full_Name: Vincent Remacle\n> Version: 2.5.1\n\nPlease see the FAQs on how to report bugs. R-2.5.1 is two releases older \nthan required.\n\n\n> OS: Windows XP\n> Submiss",
       "thread_id": "thread-d98e92a7fc4c",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047553.html"
     },
     {
       "id": "msg-0d71f10f57b2",
@@ -4483,7 +4689,8 @@
       "body_snippet": "Hi,\n\nWhen writing a DCF file one record at a time, the records used\nto be separated by an empty line in R-2.5, but not in R-2.6:\n\n  x <- data.frame(aa=letters[1:3], ii=1:3)\n\nWith R-2.5:\n\n  > x <- data",
       "thread_id": "thread-0d71f10f57b2",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047554.html"
     },
     {
       "id": "msg-feebf1b4426f",
@@ -4499,7 +4706,8 @@
       "body_snippet": "Full_Name: Carlos Gershenson\nVersion: 2.6.1\nOS: MacOSX\nSubmission from: (NULL) (24.128.48.138)\n\n\nHi,\n\nTry this out:\n\nx<-1:10\ny<-x/2\nplot(table(x))\npoints(table(y))\n#or lines(table(y))\n\nNo matter what'",
       "thread_id": "thread-feebf1b4426f",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047568.html"
     },
     {
       "id": "msg-c7f27c90222b",
@@ -4515,7 +4723,8 @@
       "body_snippet": "Full_Name: Zhihua Liu\nVersion: 2.6.0\nOS: \nSubmission from: (NULL) (66.176.38.107)\n\n\nWhen I produced a .ps graph in the screen, I had problem to save them. The\nfollowing warnings show up: \n\nError: Inva",
       "thread_id": "thread-c7f27c90222b",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047555.html"
     },
     {
       "id": "msg-e70bfe84bdaf",
@@ -4531,7 +4740,8 @@
       "body_snippet": "This was fixed in R 2.6.1 (in fact it was fixed in R-patched on \nOctober 4th).\n\nPlease upgrade (as the R FAQ and the R posting guide both asked you to \ndo before posting).\n\nOn Tue, 27 Nov 2007, zliu a",
       "thread_id": "thread-e70bfe84bdaf",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047556.html"
     },
     {
       "id": "msg-87ccb64b1225",
@@ -4549,7 +4759,8 @@
       "body_snippet": "zliu at fau.edu wrote:\n> Full_Name: Zhihua Liu\n> Version: 2.6.0\n> OS: \n> Submission from: (NULL) (66.176.38.107)\n>\n>\n> When I produced a .ps graph in the screen, I had problem to save them. The\n> foll",
       "thread_id": "thread-c7f27c90222b",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047557.html"
     },
     {
       "id": "msg-23dae50f3689",
@@ -4565,7 +4776,8 @@
       "body_snippet": "Full_Name: Philip Kensche\nVersion: R version 2.5.0 (2007-04-23)\nOS: Linux\nSubmission from: (NULL) (131.174.146.31)\n\n\nI want to access a row of a data.frame() by using the row names as hash keys.\nThis ",
       "thread_id": "thread-23dae50f3689",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047558.html"
     },
     {
       "id": "msg-e6347f9d3d35",
@@ -4581,7 +4793,8 @@
       "body_snippet": "Exact matching has preference over partial matching: see ?pmatch.\n\nYour version of R is three versions obsolete: the latest version explains \nthis in detail under ?`[.data.frame` and ?`[` (and maybe 2",
       "thread_id": "thread-e6347f9d3d35",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047559.html"
     },
     {
       "id": "msg-c79890fae390",
@@ -4597,7 +4810,8 @@
       "body_snippet": "If you do want only exact matching, use match().  E.g. in your example\n\nx[match(\"V41\", row.names(x)), ]\n\nwill give NA as you expected for a construction documented to do something \nelse.\n\nOn Wed, 28 N",
       "thread_id": "thread-c79890fae390",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047560.html"
     },
     {
       "id": "msg-4373b3097065",
@@ -4613,7 +4827,8 @@
       "body_snippet": ">>>>> \"UweL\" == Uwe Ligges <ligges at statistik.uni-dortmund.de>\n>>>>>     on Mon, 26 Nov 2007 22:14:07 +0100 writes:\n\n    UweL> tomas.larsson at gm.com wrote:\n    >> Full_Name: Tomas Larsson\n    >> V",
       "thread_id": "thread-4373b3097065",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047561.html"
     },
     {
       "id": "msg-3b758618aa84",
@@ -4629,7 +4844,8 @@
       "body_snippet": "Doing\n\thelp(\"R_LIBS\")\nbrings up a help file (the same one as help(library)),\nbut the help file doesn't mention R_LIBS.\nIt does have a link to .libPaths, which does document R_LIBS.\n\nThe quickest fix w",
       "thread_id": "thread-3b758618aa84",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047562.html"
     },
     {
       "id": "msg-735021af5dca",
@@ -4647,7 +4863,8 @@
       "body_snippet": "help(R_LIBS) is the same as help(.libPaths) for me.\n\nIt appears you're running 2.5.0 - you could try updating, and then see if\nthe issue still exists.\n\n---\nplatform       x86_64-unknown-linux-gnu\narch",
       "thread_id": "thread-3b758618aa84",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047563.html"
     },
     {
       "id": "msg-d10329476eed",
@@ -4663,7 +4880,8 @@
       "body_snippet": "Full_Name: Saleem Bhatti\nVersion: 2.6.1\nOS: MacOSX 10.5.1\nSubmission from: (NULL) (81.187.216.162)\n\n\nUsing R-2.6.1.dmg to do an automated install on MacOS 10.5.1.\n\nInstallation fails with following te",
       "thread_id": "thread-d10329476eed",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047567.html"
     },
     {
       "id": "msg-ee530394ced1",
@@ -4679,7 +4897,8 @@
       "body_snippet": "It brings up ?.libPaths in R 2.5.1 and later (that is, the last three \nreleases of R).\n\nOn Wed, 28 Nov 2007, timh at insightful.com wrote:\n\n> Doing\n> \thelp(\"R_LIBS\")\n> brings up a help file (the same ",
       "thread_id": "thread-ee530394ced1",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047564.html"
     },
     {
       "id": "msg-e3063fbc19e3",
@@ -4695,7 +4914,8 @@
       "body_snippet": "Have you ever collaborated? Google Spreadsheets is fantastic to\ncollaborate with. Rather than sending excel spreadsheets backwards and\nforwards, I would rather use shared Google Spreadsheets. I do not",
       "thread_id": "thread-e3063fbc19e3",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047569.html"
     },
     {
       "id": "msg-75c69d1ffacf",
@@ -4711,7 +4931,8 @@
       "body_snippet": "Building R under gcc 3.4.5 on Windows will no longer be supported as from \nR 2.7.0.  The default settings in the trunk (R-devel) are for the new \nversion of Rtools,\n\nhttp://www.murdoch-sutherland.com/",
       "thread_id": "thread-75c69d1ffacf",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047565.html"
     },
     {
       "id": "msg-b844d83dd3b6",
@@ -4727,7 +4948,8 @@
       "body_snippet": "from ?eigen\n\nsymmetric: if 'TRUE', the matrix is assumed to be symmetric (or\n          Hermitian if complex) and only its lower triangle is used. If\n          'symmetric' is not specified, the matrix ",
       "thread_id": "thread-b844d83dd3b6",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047566.html"
     },
     {
       "id": "msg-e636a051b184",
@@ -4745,7 +4967,8 @@
       "body_snippet": "On Nov 28, 2007, at 4:55 PM, saleem at cs.st-andrews.ac.uk wrote:\n\n> Full_Name: Saleem Bhatti\n> Version: 2.6.1\n> OS: MacOSX 10.5.1\n> Submission from: (NULL) (81.187.216.162)\n>\n>\n> Using R-2.6.1.dmg to",
       "thread_id": "thread-d10329476eed",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047570.html"
     },
     {
       "id": "msg-cb64fd0d7aac",
@@ -4763,7 +4986,8 @@
       "body_snippet": "carlos at necsi.org wrote:\n> Full_Name: Carlos Gershenson\n> Version: 2.6.1\n> OS: MacOSX\n> Submission from: (NULL) (24.128.48.138)\n>\n>\n> Hi,\n>\n> Try this out:\n>\n> x<-1:10\n> y<-x/2\n> plot(table(x))\n> po",
       "thread_id": "thread-feebf1b4426f",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047571.html"
     },
     {
       "id": "msg-12eb43dcaca7",
@@ -4782,7 +5006,8 @@
       "body_snippet": "On Thu, 2007-11-29 at 16:36 +0100, Peter Dalgaard wrote:\n> carlos at necsi.org wrote:\n> > Full_Name: Carlos Gershenson\n> > Version: 2.6.1\n> > OS: MacOSX\n> > Submission from: (NULL) (24.128.48.138)\n> >",
       "thread_id": "thread-feebf1b4426f",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047572.html"
     },
     {
       "id": "msg-1d4bc764081a",
@@ -4802,7 +5027,8 @@
       "body_snippet": "Gavin Simpson wrote:\n> On Thu, 2007-11-29 at 16:36 +0100, Peter Dalgaard wrote:\n>   \n>> carlos at necsi.org wrote:\n>>     \n>>> Full_Name: Carlos Gershenson\n>>> Version: 2.6.1\n>>> OS: MacOSX\n>>> Submis",
       "thread_id": "thread-feebf1b4426f",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047573.html"
     },
     {
       "id": "msg-e22a6aa34c53",
@@ -4820,7 +5046,8 @@
       "body_snippet": ">>>>> \"DD\" == Dan Davison <davison at stats.ox.ac.uk>\n>>>>>     on Thu, 29 Nov 2007 11:34:18 +0000 writes:\n\n    DD> from ?eigen\n    DD> symmetric: if 'TRUE', the matrix is assumed to be symmetric (or\n",
       "thread_id": "thread-b844d83dd3b6",
       "thread_depth": 1,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047574.html"
     },
     {
       "id": "msg-3195e1fe53b9",
@@ -4841,7 +5068,8 @@
       "body_snippet": "On Thu, 2007-11-29 at 17:34 +0100, Peter Dalgaard wrote:\n> Gavin Simpson wrote:\n> > On Thu, 2007-11-29 at 16:36 +0100, Peter Dalgaard wrote:\n> >   \n> >> carlos at necsi.org wrote:\n> >>     \n> >>> Full",
       "thread_id": "thread-feebf1b4426f",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047575.html"
     },
     {
       "id": "msg-6feafb97352c",
@@ -4863,7 +5091,8 @@
       "body_snippet": "Gavin Simpson wrote:\n> On Thu, 2007-11-29 at 17:34 +0100, Peter Dalgaard wrote:\n>   \n>> Gavin Simpson wrote:\n>>     \n>>> On Thu, 2007-11-29 at 16:36 +0100, Peter Dalgaard wrote:\n>>>   \n>>>       \n>>>>",
       "thread_id": "thread-feebf1b4426f",
       "thread_depth": 5,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047576.html"
     },
     {
       "id": "msg-de2ce16b6022",
@@ -4882,7 +5111,8 @@
       "body_snippet": "Hello;\n\nThanks for your reply.\n\nOn 29 Nov 2007, at 14:44, Simon Urbanek wrote:\n\n>\n> On Nov 28, 2007, at 4:55 PM, saleem at cs.st-andrews.ac.uk wrote:\n>\n>> Full_Name: Saleem Bhatti\n>> Version: 2.6.1\n>>",
       "thread_id": "thread-d10329476eed",
       "thread_depth": 2,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047578.html"
     },
     {
       "id": "msg-bfec474f426b",
@@ -4902,7 +5132,8 @@
       "body_snippet": "On Nov 30, 2007, at 9:34 AM, Saleem Bhatti wrote:\n\n> Hello;\n>\n> Thanks for your reply.\n>\n> On 29 Nov 2007, at 14:44, Simon Urbanek wrote:\n>\n>>\n>> On Nov 28, 2007, at 4:55 PM, saleem at cs.st-andrews.a",
       "thread_id": "thread-d10329476eed",
       "thread_depth": 3,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047577.html"
     },
     {
       "id": "msg-7a6c6b44c0c9",
@@ -4923,7 +5154,8 @@
       "body_snippet": "Simon;\n\nOn 30 Nov 2007, at 15:38, Simon Urbanek wrote:\n\n> Window -> Installer Log\n> You can then use Save ... to save it in a file.\n\nOK - file is attached.\n\n> Well, yes, but you said \"automated instal",
       "thread_id": "thread-d10329476eed",
       "thread_depth": 4,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047579.html"
     },
     {
       "id": "msg-1fe597fc2fc8",
@@ -4939,7 +5171,8 @@
       "body_snippet": "Dear R developers,\n\nWhen building/checking my package (in R 2.6.1 under windows) I run into\nsome messages that I do not completely understand and that do not give\nme precise enough leads to pinpoint w",
       "thread_id": "thread-1fe597fc2fc8",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047580.html"
     },
     {
       "id": "msg-e97b2b1f7151",
@@ -4955,7 +5188,8 @@
       "body_snippet": "Full_Name: Jeffrey Racine\nVersion: 2.6.1 and previous...\nOS: FreeBSD\nSubmission from: (NULL) (130.113.139.86)\n\n\nHi.\n\nI almost feel bad reporting this, but here goes.\n\nThe summary() for lm() (and possi",
       "thread_id": "thread-e97b2b1f7151",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047581.html"
     },
     {
       "id": "msg-7a923a4db627",
@@ -4971,7 +5205,8 @@
       "body_snippet": "Full_Name: Adrian Dragulescu\nVersion: 2.6.0\nOS: Windows\nSubmission from: (NULL) (216.99.178.65)\n\n\n>   data.frame(x=1:10, y=\"A\")  # expands fine\n    x y\n1   1 A\n2   2 A\n3   3 A\n4   4 A\n5   5 A\n6   6 A\n",
       "thread_id": "thread-7a923a4db627",
       "thread_depth": 0,
-      "month": "2007-11"
+      "month": "2007-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-November/047582.html"
     }
   ],
   "threads": [
