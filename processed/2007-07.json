@@ -5044,8 +5044,7 @@
       "body_snippet": "On Fri, 27 Jul 2007, Prof Brian Ripley wrote:\n\n> This is as doumented, and I think you could say the same thing of seq().\n> BTW, sequence() allows negative inputs, and I don't think you want\n> sum(inp",
       "thread_id": "thread-cb9975ea6377",
       "thread_depth": 0,
-      "month": "2007-07",
-      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-July/046502.html"
+      "month": "2007-07"
     },
     {
       "id": "msg-5195086d7f80",
@@ -5064,8 +5063,7 @@
       "body_snippet": "As others as commented, everything going in/out of the .Call() interface\nneeds to be SEXP (even if it does nothing and you are returning\nR_NilValue).\n\nSecondly, your attached code is both (1) too long",
       "thread_id": "thread-8681e6a22c0a",
       "thread_depth": 2,
-      "month": "2007-07",
-      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-July/046501.html"
+      "month": "2007-07"
     },
     {
       "id": "msg-df8af79f1522",
@@ -5080,15 +5078,11 @@
         "<1185181337.6294.29.camel@dirac>",
         "<1185187439.6294.58.camel@dirac>"
       ],
-      "body_plain": "Yes, this is the intended behavior.  Nothing to do with implicit \ngenerics, but with some ongoing changes to make class \"structure\" and \nrelated classes such as \"array\" give trustworthy results consistent with \nthe S language idea of vector structures.  There's a short note in NEWS \nabout the changes, added for the revision where the change was introduced.\n\nAs for programming your class, using showMethods(\"+\") as below will tell \nyou that the method is inherited from the group generic function \"Ops\", \nso a method for that function is needed, if you _really_ know what the \nresults should be.\n\nThe behavior of the base package code for operations is unacceptable for \ntrustworthy computations with classes.  Roughly, it takes the attributes \nof the left-hand operand and inserts those into the result of operating \non the vector or array part.  So in the example below we have two  \nunrelated classes that both extend \"array\".  A mixed operation gives a \nresult from class \"A1\" if done in one order and from \"A2\" if done in the \nother order.  Both are likely wrong and quite possibly seriously misleading.\n\nEven if the two objects came from the same class, copying one set of \nattributes makes sense only if the two sets are identical (an expensive \ntest) and not necessarily even then, if any of the attributes would be \ninvalidated by the operation.\n\nTwo acceptable results are either to reduce to the common inheritance \n(array, here) or to call the result undefined and throw an error.  The \ncurrent implementation in 2.6.0  is the first, as the example shows:\n\n > setClass(\"A1\", contains=\"array\", representation(flag = \"character\"))\n[1] \"A1\"\n > setClass(\"A2\", contains=\"array\", representation(positive = \"logical\"))\n[1] \"A2\"\n > a1 = new(\"A1\", array(1:8, rep(2,3)), flag = \"test\")\n > a2 = new(\"A2\", array(8:1, rep(2,3)), positive = rep(TRUE,8))\n > a1+a2\n, , 1\n\n     [,1] [,2]\n[1,]    9    9\n[2,]    9    9\n\n, , 2\n\n     [,1] [,2]\n[1,]    9    9\n[2,]    9    9\n\n > showMethods(\"+\")\nFunction: + (package base)\ne1=\"A1\", e2=\"A2\"\n    (inherited from: e1=\"array\", e2=\"array\")\n    (definition from function \"Ops\")\n\n\nOleg Sklyar wrote:\n> Narrowed down to Rev. 42246:\n>\n> * ~/R/Rsvn: svn up -r42245\n> * ~/R/Rsvn: make\n> * ~/R/Rsvn: Rsvn CMD INSTALL ~/tmp/EBImage_2.1.13.tar.gz\n> * ~/R/Rsvn: Rsvn\n>   \n>> version$version.string\n>>     \n> [1] \"R version 2.6.0 Under development (unstable) (2007-07-16 r42245)\"\n>   \n>> library(EBImage)\n>> a <- Image(0,c(2,2))\n>> class(a+a)\n>>     \n> [1] \"Image\"\n> attr(,\"package\")\n> [1] \"EBImage\"\n>\n> * ~/R/Rsvn: svn up -r42246\n> * ~/R/Rsvn: make\n> * ~/R/Rsvn: Rsvn CMD INSTALL ~/tmp/EBImage_2.1.13.tar.gz\n> * ~/R/Rsvn: Rsvn\n>   \n>> version$version.string\n>>     \n> [1] \"R version 2.6.0 Under development (unstable) (2007-07-16 r42246)\"\n>   \n>> library(EBImage)\n>> a <- Image(0,c(2,2))\n>> class(a+a)\n>>     \n> [1] \"array\"\n>\n> * ~/R/Rsvn: svn log -r42246\n> ------------------------------------------------------------------------\n> r42246 | jmc | 2007-07-16 14:32:16 +0100 (Mon, 16 Jul 2007) | 1 line\n>\n> implicitGeneric() and structure class\n> ------------------------------------------------------------------------\n>\n>   \n\n\t[[alternative HTML version deleted]]",
+      "body_plain": "Yes, this is the intended behavior.  Nothing to do with implicit \ngenerics, but with some ongoing changes to make class \"structure\" and \nrelated classes such as \"array\" give trustworthy results consistent with \nthe S language idea of vector structures.  There's a short note in NEWS \nabout the changes, added for the revision where the change was introduced.\n\nAs for programming your class, using showMethods(\"+\") as below will tell \nyou that the method is inherited from the group generic function \"Ops\", \nso a method for that function is needed, if you _really_ know what the \nresults should be.\n\nThe behavior of the base package code for operations is unacceptable for \ntrustworthy computations with classes.  Roughly, it takes the attributes \nof the left-hand operand and inserts those into the result of operating \non the vector or array part.  So in the example below we have two  \nunrelated classes that both extend \"array\".  A mixed operation gives a \nresult from class \"A1\" if done in one order and from \"A2\" if done in the \nother order.  Both are likely wrong and quite possibly seriously misleading.\n\nEven if the two objects came from the same class, copying one set of \nattributes makes sense only if the two sets are identical (an expensive \ntest) and not necessarily even then, if any of the attributes would be \ninvalidated by the operation.\n\nTwo acceptable results are either to reduce to the common inheritance \n(array, here) or to call the result undefined and throw an error.  The \ncurrent implementation in 2.6.0  is the first, as the example shows:\n\n > setClass(\"A1\", contains=\"array\", representation(flag = \"character\"))\n[1] \"A1\"\n > setClass(\"A2\", contains=\"array\", representation(positive = \"logical\"))\n[1] \"A2\"\n > a1 = new(\"A1\", array(1:8, rep(2,3)), flag = \"test\")\n > a2 = new(\"A2\", array(8:1, rep(2,3)), positive = rep(TRUE,8))\n > a1+a2\n, , 1\n\n     [,1] [,2]\n[1,]    9    9\n[2,]    9    9\n\n, , 2\n\n     [,1] [,2]\n[1,]    9    9\n[2,]    9    9\n\n > showMethods(\"+\")\nFunction: + (package base)\ne1=\"A1\", e2=\"A2\"\n    (inherited from: e1=\"array\", e2=\"array\")\n    (definition from function \"Ops\")\n\n\nOleg Sklyar wrote:\n> Narrowed down to Rev. 42246:\n>\n> * ~/R/Rsvn: svn up -r42245\n> * ~/R/Rsvn: make\n> * ~/R/Rsvn: Rsvn CMD INSTALL ~/tmp/EBImage_2.1.13.tar.gz\n> * ~/R/Rsvn: Rsvn\n>   \n>> version$version.string\n>>     \n> [1] \"R version 2.6.0 Under development (unstable) (2007-07-16 r42245)\"\n>   \n>> library(EBImage)\n>> a <- Image(0,c(2,2))\n>> class(a+a)\n>>     \n> [1] \"Image\"\n> attr(,\"package\")\n> [1] \"EBImage\"\n>\n> * ~/R/Rsvn: svn up -r42246\n> * ~/R/Rsvn: make\n> * ~/R/Rsvn: Rsvn CMD INSTALL ~/tmp/EBImage_2.1.13.tar.gz\n> * ~/R/Rsvn: Rsvn\n>   \n>> version$version.string\n>>     \n> [1] \"R version 2.6.0 Under development (unstable) (2007-07-16 r42246)\"\n>   \n>> library(EBImage)\n>> a <- Image(0,c(2,2))\n>> class(a+a)\n>>     \n> [1] \"array\"\n>\n> * ~/R/Rsvn: svn log -r42246\n> ------------------------------------------------------------------------\n> r42246 | jmc | 2007-07-16 14:32:16 +0100 (Mon, 16 Jul 2007) | 1 line\n>\n> implicitGeneric() and structure class\n> ------------------------------------------------------------------------\n>\n>",
       "body_snippet": "Yes, this is the intended behavior.  Nothing to do with implicit \ngenerics, but with some ongoing changes to make class \"structure\" and \nrelated classes such as \"array\" give trustworthy results consis",
       "thread_id": "thread-a433b5436133",
       "thread_depth": 2,
-      "month": "2007-07",
-      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-July/046504.html",
-      "restored_from": [
-        "https://stat.ethz.ch/pipermail/r-devel/attachments/20070728/eddf5bea/attachment-0001.pl"
-      ]
+      "month": "2007-07"
     },
     {
       "id": "msg-2a8532af2f57",
@@ -5108,8 +5102,7 @@
       "body_snippet": "John, thank you for clarification. I just wonder that some packages\ncould also see that their behaviour has changed. Anyway, I redefined\nArith as the rest seems to work fine and also it is pretty stra",
       "thread_id": "thread-a433b5436133",
       "thread_depth": 3,
-      "month": "2007-07",
-      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2007-July/046503.html"
+      "month": "2007-07"
     },
     {
       "id": "msg-bb3538436960",
