@@ -18,11 +18,12 @@
         "<5bcf6c56-bcfb-4f8b-8ba0-91375a5a540e@gmail.com>",
         "<CALEXWq0BFQ62UbJt9yNmG6EWSgEJkyoQ2wT3XV7T2XxNERySEw@mail.gmail.com>"
       ],
-      "body_plain": "On 10/31/23 10:45, I?aki Ucar wrote:\n> On Tue, 24 Oct 2023 at 12:53, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>> The output of session info is based on that flexiblas is used and on\n>> what flexiblas tells R is the backend it uses. R does not attempt to\n>> check that optimized LAPACK functions from the backend really end up\n>> called via flexiblas, and I don't think it could be realistically checked.\n>>\n>> But I've checked one case manually in Fedora 38 using Linux perf tool.\n>> The following code:\n>>\n>> S <- toeplitz((10:1)/10)\n>> repeat { R <- rWishart(10, 20, S) }\n>>\n>> uses dpotrf from LAPACK, which is optimized in OpenBLAS and ATLAS and\n>> the corresponding optimized implementations really appeared on the\n>> sampling profile for me from the backend libraries.\n>>\n>> The comment from R Admin has been removed now and if anyone runs into\n>> the problem (that an optimized LAPACK function is not called from a\n>> backend that provides it), it would be best to report it with sufficient\n>> detail to flexiblas.\n> Thanks, Tomas. Yes, if an expected redirection to an optimized\n> function does not happen, that would be a bug in FlexiBLAS and should\n> be reported upstream.\n>\n> Related to this, a small detail... I noticed that the R configure\n> script reports \"BLAS(FlexiBlas)\" correctly as an external library, but\n> then \"LAPACK(generic)\". This should be FlexiBLAS too instead of\n> \"generic\". It doesn't make any difference, since the LAPACK symbols in\n> FlexiBLAS are called anyway, but it's misleading.\n\nThis depends on how you configure R. On Fedora 38,\n\n../trunk/configure --with-blas=flexiblas --with-lapack\n\nreports \"BLAS(FlexiBlas), LAPACK(in blas)\" and from my reading of \nR-admin, this is the recommended way of configuring with flexiblas.\n\nConfiguring via (is this what you had in mind?):\n\n../trunk/configure --with-blas=flexiblas --with-lapack=flexiblas\n\nreports \"BLAS(FlexiBlas), LAPACK(generic)\". The build would actually do \n\"-lflexiblas -lflexiblas\", the former for LAPACK (from --with-lapack \nvalue) and the latter for BLAS (from --with-blas value). The \"generic\" \nhere means not from BLAS, but from an extra standalone library. Compare \nwith the first (recommended) use when the build would only link \n\"-lflexiblas\" once.\n\nBest,\nTomas\n\n>\n> Best,",
-      "body_snippet": "On 10/31/23 10:45, I?aki Ucar wrote:\n> On Tue, 24 Oct 2023 at 12:53, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>> The output of session info is based on that flexiblas is used and on\n>> what",
+      "body_plain": "On 10/31/23 10:45, Iñaki Ucar wrote:\n> On Tue, 24 Oct 2023 at 12:53, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>> The output of session info is based on that flexiblas is used and on\n>> what flexiblas tells R is the backend it uses. R does not attempt to\n>> check that optimized LAPACK functions from the backend really end up\n>> called via flexiblas, and I don't think it could be realistically checked.\n>>\n>> But I've checked one case manually in Fedora 38 using Linux perf tool.\n>> The following code:\n>>\n>> S <- toeplitz((10:1)/10)\n>> repeat { R <- rWishart(10, 20, S) }\n>>\n>> uses dpotrf from LAPACK, which is optimized in OpenBLAS and ATLAS and\n>> the corresponding optimized implementations really appeared on the\n>> sampling profile for me from the backend libraries.\n>>\n>> The comment from R Admin has been removed now and if anyone runs into\n>> the problem (that an optimized LAPACK function is not called from a\n>> backend that provides it), it would be best to report it with sufficient\n>> detail to flexiblas.\n> Thanks, Tomas. Yes, if an expected redirection to an optimized\n> function does not happen, that would be a bug in FlexiBLAS and should\n> be reported upstream.\n>\n> Related to this, a small detail... I noticed that the R configure\n> script reports \"BLAS(FlexiBlas)\" correctly as an external library, but\n> then \"LAPACK(generic)\". This should be FlexiBLAS too instead of\n> \"generic\". It doesn't make any difference, since the LAPACK symbols in\n> FlexiBLAS are called anyway, but it's misleading.\n\nThis depends on how you configure R. On Fedora 38,\n\n../trunk/configure --with-blas=flexiblas --with-lapack\n\nreports \"BLAS(FlexiBlas), LAPACK(in blas)\" and from my reading of \nR-admin, this is the recommended way of configuring with flexiblas.\n\nConfiguring via (is this what you had in mind?):\n\n../trunk/configure --with-blas=flexiblas --with-lapack=flexiblas\n\nreports \"BLAS(FlexiBlas), LAPACK(generic)\". The build would actually do \n\"-lflexiblas -lflexiblas\", the former for LAPACK (from --with-lapack \nvalue) and the latter for BLAS (from --with-blas value). The \"generic\" \nhere means not from BLAS, but from an extra standalone library. Compare \nwith the first (recommended) use when the build would only link \n\"-lflexiblas\" once.\n\nBest,\nTomas\n\n>\n> Best,",
+      "body_snippet": "On 10/31/23 10:45, Iñaki Ucar wrote:\n> On Tue, 24 Oct 2023 at 12:53, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>> The output of session info is based on that flexiblas is used and on\n>> what",
       "thread_id": "thread-ce3c21850d0b",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/082988.html"
     },
     {
       "id": "msg-44423ab6baf4",
@@ -40,11 +41,12 @@
         "<CALEXWq0BFQ62UbJt9yNmG6EWSgEJkyoQ2wT3XV7T2XxNERySEw@mail.gmail.com>",
         "<9cab2be0-618f-4f78-a353-9563670c795f@gmail.com>"
       ],
-      "body_plain": "On Wed, 1 Nov 2023 at 12:57, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>\n>\n> On 10/31/23 10:45, I?aki Ucar wrote:\n> > On Tue, 24 Oct 2023 at 12:53, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n> >> The output of session info is based on that flexiblas is used and on\n> >> what flexiblas tells R is the backend it uses. R does not attempt to\n> >> check that optimized LAPACK functions from the backend really end up\n> >> called via flexiblas, and I don't think it could be realistically checked.\n> >>\n> >> But I've checked one case manually in Fedora 38 using Linux perf tool.\n> >> The following code:\n> >>\n> >> S <- toeplitz((10:1)/10)\n> >> repeat { R <- rWishart(10, 20, S) }\n> >>\n> >> uses dpotrf from LAPACK, which is optimized in OpenBLAS and ATLAS and\n> >> the corresponding optimized implementations really appeared on the\n> >> sampling profile for me from the backend libraries.\n> >>\n> >> The comment from R Admin has been removed now and if anyone runs into\n> >> the problem (that an optimized LAPACK function is not called from a\n> >> backend that provides it), it would be best to report it with sufficient\n> >> detail to flexiblas.\n> > Thanks, Tomas. Yes, if an expected redirection to an optimized\n> > function does not happen, that would be a bug in FlexiBLAS and should\n> > be reported upstream.\n> >\n> > Related to this, a small detail... I noticed that the R configure\n> > script reports \"BLAS(FlexiBlas)\" correctly as an external library, but\n> > then \"LAPACK(generic)\". This should be FlexiBLAS too instead of\n> > \"generic\". It doesn't make any difference, since the LAPACK symbols in\n> > FlexiBLAS are called anyway, but it's misleading.\n>\n> This depends on how you configure R. On Fedora 38,\n>\n> ../trunk/configure --with-blas=flexiblas --with-lapack\n>\n> reports \"BLAS(FlexiBlas), LAPACK(in blas)\" and from my reading of\n> R-admin, this is the recommended way of configuring with flexiblas.\n>\n> Configuring via (is this what you had in mind?):\n>\n> ../trunk/configure --with-blas=flexiblas --with-lapack=flexiblas\n>\n> reports \"BLAS(FlexiBlas), LAPACK(generic)\". The build would actually do\n> \"-lflexiblas -lflexiblas\", the former for LAPACK (from --with-lapack\n> value) and the latter for BLAS (from --with-blas value). The \"generic\"\n> here means not from BLAS, but from an extra standalone library. Compare\n> with the first (recommended) use when the build would only link\n> \"-lflexiblas\" once.\n\nI see. I didn't understand that part then. I thought that a library\nshould be specified.\n\n-- \nI?aki ?car",
-      "body_snippet": "On Wed, 1 Nov 2023 at 12:57, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>\n>\n> On 10/31/23 10:45, I?aki Ucar wrote:\n> > On Tue, 24 Oct 2023 at 12:53, Tomas Kalibera <tomas.kalibera at gmail.co",
+      "body_plain": "On Wed, 1 Nov 2023 at 12:57, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>\n>\n> On 10/31/23 10:45, Iñaki Ucar wrote:\n> > On Tue, 24 Oct 2023 at 12:53, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n> >> The output of session info is based on that flexiblas is used and on\n> >> what flexiblas tells R is the backend it uses. R does not attempt to\n> >> check that optimized LAPACK functions from the backend really end up\n> >> called via flexiblas, and I don't think it could be realistically checked.\n> >>\n> >> But I've checked one case manually in Fedora 38 using Linux perf tool.\n> >> The following code:\n> >>\n> >> S <- toeplitz((10:1)/10)\n> >> repeat { R <- rWishart(10, 20, S) }\n> >>\n> >> uses dpotrf from LAPACK, which is optimized in OpenBLAS and ATLAS and\n> >> the corresponding optimized implementations really appeared on the\n> >> sampling profile for me from the backend libraries.\n> >>\n> >> The comment from R Admin has been removed now and if anyone runs into\n> >> the problem (that an optimized LAPACK function is not called from a\n> >> backend that provides it), it would be best to report it with sufficient\n> >> detail to flexiblas.\n> > Thanks, Tomas. Yes, if an expected redirection to an optimized\n> > function does not happen, that would be a bug in FlexiBLAS and should\n> > be reported upstream.\n> >\n> > Related to this, a small detail... I noticed that the R configure\n> > script reports \"BLAS(FlexiBlas)\" correctly as an external library, but\n> > then \"LAPACK(generic)\". This should be FlexiBLAS too instead of\n> > \"generic\". It doesn't make any difference, since the LAPACK symbols in\n> > FlexiBLAS are called anyway, but it's misleading.\n>\n> This depends on how you configure R. On Fedora 38,\n>\n> ../trunk/configure --with-blas=flexiblas --with-lapack\n>\n> reports \"BLAS(FlexiBlas), LAPACK(in blas)\" and from my reading of\n> R-admin, this is the recommended way of configuring with flexiblas.\n>\n> Configuring via (is this what you had in mind?):\n>\n> ../trunk/configure --with-blas=flexiblas --with-lapack=flexiblas\n>\n> reports \"BLAS(FlexiBlas), LAPACK(generic)\". The build would actually do\n> \"-lflexiblas -lflexiblas\", the former for LAPACK (from --with-lapack\n> value) and the latter for BLAS (from --with-blas value). The \"generic\"\n> here means not from BLAS, but from an extra standalone library. Compare\n> with the first (recommended) use when the build would only link\n> \"-lflexiblas\" once.\n\nI see. I didn't understand that part then. I thought that a library\nshould be specified.\n\n-- \nIñaki Úcar",
+      "body_snippet": "On Wed, 1 Nov 2023 at 12:57, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>\n>\n> On 10/31/23 10:45, Iñaki Ucar wrote:\n> > On Tue, 24 Oct 2023 at 12:53, Tomas Kalibera <tomas.kalibera at gmail.co",
       "thread_id": "thread-ce3c21850d0b",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/082989.html"
     },
     {
       "id": "msg-43adfa367c1d",
@@ -63,7 +65,8 @@
       "body_snippet": "> I assume it did, or you would not have noticed ?\n\nI noticed it because I got a notice from CRAN about 'matrixStats'\nstarting to fail on R-devel.  It was a non-critical failure, because\nit was due to",
       "thread_id": "thread-43adfa367c1d",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/082990.html"
     },
     {
       "id": "msg-db4236b31134",
@@ -82,11 +85,12 @@
         "<9cab2be0-618f-4f78-a353-9563670c795f@gmail.com>",
         "<CALEXWq0fy-CGgDeraUhVh4gO3z1+BaZcmO9ioaXsj0D=a-CZ8g@mail.gmail.com>"
       ],
-      "body_plain": "On 11/1/23 13:29, I?aki Ucar wrote:\n> On Wed, 1 Nov 2023 at 12:57, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>>\n>> On 10/31/23 10:45, I?aki Ucar wrote:\n>>> On Tue, 24 Oct 2023 at 12:53, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>>>> The output of session info is based on that flexiblas is used and on\n>>>> what flexiblas tells R is the backend it uses. R does not attempt to\n>>>> check that optimized LAPACK functions from the backend really end up\n>>>> called via flexiblas, and I don't think it could be realistically checked.\n>>>>\n>>>> But I've checked one case manually in Fedora 38 using Linux perf tool.\n>>>> The following code:\n>>>>\n>>>> S <- toeplitz((10:1)/10)\n>>>> repeat { R <- rWishart(10, 20, S) }\n>>>>\n>>>> uses dpotrf from LAPACK, which is optimized in OpenBLAS and ATLAS and\n>>>> the corresponding optimized implementations really appeared on the\n>>>> sampling profile for me from the backend libraries.\n>>>>\n>>>> The comment from R Admin has been removed now and if anyone runs into\n>>>> the problem (that an optimized LAPACK function is not called from a\n>>>> backend that provides it), it would be best to report it with sufficient\n>>>> detail to flexiblas.\n>>> Thanks, Tomas. Yes, if an expected redirection to an optimized\n>>> function does not happen, that would be a bug in FlexiBLAS and should\n>>> be reported upstream.\n>>>\n>>> Related to this, a small detail... I noticed that the R configure\n>>> script reports \"BLAS(FlexiBlas)\" correctly as an external library, but\n>>> then \"LAPACK(generic)\". This should be FlexiBLAS too instead of\n>>> \"generic\". It doesn't make any difference, since the LAPACK symbols in\n>>> FlexiBLAS are called anyway, but it's misleading.\n>> This depends on how you configure R. On Fedora 38,\n>>\n>> ../trunk/configure --with-blas=flexiblas --with-lapack\n>>\n>> reports \"BLAS(FlexiBlas), LAPACK(in blas)\" and from my reading of\n>> R-admin, this is the recommended way of configuring with flexiblas.\n>>\n>> Configuring via (is this what you had in mind?):\n>>\n>> ../trunk/configure --with-blas=flexiblas --with-lapack=flexiblas\n>>\n>> reports \"BLAS(FlexiBlas), LAPACK(generic)\". The build would actually do\n>> \"-lflexiblas -lflexiblas\", the former for LAPACK (from --with-lapack\n>> value) and the latter for BLAS (from --with-blas value). The \"generic\"\n>> here means not from BLAS, but from an extra standalone library. Compare\n>> with the first (recommended) use when the build would only link\n>> \"-lflexiblas\" once.\n> I see. I didn't understand that part then. I thought that a library\n> should be specified.\n\nI read this from R-Admin re --with-lapack:\n\n\"In practice its main uses are without a value,\n\n- with an `enhanced' BLAS such as ATLAS, FlexiBLAS, MKL or OpenBLAS which\ncontains a full LAPACK (to avoid possible conflicts), or\n\n- on Debian/Ubuntu systems to select the system liblapack which can\nbe switched by the `alternatives' mechanism.\n\"\n\nI've updated configure in R-devel to detect when the same library is \nspecified explicitly for blas and lapack, so that now even that is \nhandled and reported as LAPACK in Blas libs.\n\nBest\nTomas\n\n>",
-      "body_snippet": "On 11/1/23 13:29, I?aki Ucar wrote:\n> On Wed, 1 Nov 2023 at 12:57, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>>\n>> On 10/31/23 10:45, I?aki Ucar wrote:\n>>> On Tue, 24 Oct 2023 at 12:53, Toma",
+      "body_plain": "On 11/1/23 13:29, Iñaki Ucar wrote:\n> On Wed, 1 Nov 2023 at 12:57, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>>\n>> On 10/31/23 10:45, Iñaki Ucar wrote:\n>>> On Tue, 24 Oct 2023 at 12:53, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>>>> The output of session info is based on that flexiblas is used and on\n>>>> what flexiblas tells R is the backend it uses. R does not attempt to\n>>>> check that optimized LAPACK functions from the backend really end up\n>>>> called via flexiblas, and I don't think it could be realistically checked.\n>>>>\n>>>> But I've checked one case manually in Fedora 38 using Linux perf tool.\n>>>> The following code:\n>>>>\n>>>> S <- toeplitz((10:1)/10)\n>>>> repeat { R <- rWishart(10, 20, S) }\n>>>>\n>>>> uses dpotrf from LAPACK, which is optimized in OpenBLAS and ATLAS and\n>>>> the corresponding optimized implementations really appeared on the\n>>>> sampling profile for me from the backend libraries.\n>>>>\n>>>> The comment from R Admin has been removed now and if anyone runs into\n>>>> the problem (that an optimized LAPACK function is not called from a\n>>>> backend that provides it), it would be best to report it with sufficient\n>>>> detail to flexiblas.\n>>> Thanks, Tomas. Yes, if an expected redirection to an optimized\n>>> function does not happen, that would be a bug in FlexiBLAS and should\n>>> be reported upstream.\n>>>\n>>> Related to this, a small detail... I noticed that the R configure\n>>> script reports \"BLAS(FlexiBlas)\" correctly as an external library, but\n>>> then \"LAPACK(generic)\". This should be FlexiBLAS too instead of\n>>> \"generic\". It doesn't make any difference, since the LAPACK symbols in\n>>> FlexiBLAS are called anyway, but it's misleading.\n>> This depends on how you configure R. On Fedora 38,\n>>\n>> ../trunk/configure --with-blas=flexiblas --with-lapack\n>>\n>> reports \"BLAS(FlexiBlas), LAPACK(in blas)\" and from my reading of\n>> R-admin, this is the recommended way of configuring with flexiblas.\n>>\n>> Configuring via (is this what you had in mind?):\n>>\n>> ../trunk/configure --with-blas=flexiblas --with-lapack=flexiblas\n>>\n>> reports \"BLAS(FlexiBlas), LAPACK(generic)\". The build would actually do\n>> \"-lflexiblas -lflexiblas\", the former for LAPACK (from --with-lapack\n>> value) and the latter for BLAS (from --with-blas value). The \"generic\"\n>> here means not from BLAS, but from an extra standalone library. Compare\n>> with the first (recommended) use when the build would only link\n>> \"-lflexiblas\" once.\n> I see. I didn't understand that part then. I thought that a library\n> should be specified.\n\nI read this from R-Admin re --with-lapack:\n\n\"In practice its main uses are without a value,\n\n- with an `enhanced' BLAS such as ATLAS, FlexiBLAS, MKL or OpenBLAS which\ncontains a full LAPACK (to avoid possible conflicts), or\n\n- on Debian/Ubuntu systems to select the system liblapack which can\nbe switched by the `alternatives' mechanism.\n\"\n\nI've updated configure in R-devel to detect when the same library is \nspecified explicitly for blas and lapack, so that now even that is \nhandled and reported as LAPACK in Blas libs.\n\nBest\nTomas\n\n>",
+      "body_snippet": "On 11/1/23 13:29, Iñaki Ucar wrote:\n> On Wed, 1 Nov 2023 at 12:57, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>>\n>> On 10/31/23 10:45, Iñaki Ucar wrote:\n>>> On Tue, 24 Oct 2023 at 12:53, Toma",
       "thread_id": "thread-ce3c21850d0b",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/082991.html"
     },
     {
       "id": "msg-acde33d83c7a",
@@ -102,7 +106,8 @@
       "body_snippet": "Dear Dr. Robert M Flight, dear R-developers,\n\nBy an accident, I've noticed this problem reported on Mastodon [1].\n\nOn a computer with ?32G of RAM, running the following code (which may\ntake 5 CPU-hour",
       "thread_id": "thread-acde33d83c7a",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/082992.html"
     },
     {
       "id": "msg-57c3d7f6d01f",
@@ -114,11 +119,12 @@
       "subject_clean": "'R CMD INSTALL' keeps going on despite serious errors, and returns exit code 0",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Hi list,\n\nHere is an example:\n\n ??? hpages at XPS15:~$ R CMD INSTALL CoreGx\n ??? * installing to library ?/home/hpages/R/R-4.4.r85388/site-library?\n ??? * installing *source* package ?CoreGx? ...\n ??? ** using staged installation\n ??? ** R\n ??? ** data\n ??? *** moving datasets to lazyload DB\n ??? ** inst\n ??? ** byte-compile and prepare package for lazy loading\n ??? Error : in method for ?updateObject? with signature \n?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \nmust appear in the method, in the same place at the end of the argument list\n ??? Error: unable to load R code in package ?CoreGx?\n ??? ** help\n ??? *** installing help indices\n ??? ** building package indices\n ??? ** installing vignettes\n ??? ** testing if installed package can be loaded from temporary location\n ??? Error : in method for ?updateObject? with signature \n?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \nmust appear in the method, in the same place at the end of the argument list\n ??? Error: package or namespace load failed for ?CoreGx?:\n ?unable to load R code in package ?CoreGx?\n ??? Error: loading failed\n ??? ** testing if installed package can be loaded from final location\n ??? Error : in method for ?updateObject? with signature \n?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \nmust appear in the method, in the same place at the end of the argument list\n ??? Error: package or namespace load failed for ?CoreGx?:\n ?unable to load R code in package ?CoreGx?\n ??? Error: loading failed\n ??? Error : in method for ?updateObject? with signature \n?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \nmust appear in the method, in the same place at the end of the argument list\n ??? Error: unable to load R code in package ?CoreGx?\n ??? ** testing if installed package keeps a record of temporary \ninstallation path\n ??? * DONE (CoreGx)\n\nMany serious errors were ignored. Plus the command returned exit code 0:\n\n ??? hpages at XPS15:~$ echo $?\n ??? 0\n\nThis is with R 4.4, that BioC 3.19 will be based on and that we only \nstarted to use recently for our daily builds.\n\nStrangely, we only see this on Linux. On Windows and Mac, we get the \nusual hard error, as expected. See:\n\n- \nhttps://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/nebbiolo1-install.html\n\n- \nhttps://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/palomino3-install.html\n\n- \nhttps://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/merida1-install.html\n\nTo reproduce:\n\n ??? library(remotes)\n ??? install_git(\"https://git.bioconductor.org/packages/CoreGx\")\n\nThanks,\n\nH.\n\n > sessionInfo()\nR Under development (unstable) (2023-10-22 r85388)\nPlatform: x86_64-pc-linux-gnu\nRunning under: Ubuntu 23.10\n\nMatrix products: default\nBLAS:?? /home/hpages/R/R-4.4.r85388/lib/libRblas.so\nLAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.11.0\n\nlocale:\n ?[1] LC_CTYPE=en_US.UTF-8?????? LC_NUMERIC=C\n ?[3] LC_TIME=en_US.UTF-8??????? LC_COLLATE=en_US.UTF-8\n ?[5] LC_MONETARY=en_US.UTF-8??? LC_MESSAGES=en_US.UTF-8\n ?[7] LC_PAPER=en_US.UTF-8?????? LC_NAME=C\n ?[9] LC_ADDRESS=C?????????????? LC_TELEPHONE=C\n[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n\ntime zone: America/Los_Angeles\ntzcode source: system (glibc)\n\nattached base packages:\n[1] stats???? graphics? grDevices utils???? datasets? methods base\n\nother attached packages:\n[1] remotes_2.4.2.1\n\nloaded via a namespace (and not attached):\n ?[1] processx_3.8.2??? compiler_4.4.0??? R6_2.5.1 rprojroot_2.0.3\n ?[5] cli_3.6.1???????? prettyunits_1.2.0 tools_4.4.0 crayon_1.5.2\n ?[9] desc_1.4.2??????? callr_3.7.3?????? pkgbuild_1.4.2 ps_1.7.5\n\n-- \nHerv? Pag?s\n\nBioconductor Core Team\nhpages.on.github at gmail.com\n\n\t[[alternative HTML version deleted]]",
-      "body_snippet": "Hi list,\n\nHere is an example:\n\n ??? hpages at XPS15:~$ R CMD INSTALL CoreGx\n ??? * installing to library ?/home/hpages/R/R-4.4.r85388/site-library?\n ??? * installing *source* package ?CoreGx? ...\n ???",
+      "body_plain": "Hi list,\n\nHere is an example:\n\n     hpages at XPS15:~$ R CMD INSTALL CoreGx\n     * installing to library ‘/home/hpages/R/R-4.4.r85388/site-library’\n     * installing *source* package ‘CoreGx’ ...\n     ** using staged installation\n     ** R\n     ** data\n     *** moving datasets to lazyload DB\n     ** inst\n     ** byte-compile and prepare package for lazy loading\n     Error : in method for ‘updateObject’ with signature \n‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \nmust appear in the method, in the same place at the end of the argument list\n     Error: unable to load R code in package ‘CoreGx’\n     ** help\n     *** installing help indices\n     ** building package indices\n     ** installing vignettes\n     ** testing if installed package can be loaded from temporary location\n     Error : in method for ‘updateObject’ with signature \n‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \nmust appear in the method, in the same place at the end of the argument list\n     Error: package or namespace load failed for ‘CoreGx’:\n  unable to load R code in package ‘CoreGx’\n     Error: loading failed\n     ** testing if installed package can be loaded from final location\n     Error : in method for ‘updateObject’ with signature \n‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \nmust appear in the method, in the same place at the end of the argument list\n     Error: package or namespace load failed for ‘CoreGx’:\n  unable to load R code in package ‘CoreGx’\n     Error: loading failed\n     Error : in method for ‘updateObject’ with signature \n‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \nmust appear in the method, in the same place at the end of the argument list\n     Error: unable to load R code in package ‘CoreGx’\n     ** testing if installed package keeps a record of temporary \ninstallation path\n     * DONE (CoreGx)\n\nMany serious errors were ignored. Plus the command returned exit code 0:\n\n     hpages at XPS15:~$ echo $?\n ??  0\n\nThis is with R 4.4, that BioC 3.19 will be based on and that we only \nstarted to use recently for our daily builds.\n\nStrangely, we only see this on Linux. On Windows and Mac, we get the \nusual hard error, as expected. See:\n\n- \nhttps://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/nebbiolo1-install.html\n\n- \nhttps://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/palomino3-install.html\n\n- \nhttps://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/merida1-install.html\n\nTo reproduce:\n\n     library(remotes)\n     install_git(\"https://git.bioconductor.org/packages/CoreGx\")\n\nThanks,\n\nH.\n\n > sessionInfo()\nR Under development (unstable) (2023-10-22 r85388)\nPlatform: x86_64-pc-linux-gnu\nRunning under: Ubuntu 23.10\n\nMatrix products: default\nBLAS:   /home/hpages/R/R-4.4.r85388/lib/libRblas.so\nLAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.11.0\n\nlocale:\n  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C\n  [9] LC_ADDRESS=C   ?????????   LC_TELEPHONE=C\n[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n\ntime zone: America/Los_Angeles\ntzcode source: system (glibc)\n\nattached base packages:\n[1] stats     graphics  grDevices utils     datasets  methods base\n\nother attached packages:\n[1] remotes_2.4.2.1\n\nloaded via a namespace (and not attached):\n  [1] processx_3.8.2    compiler_4.4.0    R6_2.5.1 rprojroot_2.0.3\n  [5] cli_3.6.1         prettyunits_1.2.0 tools_4.4.0 crayon_1.5.2\n  [9] desc_1.4.2        callr_3.7.3       pkgbuild_1.4.2 ps_1.7.5\n\n-- \nHervé Pagès\n\nBioconductor Core Team\nhpages.on.github at gmail.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi list,\n\nHere is an example:\n\n     hpages at XPS15:~$ R CMD INSTALL CoreGx\n     * installing to library ‘/home/hpages/R/R-4.4.r85388/site-library’\n     * installing *source* package ‘CoreGx’ ...\n    ",
       "thread_id": "thread-57c3d7f6d01f",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/082993.html"
     },
     {
       "id": "msg-296333aac314",
@@ -132,11 +138,12 @@
       "references": [
         "<81945eb7-df8f-446d-b7e7-8f2b591807b4@gmail.com>"
       ],
-      "body_plain": "Forgot to mention that the package actually got installed, but is \nunloadable (not surprisingly):\n\n ??? > \"CoreGx\" %in% rownames(installed.packages())\n ??? [1] TRUE\n\n ??? > suppressWarnings(suppressMessages(library(CoreGx)))\n ??? Error : in method for ?updateObject? with signature \n?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \nmust appear in the method, in the same place at the end of the argument list\n ??? Error: package or namespace load failed for ?CoreGx?:\n ? ?? unable to load R code in package ?CoreGx?\n\nBest,\n\nH.\n\nOn 11/3/23 15:10, Herv? Pag?s wrote:\n>\n> Hi list,\n>\n> Here is an example:\n>\n> ??? hpages at XPS15:~$ R CMD INSTALL CoreGx\n> ??? * installing to library ?/home/hpages/R/R-4.4.r85388/site-library?\n> ??? * installing *source* package ?CoreGx? ...\n> ??? ** using staged installation\n> ??? ** R\n> ??? ** data\n> ??? *** moving datasets to lazyload DB\n> ??? ** inst\n> ??? ** byte-compile and prepare package for lazy loading\n> ??? Error : in method for ?updateObject? with signature \n> ?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \n> must appear in the method, in the same place at the end of the \n> argument list\n> ??? Error: unable to load R code in package ?CoreGx?\n> ??? ** help\n> ??? *** installing help indices\n> ??? ** building package indices\n> ??? ** installing vignettes\n> ??? ** testing if installed package can be loaded from temporary location\n> ??? Error : in method for ?updateObject? with signature \n> ?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \n> must appear in the method, in the same place at the end of the \n> argument list\n> ??? Error: package or namespace load failed for ?CoreGx?:\n> ?unable to load R code in package ?CoreGx?\n> ??? Error: loading failed\n> ??? ** testing if installed package can be loaded from final location\n> ??? Error : in method for ?updateObject? with signature \n> ?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \n> must appear in the method, in the same place at the end of the \n> argument list\n> ??? Error: package or namespace load failed for ?CoreGx?:\n> ?unable to load R code in package ?CoreGx?\n> ??? Error: loading failed\n> ??? Error : in method for ?updateObject? with signature \n> ?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \n> must appear in the method, in the same place at the end of the \n> argument list\n> ??? Error: unable to load R code in package ?CoreGx?\n> ??? ** testing if installed package keeps a record of temporary \n> installation path\n> ??? * DONE (CoreGx)\n>\n> Many serious errors were ignored. Plus the command returned exit code 0:\n>\n> ??? hpages at XPS15:~$ echo $?\n> ??? 0\n>\n> This is with R 4.4, that BioC 3.19 will be based on and that we only \n> started to use recently for our daily builds.\n>\n> Strangely, we only see this on Linux. On Windows and Mac, we get the \n> usual hard error, as expected. See:\n>\n> - \n> https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/nebbiolo1-install.html\n>\n> - \n> https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/palomino3-install.html\n>\n> - \n> https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/merida1-install.html\n>\n> To reproduce:\n>\n> ??? library(remotes)\n> ??? install_git(\"https://git.bioconductor.org/packages/CoreGx\")\n>\n> Thanks,\n>\n> H.\n>\n> > sessionInfo()\n> R Under development (unstable) (2023-10-22 r85388)\n> Platform: x86_64-pc-linux-gnu\n> Running under: Ubuntu 23.10\n>\n> Matrix products: default\n> BLAS:?? /home/hpages/R/R-4.4.r85388/lib/libRblas.so\n> LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.11.0\n>\n> locale:\n> ?[1] LC_CTYPE=en_US.UTF-8?????? LC_NUMERIC=C\n> ?[3] LC_TIME=en_US.UTF-8??????? LC_COLLATE=en_US.UTF-8\n> ?[5] LC_MONETARY=en_US.UTF-8??? LC_MESSAGES=en_US.UTF-8\n> ?[7] LC_PAPER=en_US.UTF-8?????? LC_NAME=C\n> ?[9] LC_ADDRESS=C?????????????? LC_TELEPHONE=C\n> [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n>\n> time zone: America/Los_Angeles\n> tzcode source: system (glibc)\n>\n> attached base packages:\n> [1] stats???? graphics? grDevices utils???? datasets? methods base\n>\n> other attached packages:\n> [1] remotes_2.4.2.1\n>\n> loaded via a namespace (and not attached):\n> ?[1] processx_3.8.2??? compiler_4.4.0??? R6_2.5.1 rprojroot_2.0.3\n> ?[5] cli_3.6.1???????? prettyunits_1.2.0 tools_4.4.0 crayon_1.5.2\n> ?[9] desc_1.4.2??????? callr_3.7.3?????? pkgbuild_1.4.2 ps_1.7.5\n>\n> -- \n> Herv? Pag?s\n>\n> Bioconductor Core Team\n> hpages.on.github at gmail.com\n\n-- \nHerv? Pag?s\n\nBioconductor Core Team\nhpages.on.github at gmail.com\n\n\t[[alternative HTML version deleted]]",
-      "body_snippet": "Forgot to mention that the package actually got installed, but is \nunloadable (not surprisingly):\n\n ??? > \"CoreGx\" %in% rownames(installed.packages())\n ??? [1] TRUE\n\n ??? > suppressWarnings(suppressMe",
+      "body_plain": "Forgot to mention that the package actually got installed, but is \nunloadable (not surprisingly):\n\n     > \"CoreGx\" %in% rownames(installed.packages())\n     [1] TRUE\n\n     > suppressWarnings(suppressMessages(library(CoreGx)))\n     Error : in method for ‘updateObject’ with signature \n‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \nmust appear in the method, in the same place at the end of the argument list\n     Error: package or namespace load failed for ‘CoreGx’:\n      unable to load R code in package ‘CoreGx’\n\nBest,\n\nH.\n\nOn 11/3/23 15:10, Hervé Pagès wrote:\n>\n> Hi list,\n>\n> Here is an example:\n>\n>     hpages at XPS15:~$ R CMD INSTALL CoreGx\n>     * installing to library ‘/home/hpages/R/R-4.4.r85388/site-library’\n>     * installing *source* package ‘CoreGx’ ...\n>     ** using staged installation\n>     ** R\n>     ** data\n>     *** moving datasets to lazyload DB\n>     ** inst\n>     ** byte-compile and prepare package for lazy loading\n>     Error : in method for ‘updateObject’ with signature \n> ‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \n> must appear in the method, in the same place at the end of the \n> argument list\n>     Error: unable to load R code in package ‘CoreGx’\n>     ** help\n>     *** installing help indices\n>     ** building package indices\n>     ** installing vignettes\n>     ** testing if installed package can be loaded from temporary location\n>     Error : in method for ‘updateObject’ with signature \n> ‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \n> must appear in the method, in the same place at the end of the \n> argument list\n>     Error: package or namespace load failed for ‘CoreGx’:\n>  unable to load R code in package ‘CoreGx’\n>     Error: loading failed\n>     ** testing if installed package can be loaded from final location\n>     Error : in method for ‘updateObject’ with signature \n> ‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \n> must appear in the method, in the same place at the end of the \n> argument list\n>     Error: package or namespace load failed for ‘CoreGx’:\n>  unable to load R code in package ‘CoreGx’\n>     Error: loading failed\n>     Error : in method for ‘updateObject’ with signature \n> ‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \n> must appear in the method, in the same place at the end of the \n> argument list\n>     Error: unable to load R code in package ‘CoreGx’\n>     ** testing if installed package keeps a record of temporary \n> installation path\n>     * DONE (CoreGx)\n>\n> Many serious errors were ignored. Plus the command returned exit code 0:\n>\n>     hpages at XPS15:~$ echo $?\n>     0\n>\n> This is with R 4.4, that BioC 3.19 will be based on and that we only \n> started to use recently for our daily builds.\n>\n> Strangely, we only see this on Linux. On Windows and Mac, we get the \n> usual hard error, as expected. See:\n>\n> - \n> https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/nebbiolo1-install.html\n>\n> - \n> https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/palomino3-install.html\n>\n> - \n> https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/merida1-install.html\n>\n> To reproduce:\n>\n>     library(remotes)\n>     install_git(\"https://git.bioconductor.org/packages/CoreGx\")\n>\n> Thanks,\n>\n> H.\n>\n> > sessionInfo()\n> R Under development (unstable) (2023-10-22 r85388)\n> Platform: x86_64-pc-linux-gnu\n> Running under: Ubuntu 23.10\n>\n> Matrix products: default\n> BLAS:   /home/hpages/R/R-4.4.r85388/lib/libRblas.so\n> LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.11.0\n>\n> locale:\n>  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n>  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n>  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n>  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C\n>  [9] LC_ADDRESS=C   ?????????   LC_TELEPHONE=C\n> [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n>\n> time zone: America/Los_Angeles\n> tzcode source: system (glibc)\n>\n> attached base packages:\n> [1] stats     graphics  grDevices utils     datasets  methods base\n>\n> other attached packages:\n> [1] remotes_2.4.2.1\n>\n> loaded via a namespace (and not attached):\n>  [1] processx_3.8.2    compiler_4.4.0    R6_2.5.1 rprojroot_2.0.3\n>  [5] cli_3.6.1         prettyunits_1.2.0 tools_4.4.0 crayon_1.5.2\n>  [9] desc_1.4.2        callr_3.7.3       pkgbuild_1.4.2 ps_1.7.5\n>\n> -- \n> Hervé Pagès\n>\n> Bioconductor Core Team\n> hpages.on.github at gmail.com\n\n-- \nHervé Pagès\n\nBioconductor Core Team\nhpages.on.github at gmail.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Forgot to mention that the package actually got installed, but is \nunloadable (not surprisingly):\n\n     > \"CoreGx\" %in% rownames(installed.packages())\n     [1] TRUE\n\n     > suppressWarnings(suppressMe",
       "thread_id": "thread-57c3d7f6d01f",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/082994.html"
     },
     {
       "id": "msg-08cad4f364fe",
@@ -150,11 +157,12 @@
       "references": [
         "<81945eb7-df8f-446d-b7e7-8f2b591807b4@gmail.com>"
       ],
-      "body_plain": ">>>>> Herv? Pag?s \n>>>>>     on Fri, 3 Nov 2023 15:10:40 -0700 writes:\n\n    > Hi list,\n\n    > Here is an example:\n\n    >  ??? hpages at XPS15:~$ R CMD INSTALL CoreGx ??? * installing\n\n\n    > ??? hpages at XPS15:~$ R CMD INSTALL CoreGx\n    > ??? * installing to library ?/home/hpages/R/R-4.4.r85388/site-library?\n                                                        ^^^^^^^\n\nYes, this was bad behavior was the case for a short time (too\nlong, my fault !!) in R-devel. \n\nBut that,  svn rev 85388 , was *long* ago (close to 2 weeks):\nCurrent R-devel is 85471\n(The bug was \"only\" in 382--388, fixed in 389 -- you were really unlucky!)\n\nStill, I'm sorry that you were accidentally affected, too.\nMartin\n\n\n    > ??? * installing *source* package ?CoreGx? ...\n    > ??? ** using staged installation\n    > ??? ** R\n    > ??? ** data\n    > ??? *** moving datasets to lazyload DB\n    > ??? ** inst\n    > ??? ** byte-compile and prepare package for lazy loading\n    > ??? Error : in method for ?updateObject? with signature \n    > ?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \n    > must appear in the method, in the same place at the end of the argument list\n    > ??? Error: unable to load R code in package ?CoreGx?\n    > ??? ** help\n    > ??? *** installing help indices\n    > ??? ** building package indices\n    > ??? ** installing vignettes\n    > ??? ** testing if installed package can be loaded from temporary location\n    > ??? Error : in method for ?updateObject? with signature \n    > ?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \n    > must appear in the method, in the same place at the end of the argument list\n    > ??? Error: package or namespace load failed for ?CoreGx?:\n    > ?unable to load R code in package ?CoreGx?\n    > ??? Error: loading failed\n    > ??? ** testing if installed package can be loaded from final location\n    > ??? Error : in method for ?updateObject? with signature \n    > ?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \n    > must appear in the method, in the same place at the end of the argument list\n    > ??? Error: package or namespace load failed for ?CoreGx?:\n    > ?unable to load R code in package ?CoreGx?\n    > ??? Error: loading failed\n    > ??? Error : in method for ?updateObject? with signature \n    > ?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic \n    > must appear in the method, in the same place at the end of the argument list\n    > ??? Error: unable to load R code in package ?CoreGx?\n    > ??? ** testing if installed package keeps a record of temporary \n    > installation path\n    > ??? * DONE (CoreGx)\n\n    > Many serious errors were ignored. Plus the command returned exit code 0:\n\n    > ??? hpages at XPS15:~$ echo $?\n    > ??? 0\n\n    > This is with R 4.4, that BioC 3.19 will be based on and that we only \n    > started to use recently for our daily builds.\n\n    > Strangely, we only see this on Linux. On Windows and Mac, we get the \n    > usual hard error, as expected. See:\n\n    > - \n    > https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/nebbiolo1-install.html\n\n    > - \n    > https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/palomino3-install.html\n\n    > - \n    > https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/merida1-install.html\n\n    > To reproduce:\n\n    > ??? library(remotes)\n    > ??? install_git(\"https://git.bioconductor.org/packages/CoreGx\")\n\n    > Thanks,\n\n    > H.\n\n    >> sessionInfo()\n    > R Under development (unstable) (2023-10-22 r85388)\n    > Platform: x86_64-pc-linux-gnu\n    > Running under: Ubuntu 23.10\n\n    > Matrix products: default\n    > BLAS:?? /home/hpages/R/R-4.4.r85388/lib/libRblas.so\n    > LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.11.0\n\n    > locale:\n    > ?[1] LC_CTYPE=en_US.UTF-8?????? LC_NUMERIC=C\n    > ?[3] LC_TIME=en_US.UTF-8??????? LC_COLLATE=en_US.UTF-8\n    > ?[5] LC_MONETARY=en_US.UTF-8??? LC_MESSAGES=en_US.UTF-8\n    > ?[7] LC_PAPER=en_US.UTF-8?????? LC_NAME=C\n    > ?[9] LC_ADDRESS=C?????????????? LC_TELEPHONE=C\n    > [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n\n    > time zone: America/Los_Angeles\n    > tzcode source: system (glibc)\n\n    > attached base packages:\n    > [1] stats???? graphics? grDevices utils???? datasets? methods base\n\n    > other attached packages:\n    > [1] remotes_2.4.2.1\n\n    > loaded via a namespace (and not attached):\n    > ?[1] processx_3.8.2??? compiler_4.4.0??? R6_2.5.1 rprojroot_2.0.3\n    > ?[5] cli_3.6.1???????? prettyunits_1.2.0 tools_4.4.0 crayon_1.5.2\n    > ?[9] desc_1.4.2??????? callr_3.7.3?????? pkgbuild_1.4.2 ps_1.7.5\n\n    > -- \n    > Herv? Pag?s\n\n    > Bioconductor Core Team\n    > hpages.on.github at gmail.com\n\n    > [[alternative HTML version deleted]]\n\n    > ______________________________________________\n    > R-devel at r-project.org mailing list\n    > https://stat.ethz.ch/mailman/listinfo/r-devel",
-      "body_snippet": ">>>>> Herv? Pag?s \n>>>>>     on Fri, 3 Nov 2023 15:10:40 -0700 writes:\n\n    > Hi list,\n\n    > Here is an example:\n\n    >  ??? hpages at XPS15:~$ R CMD INSTALL CoreGx ??? * installing\n\n\n    > ??? hpage",
+      "body_plain": ">>>>> Hervé Pagès \n>>>>>     on Fri, 3 Nov 2023 15:10:40 -0700 writes:\n\n    > Hi list,\n\n    > Here is an example:\n\n    >      hpages at XPS15:~$ R CMD INSTALL CoreGx     * installing\n\n\n    >     hpages at XPS15:~$ R CMD INSTALL CoreGx\n    > ?   * installing to library ‘/home/hpages/R/R-4.4.r85388/site-library’\n                                                        ^^^^^^^\n\nYes, this was bad behavior was the case for a short time (too\nlong, my fault !!) in R-devel. \n\nBut that,  svn rev 85388 , was *long* ago (close to 2 weeks):\nCurrent R-devel is 85471\n(The bug was \"only\" in 382--388, fixed in 389 -- you were really unlucky!)\n\nStill, I'm sorry that you were accidentally affected, too.\nMartin\n\n\n    > ?   * installing *source* package ‘CoreGx’ ...\n    > ?   ** using staged installation\n    > ?   ** R\n    > ?   ** data\n    >     *** moving datasets to lazyload DB\n    > ?   ** inst\n    > ?   ** byte-compile and prepare package for lazy loading\n    >     Error : in method for ‘updateObject’ with signature \n    > ‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \n    > must appear in the method, in the same place at the end of the argument list\n    >     Error: unable to load R code in package ‘CoreGx’\n    > ?   ** help\n    >     *** installing help indices\n    > ?   ** building package indices\n    > ?   ** installing vignettes\n    > ?   ** testing if installed package can be loaded from temporary location\n    >     Error : in method for ‘updateObject’ with signature \n    > ‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \n    > must appear in the method, in the same place at the end of the argument list\n    >     Error: package or namespace load failed for ‘CoreGx’:\n    >  unable to load R code in package ‘CoreGx’\n    >     Error: loading failed\n    > ?   ** testing if installed package can be loaded from final location\n    >     Error : in method for ‘updateObject’ with signature \n    > ‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \n    > must appear in the method, in the same place at the end of the argument list\n    >     Error: package or namespace load failed for ‘CoreGx’:\n    >  unable to load R code in package ‘CoreGx’\n    >     Error: loading failed\n    >     Error : in method for ‘updateObject’ with signature \n    > ‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic \n    > must appear in the method, in the same place at the end of the argument list\n    >     Error: unable to load R code in package ‘CoreGx’\n    > ?   ** testing if installed package keeps a record of temporary \n    > installation path\n    > ?   * DONE (CoreGx)\n\n    > Many serious errors were ignored. Plus the command returned exit code 0:\n\n    >     hpages at XPS15:~$ echo $?\n    > ??? 0\n\n    > This is with R 4.4, that BioC 3.19 will be based on and that we only \n    > started to use recently for our daily builds.\n\n    > Strangely, we only see this on Linux. On Windows and Mac, we get the \n    > usual hard error, as expected. See:\n\n    > - \n    > https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/nebbiolo1-install.html\n\n    > - \n    > https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/palomino3-install.html\n\n    > - \n    > https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/merida1-install.html\n\n    > To reproduce:\n\n    >     library(remotes)\n    >     install_git(\"https://git.bioconductor.org/packages/CoreGx\")\n\n    > Thanks,\n\n    > H.\n\n    >> sessionInfo()\n    > R Under development (unstable) (2023-10-22 r85388)\n    > Platform: x86_64-pc-linux-gnu\n    > Running under: Ubuntu 23.10\n\n    > Matrix products: default\n    > BLAS:   /home/hpages/R/R-4.4.r85388/lib/libRblas.so\n    > LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.11.0\n\n    > locale:\n    >  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n    >  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n    >  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n    >  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C\n    >  [9] LC_ADDRESS=C   ?????????   LC_TELEPHONE=C\n    > [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n\n    > time zone: America/Los_Angeles\n    > tzcode source: system (glibc)\n\n    > attached base packages:\n    > [1] stats     graphics  grDevices utils     datasets  methods base\n\n    > other attached packages:\n    > [1] remotes_2.4.2.1\n\n    > loaded via a namespace (and not attached):\n    >  [1] processx_3.8.2    compiler_4.4.0    R6_2.5.1 rprojroot_2.0.3\n    >  [5] cli_3.6.1         prettyunits_1.2.0 tools_4.4.0 crayon_1.5.2\n    >  [9] desc_1.4.2        callr_3.7.3       pkgbuild_1.4.2 ps_1.7.5\n\n    > -- \n    > Hervé Pagès\n\n    > Bioconductor Core Team\n    > hpages.on.github at gmail.com\n\n    > [[alternative HTML version deleted]]\n\n    > ______________________________________________\n    > R-devel at r-project.org mailing list\n    > https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": ">>>>> Hervé Pagès \n>>>>>     on Fri, 3 Nov 2023 15:10:40 -0700 writes:\n\n    > Hi list,\n\n    > Here is an example:\n\n    >      hpages at XPS15:~$ R CMD INSTALL CoreGx     * installing\n\n\n    >     hpage",
       "thread_id": "thread-57c3d7f6d01f",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/082995.html"
     },
     {
       "id": "msg-fdb02594f894",
@@ -169,11 +177,12 @@
         "<81945eb7-df8f-446d-b7e7-8f2b591807b4@gmail.com>",
         "<25926.19588.486282.861678@stat.math.ethz.ch>"
       ],
-      "body_plain": "I see. We'll update soon. Thanks Martin.\n\nOn 11/4/23 06:52, Martin Maechler wrote:\n>>>>>> Herv? Pag?s\n>>>>>>      on Fri, 3 Nov 2023 15:10:40 -0700 writes:\n>      > Hi list,\n>\n>      > Here is an example:\n>\n>      >  ??? hpages at XPS15:~$ R CMD INSTALL CoreGx ??? * installing\n>\n>\n>      > ??? hpages at XPS15:~$ R CMD INSTALL CoreGx\n>      > ??? * installing to library ?/home/hpages/R/R-4.4.r85388/site-library?\n>                                                          ^^^^^^^\n>\n> Yes, this was bad behavior was the case for a short time (too\n> long, my fault !!) in R-devel.\n>\n> But that,  svn rev 85388 , was *long* ago (close to 2 weeks):\n> Current R-devel is 85471\n> (The bug was \"only\" in 382--388, fixed in 389 -- you were really unlucky!)\n>\n> Still, I'm sorry that you were accidentally affected, too.\n> Martin\n>\n>\n>      > ??? * installing *source* package ?CoreGx? ...\n>      > ??? ** using staged installation\n>      > ??? ** R\n>      > ??? ** data\n>      > ??? *** moving datasets to lazyload DB\n>      > ??? ** inst\n>      > ??? ** byte-compile and prepare package for lazy loading\n>      > ??? Error : in method for ?updateObject? with signature\n>      > ?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic\n>      > must appear in the method, in the same place at the end of the argument list\n>      > ??? Error: unable to load R code in package ?CoreGx?\n>      > ??? ** help\n>      > ??? *** installing help indices\n>      > ??? ** building package indices\n>      > ??? ** installing vignettes\n>      > ??? ** testing if installed package can be loaded from temporary location\n>      > ??? Error : in method for ?updateObject? with signature\n>      > ?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic\n>      > must appear in the method, in the same place at the end of the argument list\n>      > ??? Error: package or namespace load failed for ?CoreGx?:\n>      > ?unable to load R code in package ?CoreGx?\n>      > ??? Error: loading failed\n>      > ??? ** testing if installed package can be loaded from final location\n>      > ??? Error : in method for ?updateObject? with signature\n>      > ?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic\n>      > must appear in the method, in the same place at the end of the argument list\n>      > ??? Error: package or namespace load failed for ?CoreGx?:\n>      > ?unable to load R code in package ?CoreGx?\n>      > ??? Error: loading failed\n>      > ??? Error : in method for ?updateObject? with signature\n>      > ?object=\"CoreSet\"?:? arguments (?verbose?) after ?...? in the generic\n>      > must appear in the method, in the same place at the end of the argument list\n>      > ??? Error: unable to load R code in package ?CoreGx?\n>      > ??? ** testing if installed package keeps a record of temporary\n>      > installation path\n>      > ??? * DONE (CoreGx)\n>\n>      > Many serious errors were ignored. Plus the command returned exit code 0:\n>\n>      > ??? hpages at XPS15:~$ echo $?\n>      > ??? 0\n>\n>      > This is with R 4.4, that BioC 3.19 will be based on and that we only\n>      > started to use recently for our daily builds.\n>\n>      > Strangely, we only see this on Linux. On Windows and Mac, we get the\n>      > usual hard error, as expected. See:\n>\n>      > -\n>      >https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/nebbiolo1-install.html\n>\n>      > -\n>      >https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/palomino3-install.html\n>\n>      > -\n>      >https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/merida1-install.html\n>\n>      > To reproduce:\n>\n>      > ??? library(remotes)\n>      > ??? install_git(\"https://git.bioconductor.org/packages/CoreGx\")\n>\n>      > Thanks,\n>\n>      > H.\n>\n>      >> sessionInfo()\n>      > R Under development (unstable) (2023-10-22 r85388)\n>      > Platform: x86_64-pc-linux-gnu\n>      > Running under: Ubuntu 23.10\n>\n>      > Matrix products: default\n>      > BLAS:?? /home/hpages/R/R-4.4.r85388/lib/libRblas.so\n>      > LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.11.0\n>\n>      > locale:\n>      > ?[1] LC_CTYPE=en_US.UTF-8?????? LC_NUMERIC=C\n>      > ?[3] LC_TIME=en_US.UTF-8??????? LC_COLLATE=en_US.UTF-8\n>      > ?[5] LC_MONETARY=en_US.UTF-8??? LC_MESSAGES=en_US.UTF-8\n>      > ?[7] LC_PAPER=en_US.UTF-8?????? LC_NAME=C\n>      > ?[9] LC_ADDRESS=C?????????????? LC_TELEPHONE=C\n>      > [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n>\n>      > time zone: America/Los_Angeles\n>      > tzcode source: system (glibc)\n>\n>      > attached base packages:\n>      > [1] stats???? graphics? grDevices utils???? datasets? methods base\n>\n>      > other attached packages:\n>      > [1] remotes_2.4.2.1\n>\n>      > loaded via a namespace (and not attached):\n>      > ?[1] processx_3.8.2??? compiler_4.4.0??? R6_2.5.1 rprojroot_2.0.3\n>      > ?[5] cli_3.6.1???????? prettyunits_1.2.0 tools_4.4.0 crayon_1.5.2\n>      > ?[9] desc_1.4.2??????? callr_3.7.3?????? pkgbuild_1.4.2 ps_1.7.5\n>\n>      > --\n>      > Herv? Pag?s\n>\n>      > Bioconductor Core Team\n>      >hpages.on.github at gmail.com\n>\n>      > [[alternative HTML version deleted]]\n>\n>      > ______________________________________________\n>      >R-devel at r-project.org  mailing list\n>      >https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nHerv? Pag?s\n\nBioconductor Core Team\nhpages.on.github at gmail.com\n\n\t[[alternative HTML version deleted]]",
-      "body_snippet": "I see. We'll update soon. Thanks Martin.\n\nOn 11/4/23 06:52, Martin Maechler wrote:\n>>>>>> Herv? Pag?s\n>>>>>>      on Fri, 3 Nov 2023 15:10:40 -0700 writes:\n>      > Hi list,\n>\n>      > Here is an exam",
+      "body_plain": "I see. We'll update soon. Thanks Martin.\n\nOn 11/4/23 06:52, Martin Maechler wrote:\n>>>>>> Hervé Pagès\n>>>>>>      on Fri, 3 Nov 2023 15:10:40 -0700 writes:\n>      > Hi list,\n>\n>      > Here is an example:\n>\n>      >      hpages at XPS15:~$ R CMD INSTALL CoreGx     * installing\n>\n>\n>      >     hpages at XPS15:~$ R CMD INSTALL CoreGx\n>      > ?   * installing to library ‘/home/hpages/R/R-4.4.r85388/site-library’\n>                                                          ^^^^^^^\n>\n> Yes, this was bad behavior was the case for a short time (too\n> long, my fault !!) in R-devel.\n>\n> But that,  svn rev 85388 , was *long* ago (close to 2 weeks):\n> Current R-devel is 85471\n> (The bug was \"only\" in 382--388, fixed in 389 -- you were really unlucky!)\n>\n> Still, I'm sorry that you were accidentally affected, too.\n> Martin\n>\n>\n>      > ?   * installing *source* package ‘CoreGx’ ...\n>      > ?   ** using staged installation\n>      > ?   ** R\n>      > ?   ** data\n>      >     *** moving datasets to lazyload DB\n>      > ?   ** inst\n>      > ?   ** byte-compile and prepare package for lazy loading\n>      >     Error : in method for ‘updateObject’ with signature\n>      > ‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic\n>      > must appear in the method, in the same place at the end of the argument list\n>      >     Error: unable to load R code in package ‘CoreGx’\n>      > ?   ** help\n>      >     *** installing help indices\n>      > ?   ** building package indices\n>      > ?   ** installing vignettes\n>      > ?   ** testing if installed package can be loaded from temporary location\n>      >     Error : in method for ‘updateObject’ with signature\n>      > ‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic\n>      > must appear in the method, in the same place at the end of the argument list\n>      >     Error: package or namespace load failed for ‘CoreGx’:\n>      >  unable to load R code in package ‘CoreGx’\n>      >     Error: loading failed\n>      > ?   ** testing if installed package can be loaded from final location\n>      >     Error : in method for ‘updateObject’ with signature\n>      > ‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic\n>      > must appear in the method, in the same place at the end of the argument list\n>      >     Error: package or namespace load failed for ‘CoreGx’:\n>      >  unable to load R code in package ‘CoreGx’\n>      >     Error: loading failed\n>      >     Error : in method for ‘updateObject’ with signature\n>      > ‘object=\"CoreSet\"’:  arguments (‘verbose’) after ‘...’ in the generic\n>      > must appear in the method, in the same place at the end of the argument list\n>      >     Error: unable to load R code in package ‘CoreGx’\n>      > ?   ** testing if installed package keeps a record of temporary\n>      > installation path\n>      > ?   * DONE (CoreGx)\n>\n>      > Many serious errors were ignored. Plus the command returned exit code 0:\n>\n>      >     hpages at XPS15:~$ echo $?\n>      > ??  0\n>\n>      > This is with R 4.4, that BioC 3.19 will be based on and that we only\n>      > started to use recently for our daily builds.\n>\n>      > Strangely, we only see this on Linux. On Windows and Mac, we get the\n>      > usual hard error, as expected. See:\n>\n>      > -\n>      >https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/nebbiolo1-install.html\n>\n>      > -\n>      >https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/palomino3-install.html\n>\n>      > -\n>      >https://bioconductor.org/checkResults/3.19/bioc-LATEST/CoreGx/merida1-install.html\n>\n>      > To reproduce:\n>\n>      >     library(remotes)\n>      >     install_git(\"https://git.bioconductor.org/packages/CoreGx\")\n>\n>      > Thanks,\n>\n>      > H.\n>\n>      >> sessionInfo()\n>      > R Under development (unstable) (2023-10-22 r85388)\n>      > Platform: x86_64-pc-linux-gnu\n>      > Running under: Ubuntu 23.10\n>\n>      > Matrix products: default\n>      > BLAS:   /home/hpages/R/R-4.4.r85388/lib/libRblas.so\n>      > LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.11.0\n>\n>      > locale:\n>      >  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C\n>      >  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8\n>      >  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8\n>      >  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C\n>      >  [9] LC_ADDRESS=C   ?????????   LC_TELEPHONE=C\n>      > [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C\n>\n>      > time zone: America/Los_Angeles\n>      > tzcode source: system (glibc)\n>\n>      > attached base packages:\n>      > [1] stats     graphics  grDevices utils     datasets  methods base\n>\n>      > other attached packages:\n>      > [1] remotes_2.4.2.1\n>\n>      > loaded via a namespace (and not attached):\n>      >  [1] processx_3.8.2    compiler_4.4.0    R6_2.5.1 rprojroot_2.0.3\n>      >  [5] cli_3.6.1         prettyunits_1.2.0 tools_4.4.0 crayon_1.5.2\n>      >  [9] desc_1.4.2        callr_3.7.3       pkgbuild_1.4.2 ps_1.7.5\n>\n>      > --\n>      > Hervé Pagès\n>\n>      > Bioconductor Core Team\n>      >hpages.on.github at gmail.com\n>\n>      > [[alternative HTML version deleted]]\n>\n>      > ______________________________________________\n>      >R-devel at r-project.org  mailing list\n>      >https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nHervé Pagès\n\nBioconductor Core Team\nhpages.on.github at gmail.com\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "I see. We'll update soon. Thanks Martin.\n\nOn 11/4/23 06:52, Martin Maechler wrote:\n>>>>>> Hervé Pagès\n>>>>>>      on Fri, 3 Nov 2023 15:10:40 -0700 writes:\n>      > Hi list,\n>\n>      > Here is an exam",
       "thread_id": "thread-57c3d7f6d01f",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/082996.html"
     },
     {
       "id": "msg-f7544f480e68",
@@ -189,7 +198,8 @@
       "body_snippet": "This is another follow-up to the thread from September \"Recent changes to\nas.complex(NA_real_)\".\n\nA test in data.table was broken by the changes for NA coercion to complex;\nthe breakage essentially co",
       "thread_id": "thread-f7544f480e68",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/082997.html"
     },
     {
       "id": "msg-fa200813a8e2",
@@ -207,7 +217,8 @@
       "body_snippet": "Hmm, it is not actually at odds with help(c), it is just that the autocoercion works different that it used to, so that\n\nas.complex(NA) == as.complex(NA_real) == NA_real_+0i)\n\nwhich now differs from\n\n",
       "thread_id": "thread-f7544f480e68",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/082998.html"
     },
     {
       "id": "msg-cbee132ba27f",
@@ -225,7 +236,8 @@
       "body_snippet": ">>>>> Michael Chirico \n>>>>>     on Sun, 5 Nov 2023 09:41:42 -0800 writes:\n\n    > This is another follow-up to the thread from September\n    > \"Recent changes to as.complex(NA_real_)\".\n\n    > A test i",
       "thread_id": "thread-f7544f480e68",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/082999.html"
     },
     {
       "id": "msg-d2ec38a119f6",
@@ -241,7 +253,8 @@
       "body_snippet": "Dear List,\n\nI'm writing to gauge interest in new syntax for positional-only\nfunction parameters to be added to R.\n\nThe pattern of functions accepting other functions as inputs and\npassing additional .",
       "thread_id": "thread-d2ec38a119f6",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083000.html"
     },
     {
       "id": "msg-12771277fd32",
@@ -257,7 +270,8 @@
       "body_snippet": "Hi all,\n\nIn the next release of R (4.4) the option to obtain a paired t.test with\nthe formula interface for \"long\" data has been removed:\n\nt.test(x ~ group, paired = TRUE) # now results in an error.\n\n",
       "thread_id": "thread-12771277fd32",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083001.html"
     },
     {
       "id": "msg-1b30fa37d3c9",
@@ -276,7 +290,8 @@
       "body_snippet": "Thanks Martin. My hang-up was not on what the outcome of as.complex(NA)\nshould be, but rather, how I should read code like c(x, y) generally. Till\nnow, I have thought of it like 'c(x, y)' is c(as(x, t",
       "thread_id": "thread-f7544f480e68",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083002.html"
     },
     {
       "id": "msg-78c425982614",
@@ -295,7 +310,8 @@
       "body_snippet": ">>>>> peter dalgaard \n>>>>>     on Mon, 6 Nov 2023 11:59:51 +0100 writes:\n\n    > Hmm, it is not actually at odds with help(c), it is just that the autocoercion works different that it used to, so that",
       "thread_id": "thread-f7544f480e68",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083003.html"
     },
     {
       "id": "msg-1f820d06c979",
@@ -315,7 +331,8 @@
       "body_snippet": ">>>>> Michael Chirico \n>>>>>     on Mon, 6 Nov 2023 23:18:40 -0800 writes:\n\n    > Thanks Martin. My hang-up was not on what the outcome of as.complex(NA)\n    > should be, but rather, how I should read",
       "thread_id": "thread-f7544f480e68",
       "thread_depth": 3,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083004.html"
     },
     {
       "id": "msg-3d531b2a5884",
@@ -327,11 +344,12 @@
       "subject_clean": "False positives in check for lost braces (in tools::checkRd())",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Dear developers,\n\nwhile preparing to submit a package to CRAN, I noticed that a check for \nlost braces in Rd files (which is enabled in the current r-devel when \nchecking with the '--as-cran' option) seems to return false positives.\n\nMore specifically, a 'Lost braces' NOTE is issued (at least sometimes) \nwhen using the \\insertRef{...}{...} command from the Rdpack package.\n\nSince the corresponding changes in r-devel seem to be quite recent \n(apparently as of r85196), I hope this sketchy report is sufficient to \ntrack down the problem. If not, I will try to create a reproducible example.\n\nBest regards and many thanks,\nMartin\n\n\n-- \napl. Prof. Dr. Martin Becker, Akad. Oberrat\nLehrstab Statistik\nQuantitative Methoden\nFakult?t f?r Empirische Humanwissenschaften und Wirtschaftswissenschaft\nUniversit?t des Saarlandes\nCampus C3 1, Raum 2.17\n66123 Saarbr?cken\nDeutschland",
+      "body_plain": "Dear developers,\n\nwhile preparing to submit a package to CRAN, I noticed that a check for \nlost braces in Rd files (which is enabled in the current r-devel when \nchecking with the '--as-cran' option) seems to return false positives.\n\nMore specifically, a 'Lost braces' NOTE is issued (at least sometimes) \nwhen using the \\insertRef{...}{...} command from the Rdpack package.\n\nSince the corresponding changes in r-devel seem to be quite recent \n(apparently as of r85196), I hope this sketchy report is sufficient to \ntrack down the problem. If not, I will try to create a reproducible example.\n\nBest regards and many thanks,\nMartin\n\n\n-- \napl. Prof. Dr. Martin Becker, Akad. Oberrat\nLehrstab Statistik\nQuantitative Methoden\nFakultät für Empirische Humanwissenschaften und Wirtschaftswissenschaft\nUniversität des Saarlandes\nCampus C3 1, Raum 2.17\n66123 Saarbrücken\nDeutschland",
       "body_snippet": "Dear developers,\n\nwhile preparing to submit a package to CRAN, I noticed that a check for \nlost braces in Rd files (which is enabled in the current r-devel when \nchecking with the '--as-cran' option) ",
       "thread_id": "thread-3d531b2a5884",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083005.html"
     },
     {
       "id": "msg-fa55c0171b1b",
@@ -349,7 +367,8 @@
       "body_snippet": "On Tue, 7 Nov 2023 17:13:05 +0100\nMartin Becker <martin.becker at mx.uni-saarland.de> wrote:\n\n> More specifically, a 'Lost braces' NOTE is issued (at least\n> sometimes) when using the \\insertRef{...}{",
       "thread_id": "thread-3d531b2a5884",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083006.html"
     },
     {
       "id": "msg-7f3f0cd66704",
@@ -367,7 +386,8 @@
       "body_snippet": "This is a known issue already reported to the Rdpack maintainer. In some \ncases, the Rd code generated by Rdpack's macros contains unnecessary \nbraces that trigger the check note because they match th",
       "thread_id": "thread-3d531b2a5884",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083007.html"
     },
     {
       "id": "msg-68f8458264d0",
@@ -382,11 +402,12 @@
         "<8513a24e-e435-4781-aca2-452097961468@mx.uni-saarland.de>",
         "<20231108010037.6ef3e3c3@Tarkus>"
       ],
-      "body_plain": "Am 07.11.23 um 23:00 schrieb Ivan Krylov:\n> On Tue, 7 Nov 2023 17:13:05 +0100\n> Martin Becker <martin.becker at mx.uni-saarland.de> wrote:\n> \n>> More specifically, a 'Lost braces' NOTE is issued (at least\n>> sometimes) when using the \\insertRef{...}{...} command from the\n>> Rdpack package.\n> \n> Does anything change if you use the development version of Rdpack (not\n> currently on CRAN)? Apparently, the latest commit performs some changes\n> to fix the \"lost braces\" note:\n> https://github.com/GeoBosh/Rdpack/commit/569ee0515fce00eac98ef45e642b805cb473ce1c\n> \n\nThank you very much for the hint, using the development version of \nRdpack to check the package actually fixes the problem!\n\nBest regards,\nMartin\n\n\n-- \napl. Prof. Dr. Martin Becker, Akad. Oberrat\nLehrstab Statistik\nQuantitative Methoden\nFakult?t f?r Empirische Humanwissenschaften und Wirtschaftswissenschaft\nUniversit?t des Saarlandes\nCampus C3 1, Raum 2.17\n66123 Saarbr?cken\nDeutschland",
+      "body_plain": "Am 07.11.23 um 23:00 schrieb Ivan Krylov:\n> On Tue, 7 Nov 2023 17:13:05 +0100\n> Martin Becker <martin.becker at mx.uni-saarland.de> wrote:\n> \n>> More specifically, a 'Lost braces' NOTE is issued (at least\n>> sometimes) when using the \\insertRef{...}{...} command from the\n>> Rdpack package.\n> \n> Does anything change if you use the development version of Rdpack (not\n> currently on CRAN)? Apparently, the latest commit performs some changes\n> to fix the \"lost braces\" note:\n> https://github.com/GeoBosh/Rdpack/commit/569ee0515fce00eac98ef45e642b805cb473ce1c\n> \n\nThank you very much for the hint, using the development version of \nRdpack to check the package actually fixes the problem!\n\nBest regards,\nMartin\n\n\n-- \napl. Prof. Dr. Martin Becker, Akad. Oberrat\nLehrstab Statistik\nQuantitative Methoden\nFakultät für Empirische Humanwissenschaften und Wirtschaftswissenschaft\nUniversität des Saarlandes\nCampus C3 1, Raum 2.17\n66123 Saarbrücken\nDeutschland",
       "body_snippet": "Am 07.11.23 um 23:00 schrieb Ivan Krylov:\n> On Tue, 7 Nov 2023 17:13:05 +0100\n> Martin Becker <martin.becker at mx.uni-saarland.de> wrote:\n> \n>> More specifically, a 'Lost braces' NOTE is issued (at l",
       "thread_id": "thread-3d531b2a5884",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083008.html"
     },
     {
       "id": "msg-39c83c1795fb",
@@ -401,11 +422,12 @@
         "<8513a24e-e435-4781-aca2-452097961468@mx.uni-saarland.de>",
         "<8304b64d-9048-456a-8ecb-ec207a9bf273@fau.de>"
       ],
-      "body_plain": "Am 07.11.23 um 23:59 schrieb Sebastian Meyer:\n> This is a known issue already reported to the Rdpack maintainer. In some \n> cases, the Rd code generated by Rdpack's macros contains unnecessary \n> braces that trigger the check note because they match the pattern \n> \"text{text}\" that detects common mistakes like \"code{x}\" (missing an \n> escape for the macro name).\n> \n> Rdpack's fork of tools::deparseLatex() is being updated to drop the \n> braces that cause the note. I have modified the check code to ignore \n> these cases for now (r85491).\n> \n> Best regards,\n> \n>  ????Sebastian Meyer\n> \n> \n\nThank you very much, so I don't have to wait for the release of the new \nversion of Rdpack on CRAN before submitting.\n\nBest regards,\nMartin\n\n\n-- \napl. Prof. Dr. Martin Becker, Akad. Oberrat\nLehrstab Statistik\nQuantitative Methoden\nFakult?t f?r Empirische Humanwissenschaften und Wirtschaftswissenschaft\nUniversit?t des Saarlandes\nCampus C3 1, Raum 2.17\n66123 Saarbr?cken\nDeutschland",
+      "body_plain": "Am 07.11.23 um 23:59 schrieb Sebastian Meyer:\n> This is a known issue already reported to the Rdpack maintainer. In some \n> cases, the Rd code generated by Rdpack's macros contains unnecessary \n> braces that trigger the check note because they match the pattern \n> \"text{text}\" that detects common mistakes like \"code{x}\" (missing an \n> escape for the macro name).\n> \n> Rdpack's fork of tools::deparseLatex() is being updated to drop the \n> braces that cause the note. I have modified the check code to ignore \n> these cases for now (r85491).\n> \n> Best regards,\n> \n>      Sebastian Meyer\n> \n> \n\nThank you very much, so I don't have to wait for the release of the new \nversion of Rdpack on CRAN before submitting.\n\nBest regards,\nMartin\n\n\n-- \napl. Prof. Dr. Martin Becker, Akad. Oberrat\nLehrstab Statistik\nQuantitative Methoden\nFakultät für Empirische Humanwissenschaften und Wirtschaftswissenschaft\nUniversität des Saarlandes\nCampus C3 1, Raum 2.17\n66123 Saarbrücken\nDeutschland",
       "body_snippet": "Am 07.11.23 um 23:59 schrieb Sebastian Meyer:\n> This is a known issue already reported to the Rdpack maintainer. In some \n> cases, the Rd code generated by Rdpack's macros contains unnecessary \n> brac",
       "thread_id": "thread-3d531b2a5884",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083009.html"
     },
     {
       "id": "msg-a57b342e6405",
@@ -423,7 +445,8 @@
       "body_snippet": "So, to summarize, the open questions are:\n\n     (1) Should as.complex(NA_character_) give complex(r=NA_real_, i=0)\n         instead of NA_complex_?\n\n     (2) Should the first argument in c(NA, x) and ",
       "thread_id": "thread-a57b342e6405",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083010.html"
     },
     {
       "id": "msg-9f41e0543e23",
@@ -442,7 +465,8 @@
       "body_snippet": ">>>>> Mikael Jagan \n>>>>>     on Wed, 8 Nov 2023 11:13:18 -0500 writes:\n\n    > So, to summarize, the open questions are:\n    > (1) Should as.complex(NA_character_) give complex(r=NA_real_, i=0)\n    > ",
       "thread_id": "thread-a57b342e6405",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083011.html"
     },
     {
       "id": "msg-b560e9d88398",
@@ -460,7 +484,8 @@
       "body_snippet": "Hi Mikko,\n\n> Given the prevalence of the issue, is this something that you would see as worth pursuing for R?\n\nCould you give a little more detail on this, potentially with an example of the collision",
       "thread_id": "thread-d2ec38a119f6",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083012.html"
     },
     {
       "id": "msg-b0a9fcca4db6",
@@ -480,7 +505,8 @@
       "body_snippet": "On 2023-11-09 3:13 am, Martin Maechler wrote:\n>>>>>> Mikael Jagan\n>>>>>>      on Wed, 8 Nov 2023 11:13:18 -0500 writes:\n> \n>      > So, to summarize, the open questions are:\n>      > (1) Should as.com",
       "thread_id": "thread-a57b342e6405",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083013.html"
     },
     {
       "id": "msg-76dcf5c75dec",
@@ -495,11 +521,12 @@
         "<AM6PR02MB44230F37BC7E7A139581925F94AFA@AM6PR02MB4423.eurprd02.prod.outlook.com>",
         "<205A4E17-50C5-45F0-8D91-F400C1B89E6E@dcn.davis.ca.us>"
       ],
-      "body_plain": ">>>>> Jeff Newmiller via R-help \n>>>>>     on Thu, 09 Nov 2023 12:08:07 -0800 writes:\n\n    > No clue. Tip: R-devel is the mailing list for anything\n    > related to development versions of R. Off-topic here.\n\nYes.  Alternatively, as he uses Debian, there's the\nR-SIG-Debian  mailing list, too.\n\n--> I'm CC'ing  both R-devel and R-SIG-Debian instead of R-help.\n\n    > On November 9, 2023 2:59:44 AM PST, \"Iago Gin? V?zquez\" <iago.gine at sjd.es> wrote:\n    >> Hi all,\n    >> \n    >> I downloaded R-devel as explicited in https://developer.r-project.org/SVNtips.html\n    >> Then, I tried to install it through instructions in https://cran.r-project.org/doc/manuals/r-devel/R-admin.html#Installation\n    >> (taking into account also https://stat.ethz.ch/pipermail/r-devel/2016-May/072777.html)\n    >> So:\n    >> export REPOS=https://svn.r-project.org/R\n    >> export RTOP=~ #adjust as necessary\n    >> cd $RTOP\n    >> svn co $REPOS/trunk r-devel/R\n    >> cd r-devel/R\n    >> tools/rsync-recommended\n    >> mkdir ../build-R\n    >> cd ../build-R\n    >> ../R/configure --prefix=/where/you/want/R/to/go\n    >> make\n    >> make check\n\nall fine till here.\n\nI never do the following two (they are not necessary, if you\nkeep your  .../r-devel/build-R/  directory and  symlink the\n.../r-devel/build-R/bin/R  to some  <in_our_PATH>/R-devel\n{which is what I do all the time; by that I can easily symlink\nto more than one of different R-devel-<foo> versions etc}\n\nStill I cannot believe that these are the problem.\n\n    >> make install\n    >> make install-tests\n\n    >> cd tests\n    >> ## followed by one of\n    >> ../bin/R CMD make check\n    >> ../bin/R CMD make check-devel\n\nI've never used    ../bin/R CMD make check\ninstead of simply  make check\n(which you already did earlier),\nand ditto replacing 'check' with 'check-devel'.\n\nBut even if I do that now, I don't get your error,\n*and*  I have not made use of an  Rprofile.site  for a very long time\n(and do *not* have any inside (my variant of your) build-R/\n\n\n    >> And here I get the following error\n    >> checking package 'base'\n    >> Error in file(filename, \"r\", encoding = encoding) :\n    >> cannot open the connection\n    >> Calls: source -> file\n    >> In addition: Warning message:\n    >> In file(filename, \"r\", encoding = encoding) :\n    >> cannot open file '.../etc/Rprofile.site': No such file or directory\n    >> Execution halted\n\nYou must have forgotten to tell us a bit more about your setup.\nI never get the above error,\nand I do *not* have an  Rprofile.site  either in my  <build-R>/etc/\n\nHave you by chance set an R_LIBS_SITE or similar environment\nvariable ?\nDoes\n\tenv | grep '^R_'\n\ngive a hint?\n\n    >> where the dots ... specify the path to the build-R folder where R-devel was built. And I check the etc folder and indeed there is no the Rprofile.site\n    >> -rw-r--r-- 1 iago iago  209 Nov  9 08:27 javaconf\n    >> -rw-r--r-- 1 iago iago  770 Nov  9 08:35 ldpaths\n    >> -rw-r--r-- 1 iago iago 6672 Nov  9 08:35 Makeconf\n    >> -rw-r--r-- 1 iago iago 3336 Nov  9 08:27 Makefile\n    >> -rw-r--r-- 1 iago iago 1853 Nov  9 08:27 Renviron\n    >> -rw-r--r-- 1 iago iago 1173 Nov  9 08:32 repositories\n\n\n    >> I note that make install installed R in the path I specified in  ../R/configure --prefix=/where/you/want/R/to/go\n    >> however\n    >> 1. make install-tests installed the tests folder in build-R .\n\nAre your sure?  I don't see how it would do this when I do\n\n    make -n install-tests\n\n(the `-n` \"simulates\" the make and tells you what make *would* do if you left away the `-n`)\nRather it would (try to) install to the same place that\n\n    make -n install\n\nwould do , namely the  $PREFIX/tests/  directory.\nMaybe you are just confused, because indeed, your\n.../build-R/tests/  directory also contains many of the files\nneeded for the tests {but not e.g. the crucial *.R  ones !}.\n\n\n    >> 2.  In the installed R in /where/you/want/R/to/go, there is no even etc folder, there are only the folders bin, lib and share.\n\n    >> Am I  skipping some step? I am on Debain 12.\nDeb*ia*n  {Debora(h) + Ian }\n\nCould it be that the Debian/Ubuntu default (for *their* build of\n/usr/bin/R ) where they indeed use an  Rprofile.site and hence\nthat Debian-specific setup is hurting you here  in some way?\n\nI'm close to sure that Debian users may be able to help you one\nstep further.\n\nMartin\n\n    >> Thank you!\n    >> Iago",
+      "body_plain": ">>>>> Jeff Newmiller via R-help \n>>>>>     on Thu, 09 Nov 2023 12:08:07 -0800 writes:\n\n    > No clue. Tip: R-devel is the mailing list for anything\n    > related to development versions of R. Off-topic here.\n\nYes.  Alternatively, as he uses Debian, there's the\nR-SIG-Debian  mailing list, too.\n\n--> I'm CC'ing  both R-devel and R-SIG-Debian instead of R-help.\n\n    > On November 9, 2023 2:59:44 AM PST, \"Iago Giné Vázquez\" <iago.gine at sjd.es> wrote:\n    >> Hi all,\n    >> \n    >> I downloaded R-devel as explicited in https://developer.r-project.org/SVNtips.html\n    >> Then, I tried to install it through instructions in https://cran.r-project.org/doc/manuals/r-devel/R-admin.html#Installation\n    >> (taking into account also https://stat.ethz.ch/pipermail/r-devel/2016-May/072777.html)\n    >> So:\n    >> export REPOS=https://svn.r-project.org/R\n    >> export RTOP=~ #adjust as necessary\n    >> cd $RTOP\n    >> svn co $REPOS/trunk r-devel/R\n    >> cd r-devel/R\n    >> tools/rsync-recommended\n    >> mkdir ../build-R\n    >> cd ../build-R\n    >> ../R/configure --prefix=/where/you/want/R/to/go\n    >> make\n    >> make check\n\nall fine till here.\n\nI never do the following two (they are not necessary, if you\nkeep your  .../r-devel/build-R/  directory and  symlink the\n.../r-devel/build-R/bin/R  to some  <in_our_PATH>/R-devel\n{which is what I do all the time; by that I can easily symlink\nto more than one of different R-devel-<foo> versions etc}\n\nStill I cannot believe that these are the problem.\n\n    >> make install\n    >> make install-tests\n\n    >> cd tests\n    >> ## followed by one of\n    >> ../bin/R CMD make check\n    >> ../bin/R CMD make check-devel\n\nI've never used    ../bin/R CMD make check\ninstead of simply  make check\n(which you already did earlier),\nand ditto replacing 'check' with 'check-devel'.\n\nBut even if I do that now, I don't get your error,\n*and*  I have not made use of an  Rprofile.site  for a very long time\n(and do *not* have any inside (my variant of your) build-R/\n\n\n    >> And here I get the following error\n    >> checking package 'base'\n    >> Error in file(filename, \"r\", encoding = encoding) :\n    >> cannot open the connection\n    >> Calls: source -> file\n    >> In addition: Warning message:\n    >> In file(filename, \"r\", encoding = encoding) :\n    >> cannot open file '.../etc/Rprofile.site': No such file or directory\n    >> Execution halted\n\nYou must have forgotten to tell us a bit more about your setup.\nI never get the above error,\nand I do *not* have an  Rprofile.site  either in my  <build-R>/etc/\n\nHave you by chance set an R_LIBS_SITE or similar environment\nvariable ?\nDoes\n\tenv | grep '^R_'\n\ngive a hint?\n\n    >> where the dots ... specify the path to the build-R folder where R-devel was built. And I check the etc folder and indeed there is no the Rprofile.site\n    >> -rw-r--r-- 1 iago iago  209 Nov  9 08:27 javaconf\n    >> -rw-r--r-- 1 iago iago  770 Nov  9 08:35 ldpaths\n    >> -rw-r--r-- 1 iago iago 6672 Nov  9 08:35 Makeconf\n    >> -rw-r--r-- 1 iago iago 3336 Nov  9 08:27 Makefile\n    >> -rw-r--r-- 1 iago iago 1853 Nov  9 08:27 Renviron\n    >> -rw-r--r-- 1 iago iago 1173 Nov  9 08:32 repositories\n\n\n    >> I note that make install installed R in the path I specified in  ../R/configure --prefix=/where/you/want/R/to/go\n    >> however\n    >> 1. make install-tests installed the tests folder in build-R .\n\nAre your sure?  I don't see how it would do this when I do\n\n    make -n install-tests\n\n(the `-n` \"simulates\" the make and tells you what make *would* do if you left away the `-n`)\nRather it would (try to) install to the same place that\n\n    make -n install\n\nwould do , namely the  $PREFIX/tests/  directory.\nMaybe you are just confused, because indeed, your\n.../build-R/tests/  directory also contains many of the files\nneeded for the tests {but not e.g. the crucial *.R  ones !}.\n\n\n    >> 2.  In the installed R in /where/you/want/R/to/go, there is no even etc folder, there are only the folders bin, lib and share.\n\n    >> Am I  skipping some step? I am on Debain 12.\nDeb*ia*n  {Debora(h) + Ian }\n\nCould it be that the Debian/Ubuntu default (for *their* build of\n/usr/bin/R ) where they indeed use an  Rprofile.site and hence\nthat Debian-specific setup is hurting you here  in some way?\n\nI'm close to sure that Debian users may be able to help you one\nstep further.\n\nMartin\n\n    >> Thank you!\n    >> Iago",
       "body_snippet": ">>>>> Jeff Newmiller via R-help \n>>>>>     on Thu, 09 Nov 2023 12:08:07 -0800 writes:\n\n    > No clue. Tip: R-devel is the mailing list for anything\n    > related to development versions of R. Off-topi",
       "thread_id": "thread-76dcf5c75dec",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083014.html"
     },
     {
       "id": "msg-9a203259fd71",
@@ -519,7 +546,8 @@
       "body_snippet": "On 10 November 2023 at 14:19, Martin Maechler wrote:\n|     >> 2.  In the installed R in /where/you/want/R/to/go, there is no even etc folder, there are only the folders bin, lib and share.\n\nThat would",
       "thread_id": "thread-76dcf5c75dec",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083015.html"
     },
     {
       "id": "msg-74cb5191ffe7",
@@ -540,7 +568,8 @@
       "body_snippet": "Thanks all for your answers.\n\nFirst of all, I wrote to R-help and not R-devel, because I wanted to get help and not discussing anything relative to R development, and also because this issue could be ",
       "thread_id": "thread-76dcf5c75dec",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083016.html"
     },
     {
       "id": "msg-9896520d7eba",
@@ -558,7 +587,8 @@
       "body_snippet": "6 ?????? 2023 ?. 22:54:24 GMT+03:00, mikkmart via R-devel <r-devel at r-project.org> ?????:\n\n>The pattern of functions accepting other functions as inputs and\n>passing additional ... arguments to them",
       "thread_id": "thread-d2ec38a119f6",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083017.html"
     },
     {
       "id": "msg-a666bd263b67",
@@ -574,7 +604,8 @@
       "body_snippet": "When trying to compile R on Windows 10 64-bit using LTO as I always do, I\nencountered a segmentation fault early in the compilation. I am uncertain\nas to what it means (please see below for error extr",
       "thread_id": "thread-a666bd263b67",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083018.html"
     },
     {
       "id": "msg-a7291a57c89f",
@@ -589,11 +620,12 @@
         "<SV0P279MB047573DF4EAD91093C4080D1EEA1A@SV0P279MB0475.NORP279.PROD.OUTLOOK.COM>",
         "<CALEXWq0LMFevo1yYwbaSYKwXQscR-3BZMg5DbXFMifek3VoFfA@mail.gmail.com>"
       ],
-      "body_plain": "Hi,\n\nfollowing on this topic, having full support for Wayland in R would be\ngreat indeed.\nIn the news this week, after GNOME removed X11 support, KDE is doing the\nsame. I really love X11, but maybe it's time to move forward.\nI've been using GNOME + Wayland for more than a year now, including screen\nsharing with various video call software (Google, Zoom, etc...) and had no\nissues at all. It works even better than my previous (very long) experience\nwith X11.\n\nBest,\nDavid\n\nOn Tue, Oct 31, 2023 at 12:13?AM I?aki Ucar <iucar at fedoraproject.org> wrote:\n\n> El lun., 30 oct. 2023 12:26, Roger Bivand <Roger.Bivand at nhh.no> escribi?:\n>\n> > I also noticed this:\n> >\n> > https://www.theregister.com/2023/10/13/gnome_proposes_dropping_x11/\n> >\n> > which is concerning. Until now, I've retained X11 on Fedora because of\n> > difficulties in screen sharing via zoom in Wayland sessions.\n> >\n>\n> KDE Plasma user here. FWIW, I've been using Wayland for a year and a half\n> now with no issues, including screen sharing, etc.\n>\n> I?aki\n>\n>\n> > Roger\n> >\n> > --\n> > Roger Bivand\n> > Emeritus Professor\n> > Norwegian School of Economics\n> > Postboks 3490 Ytre Sandviken, 5045 Bergen, Norway\n> > Roger.Bivand at nhh.no\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_plain": "Hi,\n\nfollowing on this topic, having full support for Wayland in R would be\ngreat indeed.\nIn the news this week, after GNOME removed X11 support, KDE is doing the\nsame. I really love X11, but maybe it's time to move forward.\nI've been using GNOME + Wayland for more than a year now, including screen\nsharing with various video call software (Google, Zoom, etc...) and had no\nissues at all. It works even better than my previous (very long) experience\nwith X11.\n\nBest,\nDavid\n\nOn Tue, Oct 31, 2023 at 12:13 AM Iñaki Ucar <iucar at fedoraproject.org> wrote:\n\n> El lun., 30 oct. 2023 12:26, Roger Bivand <Roger.Bivand at nhh.no> escribió:\n>\n> > I also noticed this:\n> >\n> > https://www.theregister.com/2023/10/13/gnome_proposes_dropping_x11/\n> >\n> > which is concerning. Until now, I've retained X11 on Fedora because of\n> > difficulties in screen sharing via zoom in Wayland sessions.\n> >\n>\n> KDE Plasma user here. FWIW, I've been using Wayland for a year and a half\n> now with no issues, including screen sharing, etc.\n>\n> Iñaki\n>\n>\n> > Roger\n> >\n> > --\n> > Roger Bivand\n> > Emeritus Professor\n> > Norwegian School of Economics\n> > Postboks 3490 Ytre Sandviken, 5045 Bergen, Norway\n> > Roger.Bivand at nhh.no\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n> >\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
       "body_snippet": "Hi,\n\nfollowing on this topic, having full support for Wayland in R would be\ngreat indeed.\nIn the news this week, after GNOME removed X11 support, KDE is doing the\nsame. I really love X11, but maybe it",
       "thread_id": "thread-a7291a57c89f",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083019.html"
     },
     {
       "id": "msg-694a858b4036",
@@ -611,7 +643,8 @@
       "body_snippet": "Avi,\n\nMight be toolchain-dependent, might be options-dependent--it built fine here.\nEasier for you to vary option two so maybe try that?\n\nDirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuettel | edd at debia",
       "thread_id": "thread-a666bd263b67",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083020.html"
     },
     {
       "id": "msg-808294073ce0",
@@ -630,7 +663,8 @@
       "body_snippet": "On Mon, Nov 13, 2023 at 1:13?AM Dirk Eddelbuettel <edd at debian.org> wrote:\n>\n>\n> Avi,\n>\n> Might be toolchain-dependent, might be options-dependent--it built fine here.\n> Easier for you to vary optio",
       "thread_id": "thread-a666bd263b67",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083021.html"
     },
     {
       "id": "msg-19980dc2c109",
@@ -646,7 +680,8 @@
       "body_snippet": "What is going on here?  In the lines ending in #### the inputs and outputs\nare identical yet one gives a warning and the other does  not.\n\na1 <- `rownames<-`(anscombe[1:3, ],  NULL)\na2 <- anscombe[1:3",
       "thread_id": "thread-19980dc2c109",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083022.html"
     },
     {
       "id": "msg-a7fcd55ade13",
@@ -664,7 +699,8 @@
       "body_snippet": "They differ in whether the row names are \"automatic\":\n\n> .row_names_info(a1)\n[1] -3\n> .row_names_info(a2)\n[1] 3\n\nBest,\n-Deepayan\n\nOn Tue, 14 Nov 2023 at 08:23, Gabor Grothendieck\n<ggrothendieck at gma",
       "thread_id": "thread-19980dc2c109",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083023.html"
     },
     {
       "id": "msg-c2ddf064938b",
@@ -683,7 +719,8 @@
       "body_snippet": "In that case identical should be FALSE but  it is TRUE\n\nidentical(a1, a2)\n## [1] TRUE\n\n\nOn Tue, Nov 14, 2023 at 8:58?AM Deepayan Sarkar\n<deepayan.sarkar at gmail.com> wrote:\n>\n> They differ in whether",
       "thread_id": "thread-19980dc2c109",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083024.html"
     },
     {
       "id": "msg-00318cf4400a",
@@ -703,7 +740,8 @@
       "body_snippet": "Also why should that difference result in different behavior?\n\nOn Tue, Nov 14, 2023 at 9:38?AM Gabor Grothendieck\n<ggrothendieck at gmail.com> wrote:\n>\n> In that case identical should be FALSE but  it",
       "thread_id": "thread-19980dc2c109",
       "thread_depth": 3,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083025.html"
     },
     {
       "id": "msg-d90702d817f4",
@@ -724,7 +762,8 @@
       "body_snippet": "On Tue, 14 Nov 2023 at 09:41, Gabor Grothendieck\n<ggrothendieck at gmail.com> wrote:\n>\n> Also why should that difference result in different behavior?\n\nThat's justifiable, I think; consider:\n\n> d1 = d",
       "thread_id": "thread-19980dc2c109",
       "thread_depth": 4,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083026.html"
     },
     {
       "id": "msg-721ae77cfcbd",
@@ -746,7 +785,8 @@
       "body_snippet": "Seems like a leaky abstraction.  If both representations are supposed\nto be outwardly the same to the user then they should act the same and\nif not then identical should not be TRUE.\n\nOn Tue, Nov 14, ",
       "thread_id": "thread-19980dc2c109",
       "thread_depth": 5,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083027.html"
     },
     {
       "id": "msg-0381c9b48578",
@@ -766,7 +806,8 @@
       "body_snippet": "On Mon, Nov 13, 2023 at 12:45?PM Avraham Adler <avraham.adler at gmail.com> wrote:\n>\n> On Mon, Nov 13, 2023 at 1:13?AM Dirk Eddelbuettel <edd at debian.org> wrote:\n> >\n> >\n> > Avi,\n> >\n> > Might be to",
       "thread_id": "thread-a666bd263b67",
       "thread_depth": 3,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083028.html"
     },
     {
       "id": "msg-bac10aa1cc81",
@@ -787,7 +828,8 @@
       "body_snippet": "On 11/14/23 19:19, Joshua Ulrich wrote:\n> On Mon, Nov 13, 2023 at 12:45?PM Avraham Adler <avraham.adler at gmail.com> wrote:\n>> On Mon, Nov 13, 2023 at 1:13?AM Dirk Eddelbuettel <edd at debian.org> wr",
       "thread_id": "thread-a666bd263b67",
       "thread_depth": 4,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083029.html"
     },
     {
       "id": "msg-1d4d11b01f55",
@@ -803,7 +845,8 @@
       "body_snippet": "Dear r-devel,\n\nI was surprised to see that saveRDS() and readRDS() work quite well with\nenvironments, see below:\n\n```\nz <- 3 # in global env\ny <- new.env()\ny$a <- 1\nx <- new.env(parent = y)\nx$b <- 2\ns",
       "thread_id": "thread-1d4d11b01f55",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083030.html"
     },
     {
       "id": "msg-8e2787973599",
@@ -821,7 +864,8 @@
       "body_snippet": "On Wed, 15 Nov 2023 19:49:00 +0100\nAntoine Fabri <antoine.fabri at gmail.com> wrote:\n\n> I would like to know what rules are followed, if I had to guess I\n> would think that parents are saved until a \"",
       "thread_id": "thread-1d4d11b01f55",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083031.html"
     },
     {
       "id": "msg-dc4f28abe8a9",
@@ -839,11 +883,12 @@
         "<5d27d528-bc5f-4dd7-a926-9b24e61a52b3@gmail.com>",
         "<b83d8ea1-bca7-4dc5-827d-5df1c4c48d9b@gmail.com>"
       ],
-      "body_plain": "On 10/31/23 10:05, Duncan Murdoch wrote:\n> On 31/10/2023 4:32 a.m., Tomas Kalibera wrote:\n>>\n>> On 10/30/23 19:07, Yihui Xie wrote:\n>>> Sure. I'm not sure if it's possible to make it easier to reproduce,\n>>> but for now the example would require installing TinyTeX (via\n>>> tinytex::install_tinytex(), which can be later uninstalled cleanly via\n>>> tinytex::uninstall_tinytex() after you finish the investigation). Then\n>>> run:\n>>>\n>>> ?? system2('fmtutil-sys', '--all')\n>>> ?? # or tinytex:::fmtutil() if fmtutil-sys.exe is not on PATH\n>>>\n>>> and TeX Live would throw an error like this:\n>>>\n>>> ...\\username\\AppData\\Roaming\\TinyTeX\\bin\\windows\\runscript.tlu:864: no\n>>> appropriate script or program found: fmtuti~1\n>>>\n>>> The command \"fmtutil-sys\" is longer than 8 characters and hence\n>>> shortened to \"fmtutil~1\". Yes, in principle, TeX Live should work with\n>>> short path names, but it doesn't at the?moment. I haven't figured out\n>>> if it was a recent breakage in TeX Live or not (I've tried to contact\n>>> TeX Live developers).\n>>>\n>>> BTW, shell('fmtutil-sys --all') works fine.\n>>\n>> I can reproduce the problem, also separately from R. It is not an R \n>> problem\n>>\n>> ./fmtutil-sys.exe --version\n>> works\n>>\n>> ./fmtuti~1 --version\n>> doesn't work\n>>\n>> The problem is in runscript.tlu, when it looks at \"progname\", it parses\n>> it assuming it is the full name, looking for \"-sys\" suffix, which won't\n>> be in the short name:\n>>\n>> progname, substcount = string.gsub(progname, '%-sys$', '')\n>> local sysprog = (substcount > 0) -- true if there was a -sys suffix \n>> removed\n>>\n>> and it does further processing using the program name.\n>>\n>> This has to be fixed on the luatex end, it must be able to work with\n>> short paths (e.g. expand it appropriately). You could probably work\n>> around the installation before it gets fixed, e.g. by creating another\n>> wrapper which would expand to long names, delete the short name, patch\n>> the script, etc. After all, if it works via a shell, then probably the\n>> shell is expanding to the long names and you have a work-around (I don't\n>> know how reliable).\n>>\n>> Adding an option to R's system*() functions to use only long names\n>> doesn't make sense.\n>\n> On the other hand, not modifying the executable name would make a lot \n> of sense, wouldn't it?? I'm pretty sure all supported versions of \n> Windows can handle long filenames.\n\nThere could be an option to pass the \"module\" name directly, which would \nend up as the first argument of CreateProcess, so avoid the search-path \nlookup and the complete path expansion. That would make sense, but I am \nnot persuaded it is needed. I don't think the luatex wrapper bug is a \nstrong enough case to complicate the code and API (which is already \nrather complicated) any further. It would not be \"just\" a new option, \nbut also dissecting the module name from the command (when not using a \nshell).\n\nWhile thinking about this and reading the related code I found a bug in \nhandling paths with spaces when short paths are not available, fixed now.\n\nTomas\n\n>\n> Duncan Murdoch\n>",
+      "body_plain": "On 10/31/23 10:05, Duncan Murdoch wrote:\n> On 31/10/2023 4:32 a.m., Tomas Kalibera wrote:\n>>\n>> On 10/30/23 19:07, Yihui Xie wrote:\n>>> Sure. I'm not sure if it's possible to make it easier to reproduce,\n>>> but for now the example would require installing TinyTeX (via\n>>> tinytex::install_tinytex(), which can be later uninstalled cleanly via\n>>> tinytex::uninstall_tinytex() after you finish the investigation). Then\n>>> run:\n>>>\n>>>    system2('fmtutil-sys', '--all')\n>>>    # or tinytex:::fmtutil() if fmtutil-sys.exe is not on PATH\n>>>\n>>> and TeX Live would throw an error like this:\n>>>\n>>> ...\\username\\AppData\\Roaming\\TinyTeX\\bin\\windows\\runscript.tlu:864: no\n>>> appropriate script or program found: fmtuti~1\n>>>\n>>> The command \"fmtutil-sys\" is longer than 8 characters and hence\n>>> shortened to \"fmtutil~1\". Yes, in principle, TeX Live should work with\n>>> short path names, but it doesn't at the moment. I haven't figured out\n>>> if it was a recent breakage in TeX Live or not (I've tried to contact\n>>> TeX Live developers).\n>>>\n>>> BTW, shell('fmtutil-sys --all') works fine.\n>>\n>> I can reproduce the problem, also separately from R. It is not an R \n>> problem\n>>\n>> ./fmtutil-sys.exe --version\n>> works\n>>\n>> ./fmtuti~1 --version\n>> doesn't work\n>>\n>> The problem is in runscript.tlu, when it looks at \"progname\", it parses\n>> it assuming it is the full name, looking for \"-sys\" suffix, which won't\n>> be in the short name:\n>>\n>> progname, substcount = string.gsub(progname, '%-sys$', '')\n>> local sysprog = (substcount > 0) -- true if there was a -sys suffix \n>> removed\n>>\n>> and it does further processing using the program name.\n>>\n>> This has to be fixed on the luatex end, it must be able to work with\n>> short paths (e.g. expand it appropriately). You could probably work\n>> around the installation before it gets fixed, e.g. by creating another\n>> wrapper which would expand to long names, delete the short name, patch\n>> the script, etc. After all, if it works via a shell, then probably the\n>> shell is expanding to the long names and you have a work-around (I don't\n>> know how reliable).\n>>\n>> Adding an option to R's system*() functions to use only long names\n>> doesn't make sense.\n>\n> On the other hand, not modifying the executable name would make a lot \n> of sense, wouldn't it?  I'm pretty sure all supported versions of \n> Windows can handle long filenames.\n\nThere could be an option to pass the \"module\" name directly, which would \nend up as the first argument of CreateProcess, so avoid the search-path \nlookup and the complete path expansion. That would make sense, but I am \nnot persuaded it is needed. I don't think the luatex wrapper bug is a \nstrong enough case to complicate the code and API (which is already \nrather complicated) any further. It would not be \"just\" a new option, \nbut also dissecting the module name from the command (when not using a \nshell).\n\nWhile thinking about this and reading the related code I found a bug in \nhandling paths with spaces when short paths are not available, fixed now.\n\nTomas\n\n>\n> Duncan Murdoch\n>",
       "body_snippet": "On 10/31/23 10:05, Duncan Murdoch wrote:\n> On 31/10/2023 4:32 a.m., Tomas Kalibera wrote:\n>>\n>> On 10/30/23 19:07, Yihui Xie wrote:\n>>> Sure. I'm not sure if it's possible to make it easier to reprodu",
       "thread_id": "thread-dc4f28abe8a9",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083032.html"
     },
     {
       "id": "msg-da79681f6899",
@@ -866,7 +911,8 @@
       "body_snippet": "The problem in TeX Live has just been fixed. Now it will expand short\nnames: https://tug.org/pipermail/tex-live/2023-November/049706.html\nTherefore please feel free to ignore my original request. Than",
       "thread_id": "thread-dc4f28abe8a9",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083033.html"
     },
     {
       "id": "msg-ce0681a48223",
@@ -882,7 +928,8 @@
       "body_snippet": "The news feeds (e.g. \nhttps://developer.r-project.org/blosxom.cgi/R-devel/NEWS) have some \nstray \"\\abbr\" floating around. Do they need generating with a more \nrecent version of R-devel?\n\nI've run tool",
       "thread_id": "thread-ce0681a48223",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083034.html"
     },
     {
       "id": "msg-cc2ed6c9c882",
@@ -900,7 +947,8 @@
       "body_snippet": "Tim,\n\nthanks. I have updated R to the latest R-devel on the machine in the hope that is may help, but I suspect it will only affect new entries as they are generated progressively each day.\n\nCheers,\nS",
       "thread_id": "thread-ce0681a48223",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083035.html"
     },
     {
       "id": "msg-67fe079359fe",
@@ -918,7 +966,8 @@
       "body_snippet": "FWIW, a user on Stack Overflow just reported the same issue with list.files\nrunning R 4.3.z on Windows.  They do not observe the issue running R-devel,\nwith Tomas' patch (r84960).  It is still the cas",
       "thread_id": "thread-67fe079359fe",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083036.html"
     },
     {
       "id": "msg-39ebdfe024be",
@@ -937,7 +986,8 @@
       "body_snippet": "On 11/22/23 19:14, Mikael Jagan wrote:\n> FWIW, a user on Stack Overflow just reported the same issue with \n> list.files\n> running R 4.3.z on Windows.? They do not observe the issue running \n> R-devel,",
       "thread_id": "thread-67fe079359fe",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083037.html"
     },
     {
       "id": "msg-f1ced4884f13",
@@ -953,7 +1003,8 @@
       "body_snippet": "I think that, if called with |length.out=1|, |seq| and |seq.int| should \nreturn |start| - no matter the value of the other parameters.\nCurrently they always return |NaN| / error if called with |by=Inf",
       "thread_id": "thread-f1ced4884f13",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083039.html"
     },
     {
       "id": "msg-ed2223eb13fc",
@@ -969,7 +1020,8 @@
       "body_snippet": "Package Rmosek compiles fine using Matrix versions 1.6.2- but not with \nanything beyond Matrix 1.6.2.? (FYI, Rmosek provides R interfaces to the \nexcellent MOSEK solver; academic licenses are free.)\n\n",
       "thread_id": "thread-ed2223eb13fc",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083038.html"
     },
     {
       "id": "msg-03b336515d25",
@@ -985,7 +1037,8 @@
       "body_snippet": "Naras,\n\nThanks.  I'm a bit confused, because Rmosek does not declare Matrix as a\ndependency:\n\n     > tools::package_dependencies(\"Rmosek\", which = \"all\")[[1L]]\n     [1] \"pkgbuild\"\n\nnor does it contain",
       "thread_id": "thread-03b336515d25",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083040.html"
     },
     {
       "id": "msg-7c1d8cc7d1ec",
@@ -1003,7 +1056,8 @@
       "body_snippet": "Thanks Mikael.\n\n[I too wondered if this topic was appropriate for the list and in the \nend thought it might be. We can probably take this offline after this \nexchange and summarize if appropriate.]\n\nT",
       "thread_id": "thread-03b336515d25",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083041.html"
     },
     {
       "id": "msg-3bb809389607",
@@ -1019,7 +1073,8 @@
       "body_snippet": "Hello,\n\nRecently we got _R_CHECK_CRAN_INCOMING_TARBALL_THRESHOLD_ env var to tune\n\"Size of tarball\" note during R package check.\n\nCould we get similar one for tuning \"checking installed package size\" ",
       "thread_id": "thread-3bb809389607",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083042.html"
     },
     {
       "id": "msg-0f8e11746950",
@@ -1037,7 +1092,8 @@
       "body_snippet": "? Fri, 24 Nov 2023 12:15:06 +0100\nJan Gorecki <j.gorecki at wit.edu.pl> ?????:\n\n> Recently we got _R_CHECK_CRAN_INCOMING_TARBALL_THRESHOLD_ env var to\n> tune \"Size of tarball\" note during R package ch",
       "thread_id": "thread-3bb809389607",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083043.html"
     },
     {
       "id": "msg-9e6acbb1ddcd",
@@ -1056,7 +1112,8 @@
       "body_snippet": "Oh, thank you. I only grep WRE.\nYes it does work\n\nOn Fri, Nov 24, 2023 at 12:20?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:\n\n> ? Fri, 24 Nov 2023 12:15:06 +0100\n> Jan Gorecki <j.gorecki at wit.ed",
       "thread_id": "thread-3bb809389607",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083044.html"
     },
     {
       "id": "msg-98bae0009324",
@@ -1072,7 +1129,8 @@
       "body_snippet": "Would it be possible to enhance this error message?  Could the message say\nhow large the limit was that was reached?  Is it that the limit for one\nparticular vector has been exceeded (and to how much ",
       "thread_id": "thread-98bae0009324",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083045.html"
     },
     {
       "id": "msg-338cb3837b44",
@@ -1088,7 +1146,8 @@
       "body_snippet": "Hello, I want to download a package and it gives me the error:\n\nWARNING: Rtools is required to build R packages, but no version of\nRtools compatible with R 4.2.0 was found. (Only the following\nincompa",
       "thread_id": "thread-338cb3837b44",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083047.html"
     },
     {
       "id": "msg-600d377b9d4b",
@@ -1106,7 +1165,8 @@
       "body_snippet": "On 11/27/23 05:42, ivo welch wrote:\n> Would it be possible to enhance this error message?  Could the message say\n> how large the limit was that was reached?  Is it that the limit for one\n> particular ",
       "thread_id": "thread-98bae0009324",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083046.html"
     },
     {
       "id": "msg-73e371fd2023",
@@ -1124,7 +1184,8 @@
       "body_snippet": "On 11/27/23 06:07, Neha gupta wrote:\n> Hello, I want to download a package and it gives me the error:\n>\n> WARNING: Rtools is required to build R packages, but no version of\n> Rtools compatible with R ",
       "thread_id": "thread-338cb3837b44",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083048.html"
     },
     {
       "id": "msg-4460c31f4d7f",
@@ -1136,11 +1197,12 @@
       "subject_clean": "R test coverage",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Hi all,\n\nI recently proposed a change in R that has led to the addition of new code\nto the R source code.\n\nThe code added, as far as I know, has no tests and it might affect many\npackages in CRAN.\nI was wondering if adding a test would be helpful or it is already covered\nby some other test.\nWhich brought me to the question: what is the coverage of R checks\n(check-devel)?\n\nMy searches in the mailing list or other places didn't return anything\nclose to it.\nBut I am curious if someone has already done this and how.\n\nMany thanks,\n\nLlu?s\n\n\t[[alternative HTML version deleted]]",
+      "body_plain": "Hi all,\n\nI recently proposed a change in R that has led to the addition of new code\nto the R source code.\n\nThe code added, as far as I know, has no tests and it might affect many\npackages in CRAN.\nI was wondering if adding a test would be helpful or it is already covered\nby some other test.\nWhich brought me to the question: what is the coverage of R checks\n(check-devel)?\n\nMy searches in the mailing list or other places didn't return anything\nclose to it.\nBut I am curious if someone has already done this and how.\n\nMany thanks,\n\nLluís\n\n\t[[alternative HTML version deleted]]",
       "body_snippet": "Hi all,\n\nI recently proposed a change in R that has led to the addition of new code\nto the R source code.\n\nThe code added, as far as I know, has no tests and it might affect many\npackages in CRAN.\nI w",
       "thread_id": "thread-4460c31f4d7f",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083049.html"
     },
     {
       "id": "msg-9beb94e868bd",
@@ -1154,11 +1216,12 @@
       "references": [
         "<CA+nrPnsqtwO7-Oa0yHKLe=jJqN_weFGjkP=1cXL79T3vbX6NbA@mail.gmail.com>"
       ],
-      "body_plain": "?s 05:07 de 27/11/2023, Neha gupta escreveu:\n> Hello, I want to download a package and it gives me the error:\n> \n> WARNING: Rtools is required to build R packages, but no version of\n> Rtools compatible with R 4.2.0 was found. (Only the following\n> incompatible version(s) of Rtools were found: 4.3.5550)\n> \n> Please download and install Rtools 4.2 from\n> https://cran.r-project.org/bin/windows/Rtools/.\n> \n> \n> I have downloaded it but dont know what to do further.\n> \n> \n> Best regards\n> \n> \t[[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\nHello,\n\nHave you checked it is in the PATH system variable?\nAfter installing Rtools you must edit the Windows PATH. It not, the \nsystem will still find the older Rtools version.\n\nHope this helps,\n\nRui Barradas\n\n\n-- \nEste e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.\nwww.avg.com",
-      "body_snippet": "?s 05:07 de 27/11/2023, Neha gupta escreveu:\n> Hello, I want to download a package and it gives me the error:\n> \n> WARNING: Rtools is required to build R packages, but no version of\n> Rtools compatibl",
+      "body_plain": "Às 05:07 de 27/11/2023, Neha gupta escreveu:\n> Hello, I want to download a package and it gives me the error:\n> \n> WARNING: Rtools is required to build R packages, but no version of\n> Rtools compatible with R 4.2.0 was found. (Only the following\n> incompatible version(s) of Rtools were found: 4.3.5550)\n> \n> Please download and install Rtools 4.2 from\n> https://cran.r-project.org/bin/windows/Rtools/.\n> \n> \n> I have downloaded it but dont know what to do further.\n> \n> \n> Best regards\n> \n> \t[[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\nHello,\n\nHave you checked it is in the PATH system variable?\nAfter installing Rtools you must edit the Windows PATH. It not, the \nsystem will still find the older Rtools version.\n\nHope this helps,\n\nRui Barradas\n\n\n-- \nEste e-mail foi analisado pelo software antivírus AVG para verificar a presença de vírus.\nwww.avg.com",
+      "body_snippet": "Às 05:07 de 27/11/2023, Neha gupta escreveu:\n> Hello, I want to download a package and it gives me the error:\n> \n> WARNING: Rtools is required to build R packages, but no version of\n> Rtools compatibl",
       "thread_id": "thread-338cb3837b44",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083050.html"
     },
     {
       "id": "msg-6dcb536d2479",
@@ -1177,7 +1240,8 @@
       "body_snippet": "On 11/27/23 18:58, Rui Barradas wrote:\n> ?s 05:07 de 27/11/2023, Neha gupta escreveu:\n>> Hello, I want to download a package and it gives me the error:\n>>\n>> WARNING: Rtools is required to build R pac",
       "thread_id": "thread-338cb3837b44",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083051.html"
     },
     {
       "id": "msg-f1796962f3e1",
@@ -1191,11 +1255,12 @@
       "references": [
         "<CAN+W6_uKu3-vm=HdOUMx2dXqAoD1mLhTYxVuUEnkYHkUh2gggw@mail.gmail.com>"
       ],
-      "body_plain": "It should be possible to use covr to do this, see this old issue\n(https://github.com/r-lib/covr/issues/59). However interpreting the\nresults can prove challenging as naturally covr uses functions\nfrom the base internally. Unfortunately the base and many of the\ninternal and recommended packages have somewhat bespoke installation,\nso it would likely take some additional work on your end to get\nreporting working. I had thought of doing this at one point, but\nwasn't sure there would be any audience for the results, so did not\npursue it further.\n\nFor measuring coverage of the C code in the R runtime alone you could\nuse gcov and run the test suite, which depending on your contribution\nmay be the most informative route.\n\n(replying for the list, accidentally replied only to Llu?s the first time)\n\nOn Mon, Nov 27, 2023 at 10:15?AM Llu?s Revilla <lluis.revilla at gmail.com> wrote:\n>\n> Hi all,\n>\n> I recently proposed a change in R that has led to the addition of new code\n> to the R source code.\n>\n> The code added, as far as I know, has no tests and it might affect many\n> packages in CRAN.\n> I was wondering if adding a test would be helpful or it is already covered\n> by some other test.\n> Which brought me to the question: what is the coverage of R checks\n> (check-devel)?\n>\n> My searches in the mailing list or other places didn't return anything\n> close to it.\n> But I am curious if someone has already done this and how.\n>\n> Many thanks,\n>\n> Llu?s\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_plain": "It should be possible to use covr to do this, see this old issue\n(https://github.com/r-lib/covr/issues/59). However interpreting the\nresults can prove challenging as naturally covr uses functions\nfrom the base internally. Unfortunately the base and many of the\ninternal and recommended packages have somewhat bespoke installation,\nso it would likely take some additional work on your end to get\nreporting working. I had thought of doing this at one point, but\nwasn't sure there would be any audience for the results, so did not\npursue it further.\n\nFor measuring coverage of the C code in the R runtime alone you could\nuse gcov and run the test suite, which depending on your contribution\nmay be the most informative route.\n\n(replying for the list, accidentally replied only to Lluís the first time)\n\nOn Mon, Nov 27, 2023 at 10:15 AM Lluís Revilla <lluis.revilla at gmail.com> wrote:\n>\n> Hi all,\n>\n> I recently proposed a change in R that has led to the addition of new code\n> to the R source code.\n>\n> The code added, as far as I know, has no tests and it might affect many\n> packages in CRAN.\n> I was wondering if adding a test would be helpful or it is already covered\n> by some other test.\n> Which brought me to the question: what is the coverage of R checks\n> (check-devel)?\n>\n> My searches in the mailing list or other places didn't return anything\n> close to it.\n> But I am curious if someone has already done this and how.\n>\n> Many thanks,\n>\n> Lluís\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
       "body_snippet": "It should be possible to use covr to do this, see this old issue\n(https://github.com/r-lib/covr/issues/59). However interpreting the\nresults can prove challenging as naturally covr uses functions\nfrom",
       "thread_id": "thread-4460c31f4d7f",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083052.html"
     },
     {
       "id": "msg-bda5827af942",
@@ -1210,11 +1275,12 @@
         "<CAN+W6_uKu3-vm=HdOUMx2dXqAoD1mLhTYxVuUEnkYHkUh2gggw@mail.gmail.com>",
         "<CAD6tx94Ct-W8HHSPtC+Leh6PgYZSH7i8aKHvLbr+DeOkzJeVeA@mail.gmail.com>"
       ],
-      "body_plain": "Hi Jim,\n\nThanks for the info.\nI disregarded covr in my search results as I thought it would only apply to\npackages outside base and recommended.\nThe code is pure R code so it might work, but it reads a file so it might\ninvolve some C code.\n\nThanks!\n\nLlu?s\n\nOn Mon, 27 Nov 2023 at 20:11, Jim Hester <james.f.hester at gmail.com> wrote:\n\n> It should be possible to use covr to do this, see this old issue\n> (https://github.com/r-lib/covr/issues/59). However interpreting the\n> results can prove challenging as naturally covr uses functions\n> from the base internally. Unfortunately the base and many of the\n> internal and recommended packages have somewhat bespoke installation,\n> so it would likely take some additional work on your end to get\n> reporting working. I had thought of doing this at one point, but\n> wasn't sure there would be any audience for the results, so did not\n> pursue it further.\n>\n> For measuring coverage of the C code in the R runtime alone you could\n> use gcov and run the test suite, which depending on your contribution\n> may be the most informative route.\n>\n> (replying for the list, accidentally replied only to Llu?s the first time)\n>\n> On Mon, Nov 27, 2023 at 10:15?AM Llu?s Revilla <lluis.revilla at gmail.com>\n> wrote:\n> >\n> > Hi all,\n> >\n> > I recently proposed a change in R that has led to the addition of new\n> code\n> > to the R source code.\n> >\n> > The code added, as far as I know, has no tests and it might affect many\n> > packages in CRAN.\n> > I was wondering if adding a test would be helpful or it is already\n> covered\n> > by some other test.\n> > Which brought me to the question: what is the coverage of R checks\n> > (check-devel)?\n> >\n> > My searches in the mailing list or other places didn't return anything\n> > close to it.\n> > But I am curious if someone has already done this and how.\n> >\n> > Many thanks,\n> >\n> > Llu?s\n> >\n> >         [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
+      "body_plain": "Hi Jim,\n\nThanks for the info.\nI disregarded covr in my search results as I thought it would only apply to\npackages outside base and recommended.\nThe code is pure R code so it might work, but it reads a file so it might\ninvolve some C code.\n\nThanks!\n\nLluís\n\nOn Mon, 27 Nov 2023 at 20:11, Jim Hester <james.f.hester at gmail.com> wrote:\n\n> It should be possible to use covr to do this, see this old issue\n> (https://github.com/r-lib/covr/issues/59). However interpreting the\n> results can prove challenging as naturally covr uses functions\n> from the base internally. Unfortunately the base and many of the\n> internal and recommended packages have somewhat bespoke installation,\n> so it would likely take some additional work on your end to get\n> reporting working. I had thought of doing this at one point, but\n> wasn't sure there would be any audience for the results, so did not\n> pursue it further.\n>\n> For measuring coverage of the C code in the R runtime alone you could\n> use gcov and run the test suite, which depending on your contribution\n> may be the most informative route.\n>\n> (replying for the list, accidentally replied only to Lluís the first time)\n>\n> On Mon, Nov 27, 2023 at 10:15 AM Lluís Revilla <lluis.revilla at gmail.com>\n> wrote:\n> >\n> > Hi all,\n> >\n> > I recently proposed a change in R that has led to the addition of new\n> code\n> > to the R source code.\n> >\n> > The code added, as far as I know, has no tests and it might affect many\n> > packages in CRAN.\n> > I was wondering if adding a test would be helpful or it is already\n> covered\n> > by some other test.\n> > Which brought me to the question: what is the coverage of R checks\n> > (check-devel)?\n> >\n> > My searches in the mailing list or other places didn't return anything\n> > close to it.\n> > But I am curious if someone has already done this and how.\n> >\n> > Many thanks,\n> >\n> > Lluís\n> >\n> >         [[alternative HTML version deleted]]\n> >\n> > ______________________________________________\n> > R-devel at r-project.org mailing list\n> > https://stat.ethz.ch/mailman/listinfo/r-devel\n>\n\n\t[[alternative HTML version deleted]]",
       "body_snippet": "Hi Jim,\n\nThanks for the info.\nI disregarded covr in my search results as I thought it would only apply to\npackages outside base and recommended.\nThe code is pure R code so it might work, but it reads ",
       "thread_id": "thread-4460c31f4d7f",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083053.html"
     },
     {
       "id": "msg-f65a28abf8b0",
@@ -1230,7 +1296,8 @@
       "body_snippet": "Fellow R developers,\n\nI can capture usual error message using the normal way:\n> tc <- tryCatch(1 + a, error = function(e) e)\n> tc\n<simpleError: object 'a' not found>\n\nHowever I have troubles capturing",
       "thread_id": "thread-f65a28abf8b0",
       "thread_depth": 0,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083054.html"
     },
     {
       "id": "msg-e2fb49e44c4e",
@@ -1248,7 +1315,8 @@
       "body_snippet": "? Tue, 28 Nov 2023 10:46:45 +0100\nAdrian Dusa <dusa.adrian at unibuc.ro> ?????:\n\n> tryCatch(requireNamespace(\"foobar\"), error = function(e) e) \n\nI think you meant loadNamespace() (which throws errors)",
       "thread_id": "thread-f65a28abf8b0",
       "thread_depth": 1,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083055.html"
     },
     {
       "id": "msg-e9ae89ef6723",
@@ -1267,7 +1335,8 @@
       "body_snippet": "Once again, Ivan, many thanks.\nYes, that does solve it.\nBest wishes,\nAdrian\n\nOn Tue, Nov 28, 2023 at 11:28?AM Ivan Krylov <krylov.r00t at gmail.com> wrote:\n\n> ? Tue, 28 Nov 2023 10:46:45 +0100\n> Adria",
       "thread_id": "thread-f65a28abf8b0",
       "thread_depth": 2,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083056.html"
     },
     {
       "id": "msg-062dbda4753f",
@@ -1287,7 +1356,8 @@
       "body_snippet": "If you would like to save the error message instead of suppressing it, you\ncan use tryCatch(message=function(e)e, ...).\n\n-BIll\n\nOn Tue, Nov 28, 2023 at 3:55?AM Adrian Dusa <dusa.adrian at unibuc.ro> w",
       "thread_id": "thread-f65a28abf8b0",
       "thread_depth": 3,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083057.html"
     },
     {
       "id": "msg-7f58155e3c66",
@@ -1308,7 +1378,8 @@
       "body_snippet": "Careful; tryCatch() on non-error conditions will break out of what's\nevaluated, e.g.\n\nres <- tryCatch({\n  cat(\"1\\n\")\n  message(\"2\")\n  cat(\"3\\n\")\n  42\n}, message = identity)\n\nwill output '1' but not '3",
       "thread_id": "thread-f65a28abf8b0",
       "thread_depth": 4,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083058.html"
     },
     {
       "id": "msg-f5bba0e290f2",
@@ -1330,7 +1401,8 @@
       "body_snippet": "Thanks Henrik and Bill,\n\nIndeed, but I do have a function called tryCatchWEM() in package admisc\nthat captures all that.\n\nMy use case was to test for different architectures (for instance, arm64 vs\nIn",
       "thread_id": "thread-f65a28abf8b0",
       "thread_depth": 5,
-      "month": "2023-11"
+      "month": "2023-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2023-November/083059.html"
     }
   ],
   "threads": [

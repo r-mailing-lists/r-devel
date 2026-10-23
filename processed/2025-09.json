@@ -17,7 +17,8 @@
       "body_snippet": "The third bullet point in section A 3.1.4 'Shared BLAS' starts with 'This\nbecause less easy'; I suggest to change this to 'This became less easy':\n\nedd at paul:~/svn/r-devel$ svn diff doc/manual/R-adm",
       "thread_id": "thread-fa15297cd757",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084158.html"
     },
     {
       "id": "msg-0efbaf6191da",
@@ -35,7 +36,8 @@
       "body_snippet": ">>>>> Dirk Eddelbuettel writes:\n\nThanks: changed now.\n\nBest\n-k\n\n> The third bullet point in section A 3.1.4 'Shared BLAS' starts with 'This\n> because less easy'; I suggest to change this to 'This beca",
       "thread_id": "thread-fa15297cd757",
       "thread_depth": 1,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084159.html"
     },
     {
       "id": "msg-9ecb11cb1983",
@@ -47,11 +49,12 @@
       "subject_clean": "compiler::cmpfile output contains source code",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Command?compiler::cmpfile(infile) outputs a binary (.Rc) file.\nThe infile source code is contained in this output file.\nIs the source code required, and if not, is it possible to make it \noptional ?",
-      "body_snippet": "Command?compiler::cmpfile(infile) outputs a binary (.Rc) file.\nThe infile source code is contained in this output file.\nIs the source code required, and if not, is it possible to make it \noptional ?",
+      "body_plain": "Command compiler::cmpfile(infile) outputs a binary (.Rc) file.\nThe infile source code is contained in this output file.\nIs the source code required, and if not, is it possible to make it \noptional ?",
+      "body_snippet": "Command compiler::cmpfile(infile) outputs a binary (.Rc) file.\nThe infile source code is contained in this output file.\nIs the source code required, and if not, is it possible to make it \noptional ?",
       "thread_id": "thread-9ecb11cb1983",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084160.html"
     },
     {
       "id": "msg-1ebcd2a0eb97",
@@ -67,7 +70,8 @@
       "body_snippet": "Dear R Core Team,\nI would like to report a possible bug or behavioral change in the S4 class system in R 4.4.2 regarding the validity function.\nDescription of the issue:\nIn previous versions of R, whe",
       "thread_id": "thread-1ebcd2a0eb97",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084161.html"
     },
     {
       "id": "msg-0c402866cc7d",
@@ -81,11 +85,12 @@
       "references": [
         "<mailman.55029.3.1757584802.51194.r-devel@r-project.org>"
       ],
-      "body_plain": "Dear Yingkai,\n\nThe default method for 'initialize', which is called by 'new' in your example\nand is accessible as\n\n     > selectMethod(\"initialize\", \"ANY\")\n\nhas always called 'validObject' *only if* it finds arguments matching '...',\nso the behaviour that you report is not a change from earlier behaviour.\n\nThe bug seems to be that you, the class author, defined a nonvirtual class\nwith an invalid prototype, *not* that 'new' ignores invalid prototypes.\n\nI added the following regression test in Matrix version 1.6-0 in order to\ncatch exactly this mistake:\n\n     for (cl in c(names(getClassDef(\"Matrix\")@subclasses),\n                  names(getClassDef(\"MatrixFactorization\")@subclasses)))\n         if (!isVirtualClass(def <- getClassDef(cl)))\n             validObject(new(def))\n\nOne could argue that setClass(name, ...) should test validObject(new(name))\nbefore returning whenever it defines a nonvirtual class.  But I can imagine\nfalse positives, e.g., if a class author documents that 'new' *must* be\ncalled with additional arguments, then the validity of the prototype seems\ninconsequential.  Hence the test ought to be optional and probably (at least\ninitially) disabled by default.\n\nMikael\n\n\n> Date: Thu, 11 Sep 2025 09:09:25 +0800 (CST)\n> From: =?gb2312?B?y+/Tor+t?=<sunyingkai at sjtu.edu.cn>\n> \n> Dear R Core Team,\n> I would like to report a possible bug or behavioral change in the S4 class system in R 4.4.2 regarding the validity function.\n> Description of the issue:\n> In previous versions of R, when the validity function of an S4 class returns a character string (i.e., an error message), the ?new() function would refuse to create the object and throw an error.\n> However, in R 4.4.2, I found that ?new() creates the object successfully even when the validity function returns an error message. Only a manual call to ?validObject() triggers the error.\n> Minimal reproducible example:\n> \nsetClass('TestVital',\n>           slots = list(visit_type='character'),\n>           prototype = list(visit_type=''),\n>           validity = function(object){\n>             if(!object at visit_type %in% c('OP','IP')){\n>               return('??????')\n>             }\n>             TRUE\n>           })\n> new('TestVital')  # This should fail, but it succeeds in R 4.4.2\n> validObject(new('TestVital'))  # This correctly triggers the error\n> \nSession info:\n> \nR version 4.4.2 (2024-10-31)\n> Platform: aarch64-apple-darwin20\n> Running under: macOS Sequoia 15.6.1\n> \nExpected behavior:\n> ?new('TestVital') should fail and throw an error if the validity function returns a character string, as documented in the official R extensions manual.\n> Actual behavior:\n> ?new('TestVital') creates the object even when the validity function returns an error message.\n> Is this an intentional change in R 4.4.x, or is it a bug?\n> Thank you for your attention.\n> Best regards,\n> Sun Yingkai",
+      "body_plain": "Dear Yingkai,\n\nThe default method for 'initialize', which is called by 'new' in your example\nand is accessible as\n\n     > selectMethod(\"initialize\", \"ANY\")\n\nhas always called 'validObject' *only if* it finds arguments matching '...',\nso the behaviour that you report is not a change from earlier behaviour.\n\nThe bug seems to be that you, the class author, defined a nonvirtual class\nwith an invalid prototype, *not* that 'new' ignores invalid prototypes.\n\nI added the following regression test in Matrix version 1.6-0 in order to\ncatch exactly this mistake:\n\n     for (cl in c(names(getClassDef(\"Matrix\")@subclasses),\n                  names(getClassDef(\"MatrixFactorization\")@subclasses)))\n         if (!isVirtualClass(def <- getClassDef(cl)))\n             validObject(new(def))\n\nOne could argue that setClass(name, ...) should test validObject(new(name))\nbefore returning whenever it defines a nonvirtual class.  But I can imagine\nfalse positives, e.g., if a class author documents that 'new' *must* be\ncalled with additional arguments, then the validity of the prototype seems\ninconsequential.  Hence the test ought to be optional and probably (at least\ninitially) disabled by default.\n\nMikael\n\n\n> Date: Thu, 11 Sep 2025 09:09:25 +0800 (CST)\n> From: =?gb2312?B?y+/Tor+t?=<sunyingkai at sjtu.edu.cn>\n> \n> Dear R Core Team,\n> I would like to report a possible bug or behavioral change in the S4 class system in R 4.4.2 regarding the validity function.\n> Description of the issue:\n> In previous versions of R, when the validity function of an S4 class returns a character string (i.e., an error message), the ⁠new() function would refuse to create the object and throw an error.\n> However, in R 4.4.2, I found that ⁠new() creates the object successfully even when the validity function returns an error message. Only a manual call to ⁠validObject() triggers the error.\n> Minimal reproducible example:\n> \nsetClass('TestVital',\n>           slots = list(visit_type='character'),\n>           prototype = list(visit_type=''),\n>           validity = function(object){\n>             if(!object at visit_type %in% c('OP','IP')){\n>               return('来访类型错误')\n>             }\n>             TRUE\n>           })\n> new('TestVital')  # This should fail, but it succeeds in R 4.4.2\n> validObject(new('TestVital'))  # This correctly triggers the error\n> \nSession info:\n> \nR version 4.4.2 (2024-10-31)\n> Platform: aarch64-apple-darwin20\n> Running under: macOS Sequoia 15.6.1\n> \nExpected behavior:\n> ⁠new('TestVital') should fail and throw an error if the validity function returns a character string, as documented in the official R extensions manual.\n> Actual behavior:\n> ⁠new('TestVital') creates the object even when the validity function returns an error message.\n> Is this an intentional change in R 4.4.x, or is it a bug?\n> Thank you for your attention.\n> Best regards,\n> Sun Yingkai",
       "body_snippet": "Dear Yingkai,\n\nThe default method for 'initialize', which is called by 'new' in your example\nand is accessible as\n\n     > selectMethod(\"initialize\", \"ANY\")\n\nhas always called 'validObject' *only if* i",
       "thread_id": "thread-0c402866cc7d",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084162.html"
     },
     {
       "id": "msg-eb706eeb676f",
@@ -99,11 +104,12 @@
       "references": [
         "<a7fe8bef-806e-45b9-b938-ed5b4f2972b0@helgasoft.com>"
       ],
-      "body_plain": "? Wed, 10 Sep 2025 16:13:25 -0700\nhelgasoft <helgasoft at gmail.com> ?????:\n\n> Command?compiler::cmpfile(infile) outputs a binary (.Rc) file.\n> The infile source code is contained in this output file.\n> Is the source code required, and if not, is it possible to make it \n> optional ?\n\nThe source references are optional. Since cmpfile() calls parse(),\nsetting options(keep.source=FALSE) should prevent it from adding source\nreferences.\n\nOn the other hand, by calling compiler::disassemble() on the bytecode\nvalues, you will still be able to see the language objects from the\nfile, so a somewhat lossy representation of the source code is still\npresent. These language objects are used at least for error handling\nand sometimes for internal consistency checks [*].\n\nWhat's your use case?\n\n-- \nBest regards,\nIvan\n\n[*]\nhttps://coolbutuseless.github.io/book/rbytecodebook/15-stored-expressions.html",
-      "body_snippet": "? Wed, 10 Sep 2025 16:13:25 -0700\nhelgasoft <helgasoft at gmail.com> ?????:\n\n> Command?compiler::cmpfile(infile) outputs a binary (.Rc) file.\n> The infile source code is contained in this output file.",
+      "body_plain": "В Wed, 10 Sep 2025 16:13:25 -0700\nhelgasoft <helgasoft at gmail.com> пишет:\n\n> Command compiler::cmpfile(infile) outputs a binary (.Rc) file.\n> The infile source code is contained in this output file.\n> Is the source code required, and if not, is it possible to make it \n> optional ?\n\nThe source references are optional. Since cmpfile() calls parse(),\nsetting options(keep.source=FALSE) should prevent it from adding source\nreferences.\n\nOn the other hand, by calling compiler::disassemble() on the bytecode\nvalues, you will still be able to see the language objects from the\nfile, so a somewhat lossy representation of the source code is still\npresent. These language objects are used at least for error handling\nand sometimes for internal consistency checks [*].\n\nWhat's your use case?\n\n-- \nBest regards,\nIvan\n\n[*]\nhttps://coolbutuseless.github.io/book/rbytecodebook/15-stored-expressions.html",
+      "body_snippet": "В Wed, 10 Sep 2025 16:13:25 -0700\nhelgasoft <helgasoft at gmail.com> пишет:\n\n> Command compiler::cmpfile(infile) outputs a binary (.Rc) file.\n> The infile source code is contained in this output file.",
       "thread_id": "thread-9ecb11cb1983",
       "thread_depth": 1,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084163.html"
     },
     {
       "id": "msg-ea819522afab",
@@ -119,7 +125,8 @@
       "body_snippet": "Suggestion for Syntax Sugar:\n\nWould it make sense to permit a simple way to allow a coder to document the function argument type?\n\nf <- function( a:chr, b:data.frame, c:logi ) { ? }\n\npresumably, what ",
       "thread_id": "thread-ea819522afab",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084164.html"
     },
     {
       "id": "msg-9b90e537b1e6",
@@ -137,7 +144,8 @@
       "body_snippet": "On 2025-09-17 1:23 p.m., IVO I WELCH wrote:\n> \n> Suggestion for Syntax Sugar:\n> \n> Would it make sense to permit a simple way to allow a coder to document the function argument type?\n> \n> f <- functio",
       "thread_id": "thread-ea819522afab",
       "thread_depth": 1,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084165.html"
     },
     {
       "id": "msg-db86eb57b32f",
@@ -156,7 +164,8 @@
       "body_snippet": "There's also base::declare() in R (>= 4.4.0), which people are\nexploring to programmatically declare types and other things\n(https://github.com/HenrikBengtsson/Wishlist-for-R/issues/169). For\nexample,",
       "thread_id": "thread-ea819522afab",
       "thread_depth": 2,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084166.html"
     },
     {
       "id": "msg-5f4c79102605",
@@ -176,7 +185,8 @@
       "body_snippet": "thanks.  (indeed, on this one, even I knew this can be done, and only at\nruntime, of course, for all generality. ;-)).\n\nMy suggestion was only for a little syntactic sugar.  python has something\nlike ",
       "thread_id": "thread-ea819522afab",
       "thread_depth": 3,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084167.html"
     },
     {
       "id": "msg-931b44bdbb50",
@@ -192,7 +202,8 @@
       "body_snippet": "Title says it all.\n\nI know this can be done by transformations by the user, but given that\ninterval is so prominent in the ?doc and given that Nelder-Mead is the\ndefault method for optim(), it would b",
       "thread_id": "thread-931b44bdbb50",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084168.html"
     },
     {
       "id": "msg-a1b633fa473c",
@@ -210,7 +221,8 @@
       "body_snippet": "For what it's worth:\n\nJohn Nash (original author of the Pascal implementations of (most of) \nthe available algorithms in optim() (including the Nelder-Mead)) has \nlong maintained that these implementa",
       "thread_id": "thread-931b44bdbb50",
       "thread_depth": 1,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084169.html"
     },
     {
       "id": "msg-03810c245343",
@@ -222,11 +234,12 @@
       "subject_clean": "Clarify documentation of nlme::varIdent",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Hello,\n\nThe documentation of nlme::varIdent says this:\n\n\"the coefficients of the variance function represent the ratios between \nthe variances and a reference variance (corresponding to a reference \ngroup level)\"\n\nHowever, the parameter estimate shown in the summary output for lme \nmodels is the ratio between standard deviations. Could this be clarified \nin the documentation, e.g., by adding Eq. 5.13 from?Pinheiro and Bates \n(2000)?\n\n-- \nDr. Roland Fu?\n\nTh?nen-Institut f?r Agrarklimaschutz/\nTh?nen Institute of Climate-Smart Agriculture",
+      "body_plain": "Hello,\n\nThe documentation of nlme::varIdent says this:\n\n\"the coefficients of the variance function represent the ratios between \nthe variances and a reference variance (corresponding to a reference \ngroup level)\"\n\nHowever, the parameter estimate shown in the summary output for lme \nmodels is the ratio between standard deviations. Could this be clarified \nin the documentation, e.g., by adding Eq. 5.13 from Pinheiro and Bates \n(2000)?\n\n-- \nDr. Roland Fuß\n\nThünen-Institut für Agrarklimaschutz/\nThünen Institute of Climate-Smart Agriculture",
       "body_snippet": "Hello,\n\nThe documentation of nlme::varIdent says this:\n\n\"the coefficients of the variance function represent the ratios between \nthe variances and a reference variance (corresponding to a reference \ng",
       "thread_id": "thread-03810c245343",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084170.html"
     },
     {
       "id": "msg-87bfbe121c51",
@@ -247,7 +260,8 @@
       "body_snippet": "Dear R developpers,\n\nTwo months ago, I sent an email to the CRAN team asking if they would consider adding more LAPACK routines to the R's source tree. I have not received a response from them, which ",
       "thread_id": "thread-87bfbe121c51",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084171.html"
     },
     {
       "id": "msg-ff6b30895a03",
@@ -266,7 +280,8 @@
       "body_snippet": ">>>>> Ben Bolker  on Wed, 17 Sep 2025 19:00:00 -0400 writes:\n\n    > For what it's worth:\n\n    > John Nash (original author of the Pascal implementations of (most of) \n    > the available algorithms in",
       "thread_id": "thread-931b44bdbb50",
       "thread_depth": 2,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084172.html"
     },
     {
       "id": "msg-9c95b773d144",
@@ -282,7 +297,8 @@
       "body_snippet": "From the NEWS for R 4.5.0:\n\n   ? It is intended that this will be the last update to BLAS and\n     LAPACK in the R sources.  Those building R from source are\n     encouraged to use external BLAS and L",
       "thread_id": "thread-9c95b773d144",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084173.html"
     },
     {
       "id": "msg-d52012fdfefa",
@@ -294,11 +310,12 @@
       "subject_clean": "about class(<raster>)",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Hi,\n\nA few years ago, class() on a matrix was modified to return c(\"matrix\", \n\"array\") instead of just \"matrix\", thus formalizing the fact that a \nmatrix is an array. Concretely this change meant that is.array(), \ninherits() and is() were finally in agreement:\n\n ? ? > is.array(matrix())\n ? ? [1] TRUE\n ? ? > inherits(matrix(), \"array\")? # used to return FALSE\n ? ? [1] TRUE\n ? ? > is(matrix(), \"array\")? # also used to return FALSE\n ? ? [1] TRUE\n\nHas the same kind of change be considered for raster objects? A raster \nobject is a matrix, and this is acknowledged by is.matrix() but not by \ninherits() or is():\n\n ? ? > r <- as.raster(array(runif(60), 5:3))\n ? ? > is.matrix(r)\n ? ? [1] TRUE\n ? ? > inherits(r, \"matrix\")\n ? ? [1] FALSE\n ? ? > is(r, \"matrix\")\n ? ? [1] FALSE\n\nThis is because class(r) only returns \"raster\":\n\n ? ? > class(r)\n ? ? [1] \"raster\"\n\nAlso, because of this, 'r' is not considered an array in a consistent \nmanner either:\n\n ? ? > is.array(r)\n ? ? [1] TRUE\n ? ? > inherits(r, \"array\")\n ? ? [1] FALSE\n ? ? > is(r, \"array\")\n ? ? [1] FALSE\n\nThese issues would go away if class(r) was returning c(\"raster\", \n\"matrix\", \"array\") instead of just \"raster\":\n\n ? ? > class(r) <- c(\"raster\", \"matrix\", \"array\")\n ? ? > inherits(r, \"matrix\")\n ? ? [1] TRUE\n ? ? > is(r, \"matrix\")\n ? ? [1] TRUE\n ? ? > inherits(r, \"array\")\n ? ? [1] TRUE\n ? ? > is(r, \"array\")\n ? ? [1] TRUE\n\nHas this been considered?\n\nI'm aware that this kind of change has the potential to be quite \ndisruptive because it would break any code around that uses things like\n\n ? ? if (class(r) == \"raster\") ...\n\ninstead of\n\n ? ? if (is.raster(r)) ...\n\nor\n\n ? ? if (inherits(r, \"raster\")) ...\n\nBut consistency is priceless isn't it?\n\nThanks,\n\nH.\n\n-- \nHerv? Pag?s\n\nBioconductor Core Team\nhpages.on.github at gmail.com",
+      "body_plain": "Hi,\n\nA few years ago, class() on a matrix was modified to return c(\"matrix\", \n\"array\") instead of just \"matrix\", thus formalizing the fact that a \nmatrix is an array. Concretely this change meant that is.array(), \ninherits() and is() were finally in agreement:\n\n     > is.array(matrix())\n     [1] TRUE\n     > inherits(matrix(), \"array\")  # used to return FALSE\n     [1] TRUE\n     > is(matrix(), \"array\")  # also used to return FALSE\n     [1] TRUE\n\nHas the same kind of change be considered for raster objects? A raster \nobject is a matrix, and this is acknowledged by is.matrix() but not by \ninherits() or is():\n\n     > r <- as.raster(array(runif(60), 5:3))\n     > is.matrix(r)\n     [1] TRUE\n     > inherits(r, \"matrix\")\n     [1] FALSE\n     > is(r, \"matrix\")\n     [1] FALSE\n\nThis is because class(r) only returns \"raster\":\n\n     > class(r)\n     [1] \"raster\"\n\nAlso, because of this, 'r' is not considered an array in a consistent \nmanner either:\n\n     > is.array(r)\n     [1] TRUE\n     > inherits(r, \"array\")\n     [1] FALSE\n     > is(r, \"array\")\n     [1] FALSE\n\nThese issues would go away if class(r) was returning c(\"raster\", \n\"matrix\", \"array\") instead of just \"raster\":\n\n     > class(r) <- c(\"raster\", \"matrix\", \"array\")\n     > inherits(r, \"matrix\")\n     [1] TRUE\n     > is(r, \"matrix\")\n     [1] TRUE\n     > inherits(r, \"array\")\n     [1] TRUE\n     > is(r, \"array\")\n     [1] TRUE\n\nHas this been considered?\n\nI'm aware that this kind of change has the potential to be quite \ndisruptive because it would break any code around that uses things like\n\n     if (class(r) == \"raster\") ...\n\ninstead of\n\n     if (is.raster(r)) ...\n\nor\n\n     if (inherits(r, \"raster\")) ...\n\nBut consistency is priceless isn't it?\n\nThanks,\n\nH.\n\n-- \nHervé Pagès\n\nBioconductor Core Team\nhpages.on.github at gmail.com",
       "body_snippet": "Hi,\n\nA few years ago, class() on a matrix was modified to return c(\"matrix\", \n\"array\") instead of just \"matrix\", thus formalizing the fact that a \nmatrix is an array. Concretely this change meant that",
       "thread_id": "thread-d52012fdfefa",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084174.html"
     },
     {
       "id": "msg-b98b44f391f9",
@@ -316,7 +333,8 @@
       "body_snippet": "Herv?,\n\nWhich `as.raster()` did you call here? The one from package `graphics`, or\none from a contributed package such as `raster`, `terra`, ... ?\n\nCheers, Dirk\n\n-- \ndirk.eddelbuettel.com | @eddelbuet",
       "thread_id": "thread-d52012fdfefa",
       "thread_depth": 1,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084175.html"
     },
     {
       "id": "msg-6bf94178d7a7",
@@ -331,11 +349,12 @@
         "<f3d66803-4e19-4a30-af91-508e3fbca033@gmail.com>",
         "<26836.36392.912455.414244@paul.eddelbuettel.com>"
       ],
-      "body_plain": "On 24/09/2025 17:34, Dirk Eddelbuettel wrote:\n\n> Herv?,\n>\n> Which `as.raster()` did you call here? The one from package `graphics`, or\n> one from a contributed package such as `raster`, `terra`, ... ?\n\nThe one from grDevices. It's on the search path on a fresh start:\n\n > as.raster\nfunction (x, ...)\nUseMethod(\"as.raster\")\n<bytecode: 0x61dcf1df2ce0>\n<environment: namespace:grDevices>\n\nH.\n\n-- \nHerv? Pag?s\n\nBioconductor Core Team\nhpages.on.github at gmail.com",
-      "body_snippet": "On 24/09/2025 17:34, Dirk Eddelbuettel wrote:\n\n> Herv?,\n>\n> Which `as.raster()` did you call here? The one from package `graphics`, or\n> one from a contributed package such as `raster`, `terra`, ... ?",
+      "body_plain": "On 24/09/2025 17:34, Dirk Eddelbuettel wrote:\n\n> Hervé,\n>\n> Which `as.raster()` did you call here? The one from package `graphics`, or\n> one from a contributed package such as `raster`, `terra`, ... ?\n\nThe one from grDevices. It's on the search path on a fresh start:\n\n > as.raster\nfunction (x, ...)\nUseMethod(\"as.raster\")\n<bytecode: 0x61dcf1df2ce0>\n<environment: namespace:grDevices>\n\nH.\n\n-- \nHervé Pagès\n\nBioconductor Core Team\nhpages.on.github at gmail.com",
+      "body_snippet": "On 24/09/2025 17:34, Dirk Eddelbuettel wrote:\n\n> Hervé,\n>\n> Which `as.raster()` did you call here? The one from package `graphics`, or\n> one from a contributed package such as `raster`, `terra`, ... ?",
       "thread_id": "thread-d52012fdfefa",
       "thread_depth": 2,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084176.html"
     },
     {
       "id": "msg-d301f1bd278a",
@@ -351,7 +370,8 @@
       "body_snippet": "Dear R Core Team and R-devel Community,\n\n\nI hope this message finds you well. I am writing to propose an enhancement to the `as.character()` function in R's base package to address an inconsistency wi",
       "thread_id": "thread-d301f1bd278a",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084177.html"
     },
     {
       "id": "msg-ab536ab7fd95",
@@ -367,7 +387,8 @@
       "body_snippet": "Dear All,\n\nA hybrid R Dev Day will be held at Monash University, Melbourne, Australia on Friday 21 November. There will likely be a local hub at Brisbane and possibly Perth.\n\nJoin this open, collabora",
       "thread_id": "thread-ab536ab7fd95",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084178.html"
     },
     {
       "id": "msg-e984859b8175",
@@ -383,7 +404,8 @@
       "body_snippet": "Dear All,\n\nA hybrid R Dev Day will be held at Auckland University, New Zealand on Tuesday 16 - Wednesday 17 December. There will be two independent streams to enable remote participation in the Americ",
       "thread_id": "thread-e984859b8175",
       "thread_depth": 0,
-      "month": "2025-09"
+      "month": "2025-09",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2025-September/084179.html"
     }
   ],
   "threads": [

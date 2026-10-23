@@ -13,11 +13,12 @@
       "subject_clean": "WRE about R_strtod",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Hello,\n\nThis is what \"Writing R extensions\" currently says about R_atof and\nR_strtod:\n\n>> Function: void R_atof (const char* str)\n>> Function: void R_strtod (const char* str, char ** end)\n>>\n>> Implementations of the C99/POSIX functions atof and strtod which\n>> guarantee platform-dependent behaviour, including always using the\n>> period as the decimal point aka ?radix character? and converting\n>> \"NA\" to R?s NA_REAL_ . \n\nBesides the easily fixable return type (void -> double), shouldn't the\ndocumentation mention the fact that, unlike the standard C library\nfunctions, R's parser returns NA_REAL instead of 0 when no conversion\nis performed (including for the \"NA\" string, *end == str)?\n\nIndex: doc/manual/R-exts.texi\n===================================================================\n--- doc/manual/R-exts.texi\t(revision 87211)\n+++ doc/manual/R-exts.texi\t(working copy)\n@@ -16482,12 +16482,12 @@\n \n @apifun R_atof\n @apifun R_strtod\n- at deftypefun void R_atof (const char* @var{str})\n- at deftypefunx void R_strtod (const char* @var{str}, char ** @var{end})\n+ at deftypefun double R_atof (const char* @var{str})\n+ at deftypefunx double R_strtod (const char* @var{str}, char ** @var{end})\n Implementations of the C99/POSIX functions @code{atof} and @code{strtod}\n which guarantee platform-dependent behaviour, including always using the\n-period as the decimal point @emph{aka} `@I{radix character}' and converting\n- at code{\"NA\"} to R's @code{NA_REAL_} .\n+period as the decimal point @emph{aka} `@I{radix character}' and returning\n+R's @code{NA_REAL_} for all unconverted strings, including @code{\"NA\"}.\n @end deftypefun\n \n\n-- \nBest regards,\nIvan",
+      "body_plain": "Hello,\n\nThis is what \"Writing R extensions\" currently says about R_atof and\nR_strtod:\n\n>> Function: void R_atof (const char* str)\n>> Function: void R_strtod (const char* str, char ** end)\n>>\n>> Implementations of the C99/POSIX functions atof and strtod which\n>> guarantee platform-dependent behaviour, including always using the\n>> period as the decimal point aka ‘radix character’ and converting\n>> \"NA\" to R’s NA_REAL_ . \n\nBesides the easily fixable return type (void -> double), shouldn't the\ndocumentation mention the fact that, unlike the standard C library\nfunctions, R's parser returns NA_REAL instead of 0 when no conversion\nis performed (including for the \"NA\" string, *end == str)?\n\nIndex: doc/manual/R-exts.texi\n===================================================================\n--- doc/manual/R-exts.texi\t(revision 87211)\n+++ doc/manual/R-exts.texi\t(working copy)\n@@ -16482,12 +16482,12 @@\n \n @apifun R_atof\n @apifun R_strtod\n- at deftypefun void R_atof (const char* @var{str})\n- at deftypefunx void R_strtod (const char* @var{str}, char ** @var{end})\n+ at deftypefun double R_atof (const char* @var{str})\n+ at deftypefunx double R_strtod (const char* @var{str}, char ** @var{end})\n Implementations of the C99/POSIX functions @code{atof} and @code{strtod}\n which guarantee platform-dependent behaviour, including always using the\n-period as the decimal point @emph{aka} `@I{radix character}' and converting\n- at code{\"NA\"} to R's @code{NA_REAL_} .\n+period as the decimal point @emph{aka} `@I{radix character}' and returning\n+R's @code{NA_REAL_} for all unconverted strings, including @code{\"NA\"}.\n @end deftypefun\n \n\n-- \nBest regards,\nIvan",
       "body_snippet": "Hello,\n\nThis is what \"Writing R extensions\" currently says about R_atof and\nR_strtod:\n\n>> Function: void R_atof (const char* str)\n>> Function: void R_strtod (const char* str, char ** end)\n>>\n>> Implem",
       "thread_id": "thread-8ef60e8da9ab",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083655.html"
     },
     {
       "id": "msg-f698f6716164",
@@ -31,11 +32,12 @@
       "references": [
         "<20241008101618.6acf739c@Tarkus>"
       ],
-      "body_plain": ">>>>> Ivan Krylov via R-devel writes:\n\nThanks: changed now.\n\nBest\n-k\n\n> Hello,\n> This is what \"Writing R extensions\" currently says about R_atof and\n> R_strtod:\n\n>>> Function: void R_atof (const char* str)\n>>> Function: void R_strtod (const char* str, char ** end)\n>>> \n>>> Implementations of the C99/POSIX functions atof and strtod which\n>>> guarantee platform-dependent behaviour, including always using the\n>>> period as the decimal point aka ?radix character? and converting\n>>> \"NA\" to R?s NA_REAL_ . \n\n> Besides the easily fixable return type (void -> double), shouldn't the\n> documentation mention the fact that, unlike the standard C library\n> functions, R's parser returns NA_REAL instead of 0 when no conversion\n> is performed (including for the \"NA\" string, *end == str)?\n\n> Index: doc/manual/R-exts.texi\n> ===================================================================\n> --- doc/manual/R-exts.texi\t(revision 87211)\n> +++ doc/manual/R-exts.texi\t(working copy)\n> @@ -16482,12 +16482,12 @@\n \n>  @apifun R_atof\n>  @apifun R_strtod\n> - at deftypefun void R_atof (const char* @var{str})\n> - at deftypefunx void R_strtod (const char* @var{str}, char ** @var{end})\n> + at deftypefun double R_atof (const char* @var{str})\n> + at deftypefunx double R_strtod (const char* @var{str}, char ** @var{end})\n>  Implementations of the C99/POSIX functions @code{atof} and @code{strtod}\n>  which guarantee platform-dependent behaviour, including always using the\n> -period as the decimal point @emph{aka} `@I{radix character}' and converting\n> - at code{\"NA\"} to R's @code{NA_REAL_} .\n> +period as the decimal point @emph{aka} `@I{radix character}' and returning\n> +R's @code{NA_REAL_} for all unconverted strings, including @code{\"NA\"}.\n>  @end deftypefun\n \n\n> -- \n> Best regards,\n> Ivan\n\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_plain": ">>>>> Ivan Krylov via R-devel writes:\n\nThanks: changed now.\n\nBest\n-k\n\n> Hello,\n> This is what \"Writing R extensions\" currently says about R_atof and\n> R_strtod:\n\n>>> Function: void R_atof (const char* str)\n>>> Function: void R_strtod (const char* str, char ** end)\n>>> \n>>> Implementations of the C99/POSIX functions atof and strtod which\n>>> guarantee platform-dependent behaviour, including always using the\n>>> period as the decimal point aka ‘radix character’ and converting\n>>> \"NA\" to R’s NA_REAL_ . \n\n> Besides the easily fixable return type (void -> double), shouldn't the\n> documentation mention the fact that, unlike the standard C library\n> functions, R's parser returns NA_REAL instead of 0 when no conversion\n> is performed (including for the \"NA\" string, *end == str)?\n\n> Index: doc/manual/R-exts.texi\n> ===================================================================\n> --- doc/manual/R-exts.texi\t(revision 87211)\n> +++ doc/manual/R-exts.texi\t(working copy)\n> @@ -16482,12 +16482,12 @@\n \n>  @apifun R_atof\n>  @apifun R_strtod\n> - at deftypefun void R_atof (const char* @var{str})\n> - at deftypefunx void R_strtod (const char* @var{str}, char ** @var{end})\n> + at deftypefun double R_atof (const char* @var{str})\n> + at deftypefunx double R_strtod (const char* @var{str}, char ** @var{end})\n>  Implementations of the C99/POSIX functions @code{atof} and @code{strtod}\n>  which guarantee platform-dependent behaviour, including always using the\n> -period as the decimal point @emph{aka} `@I{radix character}' and converting\n> - at code{\"NA\"} to R's @code{NA_REAL_} .\n> +period as the decimal point @emph{aka} `@I{radix character}' and returning\n> +R's @code{NA_REAL_} for all unconverted strings, including @code{\"NA\"}.\n>  @end deftypefun\n \n\n> -- \n> Best regards,\n> Ivan\n\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
       "body_snippet": ">>>>> Ivan Krylov via R-devel writes:\n\nThanks: changed now.\n\nBest\n-k\n\n> Hello,\n> This is what \"Writing R extensions\" currently says about R_atof and\n> R_strtod:\n\n>>> Function: void R_atof (const char*",
       "thread_id": "thread-8ef60e8da9ab",
       "thread_depth": 1,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083656.html"
     },
     {
       "id": "msg-1cacee90aae5",
@@ -47,11 +49,12 @@
       "subject_clean": "Typo in DateTimeClasses.Rd",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Hello,\n\nWhen following a thread that started today [1], I read the documentation \nfor DateTimeClasses {base} more carefully and noticed a typo in the \n\"Details on POSIXlt\" section, in the paragraph right after the \ncomponents list.\n\nThe original and corrected are \"he\" instead of \"the\".\n\n\n From earlier versions of R, he last two components will not be present \nfor times in UTC and are platform-dependent.\n\n From earlier versions of R, the last two components will not be present \nfor times in UTC and are platform-dependent.\n\n\n\n\n--- datetimeclasses.rd\t2024-03-26 23:02:03.000000000 +0000\n+++ datetimeclasses_2.rd\t2024-10-10 20:39:16.496162900 +0100\n@@ -198,7 +198,7 @@\n    }\n    The components must be in this order: that was only minimally checked\n    prior to \\R 4.3.0.  All objects created in \\R 4.3.0 have the optional\n-  components.  From earlier versions of \\R, he last two components will\n+  components.  From earlier versions of \\R, the last two components will\n    not be present for times in UTC and are platform-dependent.  Currently\n    \\code{gmtoff} is set on almost all current platforms: those based on\n    BSD or \\code{glibc} (including Linux and macOS) and those using the\n\n\nHope this helps,\n\nRui Barradas\n\n\n-- \nEste e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.\nwww.avg.com",
+      "body_plain": "Hello,\n\nWhen following a thread that started today [1], I read the documentation \nfor DateTimeClasses {base} more carefully and noticed a typo in the \n\"Details on POSIXlt\" section, in the paragraph right after the \ncomponents list.\n\nThe original and corrected are \"he\" instead of \"the\".\n\n\n From earlier versions of R, he last two components will not be present \nfor times in UTC and are platform-dependent.\n\n From earlier versions of R, the last two components will not be present \nfor times in UTC and are platform-dependent.\n\n\n\n\n--- datetimeclasses.rd\t2024-03-26 23:02:03.000000000 +0000\n+++ datetimeclasses_2.rd\t2024-10-10 20:39:16.496162900 +0100\n@@ -198,7 +198,7 @@\n    }\n    The components must be in this order: that was only minimally checked\n    prior to \\R 4.3.0.  All objects created in \\R 4.3.0 have the optional\n-  components.  From earlier versions of \\R, he last two components will\n+  components.  From earlier versions of \\R, the last two components will\n    not be present for times in UTC and are platform-dependent.  Currently\n    \\code{gmtoff} is set on almost all current platforms: those based on\n    BSD or \\code{glibc} (including Linux and macOS) and those using the\n\n\nHope this helps,\n\nRui Barradas\n\n\n-- \nEste e-mail foi analisado pelo software antivírus AVG para verificar a presença de vírus.\nwww.avg.com",
       "body_snippet": "Hello,\n\nWhen following a thread that started today [1], I read the documentation \nfor DateTimeClasses {base} more carefully and noticed a typo in the \n\"Details on POSIXlt\" section, in the paragraph ri",
       "thread_id": "thread-1cacee90aae5",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083657.html"
     },
     {
       "id": "msg-19b9cb96e5dd",
@@ -63,11 +66,12 @@
       "subject_clean": "Typo in DateTimeClasses.Rd",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Hello,\n\nIn my previous e-mail I forgot the link to the thread I mention.\n\n[1] https://stat.ethz.ch/pipermail/r-help/2024-October/480098.html\n\nSorry for the mess,\n\nRui Barradas\n\n\n-- \nEste e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.\nwww.avg.com",
+      "body_plain": "Hello,\n\nIn my previous e-mail I forgot the link to the thread I mention.\n\n[1] https://stat.ethz.ch/pipermail/r-help/2024-October/480098.html\n\nSorry for the mess,\n\nRui Barradas\n\n\n-- \nEste e-mail foi analisado pelo software antivírus AVG para verificar a presença de vírus.\nwww.avg.com",
       "body_snippet": "Hello,\n\nIn my previous e-mail I forgot the link to the thread I mention.\n\n[1] https://stat.ethz.ch/pipermail/r-help/2024-October/480098.html\n\nSorry for the mess,\n\nRui Barradas\n\n\n-- \nEste e-mail foi an",
       "thread_id": "thread-19b9cb96e5dd",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083658.html"
     },
     {
       "id": "msg-ed9cc50ea879",
@@ -85,7 +89,8 @@
       "body_snippet": "Thanks, fixed in the trunk.\n\n\tSebastian Meyer\n\n\nAm 10.10.24 um 21:53 schrieb Rui Barradas:\n> Hello,\n> \n> When following a thread that started today [1], I read the documentation\n> for DateTimeClasses ",
       "thread_id": "thread-1cacee90aae5",
       "thread_depth": 1,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083659.html"
     },
     {
       "id": "msg-fd7990da11d9",
@@ -101,7 +106,8 @@
       "body_snippet": "Full schedule is available on developer.r-project.org (pending update from SVN).\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg,",
       "thread_id": "thread-fd7990da11d9",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083660.html"
     },
     {
       "id": "msg-1e2736ed5498",
@@ -117,7 +123,8 @@
       "body_snippet": "Hi all,\n\nJust noticed that the error that arises when calling t.test() with factors could be a bit clearer:\n\n> t.test(factor(c(3,1,2,4,3,5,4,5)), factor(c(2,1,2,3,4,5)))\nError in var(x) : Calling var(",
       "thread_id": "thread-1e2736ed5498",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083661.html"
     },
     {
       "id": "msg-79f3edfbba67",
@@ -135,7 +142,8 @@
       "body_snippet": ">>>>> Viechtbauer, Wolfgang (NP) writes:\n\n> Hi all,\n> Just noticed that the error that arises when calling t.test() with factors could be a bit clearer:\n\n>> t.test(factor(c(3,1,2,4,3,5,4,5)), factor(c",
       "thread_id": "thread-1e2736ed5498",
       "thread_depth": 1,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083662.html"
     },
     {
       "id": "msg-85d78acd5626",
@@ -154,7 +162,8 @@
       "body_snippet": "> -----Original Message-----\n> From: Kurt Hornik <Kurt.Hornik at wu.ac.at>\n> Sent: Friday, October 11, 2024 14:18\n> To: Viechtbauer, Wolfgang (NP) <wolfgang.viechtbauer at maastrichtuniversity.nl>\n> C",
       "thread_id": "thread-1e2736ed5498",
       "thread_depth": 2,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083663.html"
     },
     {
       "id": "msg-fd1720dc0b1a",
@@ -174,7 +183,8 @@
       "body_snippet": ">>>>> Viechtbauer, Wolfgang (NP) writes:\n\nThanks.  Patches welcome :-)\n\nBest\n-k\n\n>> -----Original Message-----\n>> From: Kurt Hornik <Kurt.Hornik at wu.ac.at>\n>> Sent: Friday, October 11, 2024 14:18\n>>",
       "thread_id": "thread-1e2736ed5498",
       "thread_depth": 3,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083664.html"
     },
     {
       "id": "msg-23cf66aeca0d",
@@ -190,7 +200,8 @@
       "body_snippet": "I am subscribing to r-core because I am spending more and more time reading\nthe R implementation itself, but in the meantime I would love to discuss\nthe topic of embedding R (or linking against it) wi",
       "thread_id": "thread-23cf66aeca0d",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083665.html"
     },
     {
       "id": "msg-cf7b0d33d128",
@@ -206,7 +217,8 @@
       "body_snippet": "Hi all,\n\nI'm new to contributing to r-devel. The trunk of r-devel right now includes\na `check_rust()` function for adherence to CRAN's evolving rust policy (see\ncommit\nhttps://github.com/r-devel/r-svn",
       "thread_id": "thread-cf7b0d33d128",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083666.html"
     },
     {
       "id": "msg-515ee8f66014",
@@ -224,7 +236,8 @@
       "body_snippet": "Bryce,\n\nembedding R varies from easy to very complex depending on what you want to do with it. If all you want is to evaluate R commands and get the result values then it is easy: you just initialize ",
       "thread_id": "thread-23cf66aeca0d",
       "thread_depth": 1,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083667.html"
     },
     {
       "id": "msg-9d02939d84f5",
@@ -242,7 +255,8 @@
       "body_snippet": "On 10/13/24 19:30, Josiah Parry wrote:\n> Hi all,\n>\n> I'm new to contributing to r-devel. The trunk of r-devel right now includes\n> a `check_rust()` function for adherence to CRAN's evolving rust polic",
       "thread_id": "thread-cf7b0d33d128",
       "thread_depth": 1,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083668.html"
     },
     {
       "id": "msg-0c8f250ebde9",
@@ -261,7 +275,8 @@
       "body_snippet": "Hi Bryce,\n\nOn 14 October 2024 at 09:13, Simon Urbanek wrote:\n| If you are willing to use C++ then RInside is a nice package that wraps the R API in C++ classes for easier use: https://github.com/eddel",
       "thread_id": "thread-23cf66aeca0d",
       "thread_depth": 2,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083669.html"
     },
     {
       "id": "msg-9e9b1c43b824",
@@ -280,7 +295,8 @@
       "body_snippet": "Thank you, Tomas, for the clarification!\n\nOn Sun, Oct 13, 2024 at 14:59 Tomas Kalibera <tomas.kalibera at gmail.com>\nwrote:\n\n> On 10/13/24 19:30, Josiah Parry wrote:\n> > Hi all,\n> >\n> > I'm new to con",
       "thread_id": "thread-cf7b0d33d128",
       "thread_depth": 2,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083670.html"
     },
     {
       "id": "msg-6bc26810b19c",
@@ -296,7 +312,8 @@
       "body_snippet": "Would R-Core be receptive to having getNamespaceVersion() return a \nnumeric_version object instead of a named character?\n\nTim",
       "thread_id": "thread-6bc26810b19c",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083671.html"
     },
     {
       "id": "msg-4faddcb985a2",
@@ -314,7 +331,8 @@
       "body_snippet": "On 17 October 2024 at 12:38, Tim Taylor wrote:\n| Would R-Core be receptive to having getNamespaceVersion() return a \n| numeric_version object instead of a named character?\n\nIs this good enough? What's",
       "thread_id": "thread-6bc26810b19c",
       "thread_depth": 1,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083672.html"
     },
     {
       "id": "msg-65b0d5d7c74b",
@@ -333,7 +351,8 @@
       "body_snippet": "I mean the `numeric_version` object not a numeric (double/int). \nBasically to protect me from myself I'd prefer not to have to remember \nto wrap `getNamespaceVersion()` with `as.package_version()`.\n\nI",
       "thread_id": "thread-6bc26810b19c",
       "thread_depth": 2,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083673.html"
     },
     {
       "id": "msg-4623764af4b4",
@@ -353,7 +372,8 @@
       "body_snippet": "On 17 October 2024 at 13:42, Tim Taylor wrote:\n| I mean the `numeric_version` object not a numeric (double/int). \n| Basically to protect me from myself I'd prefer not to have to remember \n| to wrap `g",
       "thread_id": "thread-6bc26810b19c",
       "thread_depth": 3,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083674.html"
     },
     {
       "id": "msg-2b455a4c8b30",
@@ -373,7 +393,8 @@
       "body_snippet": "On 17/10/2024 13:42, Tim Taylor wrote:\n> I mean the `numeric_version` object not a numeric (double/int). \n> Basically to protect me from myself I'd prefer not to have to remember \n> to wrap `getNamesp",
       "thread_id": "thread-6bc26810b19c",
       "thread_depth": 3,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083675.html"
     },
     {
       "id": "msg-39d6fd15f7e2",
@@ -394,7 +415,8 @@
       "body_snippet": "On 17/10/2024 15:53, Prof Brian Ripley wrote:\n> On 17/10/2024 13:42, Tim Taylor wrote:\n>> I mean the `numeric_version` object not a numeric (double/int). \n>> Basically to protect me from myself I'd pr",
       "thread_id": "thread-6bc26810b19c",
       "thread_depth": 4,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083676.html"
     },
     {
       "id": "msg-6327ac26fdec",
@@ -420,11 +442,12 @@
         "<abc59a72-a38b-4d73-b858-2efc150e62f3@gmail.com>",
         "<69df184a-96e5-4d26-9999-fef5dad280c4@gmail.com>"
       ],
-      "body_plain": "I?m replying 8 months later to say a proper thanks to Duncan for the function below. It?s been helping me clean up duplicate (and not-quite duplicate!) function definitions in amateur code ever since, and I?m reminded to say so now because I just passed it along to Ben Zipperer in response to a very similar question[1] on Mastodon. \n\nIn the Mastodon thread there were several R experts expecting the existing package checks to catch this and being surprised to realize they don't, which I think mostly goes to highlight that it really is a corner case? but in any case thank you for your help to keep the ?bitten by function redefinition? club a small one.\n\nThanks,\nChris\n\n[1] https://mastodon.social/@benzipperer/113328761897124440\n\n\n\n> On Feb 7, 2024, at 11:53 AM, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:\n> \n> I put the idea below into a function that gives nicer looking results. Here's the new code:\n> \n> dupnames <- function(path = \".\") {\n> \n>  Rfiles <- pkgload:::find_code(path)\n>  allnames <- data.frame(names=character(), filename=character(), line = numeric())\n>  result <- NULL\n>  for (f in Rfiles) {\n>    exprs <- parse(f, keep.source = TRUE)\n>    locs <- getSrcLocation(exprs)\n>    names <- character(length(exprs))\n>    lines <- numeric(length(exprs))\n>    for (i in seq_along(exprs)) {\n>      expr <- exprs[[i]]\n>      if (is.name(expr[[1]]) &&\n>          deparse(expr[[1]]) %in% c(\"<-\", \"=\") &&\n>          is.name(expr[[2]])) {\n>        names[i] <- deparse(expr[[2]])\n>        lines[i] <- locs[i]\n>      }\n>    }\n>    keep <- names != \"\"\n>    if (any(keep)) {\n>      names <- names[keep]\n>      lines <- lines[keep]\n> \n>      prev <- nrow(allnames)\n>      allnames <- rbind(allnames, data.frame(name = names, filename = basename(f), line = lines))\n>      dups <- which(duplicated(allnames$name))\n>      dups <- dups[dups > prev]\n>      if (any(dups)) {\n>        origfile <- character(length(dups))\n>        origline <- numeric(length(dups))\n>        for (i in seq_along(dups)) {\n>          prev <- which(allnames$name == allnames$name[dups[i]])[1]\n>          origfile[i] <- allnames$filename[prev]\n>          origline[i] <- allnames$line[prev]\n>        }\n> \n>        result <- rbind(result,\n>                        data.frame(name = allnames$name[dups],\n>                                   first = paste(origfile, origline, sep=\":\"),\n>                                   dup = paste(allnames$filename[dups], allnames$line[dups], sep = \":\")))\n>      }\n>    }\n>  }\n>  result\n> }\n> \n> \n> And here's what I get when I run it on rgl:\n> \n> dupnames(\"rgl\")\n>  name      first          dup\n> 1  fns knitr.R:12  knitr.R:165\n> 2  fns knitr.R:12 pkgdown.R:14\n> 3  fns knitr.R:12    shiny.R:8\n> \n> Those are okay; the fns object is a temporary that is later removed in each case.\n> \n> Duncan Murdoch",
-      "body_snippet": "I?m replying 8 months later to say a proper thanks to Duncan for the function below. It?s been helping me clean up duplicate (and not-quite duplicate!) function definitions in amateur code ever since,",
+      "body_plain": "I’m replying 8 months later to say a proper thanks to Duncan for the function below. It’s been helping me clean up duplicate (and not-quite duplicate!) function definitions in amateur code ever since, and I’m reminded to say so now because I just passed it along to Ben Zipperer in response to a very similar question[1] on Mastodon. \n\nIn the Mastodon thread there were several R experts expecting the existing package checks to catch this and being surprised to realize they don't, which I think mostly goes to highlight that it really is a corner case… but in any case thank you for your help to keep the “bitten by function redefinition” club a small one.\n\nThanks,\nChris\n\n[1] https://mastodon.social/@benzipperer/113328761897124440\n\n\n\n> On Feb 7, 2024, at 11:53 AM, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:\n> \n> I put the idea below into a function that gives nicer looking results. Here's the new code:\n> \n> dupnames <- function(path = \".\") {\n> \n>  Rfiles <- pkgload:::find_code(path)\n>  allnames <- data.frame(names=character(), filename=character(), line = numeric())\n>  result <- NULL\n>  for (f in Rfiles) {\n>    exprs <- parse(f, keep.source = TRUE)\n>    locs <- getSrcLocation(exprs)\n>    names <- character(length(exprs))\n>    lines <- numeric(length(exprs))\n>    for (i in seq_along(exprs)) {\n>      expr <- exprs[[i]]\n>      if (is.name(expr[[1]]) &&\n>          deparse(expr[[1]]) %in% c(\"<-\", \"=\") &&\n>          is.name(expr[[2]])) {\n>        names[i] <- deparse(expr[[2]])\n>        lines[i] <- locs[i]\n>      }\n>    }\n>    keep <- names != \"\"\n>    if (any(keep)) {\n>      names <- names[keep]\n>      lines <- lines[keep]\n> \n>      prev <- nrow(allnames)\n>      allnames <- rbind(allnames, data.frame(name = names, filename = basename(f), line = lines))\n>      dups <- which(duplicated(allnames$name))\n>      dups <- dups[dups > prev]\n>      if (any(dups)) {\n>        origfile <- character(length(dups))\n>        origline <- numeric(length(dups))\n>        for (i in seq_along(dups)) {\n>          prev <- which(allnames$name == allnames$name[dups[i]])[1]\n>          origfile[i] <- allnames$filename[prev]\n>          origline[i] <- allnames$line[prev]\n>        }\n> \n>        result <- rbind(result,\n>                        data.frame(name = allnames$name[dups],\n>                                   first = paste(origfile, origline, sep=\":\"),\n>                                   dup = paste(allnames$filename[dups], allnames$line[dups], sep = \":\")))\n>      }\n>    }\n>  }\n>  result\n> }\n> \n> \n> And here's what I get when I run it on rgl:\n> \n> dupnames(\"rgl\")\n>  name      first          dup\n> 1  fns knitr.R:12  knitr.R:165\n> 2  fns knitr.R:12 pkgdown.R:14\n> 3  fns knitr.R:12    shiny.R:8\n> \n> Those are okay; the fns object is a temporary that is later removed in each case.\n> \n> Duncan Murdoch",
+      "body_snippet": "I’m replying 8 months later to say a proper thanks to Duncan for the function below. It’s been helping me clean up duplicate (and not-quite duplicate!) function definitions in amateur code ever since,",
       "thread_id": "thread-6327ac26fdec",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083677.html"
     },
     {
       "id": "msg-2f77f2020977",
@@ -440,7 +463,8 @@
       "body_snippet": "Gurus:\n\nI have a new version of my quantreg package with minimal changes, mainly to fix some obscure fortran problems.  It fails R CMD check ?as-cran with the error:\n\nRunning examples in ?quantreg-Ex.",
       "thread_id": "thread-2f77f2020977",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083678.html"
     },
     {
       "id": "msg-e7ac76e8b016",
@@ -458,7 +482,8 @@
       "body_snippet": "Dear Prof. Roger Koenker,\n\nOn Tue, 22 Oct 2024 09:08:12 +0000\n\"Koenker, Roger W\" <rkoenker at illinois.edu> wrote:\n\n> > fN <- rqss(y~qss(x,constraint=\"N\")+z)  \n> \n>  *** caught segfault ***\n> address ",
       "thread_id": "thread-2f77f2020977",
       "thread_depth": 1,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083679.html"
     },
     {
       "id": "msg-60663a903f20",
@@ -477,7 +502,8 @@
       "body_snippet": "Ivan,\n\nMany, many thanks!  \n\nBest,\nRoger\n\n\n> On Oct 22, 2024, at 10:44?AM, Ivan Krylov <ikrylov at disroot.org> wrote:\n> \n> Dear Prof. Roger Koenker,\n> \n> On Tue, 22 Oct 2024 09:08:12 +0000\n> \"Koenker",
       "thread_id": "thread-2f77f2020977",
       "thread_depth": 2,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083680.html"
     },
     {
       "id": "msg-f7010c7db430",
@@ -493,7 +519,8 @@
       "body_snippet": "Hello,\n\nThe \"[\" primitive operator currently has the 'eval' flag set to 0 in\nsrc/main/names.c. This means that the result of subsetting, whether\nR-native or implemented by a method, will never be invi",
       "thread_id": "thread-f7010c7db430",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083681.html"
     },
     {
       "id": "msg-e6e4a45e1db4",
@@ -511,7 +538,8 @@
       "body_snippet": "Thanks for the detailed analysis and proposition Ivan. The patch you\nare proposing to base R is\nhttps://github.com/Rdatatable/data.table/issues/6566#issuecomment-2428912338\nright?\n\nOn Thu, Oct 24, 202",
       "thread_id": "thread-f7010c7db430",
       "thread_depth": 1,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083682.html"
     },
     {
       "id": "msg-01157281ac9a",
@@ -530,7 +558,8 @@
       "body_snippet": "On Thu, 24 Oct 2024 13:23:56 -0400\nToby Hocking <tdhock5 at gmail.com> wrote:\n\n> The patch you are proposing to base R is\n> https://github.com/Rdatatable/data.table/issues/6566#issuecomment-2428912338",
       "thread_id": "thread-f7010c7db430",
       "thread_depth": 2,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083683.html"
     },
     {
       "id": "msg-775e3d51a72c",
@@ -550,7 +579,8 @@
       "body_snippet": "My message below sounds a little aggressive, I apologize in advance for \nthat.  But I can't think of better wording.\n\nThis is a small change, which will have a small benefit, mainly for the \ndata.tabl",
       "thread_id": "thread-f7010c7db430",
       "thread_depth": 3,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083684.html"
     },
     {
       "id": "msg-3ac505cf8ec8",
@@ -571,7 +601,8 @@
       "body_snippet": "? Fri, 25 Oct 2024 08:39:39 -0400\nDuncan Murdoch <murdoch.duncan at gmail.com> ?????:\n\n> Surely you or they should be the ones to run the test across all of\n> CRAN?\n\nThat's fair. The question is, is t",
       "thread_id": "thread-f7010c7db430",
       "thread_depth": 4,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083685.html"
     },
     {
       "id": "msg-5c135d61d982",
@@ -593,7 +624,8 @@
       "body_snippet": "On Fri, 25 Oct 2024, Ivan Krylov via R-devel wrote:\n\n> ? Fri, 25 Oct 2024 08:39:39 -0400\n> Duncan Murdoch <murdoch.duncan at gmail.com> ?????:\n>\n>> Surely you or they should be the ones to run the tes",
       "thread_id": "thread-f7010c7db430",
       "thread_depth": 5,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083686.html"
     },
     {
       "id": "msg-d1403b3b91c9",
@@ -609,7 +641,8 @@
       "body_snippet": "My older packages have some Fortran and C routines.  The Fortran is ancient and I am started to convert it to Fortran 2018 (thanks ChatGPT).  To have a mixture of Fortran and C code in a package I hav",
       "thread_id": "thread-d1403b3b91c9",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083687.html"
     },
     {
       "id": "msg-2636fbf82401",
@@ -632,7 +665,8 @@
       "body_snippet": "Dear Luke,\n\nThank you very much for taking the time to write an exhaustive answer!\nThey are always a pleasure to read on the R mailing lists.\n\nOn Fri, 25 Oct 2024 11:50:34 -0500 (CDT)\nluke-tierney at ",
       "thread_id": "thread-f7010c7db430",
       "thread_depth": 6,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083688.html"
     },
     {
       "id": "msg-b8bc16ae080c",
@@ -650,7 +684,8 @@
       "body_snippet": "? Fri, 25 Oct 2024 15:03:54 -0500\nfh at fharrell.com ?????:\n\n> Now I find that I can get rid of init.c, and  change NAMESPACE to use\n> useDynLib(package name, list of compiled routine names) (without\n",
       "thread_id": "thread-d1403b3b91c9",
       "thread_depth": 1,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083689.html"
     },
     {
       "id": "msg-bbfbde63dbf6",
@@ -664,11 +699,12 @@
       "references": [
         "<20241026004847.592dd7e2@Tarkus>"
       ],
-      "body_plain": "Ivan thank you very much for the exceptionally clear explanations.  I?m convinced.\nFrank\n\n> On Oct 25, 2024, at 4:49?PM, Ivan Krylov <ikrylov at disroot.org> wrote:\n> \n> ?? Fri, 25 Oct 2024 15:03:54 -0500\n> fh at fharrell.com ?????:\n> \n>> Now I find that I can get rid of init.c, and  change NAMESPACE to use\n>> useDynLib(package name, list of compiled routine names) (without\n>> .registration and .fixes) after making sure the Fortran and C\n>> routines are not named the same as the package name.  The routines\n>> are called using .Fortran(binary module name, args) or .Call(C binary\n>> module name, ...).\n>> \n>> Can anyone see any problem with streamlining in this way?\n> \n> \"Writing R Extensions\" 1.5.4 says:\n> \n>>> this approach is nowadays deprecated in favour of supplying\n>>> registration information\n> \n> ...which is the init.c approach you have been using.\n> \n> With useDynLib(package name, list of compiled routine names), R has to\n> ask the operating system's dynamic loader to find exported functions in\n> the DLL by their names. With function registration, it is enough for\n> the DLL to export one function (package_name_init) and then directly\n> provide function pointers together with their desired names to R. The\n> latter is considered more reliable than talking to the operating\n> system's dynamic loader. It also provides an opportunity for R to check\n> the number of arguments and their types.\n> \n>> I'm also using Fortran's dynamic array allocation instead of passing\n>> working vectors from R.\n> \n> This is quite reasonable, with the following two things to care about:\n> \n> 1. If the stat= argument is absent from the allocate statement and the\n> allocation is unsuccessful, program execution stops. Stopping the whole\n> R process may lose unsaved data belonging to the user, so it's best to\n> always provide the stat= argument and handle allocation failures\n> somehow.\n> \n> 2. Calls to R API from within the Fortran program may signal R errors\n> and jump away from the function call without deallocating the memory\n> that R knows nothing about. From Fortran code, it's most simple not to\n> call R API while having allocated memory, although it's not impossible\n> to use Fortran 2003 C interoperability to call R's error handling\n> interfaces (described in Writing R Extensions 6.12).\n> \n> --\n> Best regards,\n> Ivan",
-      "body_snippet": "Ivan thank you very much for the exceptionally clear explanations.  I?m convinced.\nFrank\n\n> On Oct 25, 2024, at 4:49?PM, Ivan Krylov <ikrylov at disroot.org> wrote:\n> \n> ?? Fri, 25 Oct 2024 15:03:54 -",
+      "body_plain": "Ivan thank you very much for the exceptionally clear explanations.  I’m convinced.\nFrank\n\n> On Oct 25, 2024, at 4:49 PM, Ivan Krylov <ikrylov at disroot.org> wrote:\n> \n> ﻿В Fri, 25 Oct 2024 15:03:54 -0500\n> fh at fharrell.com пишет:\n> \n>> Now I find that I can get rid of init.c, and  change NAMESPACE to use\n>> useDynLib(package name, list of compiled routine names) (without\n>> .registration and .fixes) after making sure the Fortran and C\n>> routines are not named the same as the package name.  The routines\n>> are called using .Fortran(binary module name, args) or .Call(C binary\n>> module name, ...).\n>> \n>> Can anyone see any problem with streamlining in this way?\n> \n> \"Writing R Extensions\" 1.5.4 says:\n> \n>>> this approach is nowadays deprecated in favour of supplying\n>>> registration information\n> \n> ...which is the init.c approach you have been using.\n> \n> With useDynLib(package name, list of compiled routine names), R has to\n> ask the operating system's dynamic loader to find exported functions in\n> the DLL by their names. With function registration, it is enough for\n> the DLL to export one function (package_name_init) and then directly\n> provide function pointers together with their desired names to R. The\n> latter is considered more reliable than talking to the operating\n> system's dynamic loader. It also provides an opportunity for R to check\n> the number of arguments and their types.\n> \n>> I'm also using Fortran's dynamic array allocation instead of passing\n>> working vectors from R.\n> \n> This is quite reasonable, with the following two things to care about:\n> \n> 1. If the stat= argument is absent from the allocate statement and the\n> allocation is unsuccessful, program execution stops. Stopping the whole\n> R process may lose unsaved data belonging to the user, so it's best to\n> always provide the stat= argument and handle allocation failures\n> somehow.\n> \n> 2. Calls to R API from within the Fortran program may signal R errors\n> and jump away from the function call without deallocating the memory\n> that R knows nothing about. From Fortran code, it's most simple not to\n> call R API while having allocated memory, although it's not impossible\n> to use Fortran 2003 C interoperability to call R's error handling\n> interfaces (described in Writing R Extensions 6.12).\n> \n> --\n> Best regards,\n> Ivan",
+      "body_snippet": "Ivan thank you very much for the exceptionally clear explanations.  I’m convinced.\nFrank\n\n> On Oct 25, 2024, at 4:49 PM, Ivan Krylov <ikrylov at disroot.org> wrote:\n> \n> ﻿В Fri, 25 Oct 2024 15:03:54 -",
       "thread_id": "thread-d1403b3b91c9",
       "thread_depth": 2,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083690.html"
     },
     {
       "id": "msg-e18f518f5894",
@@ -684,7 +720,8 @@
       "body_snippet": "Dear All,\n\nThere will be an R Dev Day as a satellite to LatinR 2024: https://latinr.org/en/cronograma/r-dev-day/rdevday-en.html.\n\nThe event comprises two co-working sessions, with participants encoura",
       "thread_id": "thread-e18f518f5894",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083691.html"
     },
     {
       "id": "msg-9c80059ce4d6",
@@ -700,7 +737,8 @@
       "body_snippet": "The build system rolled up R-4.4.2.tar.gz (codename \"Pile of Leaves\") this morning.\n\nThis is a minor update, with a few bug fixes.\n\nThe list below details the changes in this release. \n\nYou can get th",
       "thread_id": "thread-9c80059ce4d6",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083692.html"
     },
     {
       "id": "msg-36c240e023c3",
@@ -716,7 +754,8 @@
       "body_snippet": "When compiling R, the build fails after byte compiling grDevices with\nthe following error:\n\nbyte-compiling package 'grDevices'\nmake[4]: *** [../../../share/make/lazycomp.mk:9:\n../../../library/grDevic",
       "thread_id": "thread-36c240e023c3",
       "thread_depth": 0,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083693.html"
     },
     {
       "id": "msg-04b4fa9a3ce1",
@@ -734,7 +773,8 @@
       "body_snippet": "On 10/31/24 17:30, Avraham Adler wrote:\n> When compiling R, the build fails after byte compiling grDevices with\n> the following error:\n>\n> byte-compiling package 'grDevices'\n> make[4]: *** [../../../s",
       "thread_id": "thread-36c240e023c3",
       "thread_depth": 1,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083694.html"
     },
     {
       "id": "msg-9353c431c72f",
@@ -753,7 +793,8 @@
       "body_snippet": "On Thu, Oct 31, 2024 at 12:42?PM Tomas Kalibera\n<tomas.kalibera at gmail.com> wrote:\n>\n> On 10/31/24 17:30, Avraham Adler wrote:\n> > When compiling R, the build fails after byte compiling grDevices wi",
       "thread_id": "thread-36c240e023c3",
       "thread_depth": 2,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083695.html"
     },
     {
       "id": "msg-3e7e167e5ea5",
@@ -773,7 +814,8 @@
       "body_snippet": "On 10/31/24 18:35, Avraham Adler wrote:\n> On Thu, Oct 31, 2024 at 12:42?PM Tomas Kalibera\n> <tomas.kalibera at gmail.com> wrote:\n>> On 10/31/24 17:30, Avraham Adler wrote:\n>>> When compiling R, the bu",
       "thread_id": "thread-36c240e023c3",
       "thread_depth": 3,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083696.html"
     },
     {
       "id": "msg-2f1d245d7b1b",
@@ -791,7 +833,8 @@
       "body_snippet": "On 31/10/2024 16:30, Avraham Adler wrote:\n> When compiling R, the build fails after byte compiling grDevices with\n> the following error:\n> \n> byte-compiling package 'grDevices'\n> make[4]: *** [../../.",
       "thread_id": "thread-36c240e023c3",
       "thread_depth": 1,
-      "month": "2024-10"
+      "month": "2024-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2024-October/083697.html"
     }
   ],
   "threads": [
