@@ -19,7 +19,8 @@
       "body_snippet": "I don't think this is possible. If you would like e.g. stricter checking \nfor --max-ppsize argument value, please try to come up with some example \nthat triggers such case.\n\nTomas\n\nOn 09/29/2018 06:41",
       "thread_id": "thread-67f215271e80",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076903.html"
     },
     {
       "id": "msg-e0af1b576a7c",
@@ -35,7 +36,8 @@
       "body_snippet": "Dear All,\nI'm linking R from another application and embedding it as described in the\nR-exts manual, i.e. with initialization done via Rf_initEmbeddedR.\nWhile everything works the same as in standalon",
       "thread_id": "thread-e0af1b576a7c",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076904.html"
     },
     {
       "id": "msg-2ab2f2d77188",
@@ -54,7 +56,8 @@
       "body_snippet": ">>>>> Duncan Murdoch \n>>>>>     on Tue, 18 Sep 2018 16:23:47 -0400 writes:\n\n> On 18/09/2018 2:16 PM, Marcel Ramos wrote:\n> > Dear R-devs,\n> > \n> > \n> > Scenario:\n> > \n> > When checking a package via `",
       "thread_id": "thread-2ab2f2d77188",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076905.html"
     },
     {
       "id": "msg-7b8d2687733b",
@@ -73,7 +76,8 @@
       "body_snippet": "The fix is now in R-devel, 75386. I have not ported to R-patched, \nbecause the fix breaks two packages which are working around this bug \n(and to my knowledge without having reported it before). So th",
       "thread_id": "thread-7b8d2687733b",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076906.html"
     },
     {
       "id": "msg-2dfc2384fd54",
@@ -85,11 +89,12 @@
       "subject_clean": "Relevel confusing with numeric value",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Something that bit me:\nThe function relevel takes a factor, and a reference level to be promoted to the first place.\nIf ?ref? is a character this level is promoted, if it?s a numeric the ?ref?-th level is promoted.\nWhich turns out to be very confusing if you have factor with numeric values (e.g. when reading in a csv with some dirty numeric columns and stringsAsFactors TRUE)\nFor example:\n\nset.seed(1)\ntest <- data.frame(n=sample(c(1:100, letters[1:10]), size=90))\ntest$n <- relevel(test$n, 50)\nprint(levels(test$n))\n\ngives ?62? as the first level.\n\nCould we make something like this an error, or at least issue a warning?\nAlso because some other functions automatically coerce, factor(?, levels=1:100) and levels(test$n) <- 1:100 works fine.\nSo this is maybe the most confusing: relevel(factor(1:10, levels = -10:20), 15) gives ?4? as the first level\n\nFor now I?ve thought of 2 possible implementations, that could be inserted in stats::relevel.factor(), just before is.character(ref):\n\nif(is.numeric(ref) && ref %in% lev)\n    warning('Provided numeric reference, note that this will promote the ', ref, 'th value, not level with value \"', ref, '\"!')\n\nor\n\nif(is.numeric(ref) && any(!is.na(suppressWarnings(as.numeric(lev)))))\n    warning('Provided numeric reference, note that this will promote the ', ref, 'th value, not level with value \"', ref, '\"!')\n\n\nBest regards,\nEmil Bode\n\nData-analyst\n\n+31 6 43 83 89 33\nemil.bode at dans.knaw.nl<mailto:emil.bode at dans.knaw.nl>\n\nDANS: Netherlands Institute for Permanent Access to Digital Research Resources\nAnna van Saksenlaan 51 | 2593 HW Den Haag | +31 70 349 44 50 | info at dans.knaw.nl<mailto:info at dans.kn> | dans.knaw.nl<applewebdata://71F677F0-6872-45F3-A6C4-4972BF87185B/www.dans.knaw.nl>\nDANS is an institute of the Dutch Academy KNAW<http://knaw.nl/nl> and funding organisation NWO<http://www.nwo.nl/>.\n\n\t[[alternative HTML version deleted]]",
-      "body_snippet": "Something that bit me:\nThe function relevel takes a factor, and a reference level to be promoted to the first place.\nIf ?ref? is a character this level is promoted, if it?s a numeric the ?ref?-th leve",
+      "body_plain": "Something that bit me:\nThe function relevel takes a factor, and a reference level to be promoted to the first place.\nIf “ref” is a character this level is promoted, if it’s a numeric the “ref”-th level is promoted.\nWhich turns out to be very confusing if you have factor with numeric values (e.g. when reading in a csv with some dirty numeric columns and stringsAsFactors TRUE)\nFor example:\n\nset.seed(1)\ntest <- data.frame(n=sample(c(1:100, letters[1:10]), size=90))\ntest$n <- relevel(test$n, 50)\nprint(levels(test$n))\n\ngives “62” as the first level.\n\nCould we make something like this an error, or at least issue a warning?\nAlso because some other functions automatically coerce, factor(…, levels=1:100) and levels(test$n) <- 1:100 works fine.\nSo this is maybe the most confusing: relevel(factor(1:10, levels = -10:20), 15) gives “4” as the first level\n\nFor now I’ve thought of 2 possible implementations, that could be inserted in stats::relevel.factor(), just before is.character(ref):\n\nif(is.numeric(ref) && ref %in% lev)\n    warning('Provided numeric reference, note that this will promote the ', ref, 'th value, not level with value \"', ref, '\"!')\n\nor\n\nif(is.numeric(ref) && any(!is.na(suppressWarnings(as.numeric(lev)))))\n    warning('Provided numeric reference, note that this will promote the ', ref, 'th value, not level with value \"', ref, '\"!')\n\n\nBest regards,\nEmil Bode\n\nData-analyst\n\n+31 6 43 83 89 33\nemil.bode at dans.knaw.nl<mailto:emil.bode at dans.knaw.nl>\n\nDANS: Netherlands Institute for Permanent Access to Digital Research Resources\nAnna van Saksenlaan 51 | 2593 HW Den Haag | +31 70 349 44 50 | info at dans.knaw.nl<mailto:info at dans.kn> | dans.knaw.nl<applewebdata://71F677F0-6872-45F3-A6C4-4972BF87185B/www.dans.knaw.nl>\nDANS is an institute of the Dutch Academy KNAW<http://knaw.nl/nl> and funding organisation NWO<http://www.nwo.nl/>.\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Something that bit me:\nThe function relevel takes a factor, and a reference level to be promoted to the first place.\nIf “ref” is a character this level is promoted, if it’s a numeric the “ref”-th leve",
       "thread_id": "thread-2dfc2384fd54",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076907.html"
     },
     {
       "id": "msg-31cab901cd55",
@@ -103,11 +108,12 @@
       "references": [
         "<8BD6F091-0505-4424-8440-B0A8FDA37E29@dans.knaw.nl>"
       ],
-      "body_plain": "In a word, no. It is behaving as documented and adding a warning would just confuse others who have been using the feature as intended. \n\nThis belongs in the same bin as \"as.integer(f) vs as.integer(as.character(f))\" and \"x[f] vs. x[as.character(f)]\"\n\n-pd\n\n\n> On 2 Oct 2018, at 17:18 , Emil Bode <emil.bode at dans.knaw.nl> wrote:\n> \n> Something that bit me:\n> The function relevel takes a factor, and a reference level to be promoted to the first place.\n> If ?ref? is a character this level is promoted, if it?s a numeric the ?ref?-th level is promoted.\n> Which turns out to be very confusing if you have factor with numeric values (e.g. when reading in a csv with some dirty numeric columns and stringsAsFactors TRUE)\n> For example:\n> \n> set.seed(1)\n> test <- data.frame(n=sample(c(1:100, letters[1:10]), size=90))\n> test$n <- relevel(test$n, 50)\n> print(levels(test$n))\n> \n> gives ?62? as the first level.\n> \n> Could we make something like this an error, or at least issue a warning?\n> Also because some other functions automatically coerce, factor(?, levels=1:100) and levels(test$n) <- 1:100 works fine.\n> So this is maybe the most confusing: relevel(factor(1:10, levels = -10:20), 15) gives ?4? as the first level\n> \n> For now I?ve thought of 2 possible implementations, that could be inserted in stats::relevel.factor(), just before is.character(ref):\n> \n> if(is.numeric(ref) && ref %in% lev)\n>    warning('Provided numeric reference, note that this will promote the ', ref, 'th value, not level with value \"', ref, '\"!')\n> \n> or\n> \n> if(is.numeric(ref) && any(!is.na(suppressWarnings(as.numeric(lev)))))\n>    warning('Provided numeric reference, note that this will promote the ', ref, 'th value, not level with value \"', ref, '\"!')\n> \n> \n> Best regards,\n> Emil Bode\n> \n> Data-analyst\n> \n> +31 6 43 83 89 33\n> emil.bode at dans.knaw.nl<mailto:emil.bode at dans.knaw.nl>\n> \n> DANS: Netherlands Institute for Permanent Access to Digital Research Resources\n> Anna van Saksenlaan 51 | 2593 HW Den Haag | +31 70 349 44 50 | info at dans.knaw.nl<mailto:info at dans.kn> | dans.knaw.nl<applewebdata://71F677F0-6872-45F3-A6C4-4972BF87185B/www.dans.knaw.nl>\n> DANS is an institute of the Dutch Academy KNAW<http://knaw.nl/nl> and funding organisation NWO<http://www.nwo.nl/>.\n> \n> \t[[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nOffice: A 4.23\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com",
+      "body_plain": "In a word, no. It is behaving as documented and adding a warning would just confuse others who have been using the feature as intended. \n\nThis belongs in the same bin as \"as.integer(f) vs as.integer(as.character(f))\" and \"x[f] vs. x[as.character(f)]\"\n\n-pd\n\n\n> On 2 Oct 2018, at 17:18 , Emil Bode <emil.bode at dans.knaw.nl> wrote:\n> \n> Something that bit me:\n> The function relevel takes a factor, and a reference level to be promoted to the first place.\n> If “ref” is a character this level is promoted, if it’s a numeric the “ref”-th level is promoted.\n> Which turns out to be very confusing if you have factor with numeric values (e.g. when reading in a csv with some dirty numeric columns and stringsAsFactors TRUE)\n> For example:\n> \n> set.seed(1)\n> test <- data.frame(n=sample(c(1:100, letters[1:10]), size=90))\n> test$n <- relevel(test$n, 50)\n> print(levels(test$n))\n> \n> gives “62” as the first level.\n> \n> Could we make something like this an error, or at least issue a warning?\n> Also because some other functions automatically coerce, factor(…, levels=1:100) and levels(test$n) <- 1:100 works fine.\n> So this is maybe the most confusing: relevel(factor(1:10, levels = -10:20), 15) gives “4” as the first level\n> \n> For now I’ve thought of 2 possible implementations, that could be inserted in stats::relevel.factor(), just before is.character(ref):\n> \n> if(is.numeric(ref) && ref %in% lev)\n>    warning('Provided numeric reference, note that this will promote the ', ref, 'th value, not level with value \"', ref, '\"!')\n> \n> or\n> \n> if(is.numeric(ref) && any(!is.na(suppressWarnings(as.numeric(lev)))))\n>    warning('Provided numeric reference, note that this will promote the ', ref, 'th value, not level with value \"', ref, '\"!')\n> \n> \n> Best regards,\n> Emil Bode\n> \n> Data-analyst\n> \n> +31 6 43 83 89 33\n> emil.bode at dans.knaw.nl<mailto:emil.bode at dans.knaw.nl>\n> \n> DANS: Netherlands Institute for Permanent Access to Digital Research Resources\n> Anna van Saksenlaan 51 | 2593 HW Den Haag | +31 70 349 44 50 | info at dans.knaw.nl<mailto:info at dans.kn> | dans.knaw.nl<applewebdata://71F677F0-6872-45F3-A6C4-4972BF87185B/www.dans.knaw.nl>\n> DANS is an institute of the Dutch Academy KNAW<http://knaw.nl/nl> and funding organisation NWO<http://www.nwo.nl/>.\n> \n> \t[[alternative HTML version deleted]]\n> \n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel\n\n-- \nPeter Dalgaard, Professor,\nCenter for Statistics, Copenhagen Business School\nSolbjerg Plads 3, 2000 Frederiksberg, Denmark\nPhone: (+45)38153501\nOffice: A 4.23\nEmail: pd.mes at cbs.dk  Priv: PDalgd at gmail.com",
       "body_snippet": "In a word, no. It is behaving as documented and adding a warning would just confuse others who have been using the feature as intended. \n\nThis belongs in the same bin as \"as.integer(f) vs as.integer(a",
       "thread_id": "thread-2dfc2384fd54",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076908.html"
     },
     {
       "id": "msg-8f4a14436f4a",
@@ -123,7 +129,8 @@
       "body_snippet": "I am now getting the occasional complaint about survival routines that are not able to \nhandle big data.?? I looked in the manuals to try and update my understanding of max \nvector size, max matrix, m",
       "thread_id": "thread-8f4a14436f4a",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076909.html"
     },
     {
       "id": "msg-be86c4571fcf",
@@ -141,7 +148,8 @@
       "body_snippet": "On Tue, Oct 2, 2018 at 9:43 AM Therneau, Terry M., Ph.D. via R-devel\n<r-devel at r-project.org> wrote:\n>\n> I am now getting the occasional complaint about survival routines that are not able to\n> hand",
       "thread_id": "thread-8f4a14436f4a",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076910.html"
     },
     {
       "id": "msg-101e9f337af7",
@@ -161,7 +169,8 @@
       "body_snippet": "Thanks!? Please let us know when it is in the released version of R.\n\nBarbara\n\nTomas Kalibera wrote on 10/2/18 6:37 AM:\n> The fix is now in R-devel, 75386. I have not ported to R-patched, \n> because t",
       "thread_id": "thread-7b8d2687733b",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076911.html"
     },
     {
       "id": "msg-c3435331e233",
@@ -179,7 +188,8 @@
       "body_snippet": "Does this help a little?\n\nhttps://cran.r-project.org/doc/manuals/r-release/R-ints.html#Long-vectors\n\nOne thing I seem to remember but cannot find a reference for is that\nlong vectors can only be passe",
       "thread_id": "thread-8f4a14436f4a",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076912.html"
     },
     {
       "id": "msg-5e6c7886dbfd",
@@ -195,7 +205,8 @@
       "body_snippet": "Hello,\n\nI am looking for a prebuild - binary MS Windows version of the R grpc package\nhttps://github.com/nfultz/grpc\n\nbest regards\nWitek\n\n\n-- \nWitold Eryk Wolski",
       "thread_id": "thread-5e6c7886dbfd",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076913.html"
     },
     {
       "id": "msg-43f2a0c409a6",
@@ -213,7 +224,8 @@
       "body_snippet": "Hello,\n\nDo you really need a prebuild binary? Wouldn't this do it?\n\ndevtools::install_github(\"nfultz/grpc\")\n\n\nHope this helps,\n\nRui Barradas\n\n?s 20:14 de 02/10/2018, Witold E Wolski escreveu:\n> Hello,",
       "thread_id": "thread-5e6c7886dbfd",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076914.html"
     },
     {
       "id": "msg-717bcaa945bb",
@@ -232,7 +244,8 @@
       "body_snippet": ":) Did you missed the \"MS-Windows\"  in my e-mail?\n\nOn Tue, 2 Oct 2018 at 21:28, Rui Barradas <ruipbarradas at sapo.pt> wrote:\n>\n> Hello,\n>\n> Do you really need a prebuild binary? Wouldn't this do it?\n",
       "thread_id": "thread-5e6c7886dbfd",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076915.html"
     },
     {
       "id": "msg-2037be70f309",
@@ -248,7 +261,8 @@
       "body_snippet": "Sorry for bothering you\n\nI am trying to build the R grpc package on windows:\nhttps://github.com/nfultz/grpc\n\nagainst an MSYS2 build of grpc.\n\nwhen running devtools::install() I am getting the followin",
       "thread_id": "thread-2037be70f309",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076916.html"
     },
     {
       "id": "msg-59346a394e76",
@@ -264,7 +278,8 @@
       "body_snippet": "`grDevices::convertColor` performance can be improved by 30-300x with \nsmall changes to the code.  `colorRamp(space='Lab')` uses `convertColor` \nso it too benefits from substantial performance gains.\n",
       "thread_id": "thread-59346a394e76",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076917.html"
     },
     {
       "id": "msg-d315fdb84d76",
@@ -282,7 +297,8 @@
       "body_snippet": "Hi,\n\nSolved, some search for preprocessor helped.\n\nPKG_CPPFLAGS=-D_WIN32_WINNT=0x600\n\nVery Sorry for bothering you\n\n\nThank you\nOn Tue, 2 Oct 2018 at 23:01, Witold E Wolski <wewolski at gmail.com> wrot",
       "thread_id": "thread-2037be70f309",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076918.html"
     },
     {
       "id": "msg-6c655b7a1ed9",
@@ -298,7 +314,8 @@
       "body_snippet": "Hello,\n\nI am trying to install a package with some src files on windows (linux\ninstall works fine). The sources seem to build, there is an *.dll in\nthe src folder but than the installation process fai",
       "thread_id": "thread-6c655b7a1ed9",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076919.html"
     },
     {
       "id": "msg-192f975c980e",
@@ -317,7 +334,8 @@
       "body_snippet": "That is indeed helpful; reading the sections around it largely answered my questions. \nRinternals.h has the definitions\n\n#define allocMatrix Rf_allocMatrix\nSEXP Rf_allocMatrix(SEXPTYPE, int, int);\n#de",
       "thread_id": "thread-8f4a14436f4a",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076920.html"
     },
     {
       "id": "msg-547777468401",
@@ -335,7 +353,8 @@
       "body_snippet": "Thanks Brodie.  Having a look at all of this is on my list.\n\nPaul\n\nOn 03/10/18 14:13, Brodie Gaslam via R-devel wrote:\n> `grDevices::convertColor` performance can be improved by 30-300x with \n> small ",
       "thread_id": "thread-59346a394e76",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076921.html"
     },
     {
       "id": "msg-4d88ce19bfa9",
@@ -353,7 +372,8 @@
       "body_snippet": "Thanks for the report, but unfortunately I cannot reproduce on my system \n(either macOS nor Linux, from the command line) to debug. Did you run \nthis in the command line version of R?\n\nI would not be ",
       "thread_id": "thread-4d88ce19bfa9",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076922.html"
     },
     {
       "id": "msg-f76c41607c47",
@@ -372,7 +392,8 @@
       "body_snippet": "On Thu, Oct 4, 2018 at 6:12 PM Tomas Kalibera <tomas.kalibera at gmail.com> wrote:\n>\n>\n> Thanks for the report, but unfortunately I cannot reproduce on my system\n> (either macOS nor Linux, from the co",
       "thread_id": "thread-4d88ce19bfa9",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076923.html"
     },
     {
       "id": "msg-de4e7d958bf7",
@@ -388,7 +409,8 @@
       "body_snippet": "The make.unique function states that the algorithm has the property that make.unique(c(A, B)) == make.unique(c(make.unique(A), B)).\n\n\nThis doesn't seem to be the case in all situations. An example:\n\n\n",
       "thread_id": "thread-de4e7d958bf7",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076931.html"
     },
     {
       "id": "msg-1886dc6d4ada",
@@ -408,7 +430,8 @@
       "body_snippet": "On 05/10/2018, 09:45, \"R-help on behalf of hmh\" <r-help-bounces at r-project.org on behalf of hugomh at gmx.fr> wrote:\n\n    Hi,\n    \n    Thanks William for this fast answer, and sorry for sending the ",
       "thread_id": "thread-1886dc6d4ada",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076932.html"
     },
     {
       "id": "msg-ce871ad2dcbf",
@@ -427,7 +450,8 @@
       "body_snippet": "Thanks for asking.\n\nThe path where R tries to load the dll from does not exist I think (or\nthe install process deletes it after the error - might this be the\ncase?):\nC:/Users/wewol/OneDrive/Documents/",
       "thread_id": "thread-ce871ad2dcbf",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076924.html"
     },
     {
       "id": "msg-b15bd5bd6404",
@@ -447,7 +471,8 @@
       "body_snippet": "Hm. I cannot find it now, but I saw notes about problems with Onedrive,\nmaybe also Dropbox, because file paths are not exactly what r expects.\nUsually I have package library as local folder. Did your ",
       "thread_id": "thread-ce871ad2dcbf",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076925.html"
     },
     {
       "id": "msg-fce7f4d1e6be",
@@ -459,11 +484,12 @@
       "subject_clean": "Seg fault stats::runmed",
       "in_reply_to": null,
       "references": [],
-      "body_plain": "Dear all,\n\nI just found this issue:\n\ndd1 = c(rep(NaN,82), rep(-1, 144), rep(1, 74))\nxx = runmed(dd1, 21)\n\n-> R crashes reproducibly in R 3.4.3, R3.4.4 (Ubuntu 14.04/Ubuntu 16.04)\n\nWith GDB:\nProgram received signal SIGSEGV, Segmentation fault.\nswap (l=53, r=86, window=window at entry=0xc59308, \noutlist=outlist at entry=0x12ea2e8, nrlist=nrlist at entry=0x114fdd8, \nprint_level=print_level at entry=0) at Trunmed.c:64\n64??? ??? outlist[nr/* = nrlist[l] */] = l;\n\nValgrind also reports access to unallocated memory and/or writing past \nthe end of the heap.\n\nThe crash does not happen if the order is changed:\n\ndd2 = c(rep(-1, 144), rep(1, 74), rep(NaN,82))\nxx = runmed(dd2,21)\n\nError in if (a < b) { : missing value where TRUE/FALSE needed\n\nBest regards,\nHilmar\n\n-- \nDr. Hilmar Berger, MD\nMax Planck Institute for Infection Biology\nCharit?platz 1\nD-10117 Berlin\nGERMANY\n\nPhone:  + 49 30 28460 430\nFax:    + 49 30 28460 401\n  \nE-Mail: berger at mpiib-berlin.mpg.de\nWeb   : www.mpiib-berlin.mpg.de",
+      "body_plain": "Dear all,\n\nI just found this issue:\n\ndd1 = c(rep(NaN,82), rep(-1, 144), rep(1, 74))\nxx = runmed(dd1, 21)\n\n-> R crashes reproducibly in R 3.4.3, R3.4.4 (Ubuntu 14.04/Ubuntu 16.04)\n\nWith GDB:\nProgram received signal SIGSEGV, Segmentation fault.\nswap (l=53, r=86, window=window at entry=0xc59308, \noutlist=outlist at entry=0x12ea2e8, nrlist=nrlist at entry=0x114fdd8, \nprint_level=print_level at entry=0) at Trunmed.c:64\n64        outlist[nr/* = nrlist[l] */] = l;\n\nValgrind also reports access to unallocated memory and/or writing past \nthe end of the heap.\n\nThe crash does not happen if the order is changed:\n\ndd2 = c(rep(-1, 144), rep(1, 74), rep(NaN,82))\nxx = runmed(dd2,21)\n\nError in if (a < b) { : missing value where TRUE/FALSE needed\n\nBest regards,\nHilmar\n\n-- \nDr. Hilmar Berger, MD\nMax Planck Institute for Infection Biology\nCharitéplatz 1\nD-10117 Berlin\nGERMANY\n\nPhone:  + 49 30 28460 430\nFax:    + 49 30 28460 401\n  \nE-Mail: berger at mpiib-berlin.mpg.de\nWeb   : www.mpiib-berlin.mpg.de",
       "body_snippet": "Dear all,\n\nI just found this issue:\n\ndd1 = c(rep(NaN,82), rep(-1, 144), rep(1, 74))\nxx = runmed(dd1, 21)\n\n-> R crashes reproducibly in R 3.4.3, R3.4.4 (Ubuntu 14.04/Ubuntu 16.04)\n\nWith GDB:\nProgram re",
       "thread_id": "thread-fce7f4d1e6be",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076926.html"
     },
     {
       "id": "msg-8068069b9244",
@@ -485,7 +511,8 @@
       "body_snippet": "> Nope.\n\n> This IS a bug:\n> The negative auto-correlation mostly disappear when I randomize small samples using the R function 'sample'.\n\n> Please check thoroughly the code of the 1st mail I sent, the",
       "thread_id": "thread-8068069b9244",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076933.html"
     },
     {
       "id": "msg-d47db407ccfd",
@@ -505,11 +532,12 @@
         "<ABD057D3-5E10-44B4-B4DD-0FB04D475B52@ua.ac.be>",
         "<5154ab19-d82c-ca24-676f-7eaeb03196f0@gmx.fr>"
       ],
-      "body_plain": "On Fri, Oct 5, 2018 at 2:07 PM hmh <hugomh at gmx.fr> wrote:\n>\n> On 05/10/2018 10:28, Annaert Jan wrote:\n> > you discard any time series structure;\n> But that is PRECISELY what a call a bug:\n> There should not be any \"time series structure\" in the output or rnorm,\n> runif and so on but there is one.\n>\n> rnorm(N,0,1)\n> should give on average the same output as\n> sample(rnorm(N,0,1))\n\nAgreed, but that is not what your code is testing. You seem to think\nthat something much more specific should be true; namely,\n\nX[1:10] ~ iid normal, then\n\ncor(X[1:9], X[2:10])\n\nand\n\ncor(sample(X[-1]), sample(X[-10]))\n\nshould have the same distribution. This is not at all obvious, and in\nfact not true.\n\nPlease check the reference you have been pointed to. Here is a related\narticle in the same volume:\n\nhttps://www.jstor.org/stable/2332719\n\n-Deepayan\n\n\n> Which is not the case. rnorm(N,0,1) should draw INDEPENDENT samples i.e.\n> without time series structure !\n>\n>\n> --\n> - no title specified\n>\n> Hugo Math?-Hubert\n>\n> ATER\n>\n> Laboratoire Interdisciplinaire des Environnements Continentaux (LIEC)\n>\n> UMR 7360 CNRS -  B?t IBISE\n>\n> Universit? de Lorraine  -  UFR SciFA\n>\n> 8, Rue du G?n?ral Delestraint\n>\n> F-57070 METZ\n>\n> +33(0)9 77 21 66 66\n> - - - - - - - - - - - - - - - - - -\n> Les r?flexions naissent dans les doutes et meurent dans les certitudes.\n> Les doutes sont donc un signe de force et les certitudes un signe de\n> faiblesse. La plupart des gens sont pourtant certains du contraire.\n> - - - - - - - - - - - - - - - - - -\n> Thoughts appear from doubts and die in convictions. Therefore, doubts\n> are an indication of strength and convictions an indication of weakness.\n> Yet, most people believe the opposite.\n>\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see\n> https://stat.ethz.ch/mailman/listinfo/r-help\n> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html\n> and provide commented, minimal, self-contained, reproducible code.",
+      "body_plain": "On Fri, Oct 5, 2018 at 2:07 PM hmh <hugomh at gmx.fr> wrote:\n>\n> On 05/10/2018 10:28, Annaert Jan wrote:\n> > you discard any time series structure;\n> But that is PRECISELY what a call a bug:\n> There should not be any \"time series structure\" in the output or rnorm,\n> runif and so on but there is one.\n>\n> rnorm(N,0,1)\n> should give on average the same output as\n> sample(rnorm(N,0,1))\n\nAgreed, but that is not what your code is testing. You seem to think\nthat something much more specific should be true; namely,\n\nX[1:10] ~ iid normal, then\n\ncor(X[1:9], X[2:10])\n\nand\n\ncor(sample(X[-1]), sample(X[-10]))\n\nshould have the same distribution. This is not at all obvious, and in\nfact not true.\n\nPlease check the reference you have been pointed to. Here is a related\narticle in the same volume:\n\nhttps://www.jstor.org/stable/2332719\n\n-Deepayan\n\n\n> Which is not the case. rnorm(N,0,1) should draw INDEPENDENT samples i.e.\n> without time series structure !\n>\n>\n> --\n> - no title specified\n>\n> Hugo Mathé-Hubert\n>\n> ATER\n>\n> Laboratoire Interdisciplinaire des Environnements Continentaux (LIEC)\n>\n> UMR 7360 CNRS -  Bât IBISE\n>\n> Université de Lorraine  -  UFR SciFA\n>\n> 8, Rue du Général Delestraint\n>\n> F-57070 METZ\n>\n> +33(0)9 77 21 66 66\n> - - - - - - - - - - - - - - - - - -\n> Les réflexions naissent dans les doutes et meurent dans les certitudes.\n> Les doutes sont donc un signe de force et les certitudes un signe de\n> faiblesse. La plupart des gens sont pourtant certains du contraire.\n> - - - - - - - - - - - - - - - - - -\n> Thoughts appear from doubts and die in convictions. Therefore, doubts\n> are an indication of strength and convictions an indication of weakness.\n> Yet, most people believe the opposite.\n>\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see\n> https://stat.ethz.ch/mailman/listinfo/r-help\n> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html\n> and provide commented, minimal, self-contained, reproducible code.",
       "body_snippet": "On Fri, Oct 5, 2018 at 2:07 PM hmh <hugomh at gmx.fr> wrote:\n>\n> On 05/10/2018 10:28, Annaert Jan wrote:\n> > you discard any time series structure;\n> But that is PRECISELY what a call a bug:\n> There s",
       "thread_id": "thread-d47db407ccfd",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076927.html"
     },
     {
       "id": "msg-3dab98270f6f",
@@ -525,7 +553,8 @@
       "body_snippet": "Hi\n\n\nIt seems that names of the form \"..#\" and \"...\" are not fixed by \nmake.names(), even though they are reserved words. The documentation reads:\n\n > [...] Names such as \".2way\" are not valid, and ne",
       "thread_id": "thread-3dab98270f6f",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076928.html"
     },
     {
       "id": "msg-7bc8244dfbd2",
@@ -546,11 +575,12 @@
         "<5154ab19-d82c-ca24-676f-7eaeb03196f0@gmx.fr>",
         "<CADfFDC49X87yVfjVjBer3prLnuy5SaP-U+ekxiyHhBaY_RKvUw@mail.gmail.com>"
       ],
-      "body_plain": "I got it !\n\n\nthanks and sorry for annoying you with that.\n\n\nhave a nice day,\n\nhugo\n\n\nOn 05/10/2018 11:16, Deepayan Sarkar wrote:\n> On Fri, Oct 5, 2018 at 2:07 PM hmh <hugomh at gmx.fr> wrote:\n>> On 05/10/2018 10:28, Annaert Jan wrote:\n>>> you discard any time series structure;\n>> But that is PRECISELY what a call a bug:\n>> There should not be any \"time series structure\" in the output or rnorm,\n>> runif and so on but there is one.\n>>\n>> rnorm(N,0,1)\n>> should give on average the same output as\n>> sample(rnorm(N,0,1))\n> Agreed, but that is not what your code is testing. You seem to think\n> that something much more specific should be true; namely,\n>\n> X[1:10] ~ iid normal, then\n>\n> cor(X[1:9], X[2:10])\n>\n> and\n>\n> cor(sample(X[-1]), sample(X[-10]))\n>\n> should have the same distribution. This is not at all obvious, and in\n> fact not true.\n>\n> Please check the reference you have been pointed to. Here is a related\n> article in the same volume:\n>\n> https://www.jstor.org/stable/2332719\n>\n> -Deepayan\n>\n>\n>> Which is not the case. rnorm(N,0,1) should draw INDEPENDENT samples i.e.\n>> without time series structure !\n>>\n>>\n>> --\n>> - no title specified\n>>\n>> Hugo Math?-Hubert\n>>\n>> ATER\n>>\n>> Laboratoire Interdisciplinaire des Environnements Continentaux (LIEC)\n>>\n>> UMR 7360 CNRS -  B?t IBISE\n>>\n>> Universit? de Lorraine  -  UFR SciFA\n>>\n>> 8, Rue du G?n?ral Delestraint\n>>\n>> F-57070 METZ\n>>\n>> +33(0)9 77 21 66 66\n>> - - - - - - - - - - - - - - - - - -\n>> Les r?flexions naissent dans les doutes et meurent dans les certitudes.\n>> Les doutes sont donc un signe de force et les certitudes un signe de\n>> faiblesse. La plupart des gens sont pourtant certains du contraire.\n>> - - - - - - - - - - - - - - - - - -\n>> Thoughts appear from doubts and die in convictions. Therefore, doubts\n>> are an indication of strength and convictions an indication of weakness.\n>> Yet, most people believe the opposite.\n>>\n>>\n>>          [[alternative HTML version deleted]]\n>>\n>> ______________________________________________\n>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see\n>> https://stat.ethz.ch/mailman/listinfo/r-help\n>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html\n>> and provide commented, minimal, self-contained, reproducible code.\n\n-- \n- no title specified\n\nHugo Math?-Hubert\n\nATER\n\nLaboratoire Interdisciplinaire des Environnements Continentaux (LIEC)\n\nUMR 7360 CNRS - ?B?t IBISE\n\nUniversit? de Lorraine ?- ?UFR SciFA\n\n8, Rue du G?n?ral Delestraint\n\nF-57070 METZ\n\n+33(0)9 77 21 66 66\n- - - - - - - - - - - - - - - - - -\nLes r?flexions naissent dans les doutes et meurent dans les certitudes. \nLes doutes sont donc un signe de force et les certitudes un signe de \nfaiblesse. La plupart des gens sont pourtant certains du contraire.\n- - - - - - - - - - - - - - - - - -\nThoughts appear from doubts and die in convictions. Therefore, doubts \nare an indication of strength and convictions an indication of weakness. \nYet, most people believe the opposite.\n\n\n\t[[alternative HTML version deleted]]",
+      "body_plain": "I got it !\n\n\nthanks and sorry for annoying you with that.\n\n\nhave a nice day,\n\nhugo\n\n\nOn 05/10/2018 11:16, Deepayan Sarkar wrote:\n> On Fri, Oct 5, 2018 at 2:07 PM hmh <hugomh at gmx.fr> wrote:\n>> On 05/10/2018 10:28, Annaert Jan wrote:\n>>> you discard any time series structure;\n>> But that is PRECISELY what a call a bug:\n>> There should not be any \"time series structure\" in the output or rnorm,\n>> runif and so on but there is one.\n>>\n>> rnorm(N,0,1)\n>> should give on average the same output as\n>> sample(rnorm(N,0,1))\n> Agreed, but that is not what your code is testing. You seem to think\n> that something much more specific should be true; namely,\n>\n> X[1:10] ~ iid normal, then\n>\n> cor(X[1:9], X[2:10])\n>\n> and\n>\n> cor(sample(X[-1]), sample(X[-10]))\n>\n> should have the same distribution. This is not at all obvious, and in\n> fact not true.\n>\n> Please check the reference you have been pointed to. Here is a related\n> article in the same volume:\n>\n> https://www.jstor.org/stable/2332719\n>\n> -Deepayan\n>\n>\n>> Which is not the case. rnorm(N,0,1) should draw INDEPENDENT samples i.e.\n>> without time series structure !\n>>\n>>\n>> --\n>> - no title specified\n>>\n>> Hugo Mathé-Hubert\n>>\n>> ATER\n>>\n>> Laboratoire Interdisciplinaire des Environnements Continentaux (LIEC)\n>>\n>> UMR 7360 CNRS -  Bât IBISE\n>>\n>> Université de Lorraine  -  UFR SciFA\n>>\n>> 8, Rue du Général Delestraint\n>>\n>> F-57070 METZ\n>>\n>> +33(0)9 77 21 66 66\n>> - - - - - - - - - - - - - - - - - -\n>> Les réflexions naissent dans les doutes et meurent dans les certitudes.\n>> Les doutes sont donc un signe de force et les certitudes un signe de\n>> faiblesse. La plupart des gens sont pourtant certains du contraire.\n>> - - - - - - - - - - - - - - - - - -\n>> Thoughts appear from doubts and die in convictions. Therefore, doubts\n>> are an indication of strength and convictions an indication of weakness.\n>> Yet, most people believe the opposite.\n>>\n>>\n>>          [[alternative HTML version deleted]]\n>>\n>> ______________________________________________\n>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see\n>> https://stat.ethz.ch/mailman/listinfo/r-help\n>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html\n>> and provide commented, minimal, self-contained, reproducible code.\n\n-- \n- no title specified\n\nHugo Mathé-Hubert\n\nATER\n\nLaboratoire Interdisciplinaire des Environnements Continentaux (LIEC)\n\nUMR 7360 CNRS -  Bât IBISE\n\nUniversité de Lorraine  -  UFR SciFA\n\n8, Rue du Général Delestraint\n\nF-57070 METZ\n\n+33(0)9 77 21 66 66\n- - - - - - - - - - - - - - - - - -\nLes réflexions naissent dans les doutes et meurent dans les certitudes. \nLes doutes sont donc un signe de force et les certitudes un signe de \nfaiblesse. La plupart des gens sont pourtant certains du contraire.\n- - - - - - - - - - - - - - - - - -\nThoughts appear from doubts and die in convictions. Therefore, doubts \nare an indication of strength and convictions an indication of weakness. \nYet, most people believe the opposite.\n\n\n\t[[alternative HTML version deleted]]",
       "body_snippet": "I got it !\n\n\nthanks and sorry for annoying you with that.\n\n\nhave a nice day,\n\nhugo\n\n\nOn 05/10/2018 11:16, Deepayan Sarkar wrote:\n> On Fri, Oct 5, 2018 at 2:07 PM hmh <hugomh at gmx.fr> wrote:\n>> On 05",
       "thread_id": "thread-d47db407ccfd",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076929.html"
     },
     {
       "id": "msg-0d9eb565a674",
@@ -568,7 +598,8 @@
       "body_snippet": ">>>>> Hilmar Berger \n>>>>>     on Fri, 5 Oct 2018 10:17:49 +0200 writes:\n\n    > Dear all, I just found this issue:\n\n    > I just found this issue:\n\n    > dd1 = c(rep(NaN,82), rep(-1, 144), rep(1, 74))",
       "thread_id": "thread-fce7f4d1e6be",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076930.html"
     },
     {
       "id": "msg-76a79a9f7f6e",
@@ -586,7 +617,8 @@
       "body_snippet": "After r75387, function 'split.default' in R devel still has this part that no longer has effect.\n    lf <- levels(f)\n    y <- vector(\"list\", length(lf))\n    names(y) <- lf",
       "thread_id": "thread-76a79a9f7f6e",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076934.html"
     },
     {
       "id": "msg-399cfc02797c",
@@ -602,11 +634,12 @@
         "<f4b472d8-95d1-dcbe-5889-f88f31077f9d@gmail.com>",
         "<CABFfbXuNZabMUimXfgHJX06mucCC0LuH8L7dkPCFCVv5=MOxPw@mail.gmail.com>"
       ],
-      "body_plain": "Jeroen/Tomas,\n\nThanks for the additional follow-ups. As shown in my original post, I am on\nmacOS 10.12.6. I was using the command line version of R to get the error\nmessage I sent; I also get similar problems when running via GUI tools such\nas RStudio. I have co-workers who are only using macOS and they got similar\ncrashes - though I'm not sure which version of macOS they are on.\n\nBased on G?bor's recommendation I did quit using the default libcurl\nbackend (default on my machine at least). Using download.file(url, path,\nmethod = curl) has been working great for my use case.\n\nSeth\n\n\t[[alternative HTML version deleted]]",
+      "body_plain": "Jeroen/Tomas,\n\nThanks for the additional follow-ups. As shown in my original post, I am on\nmacOS 10.12.6. I was using the command line version of R to get the error\nmessage I sent; I also get similar problems when running via GUI tools such\nas RStudio. I have co-workers who are only using macOS and they got similar\ncrashes - though I'm not sure which version of macOS they are on.\n\nBased on Gábor's recommendation I did quit using the default libcurl\nbackend (default on my machine at least). Using download.file(url, path,\nmethod = curl) has been working great for my use case.\n\nSeth\n\n\t[[alternative HTML version deleted]]",
       "body_snippet": "Jeroen/Tomas,\n\nThanks for the additional follow-ups. As shown in my original post, I am on\nmacOS 10.12.6. I was using the command line version of R to get the error\nmessage I sent; I also get similar ",
       "thread_id": "thread-4d88ce19bfa9",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076935.html"
     },
     {
       "id": "msg-7fb9dd7bfec2",
@@ -622,7 +655,8 @@
       "body_snippet": "Hi,\n\nA short code example showing the warning might the only thing needed here:\n\n```\n> formals(args(`[`))\nNULL\n\n*Warning message:In formals(fun) : argument is not a function*\n> is.function(`[`)\n[1] TR",
       "thread_id": "thread-7fb9dd7bfec2",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076936.html"
     },
     {
       "id": "msg-50ccc4689e78",
@@ -640,7 +674,8 @@
       "body_snippet": "Hello,\n\nI believe that this is maybe not a *feature* but at least expected \nbehaviour.\n\nThe call formals(args(`[`)) breaks down to\n\n\n > args(`[`)\nNULL\n > formals(NULL)\nNULL\nWarning message:\nIn formals",
       "thread_id": "thread-7fb9dd7bfec2",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076937.html"
     },
     {
       "id": "msg-97f04a9da2e2",
@@ -659,7 +694,8 @@
       "body_snippet": "Hello,\n\nI forgot to ask you to also try to break the `sum` instruction into its \ncomponents:\n\nargs(`sum`)\n\n\ndoes return a function. Therefore formals(args(`sum`)) returns something \nuseable and no war",
       "thread_id": "thread-7fb9dd7bfec2",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076938.html"
     },
     {
       "id": "msg-49194f1e09ef",
@@ -678,7 +714,8 @@
       "body_snippet": "Hi,\n\nThanks for the note. How would explain the following snippet taken from\n`formals` doc page (the code comment is also from that doc) ?\n\n## formals returns NULL for primitive functions.  Use it in ",
       "thread_id": "thread-7fb9dd7bfec2",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076939.html"
     },
     {
       "id": "msg-ab172b17cf9d",
@@ -696,7 +733,8 @@
       "body_snippet": "There is more \"fun\" afoot here, but I don't recall what the point may be:\n\n> args(get(\"+\"))\nfunction (e1, e2) \nNULL\n> args(get(\"[\"))\nNULL\n> get(\"[\")\n.Primitive(\"[\")\n> get(\"+\")\nfunction (e1, e2)  .Prim",
       "thread_id": "thread-7fb9dd7bfec2",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076940.html"
     },
     {
       "id": "msg-b016d44c30a7",
@@ -715,7 +753,8 @@
       "body_snippet": "Hello,\n\nI don't see why you say that the documentation seems to be wrong:\n\n\nclass(args(`+`))\n#[1] \"function\"\n\n\nargs() on a primitive does return a closure. At least in this case it does.\n\n\nRui Barrada",
       "thread_id": "thread-7fb9dd7bfec2",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076941.html"
     },
     {
       "id": "msg-feebe23339b6",
@@ -731,11 +770,12 @@
         "<f5d15068-0776-2b5e-11d7-b1ae6ffc1d3b@sapo.pt>",
         "<CA+JCgN3iXFhgeEA4Ozmw-VutK=VPXnF0dxTFV9C6AZJF+p1LjA@mail.gmail.com>"
       ],
-      "body_plain": "Hello,\n\nThis is the *third* time I send this, the first two I had a failure \nnotice so if you have already received it please apologize.\n\nI believe this is consistent with the doc.\n   From section Value:\n\nformals returns the formal argument list of the function specified, as a\npairlist, or NULL for a non-function or primitive.\n\n\nSo since `+` is primitive formals is expected to return NULL.\nNow, as for formals(args(`+`)) once again break it down to its two parts.\n\n   > args(`+`)\nfunction (e1, e2)\nNULL\n\n\nNow pass the return value to formals.\n\n   > formals(function (e1, e2) NULL)\n$e1\n\n\n$e2\n\n\n(I first tried this last call with the argument between back ticks and\nit didn't work, I wonder why.)\n\n\nHope this helps,\n\nRui Barradas\n\n\n?s 18:52 de 06/10/2018, Laurent Gautier escreveu:\n> Hi,\n> \n> Thanks for the note. How would explain the following snippet taken from \n> `formals` doc page (the code comment is also from that doc) ?\n> \n> ## formals returns NULL for primitive functions.? Use it in combination with\n>  ???? ## args for this case.\n>  ???? is.primitive(`+`)\n>  ???? formals(`+`)\n>  ???? formals(args(`+`))\n> \n> \n> \n> Le?sam. 6 oct. 2018 ??13:42, Rui Barradas <ruipbarradas at sapo.pt \n> <mailto:ruipbarradas at sapo.pt>> a ?crit?:\n> \n>     Hello,\n> \n>     I believe that this is maybe not a *feature* but at least expected\n>     behaviour.\n> \n>     The call formals(args(`[`)) breaks down to\n> \n> \n>      ?> args(`[`)\n>     NULL\n>      ?> formals(NULL)\n>     NULL\n>     Warning message:\n>     In formals(fun) : argument is not a function\n> \n> \n>     Hope this helps,\n> \n>     Rui Barradas\n> \n> \n>     ?s 18:26 de 06/10/2018, Laurent Gautier escreveu:\n>      > Hi,\n>      >\n>      > A short code example showing the warning might the only thing\n>     needed here:\n>      >\n>      > ```\n>      >> formals(args(`[`))\n>      > NULL\n>      >\n>      > *Warning message:In formals(fun) : argument is not a function*\n>      >> is.function(`[`)\n>      > [1] TRUE\n>      >> is.primitive(`[`)\n>      > [1] TRUE\n>      > ```\n>      >\n>      > Now with an other primitive:\n>      >\n>      > ```\n>      >> formals(args(`sum`))\n>      > $...\n>      >\n>      >\n>      > $na.rm\n>      > [1] FALSE\n>      >\n>      >> is.function(`sum`)\n>      > [1] TRUE\n>      >> is.primitive(`sum`)\n>      > [1] TRUE\n>      >> class(`[`)\n>      > [1] \"function\"\n>      > ```\n>      >\n>      > Is this a feature ?\n>      >\n>      >\n>      > Laurent\n>      >\n>      >? ? ? ?[[alternative HTML version deleted]]\n>      >\n>      > ______________________________________________\n>      > R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list\n>      > https://stat.ethz.ch/mailman/listinfo/r-devel\n>      >\n>",
+      "body_plain": "Hello,\n\nThis is the *third* time I send this, the first two I had a failure \nnotice so if you have already received it please apologize.\n\nI believe this is consistent with the doc.\n   From section Value:\n\nformals returns the formal argument list of the function specified, as a\npairlist, or NULL for a non-function or primitive.\n\n\nSo since `+` is primitive formals is expected to return NULL.\nNow, as for formals(args(`+`)) once again break it down to its two parts.\n\n   > args(`+`)\nfunction (e1, e2)\nNULL\n\n\nNow pass the return value to formals.\n\n   > formals(function (e1, e2) NULL)\n$e1\n\n\n$e2\n\n\n(I first tried this last call with the argument between back ticks and\nit didn't work, I wonder why.)\n\n\nHope this helps,\n\nRui Barradas\n\n\nÀs 18:52 de 06/10/2018, Laurent Gautier escreveu:\n> Hi,\n> \n> Thanks for the note. How would explain the following snippet taken from \n> `formals` doc page (the code comment is also from that doc) ?\n> \n> ## formals returns NULL for primitive functions.  Use it in combination with\n>       ## args for this case.\n>       is.primitive(`+`)\n>       formals(`+`)\n>       formals(args(`+`))\n> \n> \n> \n> Le sam. 6 oct. 2018 à 13:42, Rui Barradas <ruipbarradas at sapo.pt \n> <mailto:ruipbarradas at sapo.pt>> a écrit :\n> \n>     Hello,\n> \n>     I believe that this is maybe not a *feature* but at least expected\n>     behaviour.\n> \n>     The call formals(args(`[`)) breaks down to\n> \n> \n>       > args(`[`)\n>     NULL\n>       > formals(NULL)\n>     NULL\n>     Warning message:\n>     In formals(fun) : argument is not a function\n> \n> \n>     Hope this helps,\n> \n>     Rui Barradas\n> \n> \n>     Às 18:26 de 06/10/2018, Laurent Gautier escreveu:\n>      > Hi,\n>      >\n>      > A short code example showing the warning might the only thing\n>     needed here:\n>      >\n>      > ```\n>      >> formals(args(`[`))\n>      > NULL\n>      >\n>      > *Warning message:In formals(fun) : argument is not a function*\n>      >> is.function(`[`)\n>      > [1] TRUE\n>      >> is.primitive(`[`)\n>      > [1] TRUE\n>      > ```\n>      >\n>      > Now with an other primitive:\n>      >\n>      > ```\n>      >> formals(args(`sum`))\n>      > $...\n>      >\n>      >\n>      > $na.rm\n>      > [1] FALSE\n>      >\n>      >> is.function(`sum`)\n>      > [1] TRUE\n>      >> is.primitive(`sum`)\n>      > [1] TRUE\n>      >> class(`[`)\n>      > [1] \"function\"\n>      > ```\n>      >\n>      > Is this a feature ?\n>      >\n>      >\n>      > Laurent\n>      >\n>      >? ?    [[alternative HTML version deleted]]\n>      >\n>      > ______________________________________________\n>      > R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list\n>      > https://stat.ethz.ch/mailman/listinfo/r-devel\n>      >\n>",
       "body_snippet": "Hello,\n\nThis is the *third* time I send this, the first two I had a failure \nnotice so if you have already received it please apologize.\n\nI believe this is consistent with the doc.\n   From section Val",
       "thread_id": "thread-7fb9dd7bfec2",
       "thread_depth": 3,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076942.html"
     },
     {
       "id": "msg-2226f367cb61",
@@ -755,7 +795,8 @@
       "body_snippet": "Note that having \"function\" in its class attribute does not make an object\na primitive.\nFor example:\n\n> class(`[`)\n[1] \"function\"\n> is.primitive(`[`)\n[1] TRUE\n> class(`rnorm`)\n[1] \"function\"\n> is.prim",
       "thread_id": "thread-7fb9dd7bfec2",
       "thread_depth": 3,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076943.html"
     },
     {
       "id": "msg-66d19dd2488d",
@@ -775,7 +816,8 @@
       "body_snippet": "> On 7 Oct 2018, at 16:04 , Rui Barradas <ruipbarradas at sapo.pt> wrote:\n> \n> Hello,\n> \n> I don't see why you say that the documentation seems to be wrong:\n> \n> \n> class(args(`+`))\n> #[1] \"function\"\n",
       "thread_id": "thread-7fb9dd7bfec2",
       "thread_depth": 3,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076944.html"
     },
     {
       "id": "msg-d99bfa946aed",
@@ -792,11 +834,12 @@
         "<550606ea-720a-ca30-a762-d8aaf2484661@sapo.pt>",
         "<CA+JCgN2meyWUtiBgJ=E79qjVOzSc+H3tBUtOKQ-75PZFwohOLw@mail.gmail.com>"
       ],
-      "body_plain": "Hello,\n\nInline.\n\n?s 15:07 de 07/10/2018, Laurent Gautier escreveu:\n> Note that having \"function\" in its class attribute does not make an \n> object a primitive.\n\nI did not say it does.\n\nWhat Peter said is that \"args() on a primitive should yield a closure\" \nand this return value is indeed a closure.\n\nRui Barradas\n\n> For example:\n> \n>  > class(`[`)\n> [1] \"function\"\n>  > is.primitive(`[`)\n> [1] TRUE\n>  > class(`rnorm`)\n> [1] \"function\"\n>  > is.primitive(`rnorm`)\n> [1] FALSE\n> \n> \n> Le?dim. 7 oct. 2018 ??10:04, Rui Barradas <ruipbarradas at sapo.pt \n> <mailto:ruipbarradas at sapo.pt>> a ?crit?:\n> \n>     Hello,\n> \n>     I don't see why you say that the documentation seems to be wrong:\n> \n> \n>     class(args(`+`))\n>     #[1] \"function\"\n> \n> \n>     args() on a primitive does return a closure. At least in this case\n>     it does.\n> \n> \n>     Rui Barradas\n> \n>     ?s 14:05 de 07/10/2018, Peter Dalgaard escreveu:\n>      > There is more \"fun\" afoot here, but I don't recall what the point\n>     may be:\n>      >\n>      >> args(get(\"+\"))\n>      > function (e1, e2)\n>      > NULL\n>      >> args(get(\"[\"))\n>      > NULL\n>      >> get(\"[\")\n>      > .Primitive(\"[\")\n>      >> get(\"+\")\n>      > function (e1, e2)? .Primitive(\"+\")\n>      >\n>      > The other index operators, \"[[\", \"[<-\", \"[[<-\" are similar\n>      >\n>      > The docs are pretty clear that args() on a primitive should yield\n>     a closure, so at least the documentation seems to be wrong.\n>      >\n>      > -pd\n>      >\n>      >\n>      >> On 6 Oct 2018, at 19:26 , Laurent Gautier <lgautier at gmail.com\n>     <mailto:lgautier at gmail.com>> wrote:\n>      >>\n>      >> Hi,\n>      >>\n>      >> A short code example showing the warning might the only thing\n>     needed here:\n>      >>\n>      >> ```\n>      >>> formals(args(`[`))\n>      >> NULL\n>      >>\n>      >> *Warning message:In formals(fun) : argument is not a function*\n>      >>> is.function(`[`)\n>      >> [1] TRUE\n>      >>> is.primitive(`[`)\n>      >> [1] TRUE\n>      >> ```\n>      >>\n>      >> Now with an other primitive:\n>      >>\n>      >> ```\n>      >>> formals(args(`sum`))\n>      >> $...\n>      >>\n>      >>\n>      >> $na.rm\n>      >> [1] FALSE\n>      >>\n>      >>> is.function(`sum`)\n>      >> [1] TRUE\n>      >>> is.primitive(`sum`)\n>      >> [1] TRUE\n>      >>> class(`[`)\n>      >> [1] \"function\"\n>      >> ```\n>      >>\n>      >> Is this a feature ?\n>      >>\n>      >>\n>      >> Laurent\n>      >>\n>      >>? ? ? [[alternative HTML version deleted]]\n>      >>\n>      >> ______________________________________________\n>      >> R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list\n>      >> https://stat.ethz.ch/mailman/listinfo/r-devel\n>      >\n>",
-      "body_snippet": "Hello,\n\nInline.\n\n?s 15:07 de 07/10/2018, Laurent Gautier escreveu:\n> Note that having \"function\" in its class attribute does not make an \n> object a primitive.\n\nI did not say it does.\n\nWhat Peter said",
+      "body_plain": "Hello,\n\nInline.\n\nÀs 15:07 de 07/10/2018, Laurent Gautier escreveu:\n> Note that having \"function\" in its class attribute does not make an \n> object a primitive.\n\nI did not say it does.\n\nWhat Peter said is that \"args() on a primitive should yield a closure\" \nand this return value is indeed a closure.\n\nRui Barradas\n\n> For example:\n> \n>  > class(`[`)\n> [1] \"function\"\n>  > is.primitive(`[`)\n> [1] TRUE\n>  > class(`rnorm`)\n> [1] \"function\"\n>  > is.primitive(`rnorm`)\n> [1] FALSE\n> \n> \n> Le dim. 7 oct. 2018 à 10:04, Rui Barradas <ruipbarradas at sapo.pt \n> <mailto:ruipbarradas at sapo.pt>> a écrit :\n> \n>     Hello,\n> \n>     I don't see why you say that the documentation seems to be wrong:\n> \n> \n>     class(args(`+`))\n>     #[1] \"function\"\n> \n> \n>     args() on a primitive does return a closure. At least in this case\n>     it does.\n> \n> \n>     Rui Barradas\n> \n>     Às 14:05 de 07/10/2018, Peter Dalgaard escreveu:\n>      > There is more \"fun\" afoot here, but I don't recall what the point\n>     may be:\n>      >\n>      >> args(get(\"+\"))\n>      > function (e1, e2)\n>      > NULL\n>      >> args(get(\"[\"))\n>      > NULL\n>      >> get(\"[\")\n>      > .Primitive(\"[\")\n>      >> get(\"+\")\n>      > function (e1, e2)  .Primitive(\"+\")\n>      >\n>      > The other index operators, \"[[\", \"[<-\", \"[[<-\" are similar\n>      >\n>      > The docs are pretty clear that args() on a primitive should yield\n>     a closure, so at least the documentation seems to be wrong.\n>      >\n>      > -pd\n>      >\n>      >\n>      >> On 6 Oct 2018, at 19:26 , Laurent Gautier <lgautier at gmail.com\n>     <mailto:lgautier at gmail.com>> wrote:\n>      >>\n>      >> Hi,\n>      >>\n>      >> A short code example showing the warning might the only thing\n>     needed here:\n>      >>\n>      >> ```\n>      >>> formals(args(`[`))\n>      >> NULL\n>      >>\n>      >> *Warning message:In formals(fun) : argument is not a function*\n>      >>> is.function(`[`)\n>      >> [1] TRUE\n>      >>> is.primitive(`[`)\n>      >> [1] TRUE\n>      >> ```\n>      >>\n>      >> Now with an other primitive:\n>      >>\n>      >> ```\n>      >>> formals(args(`sum`))\n>      >> $...\n>      >>\n>      >>\n>      >> $na.rm\n>      >> [1] FALSE\n>      >>\n>      >>> is.function(`sum`)\n>      >> [1] TRUE\n>      >>> is.primitive(`sum`)\n>      >> [1] TRUE\n>      >>> class(`[`)\n>      >> [1] \"function\"\n>      >> ```\n>      >>\n>      >> Is this a feature ?\n>      >>\n>      >>\n>      >> Laurent\n>      >>\n>      >>?     [[alternative HTML version deleted]]\n>      >>\n>      >> ______________________________________________\n>      >> R-devel at r-project.org <mailto:R-devel at r-project.org> mailing list\n>      >> https://stat.ethz.ch/mailman/listinfo/r-devel\n>      >\n>",
+      "body_snippet": "Hello,\n\nInline.\n\nÀs 15:07 de 07/10/2018, Laurent Gautier escreveu:\n> Note that having \"function\" in its class attribute does not make an \n> object a primitive.\n\nI did not say it does.\n\nWhat Peter said",
       "thread_id": "thread-7fb9dd7bfec2",
       "thread_depth": 4,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076945.html"
     },
     {
       "id": "msg-5439f02488a3",
@@ -817,7 +860,8 @@
       "body_snippet": "Hello,\n\nThis is because args(`[`) returns NULL and class(NULL) is NULL.\nSo the question would be why is the return value of args(`[`) NULL?\n\nRui Barradas\n\n?s 15:14 de 07/10/2018, Peter Dalgaard escrev",
       "thread_id": "thread-7fb9dd7bfec2",
       "thread_depth": 4,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076946.html"
     },
     {
       "id": "msg-32e13ce8a5b5",
@@ -836,7 +880,8 @@
       "body_snippet": ">>>>> Suharto Anggono via R-devel \n>>>>>     on Fri, 5 Oct 2018 17:13:30 +0000 writes:\n\n> After r75387, function 'split.default' in R devel still has this part that no longer has effect.\n\n>     lf <- ",
       "thread_id": "thread-76a79a9f7f6e",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076947.html"
     },
     {
       "id": "msg-751ca8b75e85",
@@ -858,7 +903,8 @@
       "body_snippet": "Hello,\n\nI agree the documentation of args can be improved, but the main question is what the return should be.\nI guess the reason args() returns NULL is because of the way argument-matching works for ",
       "thread_id": "thread-7fb9dd7bfec2",
       "thread_depth": 5,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076948.html"
     },
     {
       "id": "msg-28b3728b4ccf",
@@ -877,7 +923,8 @@
       "body_snippet": "I've checked in an experimental fix for this (75413). The newline was \nlost in the shell script wrapper for R, it is now being escaped \nsimilarly to space. To pass multiple commands to Rscript, one ca",
       "thread_id": "thread-28b3728b4ccf",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076949.html"
     },
     {
       "id": "msg-3e99ff5f82df",
@@ -893,7 +940,8 @@
       "body_snippet": "While implementing R's new 'altrep' functionality in the TERR engine,\nI discovered a bug in R's 'deferred_string' altrep object: it is not\nusing the correct value of the 'OutDec' option when it expand",
       "thread_id": "thread-3e99ff5f82df",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076951.html"
     },
     {
       "id": "msg-ba6c55a60788",
@@ -909,7 +957,8 @@
       "body_snippet": "I am not able to #include \"R_ext/Altrep.h\" from a C++ file.  I think\nit needs two changes:\n\n1. add the same __cplusplus check as most of the other header files:\n    #ifdef  __cplusplus\n    extern \"C\" ",
       "thread_id": "thread-ba6c55a60788",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076952.html"
     },
     {
       "id": "msg-7433b264c4c2",
@@ -927,7 +976,8 @@
       "body_snippet": "Thanks for the report. The approach you outlines below should work --\nI'll look into it.\n\nBest,\n\nluke\n\nOn Mon, 8 Oct 2018, Michael Sannella wrote:\n\n> While implementing R's new 'altrep' functionality ",
       "thread_id": "thread-3e99ff5f82df",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076950.html"
     },
     {
       "id": "msg-1afee6258d24",
@@ -945,7 +995,8 @@
       "body_snippet": "Thanks for the suggestion. Committed in R_devel.\n\nBest,\n\nluke\n\nOn Mon, 8 Oct 2018, Michael Sannella wrote:\n\n> I am not able to #include \"R_ext/Altrep.h\" from a C++ file.? I think\n> it needs two change",
       "thread_id": "thread-ba6c55a60788",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076962.html"
     },
     {
       "id": "msg-f79751bd2298",
@@ -961,7 +1012,8 @@
       "body_snippet": "Here's a silly little stunt:\n\n> Y <- rexp(10) ; x <- 1:10\n> plot(lm(I(Y^.3)~x))\nHit <Return> to see next plot: \nHit <Return> to see next plot: \nError: $ operator is invalid for atomic vectors\n\nThe roo",
       "thread_id": "thread-f79751bd2298",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076953.html"
     },
     {
       "id": "msg-719608ddf6bb",
@@ -979,7 +1031,8 @@
       "body_snippet": "Hi Paul,\n\nthanks for the report. Fixed in R-devel 75417.\n\nBest\nTomas\n\nOn 07/04/2018 10:08 PM, Paul Schrimpf wrote:\n> Hello,\n>\n> I encountered some unexpected behavior of unzip when using info-zip's un",
       "thread_id": "thread-719608ddf6bb",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076954.html"
     },
     {
       "id": "msg-1040bfce3c08",
@@ -995,7 +1048,8 @@
       "body_snippet": "Dear R developers,\n\nI have found a minute bug in R-3.5.1 (Windows version), about how times not an exact number of seconds are displayed.\n> as.POSIXct(\"1969-01-01 01:00\")+0.3\n[1] \"1969-01-01 01:00:01 ",
       "thread_id": "thread-1040bfce3c08",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076955.html"
     },
     {
       "id": "msg-6ece9bb813ac",
@@ -1013,7 +1067,8 @@
       "body_snippet": "Michael,\n\nThanks for reaching out. This was brought up by Romaine Francois offline to\nme as well. What he does as a workaround is\n\n\n#define class klass\nextern \"C\" {\n  #include <R_ext/Altrep.h>\n}\n#unde",
       "thread_id": "thread-ba6c55a60788",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076956.html"
     },
     {
       "id": "msg-941d4e58a259",
@@ -1032,7 +1087,8 @@
       "body_snippet": "I successfully use this workaround in this package: https://github.com/romainfrancois/altrepisode\n\n(which is just my way to get familiar with altrep, nothing serious)\n\n> Le 9 oct. 2018 ? 17:00, Gabe B",
       "thread_id": "thread-ba6c55a60788",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076957.html"
     },
     {
       "id": "msg-d19d6d895e6c",
@@ -1048,7 +1104,8 @@
       "body_snippet": "Here on my Mac it looks worse: not a rounding difference, but an off-by-one error for fractional seconds before 1970, looks like the conversion to POSIXlt is doing something wrong:\n\nOptions(digits=12)",
       "thread_id": "thread-d19d6d895e6c",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076958.html"
     },
     {
       "id": "msg-a3176b5ce85e",
@@ -1062,11 +1119,12 @@
       "references": [
         "<HE1PR1001MB10356685E98F585AEB6F6ED5A0E70@HE1PR1001MB1035.EURPRD10.PROD.OUTLOOK.COM>"
       ],
-      "body_plain": "Am 09.10.2018 um 16:56 schrieb Russell, George:\n> Dear R developers,\n> \n> I have found a minute bug in R-3.5.1 (Windows version), about how times not an exact number of seconds are displayed.\n>> as.POSIXct(\"1969-01-01 01:00\")+0.3\n> [1] \"1969-01-01 01:00:01 CET\"\n>> as.POSIXct(\"1970-01-01 01:00\")+0.3\n> [1] \"1970-01-01 01:00:00 CET\"\n> \n> So for 1969, adding 0.3 of a second means you round UP, for 1970 you round DOWN. But I think it should be consistent.\n\nMore likely a bug in the underlining C library\nThe Cygwin build does not show the problem\n\n > as.numeric(as.POSIXct(\"1969-01-01 01:00\")+0.3)\n[1] -31535999.7\n > as.POSIXct(\"1969-01-01 01:00\")+0.3\n[1] \"1969-01-01 01:00:00 CET\"\n > as.numeric(as.POSIXct(\"1969-01-01 01:00\"))\n[1] -31536000\n > as.POSIXct(\"1969-01-01 01:00\")\n[1] \"1969-01-01 01:00:00 CET\"\n\n > R.version\n                _\nplatform       x86_64-unknown-cygwin\narch           x86_64\nos             cygwin\nsystem         x86_64, cygwin\nstatus\nmajor          3\nminor          5.1\nyear           2018\nmonth          07\nday            02\nsvn rev        74947\nlanguage       R\nversion.string R version 3.5.1 (2018-07-02)\nnickname       Feather Spray\n\n\n---\nDiese E-Mail wurde von Avast Antivirus-Software auf Viren gepr?ft.\nhttps://www.avast.com/antivirus",
+      "body_plain": "Am 09.10.2018 um 16:56 schrieb Russell, George:\n> Dear R developers,\n> \n> I have found a minute bug in R-3.5.1 (Windows version), about how times not an exact number of seconds are displayed.\n>> as.POSIXct(\"1969-01-01 01:00\")+0.3\n> [1] \"1969-01-01 01:00:01 CET\"\n>> as.POSIXct(\"1970-01-01 01:00\")+0.3\n> [1] \"1970-01-01 01:00:00 CET\"\n> \n> So for 1969, adding 0.3 of a second means you round UP, for 1970 you round DOWN. But I think it should be consistent.\n\nMore likely a bug in the underlining C library\nThe Cygwin build does not show the problem\n\n > as.numeric(as.POSIXct(\"1969-01-01 01:00\")+0.3)\n[1] -31535999.7\n > as.POSIXct(\"1969-01-01 01:00\")+0.3\n[1] \"1969-01-01 01:00:00 CET\"\n > as.numeric(as.POSIXct(\"1969-01-01 01:00\"))\n[1] -31536000\n > as.POSIXct(\"1969-01-01 01:00\")\n[1] \"1969-01-01 01:00:00 CET\"\n\n > R.version\n                _\nplatform       x86_64-unknown-cygwin\narch           x86_64\nos             cygwin\nsystem         x86_64, cygwin\nstatus\nmajor          3\nminor          5.1\nyear           2018\nmonth          07\nday            02\nsvn rev        74947\nlanguage       R\nversion.string R version 3.5.1 (2018-07-02)\nnickname       Feather Spray\n\n\n---\nDiese E-Mail wurde von Avast Antivirus-Software auf Viren geprüft.\nhttps://www.avast.com/antivirus",
       "body_snippet": "Am 09.10.2018 um 16:56 schrieb Russell, George:\n> Dear R developers,\n> \n> I have found a minute bug in R-3.5.1 (Windows version), about how times not an exact number of seconds are displayed.\n>> as.PO",
       "thread_id": "thread-1040bfce3c08",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076959.html"
     },
     {
       "id": "msg-4562ff7c2f62",
@@ -1085,7 +1143,8 @@
       "body_snippet": "This is now fixed in R-devel. Will port to R_patched in due course.\nR_inspect also now handles pairlists ending with dotted pairs.\n\nBest,\n\nluke\n\nOn Tue, 9 Oct 2018, Tierney, Luke wrote:\n\n> Thanks for ",
       "thread_id": "thread-3e99ff5f82df",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076960.html"
     },
     {
       "id": "msg-dd8e4ead3b74",
@@ -1101,7 +1160,8 @@
       "body_snippet": "Some small changes (typo, punctuation fix) to the NEWS file, and some\nsuggested changes to download.file.Rd (I found some of the phrasing\nawkward/hard to parse, and got carried away).  (I *think* .txt",
       "thread_id": "thread-dd8e4ead3b74",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076961.html"
     },
     {
       "id": "msg-1cbf947ec9ff",
@@ -1120,7 +1180,8 @@
       "body_snippet": "Thank you, \n\nI updated my example package so that it works with both. https://github.com/romainfrancois/altrepisode/blob/96af0548a9ecc08701d119ea427e16940a82882b/src/altrepisode.h <https://github.com/",
       "thread_id": "thread-ba6c55a60788",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076963.html"
     },
     {
       "id": "msg-0c17d242f1c8",
@@ -1136,7 +1197,8 @@
       "body_snippet": "R lets one lock an environment with both an R function,\nbase::lockEnvironment, and a C function, R_LockEnvironment, but, as far as\nI can tell, no corresponding function to unlock an environment.  Is t",
       "thread_id": "thread-0c17d242f1c8",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076964.html"
     },
     {
       "id": "msg-3f6d408d477a",
@@ -1154,7 +1216,8 @@
       "body_snippet": "On Wed, 10 Oct 2018, William Dunlap via R-devel wrote:\n\n> R lets one lock an environment with both an R function,\n> base::lockEnvironment, and a C function, R_LockEnvironment, but, as far as\n> I can t",
       "thread_id": "thread-0c17d242f1c8",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076965.html"
     },
     {
       "id": "msg-af711794989c",
@@ -1170,7 +1233,8 @@
       "body_snippet": "This URL, which appears in the ?Titanic web page:\n\n https://www.amstat.org/publications/jse/v3n3/datasets.dawson.html\n\ngives me a 404 error.  Googling \"Dawson titanic data\" gives\n\nww2.amstat.org/publi",
       "thread_id": "thread-af711794989c",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076972.html"
     },
     {
       "id": "msg-2d9ad6ad75e3",
@@ -1186,7 +1250,8 @@
       "body_snippet": "Kia Ora\n\nLet's say we have:\n\"myreplacementfunction<-\" = function (..., value)\n{\tcall = sys.call ()\n\tprint (as.list (call) )\n\t0\n}\n\nThen we call:\nx = 0\nmyreplacementfunction (x, y, z) = 0\n\nIt will retur",
       "thread_id": "thread-2d9ad6ad75e3",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076966.html"
     },
     {
       "id": "msg-75e4686fead9",
@@ -1204,7 +1269,8 @@
       "body_snippet": "Hi,\n\nAgreed that it would be better if sys.call() were to return \"x\" instead of \"*tmp*\", as it behaves as a local variable. Although I'm not sure what problem it would solve, the effect here is compar",
       "thread_id": "thread-2d9ad6ad75e3",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076967.html"
     },
     {
       "id": "msg-03260670aa0f",
@@ -1220,7 +1286,8 @@
       "body_snippet": "It seems that exists accepts character vectors of lengths other than\none, but discards all but the first element without an error or\nwarning.  Is this intended?  The name \"exists\" is in the singular, ",
       "thread_id": "thread-03260670aa0f",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076968.html"
     },
     {
       "id": "msg-983d11130baa",
@@ -1238,7 +1305,8 @@
       "body_snippet": "On 14/10/2018 8:19 PM, Abs Spurdle wrote:\n> Kia Ora\n> \n> Let's say we have:\n> \"myreplacementfunction<-\" = function (..., value)\n> {\tcall = sys.call ()\n> \tprint (as.list (call) )\n> \t0\n> }\n> \n> Then we ",
       "thread_id": "thread-2d9ad6ad75e3",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076969.html"
     },
     {
       "id": "msg-ae84aa582a0a",
@@ -1257,7 +1325,8 @@
       "body_snippet": "Kia Ora\n\n> Although I'm not sure what problem it would solve...\n\nGiven that you asked, I was interested in writing a multiple assignment\nfunction as a replacement function, so something like:\nmassign ",
       "thread_id": "thread-2d9ad6ad75e3",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076970.html"
     },
     {
       "id": "msg-0b6a87a1c7dd",
@@ -1277,7 +1346,8 @@
       "body_snippet": "Seems like there are at least two packages for multiple assignment,\nmaybe one of them solves your needs, zeallot and dub.\n\nhttps://r-pkg.org/search.html?q=multiple+assignment\n\nGabor\nOn Tue, Oct 16, 20",
       "thread_id": "thread-2d9ad6ad75e3",
       "thread_depth": 3,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076971.html"
     },
     {
       "id": "msg-dabcbdbb6ea3",
@@ -1297,7 +1367,8 @@
       "body_snippet": "On Tue, Oct 16, 2018 at 12:03 AM Abs Spurdle <spurdle.a at gmail.com> wrote:\n\n> Probably the best example I can think of is converting cartesian\n> coordinates to polar coordinates.\n> Then we might hav",
       "thread_id": "thread-dabcbdbb6ea3",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076973.html"
     },
     {
       "id": "msg-ef321767dabf",
@@ -1313,11 +1384,12 @@
         "<F139A45B-0BDF-41FC-A809-9A00AC2E79A0@dans.knaw.nl>",
         "<CAB8pepxoVFZvBnuBFyfyOwTNWTyA_pQOjr4za-zeWmeFTiaBqw@mail.gmail.com>"
       ],
-      "body_plain": "Well,\n\nI think what you want to do is hard if you insist on using a replacement function, i.e. massign(vars) <- values.\nBut as you wrote, you can use a modified assignment operator, or you could write something comparable to assign, so massign(listofvars, listofvalues, environment) shouldn?t be too hard.\nI believe in this context, the term ?replacement function? is a bit confusing. In my experience, replacement functions are for editing a certain aspect of a variable or object, mostly attributes, or they can replace certain elements. But in order to edit something, it has to exist in the first place.\nIt may be that I?m reading it wrong, but to me ?massign (x, y, z) = somelist? reads ?I want to edit some aspects of x, y and z, by inputting somelist to them?. In that guise, I can see some function like mlevels(factor1, factor2, factor3) <- as.character(1:10), to set the level attributes to all three factors to the same set of levels.\nThat?s not something easily supported with replacement functions, but it is possible.\nBut for creating new objects, or reassigning them, a replacement function seems not the way to go to me.\nAnd as Barry noted, why do you want to pull these values apart in the first place? I guess your example of polar coordinates was just an example, but if you want to store multiple values that?s a lot easier in a list, and it keeps your workspace tidier.\nFor your other point, editing attributes is possible with `attr<-`.\nIf you want to have it as an infix operator without having to use quotes:\n`%$%<-` <- function(obj, attr, value) {\n  `attr<-`(obj, as.character(substitute(attr)), value)\n}\nNow ?myobj %$% myattr <- values ? will do as you desire\n\nBest regards,\nEmil Bode\n\nFrom: Abs Spurdle <spurdle.a at gmail.com>\nDate: Tuesday, 16 October 2018 at 01:02\nTo: Emil Bode <emil.bode at dans.knaw.nl>\nCc: r-devel <r-devel at r-project.org>\nSubject: Re: [Rd] sys.call() inside replacement functions incorrectly returns *tmp*\n\nKia Ora\n\n> Although I'm not sure what problem it would solve...\n\nGiven that you asked, I was interested in writing a multiple assignment function as a replacement function, so something like:\nmassign (x, y, z) = construct.some list ()\n\nObviously, that's not possible.\n\nProbably the best example I can think of is converting cartesian coordinates to polar coordinates.\nThen we might have something like (note, untested, written in my email):\ncart2polar = function (x, y)\n    list (theta=atan (y / x), r=sqrt (x * x + y * y) )\n\nmassign (r, theta) = cart2polar (x, y)\n\nNow, I'm considering a multiple assignment operator, so something like:\nc (theta, r) $<-$ cart2polar (x, y)\n\nAnd while we're on the topic, I'm also considering an attribute operator (to access object attributes), something like:\nmyobject%$%myattribute\n\nThis would be similar to . in C++/Java or @ in S4.\nAnd seems like something obvious that's missing from R.\n\nImplementing an attribute read this way is easy, however, implementing an attribute assignment this way (without language level support) is difficult.\n\n\nkind regards\nAbs\n\n\n\t[[alternative HTML version deleted]]",
+      "body_plain": "Well,\n\nI think what you want to do is hard if you insist on using a replacement function, i.e. massign(vars) <- values.\nBut as you wrote, you can use a modified assignment operator, or you could write something comparable to assign, so massign(listofvars, listofvalues, environment) shouldn’t be too hard.\nI believe in this context, the term “replacement function” is a bit confusing. In my experience, replacement functions are for editing a certain aspect of a variable or object, mostly attributes, or they can replace certain elements. But in order to edit something, it has to exist in the first place.\nIt may be that I’m reading it wrong, but to me “massign (x, y, z) = somelist” reads “I want to edit some aspects of x, y and z, by inputting somelist to them”. In that guise, I can see some function like mlevels(factor1, factor2, factor3) <- as.character(1:10), to set the level attributes to all three factors to the same set of levels.\nThat’s not something easily supported with replacement functions, but it is possible.\nBut for creating new objects, or reassigning them, a replacement function seems not the way to go to me.\nAnd as Barry noted, why do you want to pull these values apart in the first place? I guess your example of polar coordinates was just an example, but if you want to store multiple values that’s a lot easier in a list, and it keeps your workspace tidier.\nFor your other point, editing attributes is possible with `attr<-`.\nIf you want to have it as an infix operator without having to use quotes:\n`%$%<-` <- function(obj, attr, value) {\n  `attr<-`(obj, as.character(substitute(attr)), value)\n}\nNow “myobj %$% myattr <- values “ will do as you desire\n\nBest regards,\nEmil Bode\n\nFrom: Abs Spurdle <spurdle.a at gmail.com>\nDate: Tuesday, 16 October 2018 at 01:02\nTo: Emil Bode <emil.bode at dans.knaw.nl>\nCc: r-devel <r-devel at r-project.org>\nSubject: Re: [Rd] sys.call() inside replacement functions incorrectly returns *tmp*\n\nKia Ora\n\n> Although I'm not sure what problem it would solve...\n\nGiven that you asked, I was interested in writing a multiple assignment function as a replacement function, so something like:\nmassign (x, y, z) = construct.some list ()\n\nObviously, that's not possible.\n\nProbably the best example I can think of is converting cartesian coordinates to polar coordinates.\nThen we might have something like (note, untested, written in my email):\ncart2polar = function (x, y)\n    list (theta=atan (y / x), r=sqrt (x * x + y * y) )\n\nmassign (r, theta) = cart2polar (x, y)\n\nNow, I'm considering a multiple assignment operator, so something like:\nc (theta, r) $<-$ cart2polar (x, y)\n\nAnd while we're on the topic, I'm also considering an attribute operator (to access object attributes), something like:\nmyobject%$%myattribute\n\nThis would be similar to . in C++/Java or @ in S4.\nAnd seems like something obvious that's missing from R.\n\nImplementing an attribute read this way is easy, however, implementing an attribute assignment this way (without language level support) is difficult.\n\n\nkind regards\nAbs\n\n\n\t[[alternative HTML version deleted]]",
       "body_snippet": "Well,\n\nI think what you want to do is hard if you insist on using a replacement function, i.e. massign(vars) <- values.\nBut as you wrote, you can use a modified assignment operator, or you could write",
       "thread_id": "thread-2d9ad6ad75e3",
       "thread_depth": 3,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076974.html"
     },
     {
       "id": "msg-66b66ca0ff1c",
@@ -1333,7 +1405,8 @@
       "body_snippet": "The survival package, like many others, has several helper functions that are not declared \nin the namespace, since their only use is to be called by other \"main\" functions of the \npackage.? This work",
       "thread_id": "thread-66b66ca0ff1c",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076975.html"
     },
     {
       "id": "msg-5d8e4fb67574",
@@ -1351,7 +1424,8 @@
       "body_snippet": "On 16/10/2018 6:42 PM, Therneau, Terry M., Ph.D. via R-devel wrote:\n> The survival package, like many others, has several helper functions that are not declared\n> in the namespace, since their only us",
       "thread_id": "thread-66b66ca0ff1c",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076976.html"
     },
     {
       "id": "msg-b14984335d63",
@@ -1367,7 +1441,8 @@
       "body_snippet": "With new \"strict\" settings in R-devel, the following glm() example\n\n> data(anorexia, package = \"MASS\")\n> fm <- glm(Postwt ~ Prewt + Treat + offset(Prewt), family = gaussian, data = anorexia)\n> methods",
       "thread_id": "thread-b14984335d63",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076977.html"
     },
     {
       "id": "msg-52ec97c4d672",
@@ -1385,7 +1460,8 @@
       "body_snippet": "Dear Livio,\n\nthank you for the report. Fixed in R-devel, 75450.\n\nBest\nTomas\n\nOn 10/01/2018 06:29 PM, Livio Bertacco wrote:\n> Dear All,\n> I'm linking R from another application and embedding it as desc",
       "thread_id": "thread-e0af1b576a7c",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076978.html"
     },
     {
       "id": "msg-cd1c43ca1f92",
@@ -1404,7 +1480,8 @@
       "body_snippet": "> 2.  change cfun[[1]] <- quote(cord.work) to cfun[[1]] <-\n> quote(survival:::cord.work).  You say this will mess up your test bed.\n> That suggests that your test bed is broken.  This is a perfectly l",
       "thread_id": "thread-66b66ca0ff1c",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076979.html"
     },
     {
       "id": "msg-ba843ae884ac",
@@ -1424,7 +1501,8 @@
       "body_snippet": "On 17/10/2018 11:16 AM, S Ellison wrote:\n>> 2.  change cfun[[1]] <- quote(cord.work) to cfun[[1]] <-\n>> quote(survival:::cord.work).  You say this will mess up your test bed.\n>> That suggests that you",
       "thread_id": "thread-66b66ca0ff1c",
       "thread_depth": 3,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076980.html"
     },
     {
       "id": "msg-c0cc2a5ba300",
@@ -1442,7 +1520,8 @@
       "body_snippet": "Hi Thibault,\n\nmclapply has been designed to signal an error in two ways. User code \nerrors are returned as special objects (of class \"try-error\") in the \nrespective element of the result list. All oth",
       "thread_id": "thread-c0cc2a5ba300",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076981.html"
     },
     {
       "id": "msg-3d29dde896dd",
@@ -1460,7 +1539,8 @@
       "body_snippet": "I think this would be a good change. I think most users use the\n'methods(class = <...>)' function to answer the question, \"what\nmethods can I call on objects with these classes?\", and in that\ncontext ",
       "thread_id": "thread-b14984335d63",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076982.html"
     },
     {
       "id": "msg-24761ba25712",
@@ -1479,7 +1559,8 @@
       "body_snippet": "Martin and Kevin,\n\nPerhaps a variant of methods which more directly addresses the use-case\nKevin mentions might be in order?\n\nI am happy to prepare a patch which implements a methodsForObj function\n(n",
       "thread_id": "thread-b14984335d63",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076983.html"
     },
     {
       "id": "msg-b3ffcc16b6a1",
@@ -1495,7 +1576,8 @@
       "body_snippet": "Dear readers,\n\nLm returns all information necessary to reconstruct summary statistics by group. However, t.test only returns the group means, and not the group SDs, or even the group Ns. These cannot ",
       "thread_id": "thread-b3ffcc16b6a1",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076984.html"
     },
     {
       "id": "msg-6750e382f02e",
@@ -1514,7 +1596,8 @@
       "body_snippet": "Hi Tomas,\n\nThanks a lot for the explanation and the changes. The update in the\ndocumentation is especially helpful.\n\nBest,\nThibault\n\n\n\n\nOn Thu, Oct 18, 2018 at 10:48 AM Tomas Kalibera <tomas.kalibera ",
       "thread_id": "thread-c0cc2a5ba300",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076985.html"
     },
     {
       "id": "msg-906376f77652",
@@ -1530,7 +1613,8 @@
       "body_snippet": "Experimenting with altrep objects and v3 serialization, I discovered a\npossible bug.  Calling DATAPTR on a compact_intseq object returns a\npointer to the expanded integer sequence in memory.  If you m",
       "thread_id": "thread-906376f77652",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076986.html"
     },
     {
       "id": "msg-2d8978151978",
@@ -1548,7 +1632,8 @@
       "body_snippet": "Try this C code:\n\nSEXP set_intseq_data(SEXP x)\n{\n     if (MAYBE_SHARED(x))\n \terror(\"Oops, not supposed to do this!\");\n     void* ptr = DATAPTR(x);\n     ((int*)ptr)[3] = 1234;\n     return R_NilValue;\n}",
       "thread_id": "thread-906376f77652",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076987.html"
     },
     {
       "id": "msg-720d973704c4",
@@ -1564,7 +1649,8 @@
       "body_snippet": "Hello, I hope the is the right list to send this suggestion to.\n\nI was wondering if it might be possible to have CRAN store the most current\nversion of a package's source tarball at a location that do",
       "thread_id": "thread-720d973704c4",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076988.html"
     },
     {
       "id": "msg-50e3a14d9bef",
@@ -1582,7 +1668,8 @@
       "body_snippet": ">>>>> Kurt Wheeler writes:\n\nTry e.g.\n\nhttps://cran.r-project.org/package=httr&version=1.3.1\nhttps://cran.r-project.org/package=httr&version=1.3.0\n\n-k\n\n> Hello, I hope the is the right list to send thi",
       "thread_id": "thread-720d973704c4",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076989.html"
     },
     {
       "id": "msg-e099e8d8968e",
@@ -1602,7 +1689,8 @@
       "body_snippet": "Dear Nick,\n\nI've updated the implementation of file.access() on Windows to fall back \nto _waccess() when the security descriptor is not available. It now \nworks on my system with files selected for of",
       "thread_id": "thread-e099e8d8968e",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076990.html"
     },
     {
       "id": "msg-2577b05be647",
@@ -1618,7 +1706,8 @@
       "body_snippet": "formatC(0.0001, digits = 3, format = \"f\", zero.print=\"< 0.01\")\nError in strrep(\" \", nc - i1) : invalid 'times' value\n\nThe problem, if it is one, is in .format.zeros:\n.format.zeros(\"0.000\", \"xxxxxx\")\nE",
       "thread_id": "thread-2577b05be647",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076991.html"
     },
     {
       "id": "msg-40d2ddba581d",
@@ -1634,7 +1723,8 @@
       "body_snippet": "Dear R-core members,\n\nthere is a small typo in the log output of `check_pkg` in\nsrc/library/tools/R/check.R. Instead of \"timestanps\" it should be \"timestamps\":\n\nBest wishes,\n\nSebastian\n\n\nsvn diff\n\nInd",
       "thread_id": "thread-40d2ddba581d",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076993.html"
     },
     {
       "id": "msg-3efa2e613b49",
@@ -1652,7 +1742,8 @@
       "body_snippet": "I've been asked in private,\nbut am answering in public so others can comment / or find this\nanswer in the future after a web search.\n\nThis is about the package 'Rmpfr' (R interface to MPFR,\nthe GNU C ",
       "thread_id": "thread-3efa2e613b49",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076992.html"
     },
     {
       "id": "msg-8c1d124b3b89",
@@ -1670,7 +1761,8 @@
       "body_snippet": ">>>>> David Hugh-Jones \n>>>>>     on Thu, 25 Oct 2018 17:46:47 +0100 writes:\n\n> formatC(0.0001, digits = 3, format = \"f\", zero.print=\"< 0.01\")\n> Error in strrep(\" \", nc - i1) : invalid 'times' value\n>",
       "thread_id": "thread-2577b05be647",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076994.html"
     },
     {
       "id": "msg-bc704f54dbbb",
@@ -1686,7 +1778,8 @@
       "body_snippet": "Hello,\nI was just reminded from a comment in some code that I had submitted this bug report last year, but it does not appear to have been addressed in R 3.5.0.\nCan this please be fixed, or is there a",
       "thread_id": "thread-bc704f54dbbb",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076995.html"
     },
     {
       "id": "msg-8c4035860f20",
@@ -1705,7 +1798,8 @@
       "body_snippet": "Thank you for your detailed response.  I subsequently noticed that\n   sapply(vec,fn) \nalso fails if the function fn returns an mpfr object.  Will the next version of Rmpfr also fix this usage?\n\nI do e",
       "thread_id": "thread-3efa2e613b49",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076998.html"
     },
     {
       "id": "msg-6b4265c7d5ce",
@@ -1723,7 +1817,8 @@
       "body_snippet": "On 26/10/2018 10:28 AM, Gower, Adam wrote:\n> Hello,\n> I was just reminded from a comment in some code that I had submitted this bug report last year, but it does not appear to have been addressed in R",
       "thread_id": "thread-bc704f54dbbb",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076996.html"
     },
     {
       "id": "msg-ef726cba5125",
@@ -1742,7 +1837,8 @@
       "body_snippet": "Thanks very much for the clarification, Duncan - I appreciate it.  Will do.\nBest,\nAdam\n\n-----Original Message-----\nFrom: Duncan Murdoch [mailto:murdoch.duncan at gmail.com] \nSent: Friday, October 26, ",
       "thread_id": "thread-bc704f54dbbb",
       "thread_depth": 2,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076997.html"
     },
     {
       "id": "msg-d2dc0d317a37",
@@ -1758,7 +1854,8 @@
       "body_snippet": "Hi\n\nI wish that it was possible to install datasets from R packages\nwithout installing the rest of the packages.\nMainly for testing purposes or writing examples.\n\nAssuming that there's a top level dat",
       "thread_id": "thread-d2dc0d317a37",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/076999.html"
     },
     {
       "id": "msg-43bb345b7736",
@@ -1776,7 +1873,8 @@
       "body_snippet": "On 28/10/2018 5:08 PM, Abs Spurdle wrote:\n> Hi\n> \n> I wish that it was possible to install datasets from R packages\n> without installing the rest of the packages.\n> Mainly for testing purposes or writ",
       "thread_id": "thread-d2dc0d317a37",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/077000.html"
     },
     {
       "id": "msg-df91188d4699",
@@ -1792,7 +1890,8 @@
       "body_snippet": "Hi dear list,\n\nHere a little memory leak fix proposal.\n\nKind regards.\nThanks.\n\n-------------- next part --------------\nA non-text attachment was scrubbed...\nName: patch-extra-tre-regexec_c.diff\nType: ",
       "thread_id": "thread-df91188d4699",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/077001.html"
     },
     {
       "id": "msg-94bcb85e988f",
@@ -1808,7 +1907,8 @@
       "body_snippet": "Recent changes in R-devel seem to change the HTML rendering of text returned by Rd macros,\nin that now empty lines do not cause paragraphs to end (the empty lines are kept but <p> tags are not set).\nA",
       "thread_id": "thread-94bcb85e988f",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/077002.html"
     },
     {
       "id": "msg-dbb320c4ec2f",
@@ -1826,7 +1926,8 @@
       "body_snippet": ">>>>> Georgi Boshnakov \n>>>>>     on Mon, 29 Oct 2018 08:57:50 +0000 writes:\n\n> Recent changes in R-devel seem to change the HTML rendering of text returned by Rd macros,\n> in that now empty lines do ",
       "thread_id": "thread-94bcb85e988f",
       "thread_depth": 1,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/077003.html"
     },
     {
       "id": "msg-b8a0e1ea7fb4",
@@ -1842,7 +1943,8 @@
       "body_snippet": "SUMMARY:\n\nI'm proposing that R assert that 'connection' options have not changed\nsince first created such that R will produce the following error:\n\n> fh <- file(\"a.txt\", open = \"w+\")\n> cat(\"hello\\n\", ",
       "thread_id": "thread-b8a0e1ea7fb4",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/077004.html"
     },
     {
       "id": "msg-fedbdd11e90e",
@@ -1858,7 +1960,8 @@
       "body_snippet": "I would like to propose a .Internal() POSIXct2Date() function, similar\nto do_POSIXlt2D() in src/main/datetime.c.  I created a working\nprototype, which is now included in Dirk Eddelbuettel's RApiDateti",
       "thread_id": "thread-fedbdd11e90e",
       "thread_depth": 0,
-      "month": "2018-10"
+      "month": "2018-10",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2018-October/077005.html"
     }
   ],
   "threads": [
