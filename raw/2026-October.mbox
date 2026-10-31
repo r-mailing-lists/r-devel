@@ -1635,3 +1635,441 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Oct 30 17:07:57 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 30 Oct 2026 17:07:57 +0100
+Subject: [Rd] external BLAS library triggering erroneous ill-condtionned
+ matrices
+In-Reply-To: <fake-VM-id.d266642fe9e9bacf6c3cfdbea9e2b913@talos.iv>
+References: <582954321.21344934.1793264521115@wlpnf0218.sys.meshcore.net>
+ <27363.16111.863946.612544@paul.eddelbuettel.com>
+Message-ID: <27364.49373.3167.269220@stat.math.ethz.ch>
+
+>>>>> Dirk Eddelbuettel 
+>>>>>     on Thu, 29 Oct 2026 07:41:19 -0500 writes:
+
+    > On 29 October 2026 at 10:02, bastien_chassagnol--- via R-devel wrote:
+    > | Set-up: R 4.6.1 (Ubuntu 22.04 build), linked to the system OpenBLAS
+
+    > That's dated / a mismatch.  Why current R but older BLAS/LAPACK?  I recommend
+    > Ubuntu 26.04 or 26.10 if you want to engage with upstream.
+
+    > It's also ... sort-of well known. 
+
+Well, yes - as e.g., I knew about such problems and I think have
+written here ("R-devel mailing list" or "R-devel" or "R-help")
+probably more than once.
+
+Still most useRs do *not* know about such problems.
+
+Also, I'm glad for Bastien's example
+      -- yes, please make it available electronically! -- 
+because what he describes is much more severe than I'd have
+expected, the matrix so far away from singular {judged from the eigen values}.
+More (or 'much more') revealing should be to see the condition number(s):
+Bastien, can you please also report
+
+  kappa(<matrix>)
+
+and/or
+
+  rcond(<matrix>)
+
+maybe  kappa(*, exact=TRUE, norm="")
+or use {what I have added to the base/man/kappa.Rd  examples now in R-devel}
+
+kappasX <- function(x, inv = solve(x))
+   vapply(c("M","2","1","F"), # NB:  'O' = 'I' = '1'
+          \(nrm) kappa(x, exact=TRUE, norm=nrm, inv_z=inv), 1.2)
+
+to apply to your matrix?
+
+Best regards,
+Martin
+
+    > Just rotate through the available BLAS /
+    > LAPACK combinations. On a Debian / Ubuntu system is so easy that many (many)
+    > years ago I wrote a package doing just that to compare and time with GPUs,
+    > see https://cran.r-project.org/package=gcbd -- could use some love and an
+    > update to current packages.
+
+    > There is also flexiblas, already in Fedora and last I checked 'being
+    > packaged' for Debian.
+
+    > | The reference libraries were loaded with `LD_PRELOAD`; the kernel was set
+
+    > You don't need to do that. `gcbd` just uninstall / reinstalls. If you check
+    > the manual page, you can see how the `update-alternatives` command (a Debian
+    > / Ubuntu special) allows you to switch.  The number of available BLAS /
+    > LAPACK varies from year to year but there are way more than just reference
+    > BLAS and OpenBLAS. On my (26.04) machine just now
+
+    > $ apt-cache search libblas | wc -l
+    > 33
+    > $ 
+    > $ apt-cache search libblas | grep -- -dev | wc -l
+    > 16
+    > $ 
+
+    > It's big topic, and if you check source (of e.g. R itself) you will often
+    > find comments about precision varying. "Practical" numerical analysis has
+    > challenges that more theoretical approaches may gloss over.
+
+    > Dirk
+
+    > -- 
+    > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+    > ______________________________________________
+    > R-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+From o||v|er@benz @end|ng |rom b-d@t@@ch  Fri Oct 30 17:33:28 2026
+From: o||v|er@benz @end|ng |rom b-d@t@@ch (Olivier Benz)
+Date: Fri, 30 Oct 2026 16:33:28 +0000
+Subject: [Rd] external BLAS library triggering erroneous ill-condtionned
+ matrices
+In-Reply-To: <27363.16111.863946.612544@paul.eddelbuettel.com>
+References: <582954321.21344934.1793264521115@wlpnf0218.sys.meshcore.net>
+ <27363.16111.863946.612544@paul.eddelbuettel.com>
+Message-ID: <ECF49A40-B328-40A2-8945-5417EA5D03C1@b-data.ch>
+
+> On 29 Oct 2026, at 13:41, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> On 29 October 2026 at 10:02, bastien_chassagnol--- via R-devel wrote:
+> | Set-up: R 4.6.1 (Ubuntu 22.04 build), linked to the system OpenBLAS
+> 
+> That's dated / a mismatch.  Why current R but older BLAS/LAPACK?  I recommend
+> Ubuntu 26.04 or 26.10 if you want to engage with upstream.
+> 
+> It's also ... sort-of well known.
+
+Cross reference: Incorrect results on Intel Xeon Gold 6448H due to OpenBLAS <0.3.21
+
+https://github.com/rocker-org/rocker-versioned2/issues/836
+
+> Just rotate through the available BLAS /
+> LAPACK combinations. On a Debian / Ubuntu system is so easy that many (many)
+> years ago I wrote a package doing just that to compare and time with GPUs,
+> see https://cran.r-project.org/package=gcbd -- could use some love and an
+> update to current packages.
+> 
+> There is also flexiblas, already in Fedora and last I checked 'being
+> packaged' for Debian.
+> 
+> | The reference libraries were loaded with `LD_PRELOAD`; the kernel was set
+> 
+> You don't need to do that. `gcbd` just uninstall / reinstalls. If you check
+> the manual page, you can see how the `update-alternatives` command (a Debian
+> / Ubuntu special) allows you to switch.  The number of available BLAS /
+> LAPACK varies from year to year but there are way more than just reference
+> BLAS and OpenBLAS. On my (26.04) machine just now
+> 
+>  $ apt-cache search libblas | wc -l
+>  33
+>  $ 
+>  $ apt-cache search libblas | grep -- -dev | wc -l
+>  16
+>  $ 
+> 
+> It's big topic, and if you check source (of e.g. R itself) you will often
+> find comments about precision varying. "Practical" numerical analysis has
+> challenges that more theoretical approaches may gloss over.
+> 
+> Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+--
+benz0li.b-data.io | @benz0li | olivier.benz at b-data.ch
+
+
+From b@stie@_ch@ss@g@oi m@iii@g oii i@poste@@et  Fri Oct 30 19:08:41 2026
+From: b@stie@_ch@ss@g@oi m@iii@g oii i@poste@@et (b@stie@_ch@ss@g@oi m@iii@g oii i@poste@@et)
+Date: Fri, 30 Oct 2026 19:08:41 +0100 (CET)
+Subject: [Rd] external BLAS library triggering erroneous ill-condtionned
+ matrices
+In-Reply-To: <27364.49373.3167.269220@stat.math.ethz.ch>
+References: <582954321.21344934.1793264521115@wlpnf0218.sys.meshcore.net>
+ <27363.16111.863946.612544@paul.eddelbuettel.com>
+ <27364.49373.3167.269220@stat.math.ethz.ch>
+Message-ID: <618177751.21726532.1793383721395@wlpnf0218.sys.meshcore.net>
+
+
+Dear Martin, dear Dirk,
+
+?
+
+Thank you both. The matrix, a reproduction script and Martin's kappasX()
+
+check are now at
+
+?
+
+https://gist.github.com/bastienchassagnol/2236f6d95ae4485e2e7ed6b8fa421675
+
+?
+
+The matrix is far from singular. With reference BLAS and LAPACK 3.10.0,
+
+and identically with OpenBLAS under the SkylakeX or Haswell kernels:
+
+?
+
+kappa(A) 8.003
+
+kappa(A, exact = TRUE) 14.339 (= 0.2050 / 0.0143)
+
+rcond(A) 0.01091
+
+kappasX(A): M 2.922 2 14.339 1 91.62 F 263.81
+
+?
+
+eigen(A, symmetric = TRUE, only.values = TRUE) succeeds everywhere; only
+
+the call with eigenvectors (JOBZ = 'V') returns INFO = 2, under both the
+
+default kernel (OpenBLAS selects Cooperlake on this Granite Rapids CPU)
+
+and SkylakeX. Under the default kernel, solve() is also wrong, so rcond()
+
+and the 1- and F-norm values of kappasX() change (1-norm 149.0 instead of
+
+91.6) without any error.
+
+?
+
+I agree a newer Ubuntu is the real fix: Noble has
+
+0.3.26, 26.04 0.3.32. The Jammy backport of the upstream CPU-detection
+
+fix (Launchpad #2040027) was rejected as an abandoned SRU in August 2025,
+
+so Jammy users, including the rocker/r-ver 4.2.2 to 4.4.1 images (rocker
+
+issue #836), will keep this behaviour. I have not yet tested releases
+
+after 0.3.20. I used LD_PRELOAD only because update-alternatives needs
+
+root on this machine; it selects the same libraries. Thanks for the
+
+pointer to gcbd.
+
+?
+
+The wrong results under the Cooperlake kernel are the known part. What I
+
+have not found reported is the dsyevr failure that remains under the
+
+SkylakeX kernel, with either OpenBLAS's LAPACK or reference LAPACK 3.10.0.
+
+?
+
+Best regards,
+?
+
+?
+
+?
+
+??Bastien CHASSAGNOL,?Post-Doc student, supervised by Pr. Anais Baudot
+
+?
+
+Affiliation:?MMG, Marseille Medical Genetics
+
+U 1251, Facult? de M?decine de La Timone,
+
+27 Bd Jean Moulin
+
+13005 Marseille ? France
+
+T?l: 07 88 09 09 47
+
+Site?: https://www.marseille-medical-genetics.org/a-baudot/
+?  ???
+
+
+?
+Scientific Communication and Volunteer Activity:?
+
+Vice-Treasury, JeBiF - RSG France.
+
+Website:?https://jebif.fr/
+
+
+
+?
+
+
+?
+
+
+
+
+?
+
+
+Website:?? https://github.com/bastienchassagnol.
+LinkedIn:??www.linkedin.com/in/bastien-chassagnol-677b67140.???
+
+Mails:?bastien_chassagnol at laposte.net?//?chassagnolbastien at gmail.com?//?bastien.chassagnol at univ-amu.fr?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+De : "Martin Maechler" <maechler at stat.math.ethz.ch>
+A : "Dirk Eddelbuettel" <edd at debian.org>,bastien_chassagnol at laposte.net,r-devel at r-project.org
+Envoy?: vendredi 30 Octobre 2026 17:08
+Objet : Re: [Rd] external BLAS library triggering erroneous ill-condtionned matrices
+?
+>>>>> Dirk Eddelbuettel
+>>>>> on Thu, 29 Oct 2026 07:41:19 -0500 writes:
+
+> On 29 October 2026 at 10:02, bastien_chassagnol--- via R-devel wrote:
+> | Set-up: R 4.6.1 (Ubuntu 22.04 build), linked to the system OpenBLAS
+
+> That's dated / a mismatch. Why current R but older BLAS/LAPACK? I recommend
+> Ubuntu 26.04 or 26.10 if you want to engage with upstream.
+
+> It's also ... sort-of well known.
+
+Well, yes - as e.g., I knew about such problems and I think have
+written here ("R-devel mailing list" or "R-devel" or "R-help")
+probably more than once.
+
+Still most useRs do *not* know about such problems.
+
+Also, I'm glad for Bastien's example
+-- yes, please make it available electronically! --
+because what he describes is much more severe than I'd have
+expected, the matrix so far away from singular {judged from the eigen values}.
+More (or 'much more') revealing should be to see the condition number(s):
+Bastien, can you please also report
+
+kappa()
+
+and/or
+
+rcond()
+
+maybe kappa(*, exact=TRUE, norm="")
+or use {what I have added to the base/man/kappa.Rd examples now in R-devel}
+
+kappasX <- function(x, inv = solve(x))
+vapply(c("M","2","1","F"), # NB: 'O' = 'I' = '1'
+\(nrm) kappa(x, exact=TRUE, norm=nrm, inv_z=inv), 1.2)
+
+to apply to your matrix?
+
+Best regards,
+Martin
+
+> Just rotate through the available BLAS /
+> LAPACK combinations. On a Debian / Ubuntu system is so easy that many (many)
+> years ago I wrote a package doing just that to compare and time with GPUs,
+> see https://cran.r-project.org/package=gcbd -- could use some love and an
+> update to current packages.
+
+> There is also flexiblas, already in Fedora and last I checked 'being
+> packaged' for Debian.
+
+> | The reference libraries were loaded with `LD_PRELOAD`; the kernel was set
+
+> You don't need to do that. `gcbd` just uninstall / reinstalls. If you check
+> the manual page, you can see how the `update-alternatives` command (a Debian
+> / Ubuntu special) allows you to switch. The number of available BLAS /
+> LAPACK varies from year to year but there are way more than just reference
+> BLAS and OpenBLAS. On my (26.04) machine just now
+
+> $ apt-cache search libblas | wc -l
+> 33
+> $
+> $ apt-cache search libblas | grep -- -dev | wc -l
+> 16
+> $
+
+> It's big topic, and if you check source (of e.g. R itself) you will often
+> find comments about precision varying. "Practical" numerical analysis has
+> challenges that more theoretical approaches may gloss over.
+
+> Dirk
+
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+?
+
+?
+
+	[[alternative HTML version deleted]]
+
+
