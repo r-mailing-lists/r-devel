@@ -1,0 +1,157 @@
+{
+  "list": "r-devel",
+  "description": "",
+  "month": "2026-11",
+  "messages": [
+    {
+      "id": "msg-fa67edb1a39c",
+      "message_id": "<LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>",
+      "from_name": "Dong Yin",
+      "from_email_hash": "b2d15637a5d57748424aa64dab5fa068173702ac5cfc394acab7ae6fee4903b7",
+      "date": "2026-11-05T14:44:33Z",
+      "subject": "[Rd] loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow",
+      "subject_clean": "loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "An embedded and charset-unspecified text was scrubbed...\nName: ehg191-lookup.diff.txt\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20261105/f1a77502/attachment.txt>",
+      "body_snippet": "An embedded and charset-unspecified text was scrubbed...\nName: ehg191-lookup.diff.txt\nURL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20261105/f1a77502/attachment.txt>",
+      "thread_id": "thread-fa67edb1a39c",
+      "thread_depth": 0,
+      "month": "2026-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2026-November/084736.html"
+    },
+    {
+      "id": "msg-6c3b4e2c4fcb",
+      "message_id": "<9A109C4C-6E66-4B74-9B73-2B4FE154BD90@me.com>",
+      "from_name": "Marc Schwartz",
+      "from_email_hash": "040b2d09159b27cfd2853bc2dbb476bd637811586f307d9583c9ef7f806f3692",
+      "date": "2026-11-05T15:14:57Z",
+      "subject": "[Rd] loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow",
+      "subject_clean": "loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow",
+      "in_reply_to": "<LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>",
+      "references": [
+        "<LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>"
+      ],
+      "body_plain": "Hi Don,\n\nThe inline images in your original post resulted in the message body exceeding the size limit for posts to the list, which is 128 kb. Your original message was around 700 kb, which I unfortunately did not note until after the fact when approving it.\n\nAs a result, the list software filtered the rest of the body content of your post, leaving only the patch text file attachment.\n\nPlease re-send your original post to the list, preferably in plain text format, rather than HTML, and most importantly, ensure that the total size of the body of your message is below 128 kb, by notably reducing the size of the inline image files.\n\nYou can exclude the image from your editor of the diff, since that content is already in the diff text file attachment. Doing so will save message body size, leaving only your plots of the performance timing, which you will also need to reduce the size of to stay under 128 kb total.\n\nThanks,\n\nMarc Schwartz",
+      "body_snippet": "Hi Don,\n\nThe inline images in your original post resulted in the message body exceeding the size limit for posts to the list, which is 128 kb. Your original message was around 700 kb, which I unfortun",
+      "thread_id": "thread-fa67edb1a39c",
+      "thread_depth": 1,
+      "month": "2026-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2026-November/084737.html"
+    },
+    {
+      "id": "msg-d9b0f4932d5d",
+      "message_id": "<LO7P265MB195223066928731782E41F8D5AA6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>",
+      "from_name": "Dong Yin",
+      "from_email_hash": "b2d15637a5d57748424aa64dab5fa068173702ac5cfc394acab7ae6fee4903b7",
+      "date": "2026-11-05T15:22:48Z",
+      "subject": "[Rd] loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow",
+      "subject_clean": "loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow",
+      "in_reply_to": "<LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>",
+      "references": [
+        "<LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>"
+      ],
+      "body_plain": "Sorry, it looks like the list stripped the text of my previous message, so here it is again without the images.\n\nI am a student working on neuroimaging. I found a repeated linear search in ehg191 that makes predict.loess(se = TRUE) much slower than it needs to be. It is still present in R-devel r90840 (src/library/stats/src/loessf.f, lines 799 to 809).\n\nFor every training observation and every k-d tree vertex, the routine scans that vertex's neighbour list backwards, so with a fixed span the search work grows with n squared. This is the path ggplot2's geom_smooth(method = \"loess\") takes by default, since it draws a confidence band, so I suspect quite a few people wait on it without knowing why.\n\nThe proof of concept (ehg191-lookup.diff.txt, attached to my previous message: https://stat.ethz.ch/pipermail/r-devel/attachments/20261105/f1a77502/attachment.txt) builds the inverse neighbour positions once and replaces the scan with a lookup.\n\nOn an Apple M4 chip, predicting at 80 points with n = 40,000 and span = 0.5 took 24.2 s before and 0.22 s after (medians of three paired runs). L and the full prediction result were bit for bit identical in every timing configuration and in 1,000 random configurations with one to three predictors, and 24 further fits, including statistics = \"exact\", were identical too.\n\nI think the slow part can be reproduced with:\n\nset.seed(20261105)\nn <- 20000L\nx <- runif(n, -3, 3)\ny <- sin(x) + rnorm(n, sd = 0.35)\nf <- loess(y ~ x)\nnd <- data.frame(x = seq(min(x), max(x), length.out = 80L))\nsystem.time(predict(f, nd, se = TRUE))\n\nI rebuilt the trunk loess.R, loessc.c and loessf.f, unchanged and patched, under R 4.5.2 on macOS arm64.\n\nWould this be worth turning into a proper patch with a regression test? I would be glad of advice on how you would prefer the workspace to be allocated.\n\nThanks,\nDon\n\n________________________________\nFrom: Dong Yin\nSent: Thursday, 05 November 2026 14:44:33\nTo: r-devel at r-project.org <r-devel at r-project.org>\nCc: Y. Fang <yf346 at cam.ac.uk>\nSubject: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow\n\nHi all,\n\nI am a student working on NeuroImaging. I found a repeated linear search in ehg191 that makes predict.loess(se = TRUE) much slower than it needs to be. It is still present in R-devel r90840 (src/library/stats/src/loessf.f, lines 799 to 809).\n\nso, for every training observation and every k-d tree vertex, the routine scans that vertex's neighbour list backwards, so with a fixed span the search work grows with n squared. This is the path ggplot2's geom_smooth(method = \"loess\") takes by default, since it draws a confidence band, so I suspect quite a few people wait on it without knowing why\n\nThe attached POC builds the inverse neighbour positions once and replaces the scan with a lookup. The change in loessf.f is:\n\n\n\nOn an apple m4 chip, predicting at 80 points with n = 40,000 and span = 0.5 took 24.2 s before and 0.22 s after (medians of three paired runs).\n\nL and the full prediction result were bit for bit identical in every timing configuration and in 1,000 random configurations with one to three predictors, and 24 further fits, including statistics = \"exact\", were identical too\n\n\n\nI think the slow part can be reproduced with:\n\nset.seed(20261105)\nn <- 20000L\nx <- runif(n, -3, 3)\ny <- sin(x) + rnorm(n, sd = 0.35)\nf <- loess(y ~ x)\nnd <- data.frame(x = seq(min(x), max(x), length.out = 80L))\nsystem.time(predict(f, nd, se = TRUE))\n\nI rebuilt the trunk loess.R, loessc.c and loessf.f, unchanged and patched, under R 4.5.2 on macOS arm64\n\nWould this be worth turning into a proper patch with a regression test or some Pls? I would be glad of advice on how you would prefer the workspace to be allocated.\n\nThanks,\nDon\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Sorry, it looks like the list stripped the text of my previous message, so here it is again without the images.\n\nI am a student working on neuroimaging. I found a repeated linear search in ehg191 that",
+      "thread_id": "thread-fa67edb1a39c",
+      "thread_depth": 1,
+      "month": "2026-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2026-November/084738.html"
+    },
+    {
+      "id": "msg-2847938316c0",
+      "message_id": "<CALK03d0V0oL-e1b04HvWmgE42Q1FEw2_Tfyxk3CeW4mzXAL9jg@mail.gmail.com>",
+      "from_name": "Toby Hocking",
+      "from_email_hash": "fd3f0734dd513baa27fe9f311f3c9952ffdc21878ab0abc8ff90eb06223ac647",
+      "date": "2026-11-05T20:28:18Z",
+      "subject": "[Rd] loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow",
+      "subject_clean": "loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow",
+      "in_reply_to": "<LO7P265MB195223066928731782E41F8D5AA6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>",
+      "references": [
+        "<LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>",
+        "<LO7P265MB195223066928731782E41F8D5AA6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>"
+      ],
+      "body_plain": "Hi, I was interested in the asymptotic complexity so I tried adapting\nyour example code using R-devel, and I got a result that looks like\nlinear memory, but for time it looks more like cubic than quadratic:\nhttps://github.com/tdhock/atime/issues/135#issuecomment-6668217045\n\nThen I tried applying your patch, and I get an error at N=39810:\n\nError in predLoess(object$y, object$x, newx = if (is.null(newdata))\nobject$x else if (is.data.frame(newdata))\nas.matrix(model.frame(delete.response(terms(object)),  (from\natime-135.R#1) :\n  workspace required (2377642345) is too large probably because of\nsetting 'se = TRUE'.\n\nIs that expected? (your patch uses a lot more memory?)\n\nToby Hocking\n\nOn Thu, Nov 5, 2026 at 11:51?AM Dong Yin via R-devel\n<r-devel at r-project.org> wrote:\n>\n> Sorry, it looks like the list stripped the text of my previous message, so here it is again without the images.\n>\n> I am a student working on neuroimaging. I found a repeated linear search in ehg191 that makes predict.loess(se = TRUE) much slower than it needs to be. It is still present in R-devel r90840 (src/library/stats/src/loessf.f, lines 799 to 809).\n>\n> For every training observation and every k-d tree vertex, the routine scans that vertex's neighbour list backwards, so with a fixed span the search work grows with n squared. This is the path ggplot2's geom_smooth(method = \"loess\") takes by default, since it draws a confidence band, so I suspect quite a few people wait on it without knowing why.\n>\n> The proof of concept (ehg191-lookup.diff.txt, attached to my previous message: https://stat.ethz.ch/pipermail/r-devel/attachments/20261105/f1a77502/attachment.txt) builds the inverse neighbour positions once and replaces the scan with a lookup.\n>\n> On an Apple M4 chip, predicting at 80 points with n = 40,000 and span = 0.5 took 24.2 s before and 0.22 s after (medians of three paired runs). L and the full prediction result were bit for bit identical in every timing configuration and in 1,000 random configurations with one to three predictors, and 24 further fits, including statistics = \"exact\", were identical too.\n>\n> I think the slow part can be reproduced with:\n>\n> set.seed(20261105)\n> n <- 20000L\n> x <- runif(n, -3, 3)\n> y <- sin(x) + rnorm(n, sd = 0.35)\n> f <- loess(y ~ x)\n> nd <- data.frame(x = seq(min(x), max(x), length.out = 80L))\n> system.time(predict(f, nd, se = TRUE))\n>\n> I rebuilt the trunk loess.R, loessc.c and loessf.f, unchanged and patched, under R 4.5.2 on macOS arm64.\n>\n> Would this be worth turning into a proper patch with a regression test? I would be glad of advice on how you would prefer the workspace to be allocated.\n>\n> Thanks,\n> Don\n>\n> ________________________________\n> From: Dong Yin\n> Sent: Thursday, 05 November 2026 14:44:33\n> To: r-devel at r-project.org <r-devel at r-project.org>\n> Cc: Y. Fang <yf346 at cam.ac.uk>\n> Subject: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow\n>\n> Hi all,\n>\n> I am a student working on NeuroImaging. I found a repeated linear search in ehg191 that makes predict.loess(se = TRUE) much slower than it needs to be. It is still present in R-devel r90840 (src/library/stats/src/loessf.f, lines 799 to 809).\n>\n> so, for every training observation and every k-d tree vertex, the routine scans that vertex's neighbour list backwards, so with a fixed span the search work grows with n squared. This is the path ggplot2's geom_smooth(method = \"loess\") takes by default, since it draws a confidence band, so I suspect quite a few people wait on it without knowing why\n>\n> The attached POC builds the inverse neighbour positions once and replaces the scan with a lookup. The change in loessf.f is:\n>\n>\n>\n> On an apple m4 chip, predicting at 80 points with n = 40,000 and span = 0.5 took 24.2 s before and 0.22 s after (medians of three paired runs).\n>\n> L and the full prediction result were bit for bit identical in every timing configuration and in 1,000 random configurations with one to three predictors, and 24 further fits, including statistics = \"exact\", were identical too\n>\n>\n>\n> I think the slow part can be reproduced with:\n>\n> set.seed(20261105)\n> n <- 20000L\n> x <- runif(n, -3, 3)\n> y <- sin(x) + rnorm(n, sd = 0.35)\n> f <- loess(y ~ x)\n> nd <- data.frame(x = seq(min(x), max(x), length.out = 80L))\n> system.time(predict(f, nd, se = TRUE))\n>\n> I rebuilt the trunk loess.R, loessc.c and loessf.f, unchanged and patched, under R 4.5.2 on macOS arm64\n>\n> Would this be worth turning into a proper patch with a regression test or some Pls? I would be glad of advice on how you would prefer the workspace to be allocated.\n>\n> Thanks,\n> Don\n>\n>         [[alternative HTML version deleted]]\n>\n> ______________________________________________\n> R-devel at r-project.org mailing list\n> https://stat.ethz.ch/mailman/listinfo/r-devel",
+      "body_snippet": "Hi, I was interested in the asymptotic complexity so I tried adapting\nyour example code using R-devel, and I got a result that looks like\nlinear memory, but for time it looks more like cubic than quad",
+      "thread_id": "thread-fa67edb1a39c",
+      "thread_depth": 2,
+      "month": "2026-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2026-November/084739.html"
+    },
+    {
+      "id": "msg-028a2daee59f",
+      "message_id": "<LO7P265MB19522342D561EFDB5174206EB0A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>",
+      "from_name": "Dong Yin",
+      "from_email_hash": "b2d15637a5d57748424aa64dab5fa068173702ac5cfc394acab7ae6fee4903b7",
+      "date": "2026-11-05T21:00:42Z",
+      "subject": "[Rd] loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow",
+      "subject_clean": "loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow",
+      "in_reply_to": "<LO7P265MB195223142C012814DAA59E1CD8A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>",
+      "references": [
+        "<LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>",
+        "<LO7P265MB195223066928731782E41F8D5AA6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>",
+        "<LO7P265MB195223142C012814DAA59E1CD8A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>"
+      ],
+      "body_plain": "Hi Toby and all,\n\nThe list rejected my last message because of the images (again, sorry), so here it is again in text for everyone else. Toby, sorry for the duplicate.\n\nI don't think the error comes from the patch. Stock R 4.5.2 and the unpatched trunk sources stop with the same message, and the same number, at N = 39810:\n\nworkspace required (2377642345) is too large probably because of setting 'se = TRUE'.\n\nWith se = TRUE, loess needs a workspace of roughly (D + 1) x nf x N doubles, and with the default span = 0.75 that passes INT_MAX at about N = 37,800. Without the patch your atime run reaches the 1 second limit long before that, so it never gets there. That's also why I used span = 0.5 for my N = 40,000 timings.\n\nThe patch itself only adds an integer array of nv x N, and nv is 9 here, so about 1.3 MB at N = 37,000.\n\nOn the scaling: unpatched predict took 0.08, 1.1, 5.2 and 24.2 s for N = 5,000, 10,000, 20,000 and 40,000 at span = 0.5. So below 10,000 it is much steeper than quadratic for me too, then close to quadratic up to 40,000. I'm not sure yet where the extra at small N comes from.\n\nThanks,\nDon\n\n________________________________\nFrom: Dong Yin <dy323 at cam.ac.uk>\nSent: Thursday, 05 November 2026 20:58:16\nTo: tdhock5 at gmail.com <tdhock5 at gmail.com>\nCc: r-devel at r-project.org <r-devel at r-project.org>\nSubject: RE: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow\n\nHi Toby,\n\nThanks for trying it! I don't think the error comes from the patch. Stock R 4.5.2 stops with the same message, and the same number, at N = 39810:\n\n\n\nWith se = TRUE, loess needs a workspace of roughly (D + 1) x nf x N doubles, and with the default span = 0.75 that passes INT_MAX at about N = 37,800 (panel B below). Without the patch your atime run reaches the 1 second limit long before that, so it never gets there. That's also why I used span = 0.5 for my N = 40,000 timings.\n\nThe patch itself only adds an integer array of nv x N, and nv is 9 here, so about 1.3 MB at N = 37,000. well? i wonder\n\nYour plot made me look at the scaling again (panel A). Below N = 10,000 it is much steeper than quadratic for me too, then close to quadratic from 10,000 to 40,000. I'm not sure yet where the extra at small N comes from.\n\n\n\nThanks,\nDon\n\n________________________________\nFrom: Dong Yin <dy323 at cam.ac.uk>\nSent: Thursday, 05 November 2026 15:22:48\nTo: r-devel at r-project.org <r-devel at r-project.org>\nSubject: RE: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow\n\nSorry, it looks like the list stripped the text of my previous message, so here it is again without the images.\n\nI am a student working on neuroimaging. I found a repeated linear search in ehg191 that makes predict.loess(se = TRUE) much slower than it needs to be. It is still present in R-devel r90840 (src/library/stats/src/loessf.f, lines 799 to 809).\n\nFor every training observation and every k-d tree vertex, the routine scans that vertex's neighbour list backwards, so with a fixed span the search work grows with n squared. This is the path ggplot2's geom_smooth(method = \"loess\") takes by default, since it draws a confidence band, so I suspect quite a few people wait on it without knowing why.\n\nThe proof of concept (ehg191-lookup.diff.txt, attached to my previous message: https://stat.ethz.ch/pipermail/r-devel/attachments/20261105/f1a77502/attachment.txt) builds the inverse neighbour positions once and replaces the scan with a lookup.\n\nOn an Apple M4 chip, predicting at 80 points with n = 40,000 and span = 0.5 took 24.2 s before and 0.22 s after (medians of three paired runs). L and the full prediction result were bit for bit identical in every timing configuration and in 1,000 random configurations with one to three predictors, and 24 further fits, including statistics = \"exact\", were identical too.\n\nI think the slow part can be reproduced with:\n\nset.seed(20261105)\nn <- 20000L\nx <- runif(n, -3, 3)\ny <- sin(x) + rnorm(n, sd = 0.35)\nf <- loess(y ~ x)\nnd <- data.frame(x = seq(min(x), max(x), length.out = 80L))\nsystem.time(predict(f, nd, se = TRUE))\n\nI rebuilt the trunk loess.R, loessc.c and loessf.f, unchanged and patched, under R 4.5.2 on macOS arm64.\n\nWould this be worth turning into a proper patch with a regression test? I would be glad of advice on how you would prefer the workspace to be allocated.\n\nThanks,\nDon\n\n________________________________\nFrom: Dong Yin\nSent: Thursday, 05 November 2026 14:44:33\nTo: r-devel at r-project.org <r-devel at r-project.org>\nCc: Y. Fang <yf346 at cam.ac.uk>\nSubject: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow\n\nHi all,\n\nI am a student working on NeuroImaging. I found a repeated linear search in ehg191 that makes predict.loess(se = TRUE) much slower than it needs to be. It is still present in R-devel r90840 (src/library/stats/src/loessf.f, lines 799 to 809).\n\nso, for every training observation and every k-d tree vertex, the routine scans that vertex's neighbour list backwards, so with a fixed span the search work grows with n squared. This is the path ggplot2's geom_smooth(method = \"loess\") takes by default, since it draws a confidence band, so I suspect quite a few people wait on it without knowing why\n\nThe attached POC builds the inverse neighbour positions once and replaces the scan with a lookup. The change in loessf.f is:\n\n\n\nOn an apple m4 chip, predicting at 80 points with n = 40,000 and span = 0.5 took 24.2 s before and 0.22 s after (medians of three paired runs).\n\nL and the full prediction result were bit for bit identical in every timing configuration and in 1,000 random configurations with one to three predictors, and 24 further fits, including statistics = \"exact\", were identical too\n\n\n\nI think the slow part can be reproduced with:\n\nset.seed(20261105)\nn <- 20000L\nx <- runif(n, -3, 3)\ny <- sin(x) + rnorm(n, sd = 0.35)\nf <- loess(y ~ x)\nnd <- data.frame(x = seq(min(x), max(x), length.out = 80L))\nsystem.time(predict(f, nd, se = TRUE))\n\nI rebuilt the trunk loess.R, loessc.c and loessf.f, unchanged and patched, under R 4.5.2 on macOS arm64\n\nWould this be worth turning into a proper patch with a regression test or some Pls? I would be glad of advice on how you would prefer the workspace to be allocated.\n\nThanks,\nDon\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hi Toby and all,\n\nThe list rejected my last message because of the images (again, sorry), so here it is again in text for everyone else. Toby, sorry for the duplicate.\n\nI don't think the error comes f",
+      "thread_id": "thread-028a2daee59f",
+      "thread_depth": 0,
+      "month": "2026-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2026-November/084740.html"
+    },
+    {
+      "id": "msg-eab57f7fba59",
+      "message_id": "<SJ0PR03MB583943813BBF4D0CD91C98E192762@SJ0PR03MB5839.namprd03.prod.outlook.com>",
+      "from_name": "Kristen Kelly",
+      "from_email_hash": "f07eb4ca43b04db23b64611bc2b52752e1102e8e3cbb6b3f6fac39a18a21ec3a",
+      "date": "2026-11-06T01:43:19Z",
+      "subject": "[Rd] Potential feature request: Option to warn about misspelled/non-existent (not partial) names with data.frames and $",
+      "subject_clean": "Potential feature request: Option to warn about misspelled/non-existent (not partial) names with data.frames and $",
+      "in_reply_to": null,
+      "references": [],
+      "body_plain": "Hello,\n\nI hope I am writing to the correct list. I am hoping to make a feature request for R, and I found a guide that says to write to r-devel first to check if there is support for the idea.\n\nThe feature I want to suggest is an option similar to options(warnPartialMatchDollar=TRUE), but for cases where rather than being a partial match, the variable name is misspelled or simply doesn?t exist and attempting to use it produces NULL.\n\nThis behavior of $ can sometimes lead to unexpected outcomes, as demonstrated below:\n\ndat <- data.frame(column1=1:3,column2=NA)\nstopifnot(!any(is.na(dat$coluumn2)))\nstopifnot(sum(dat$coluumn1) < 2)\n\nIn both cases, the data.frame returning NULL with a misspelled column name leads to the check in the stopifnot() silently succeeding with no warning that anything might be wrong.\n\nI know there are reasons why $ returns NULL, and I?m not suggesting changing that. Just possibly adding an option, something like options(warnNonexistDollar=TRUE), that people could turn on if they would find it helpful to get a warning in cases like the example above.\n\nIs this something that?s likely to have enough support to be worth submitting as a feature request?\n\nThank you,\nKristen\n\n\t[[alternative HTML version deleted]]",
+      "body_snippet": "Hello,\n\nI hope I am writing to the correct list. I am hoping to make a feature request for R, and I found a guide that says to write to r-devel first to check if there is support for the idea.\n\nThe fe",
+      "thread_id": "thread-eab57f7fba59",
+      "thread_depth": 0,
+      "month": "2026-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2026-November/084741.html"
+    }
+  ],
+  "threads": [
+    {
+      "id": "thread-fa67edb1a39c",
+      "subject": "loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow",
+      "message_count": 4,
+      "participants": [
+        "Dong Yin",
+        "Marc Schwartz",
+        "Toby Hocking"
+      ],
+      "started": "2026-11-05T14:44:33Z",
+      "last_reply": "2026-11-05T20:28:18Z",
+      "root_message_id": "msg-fa67edb1a39c"
+    },
+    {
+      "id": "thread-028a2daee59f",
+      "subject": "loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow",
+      "message_count": 1,
+      "participants": [
+        "Dong Yin"
+      ],
+      "started": "2026-11-05T21:00:42Z",
+      "last_reply": "2026-11-05T21:00:42Z",
+      "root_message_id": "msg-028a2daee59f"
+    },
+    {
+      "id": "thread-eab57f7fba59",
+      "subject": "Potential feature request: Option to warn about misspelled/non-existent (not partial) names with data.frames and $",
+      "message_count": 1,
+      "participants": [
+        "Kristen Kelly"
+      ],
+      "started": "2026-11-06T01:43:19Z",
+      "last_reply": "2026-11-06T01:43:19Z",
+      "root_message_id": "msg-eab57f7fba59"
+    }
+  ]
+}
