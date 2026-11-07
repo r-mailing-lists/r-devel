@@ -376,3 +376,1007 @@ Kristen
 	[[alternative HTML version deleted]]
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Nov  6 17:20:09 2026
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 6 Nov 2026 17:20:09 +0100
+Subject: [Rd] stopifnot(<empty>) was "Potential feature request: Option to
+ warn ... with data.frames and $"
+In-Reply-To: <fake-VM-id.f137e3424c2f778b7d374c71cdb011bc@talos.iv>
+References: <SJ0PR03MB583943813BBF4D0CD91C98E192762@SJ0PR03MB5839.namprd03.prod.outlook.com>
+Message-ID: <27373.65081.863904.995560@stat.math.ethz.ch>
+
+>>>>> Kristen Kelly via R-devel 
+>>>>>     on Fri, 6 Nov 2026 01:43:19 +0000 writes:
+
+    > Hello,
+    > I hope I am writing to the correct list. I am hoping to make a feature request for R, and I found a guide that says to write to r-devel first to check if there is support for the idea.
+
+    > The feature I want to suggest is an option similar to options(warnPartialMatchDollar=TRUE), but for cases where rather than being a partial match, the variable name is misspelled or simply doesn?t exist and attempting to use it produces NULL.
+
+    > This behavior of $ can sometimes lead to unexpected outcomes, as demonstrated below:
+
+    > dat <- data.frame(column1=1:3,column2=NA)
+    > stopifnot(!any(is.na(dat$coluumn2)))
+    > stopifnot(sum(dat$coluumn1) < 2)
+
+    > In both cases, the data.frame returning NULL with a misspelled column name leads to the check in the stopifnot() silently succeeding with no warning that anything might be wrong.
+
+    > I know there are reasons why $ returns NULL, and I?m not suggesting changing that. Just possibly adding an option, something like options(warnNonexistDollar=TRUE), that people could turn on if they would find it helpful to get a warning in cases like the example above.
+
+    > Is this something that?s likely to have enough support to be worth submitting as a feature request?
+
+    > Thank you,
+    > Kristen
+
+Thank you, Kirsten,
+
+for opening an interesting issue.
+Personally I'm guessing that such a warning may not be very
+useful as I expect it to be triggered too often.
+Notably it has been a "trick" already in S, S-plus, for a really
+fast test if a list component to be present,
+to have something like
+
+   if(!is.null(cm <- mylist$comp)) {
+     .....
+     <work with> `cm`
+     .....
+   } else { 
+     ## work without `cm`, in some cases just
+     stop("component `comp` does not exist -- cannot do xyz")
+   }
+
+*HOWEVER*, I think the problem you really may want to solve
+is the use inside stopifnot():
+
+The "problem" is that    all( logical(0) )  is TRUE
+and _should_ be {all elements of the empty set are TRUE .. etc},
+i.e., the "problem" is the specification of the  stopifnot()
+function --- I added to R a *long* time ago, that it can and
+often should be used "vectorized", i.e.,
+
+  stopifnot( x == y )
+
+should be 'fine' (in simple vector/matrix/array cases)  when x
+and y have the same lengths and all their corresponding elements
+x[i], y[i]  are equal.
+
+Hence stopifnot() uses internally code which may be simplified to
+all(x == y).
+
+Really experienced R users (say 0.025% of all ;-) of course are
+aware of that .. but it may still be considered "dangerous"
+behaviour, a really bad case being
+
+    stopifnot(dim(x) == dim(y))
+
+to check if two matrices (or arrays) are compatible.  If one of
+x or y is accidentally a vector instead of a matrix, the above
+never signals the desired error.
+
+Hence, for many years, I have mused about, but never posted (nor
+even discussed IIRC within the R core team ..)
+an official proposal to eventually *change* stopifnot's default
+behavior, and to eventually *warn* when its call to all(.) would be applied to
+an object of length 0.
+Again this makes too many uses unuseful, so I have had (starting from
+on April 13, 2020) a new argument to stopifnot, which *indeed*
+is tweakable by a new option, as you can see:
+
+stopifnot <- function(..., exprs, exprObject, local = TRUE,
+                      allow.logical0 = getOption("stopifnot_allow.logical0", TRUE))
+{ ## allow.logical0=TRUE: compatible w/ R <= 4.6.x; to become FALSE; at first in '--as-cran' !
+
+    ..............................
+    ..............................
+    <.... some 'allow.logical0' hack in the branch for
+    stopifnot(exprs = { ......
+    } )
+    ....>
+    ..............................
+    ..............................
+
+    allTRUE <- if(allow.logical0)
+		   function(x)              is.logical(x) && !anyNA(x) && all(x)
+	       else
+		   function(x) length(x) && is.logical(x) && !anyNA(x) && all(x)
+
+    ... and then
+
+    for (i in seq_len(n)) {
+	r <- ...elt(i)
+	if(!allTRUE(r)) {
+           ............ 
+           ............ 
+	   stop(..............)
+	   .........
+       }
+    }
+    invisible()
+} # end { stopifnot() definition }
+
+Once I've started using this  in my "hacked" version of R-devel,
+*and* set the
+
+   options(stopifnot_allow.logical0 = FALSE)
+
+I did need to add manually   `allow.logical0 = TRUE`
+to *some* stopifnot() calls in my R code (in my packages and scripts)
+and to R-core's code in base R {i.e., in the above "hacked"
+branch of R-devel}.
+
+I vaguely remember (but am not sure, not remembering details)
+that the updated stopifnot() -- without setting the new option
+still had some rare hickups, but I really don't remember and
+also somewhat doubt my vague memory...
+
+Maybe I should open an R bugzilla "wishlist" for this,
+with my full current patch for such an enhanced stopifnot().
+
+In any case, your issue would be solved either by explicitly adding
+  allow.logical0 = FALSE
+to your stopifnot() calls involving  ` <datafr>$<comp> `
+or by setting the above options(stopif... = FALSE)
+
+What do others think - about such an option for stopifnot()?
+
+With a repeated thank you for raising the issue,
+Martin
+
+
+--
+Martin M?chler
+R Core team and ETH Zurich
+
+
+From ht @end|ng |rom he@therturner@net  Fri Nov  6 18:08:05 2026
+From: ht @end|ng |rom he@therturner@net (Heather Turner)
+Date: Fri, 06 Nov 2026 17:08:05 +0000
+Subject: [Rd] R Project Sprint 2027, 3 days in week of Apr 12,
+ Boston | Virtual
+Message-ID: <106412f1-ea24-4351-bc9b-64e8aa476ff3@app.fastmail.com>
+
+Dear All,
+
+A hybrid R Project Sprint will be held in Boston, USA, for 3 days in the week of April 12, exact dates TBD.
+
+Join this collaborative event to work on contributions to the code and documentation of base R, or to infrastructure that supports such contribution. 
+
+Travel funding is available for this event. Limited places are available for novice and experienced contributors to participate in person or online.
+
+Applications open now:
+https://contributor.r-project.org/r-project-sprint-2027
+We particularly encourage applications from Africa, the Middle East and Asia.
+
+**Deadline: Friday 4 December (midnight Anywhere on Earth).**
+
+Best wishes,
+
+Heather
+	[[alternative HTML version deleted]]
+
+
+From Kr|@ten@Ke||y @end|ng |rom co|or@do@edu  Fri Nov  6 19:41:16 2026
+From: Kr|@ten@Ke||y @end|ng |rom co|or@do@edu (Kristen Kelly)
+Date: Fri, 6 Nov 2026 18:41:16 +0000
+Subject: [Rd] 
+ stopifnot(<empty>) was "Potential feature request: Option to
+ warn ... with data.frames and $"
+In-Reply-To: <27373.65081.863904.995560@stat.math.ethz.ch>
+References: <SJ0PR03MB583943813BBF4D0CD91C98E192762@SJ0PR03MB5839.namprd03.prod.outlook.com>
+ <27373.65081.863904.995560@stat.math.ethz.ch>
+Message-ID: <SJ0PR03MB58397D3DC24144B98022DE6F92762@SJ0PR03MB5839.namprd03.prod.outlook.com>
+
+Thanks Martin!
+
+I definitely think the option for stopifnot() would help with the the first example I gave.
+
+But the problem runs deeper than just stopifnot(). In the second example, the problem is that sum(dat$coluumn1) is 0. So stopifnot() is receiving a perfectly legitimate test that 0 < 2. This would also be a problem outside of stopifnot(), eg. someone might assign x <- sum(dat$coluum1) and then try to use x for further calculations.
+
+There are probably also other R functions besides stopifnot() and sum() that also silently do weird things with no warning when $ unexpectedly returns NULL due to typos.
+
+Personally, I would rather see the warnings for mistyped/non-existent column names with $ than not, even if it meant seeing some extra warnings. Better that than having typos cause incorrect results in analyses with no warning. Having it be a settable option (similar to warnPartialMatchDollar) would let each user make that choice for themselves.
+
+Kristen
+
+
+
+From: Martin Maechler <maechler at stat.math.ethz.ch>
+Date: Friday, November 6, 2026 at 11:20?AM
+To: Kristen Kelly <Kristen.Kelly at colorado.edu>
+Cc: R Development List <R-devel at r-project.org>
+Subject: stopifnot(<empty>) was "Potential feature request: Option to warn ... with data.frames and $"
+[External email - use caution]
+
+
+>>>>> Kristen Kelly via R-devel
+>>>>>     on Fri, 6 Nov 2026 01:43:19 +0000 writes:
+
+    > Hello,
+    > I hope I am writing to the correct list. I am hoping to make a feature request for R, and I found a guide that says to write to r-devel first to check if there is support for the idea.
+
+    > The feature I want to suggest is an option similar to options(warnPartialMatchDollar=TRUE), but for cases where rather than being a partial match, the variable name is misspelled or simply doesn?t exist and attempting to use it produces NULL.
+
+    > This behavior of $ can sometimes lead to unexpected outcomes, as demonstrated below:
+
+    > dat <- data.frame(column1=1:3,column2=NA)
+    > stopifnot(!any(is.na(dat$coluumn2)))
+    > stopifnot(sum(dat$coluumn1) < 2)
+
+    > In both cases, the data.frame returning NULL with a misspelled column name leads to the check in the stopifnot() silently succeeding with no warning that anything might be wrong.
+
+    > I know there are reasons why $ returns NULL, and I?m not suggesting changing that. Just possibly adding an option, something like options(warnNonexistDollar=TRUE), that people could turn on if they would find it helpful to get a warning in cases like the example above.
+
+    > Is this something that?s likely to have enough support to be worth submitting as a feature request?
+
+    > Thank you,
+    > Kristen
+
+Thank you, Kirsten,
+
+for opening an interesting issue.
+Personally I'm guessing that such a warning may not be very
+useful as I expect it to be triggered too often.
+Notably it has been a "trick" already in S, S-plus, for a really
+fast test if a list component to be present,
+to have something like
+
+   if(!is.null(cm <- mylist$comp)) {
+     .....
+     <work with> `cm`
+     .....
+   } else {
+     ## work without `cm`, in some cases just
+     stop("component `comp` does not exist -- cannot do xyz")
+   }
+
+*HOWEVER*, I think the problem you really may want to solve
+is the use inside stopifnot():
+
+The "problem" is that    all( logical(0) )  is TRUE
+and _should_ be {all elements of the empty set are TRUE .. etc},
+i.e., the "problem" is the specification of the  stopifnot()
+function --- I added to R a *long* time ago, that it can and
+often should be used "vectorized", i.e.,
+
+  stopifnot( x == y )
+
+should be 'fine' (in simple vector/matrix/array cases)  when x
+and y have the same lengths and all their corresponding elements
+x[i], y[i]  are equal.
+
+Hence stopifnot() uses internally code which may be simplified to
+all(x == y).
+
+Really experienced R users (say 0.025% of all ;-) of course are
+aware of that .. but it may still be considered "dangerous"
+behaviour, a really bad case being
+
+    stopifnot(dim(x) == dim(y))
+
+to check if two matrices (or arrays) are compatible.  If one of
+x or y is accidentally a vector instead of a matrix, the above
+never signals the desired error.
+
+Hence, for many years, I have mused about, but never posted (nor
+even discussed IIRC within the R core team ..)
+an official proposal to eventually *change* stopifnot's default
+behavior, and to eventually *warn* when its call to all(.) would be applied to
+an object of length 0.
+Again this makes too many uses unuseful, so I have had (starting from
+on April 13, 2020) a new argument to stopifnot, which *indeed*
+is tweakable by a new option, as you can see:
+
+stopifnot <- function(..., exprs, exprObject, local = TRUE,
+                      allow.logical0 = getOption("stopifnot_allow.logical0", TRUE))
+{ ## allow.logical0=TRUE: compatible w/ R <= 4.6.x; to become FALSE; at first in '--as-cran' !
+
+    ..............................
+    ..............................
+    <.... some 'allow.logical0' hack in the branch for
+    stopifnot(exprs = { ......
+    } )
+    ....>
+    ..............................
+    ..............................
+
+    allTRUE <- if(allow.logical0)
+                   function(x)              is.logical(x) && !anyNA(x) && all(x)
+               else
+                   function(x) length(x) && is.logical(x) && !anyNA(x) && all(x)
+
+    ... and then
+
+    for (i in seq_len(n)) {
+        r <- ...elt(i)
+        if(!allTRUE(r)) {
+           ............
+           ............
+           stop(..............)
+           .........
+       }
+    }
+    invisible()
+} # end { stopifnot() definition }
+
+Once I've started using this  in my "hacked" version of R-devel,
+*and* set the
+
+   options(stopifnot_allow.logical0 = FALSE)
+
+I did need to add manually   `allow.logical0 = TRUE`
+to *some* stopifnot() calls in my R code (in my packages and scripts)
+and to R-core's code in base R {i.e., in the above "hacked"
+branch of R-devel}.
+
+I vaguely remember (but am not sure, not remembering details)
+that the updated stopifnot() -- without setting the new option
+still had some rare hickups, but I really don't remember and
+also somewhat doubt my vague memory...
+
+Maybe I should open an R bugzilla "wishlist" for this,
+with my full current patch for such an enhanced stopifnot().
+
+In any case, your issue would be solved either by explicitly adding
+  allow.logical0 = FALSE
+to your stopifnot() calls involving  ` <datafr>$<comp> `
+or by setting the above options(stopif... = FALSE)
+
+What do others think - about such an option for stopifnot()?
+
+With a repeated thank you for raising the issue,
+Martin
+
+
+--
+Martin M?chler
+R Core team and ETH Zurich
+
+	[[alternative HTML version deleted]]
+
+
+From tdhock5 @end|ng |rom gm@||@com  Fri Nov  6 20:03:32 2026
+From: tdhock5 @end|ng |rom gm@||@com (Toby Hocking)
+Date: Fri, 6 Nov 2026 14:03:32 -0500
+Subject: [Rd] loess: repeated neighbour list search in ehg191 makes
+ predict(se = TRUE) slow
+In-Reply-To: <LO7P265MB19522342D561EFDB5174206EB0A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+References: <LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB195223066928731782E41F8D5AA6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB195223142C012814DAA59E1CD8A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB19522342D561EFDB5174206EB0A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <CALK03d2FSTXptvsR6CUXOKUouzkKf27XDXxMTh+r7y6GGrRk8Q@mail.gmail.com>
+
+Thanks for the response Don. That is interesting.
+I tried the span=0.5 but still error on my end.
+Decreasing the atime seconds.limit from 1 to 0.1 gives an encouraging
+result which looks log linear though
+https://github.com/tdhock/atime/issues/135#issuecomment-6692949103
+
+The improvement would be more convincing if we could run the two
+versions side by side in the same R session.
+Can you make a patch with a new argument, like predict(cache=TRUE) for
+your new version and FALSE for the old version? That way we could run
+both in the same R session to more obviously see the improvements.
+
+On Thu, Nov 5, 2026 at 4:00?PM Dong Yin <dy323 at cam.ac.uk> wrote:
+>
+> Hi Toby and all,
+>
+> The list rejected my last message because of the images (again, sorry), so here it is again in text for everyone else. Toby, sorry for the duplicate.
+>
+> I don't think the error comes from the patch. Stock R 4.5.2 and the unpatched trunk sources stop with the same message, and the same number, at N = 39810:
+>
+> workspace required (2377642345) is too large probably because of setting 'se = TRUE'.
+>
+> With se = TRUE, loess needs a workspace of roughly (D + 1) x nf x N doubles, and with the default span = 0.75 that passes INT_MAX at about N = 37,800. Without the patch your atime run reaches the 1 second limit long before that, so it never gets there. That's also why I used span = 0.5 for my N = 40,000 timings.
+>
+> The patch itself only adds an integer array of nv x N, and nv is 9 here, so about 1.3 MB at N = 37,000.
+>
+> On the scaling: unpatched predict took 0.08, 1.1, 5.2 and 24.2 s for N = 5,000, 10,000, 20,000 and 40,000 at span = 0.5. So below 10,000 it is much steeper than quadratic for me too, then close to quadratic up to 40,000. I'm not sure yet where the extra at small N comes from.
+>
+> Thanks,
+> Don
+>
+> ________________________________
+> From: Dong Yin <dy323 at cam.ac.uk>
+> Sent: Thursday, 05 November 2026 20:58:16
+> To: tdhock5 at gmail.com <tdhock5 at gmail.com>
+> Cc: r-devel at r-project.org <r-devel at r-project.org>
+> Subject: RE: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+>
+> Hi Toby,
+>
+> Thanks for trying it! I don't think the error comes from the patch. Stock R 4.5.2 stops with the same message, and the same number, at N = 39810:
+>
+>
+>
+> With se = TRUE, loess needs a workspace of roughly (D + 1) x nf x N doubles, and with the default span = 0.75 that passes INT_MAX at about N = 37,800 (panel B below). Without the patch your atime run reaches the 1 second limit long before that, so it never gets there. That's also why I used span = 0.5 for my N = 40,000 timings.
+>
+> The patch itself only adds an integer array of nv x N, and nv is 9 here, so about 1.3 MB at N = 37,000. well? i wonder
+>
+> Your plot made me look at the scaling again (panel A). Below N = 10,000 it is much steeper than quadratic for me too, then close to quadratic from 10,000 to 40,000. I'm not sure yet where the extra at small N comes from.
+>
+>
+>
+> Thanks,
+> Don
+>
+> ________________________________
+> From: Dong Yin <dy323 at cam.ac.uk>
+> Sent: Thursday, 05 November 2026 15:22:48
+> To: r-devel at r-project.org <r-devel at r-project.org>
+> Subject: RE: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+>
+> Sorry, it looks like the list stripped the text of my previous message, so here it is again without the images.
+>
+> I am a student working on neuroimaging. I found a repeated linear search in ehg191 that makes predict.loess(se = TRUE) much slower than it needs to be. It is still present in R-devel r90840 (src/library/stats/src/loessf.f, lines 799 to 809).
+>
+> For every training observation and every k-d tree vertex, the routine scans that vertex's neighbour list backwards, so with a fixed span the search work grows with n squared. This is the path ggplot2's geom_smooth(method = "loess") takes by default, since it draws a confidence band, so I suspect quite a few people wait on it without knowing why.
+>
+> The proof of concept (ehg191-lookup.diff.txt, attached to my previous message: https://stat.ethz.ch/pipermail/r-devel/attachments/20261105/f1a77502/attachment.txt) builds the inverse neighbour positions once and replaces the scan with a lookup.
+>
+> On an Apple M4 chip, predicting at 80 points with n = 40,000 and span = 0.5 took 24.2 s before and 0.22 s after (medians of three paired runs). L and the full prediction result were bit for bit identical in every timing configuration and in 1,000 random configurations with one to three predictors, and 24 further fits, including statistics = "exact", were identical too.
+>
+> I think the slow part can be reproduced with:
+>
+> set.seed(20261105)
+> n <- 20000L
+> x <- runif(n, -3, 3)
+> y <- sin(x) + rnorm(n, sd = 0.35)
+> f <- loess(y ~ x)
+> nd <- data.frame(x = seq(min(x), max(x), length.out = 80L))
+> system.time(predict(f, nd, se = TRUE))
+>
+> I rebuilt the trunk loess.R, loessc.c and loessf.f, unchanged and patched, under R 4.5.2 on macOS arm64.
+>
+> Would this be worth turning into a proper patch with a regression test? I would be glad of advice on how you would prefer the workspace to be allocated.
+>
+> Thanks,
+> Don
+>
+> ________________________________
+> From: Dong Yin
+> Sent: Thursday, 05 November 2026 14:44:33
+> To: r-devel at r-project.org <r-devel at r-project.org>
+> Cc: Y. Fang <yf346 at cam.ac.uk>
+> Subject: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+>
+> Hi all,
+>
+> I am a student working on NeuroImaging. I found a repeated linear search in ehg191 that makes predict.loess(se = TRUE) much slower than it needs to be. It is still present in R-devel r90840 (src/library/stats/src/loessf.f, lines 799 to 809).
+>
+> so, for every training observation and every k-d tree vertex, the routine scans that vertex's neighbour list backwards, so with a fixed span the search work grows with n squared. This is the path ggplot2's geom_smooth(method = "loess") takes by default, since it draws a confidence band, so I suspect quite a few people wait on it without knowing why
+>
+> The attached POC builds the inverse neighbour positions once and replaces the scan with a lookup. The change in loessf.f is:
+>
+>
+>
+> On an apple m4 chip, predicting at 80 points with n = 40,000 and span = 0.5 took 24.2 s before and 0.22 s after (medians of three paired runs).
+>
+> L and the full prediction result were bit for bit identical in every timing configuration and in 1,000 random configurations with one to three predictors, and 24 further fits, including statistics = "exact", were identical too
+>
+>
+>
+> I think the slow part can be reproduced with:
+>
+> set.seed(20261105)
+> n <- 20000L
+> x <- runif(n, -3, 3)
+> y <- sin(x) + rnorm(n, sd = 0.35)
+> f <- loess(y ~ x)
+> nd <- data.frame(x = seq(min(x), max(x), length.out = 80L))
+> system.time(predict(f, nd, se = TRUE))
+>
+> I rebuilt the trunk loess.R, loessc.c and loessf.f, unchanged and patched, under R 4.5.2 on macOS arm64
+>
+> Would this be worth turning into a proper patch with a regression test or some Pls? I would be glad of advice on how you would prefer the workspace to be allocated.
+>
+> Thanks,
+> Don
+
+
+From tdhock5 @end|ng |rom gm@||@com  Fri Nov  6 20:06:03 2026
+From: tdhock5 @end|ng |rom gm@||@com (Toby Hocking)
+Date: Fri, 6 Nov 2026 14:06:03 -0500
+Subject: [Rd] loess: repeated neighbour list search in ehg191 makes
+ predict(se = TRUE) slow
+In-Reply-To: <CALK03d2FSTXptvsR6CUXOKUouzkKf27XDXxMTh+r7y6GGrRk8Q@mail.gmail.com>
+References: <LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB195223066928731782E41F8D5AA6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB195223142C012814DAA59E1CD8A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB19522342D561EFDB5174206EB0A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <CALK03d2FSTXptvsR6CUXOKUouzkKf27XDXxMTh+r7y6GGrRk8Q@mail.gmail.com>
+Message-ID: <CALK03d1ULodfdzgnBvXZYNjWvAdzgHGzcXRT1H-NnJdFD2QySA@mail.gmail.com>
+
+also even better if the temporary arrays used the R memory allocation
+(not fortran), so then we can compare the memory usage (fortran
+allocations are not accounted for in the atime analysis)? is that
+possible? (I?m not great at hacking fortran but I know that could work
+with C)
+
+On Fri, Nov 6, 2026 at 2:03?PM Toby Hocking <tdhock5 at gmail.com> wrote:
+>
+> Thanks for the response Don. That is interesting.
+> I tried the span=0.5 but still error on my end.
+> Decreasing the atime seconds.limit from 1 to 0.1 gives an encouraging
+> result which looks log linear though
+> https://github.com/tdhock/atime/issues/135#issuecomment-6692949103
+>
+> The improvement would be more convincing if we could run the two
+> versions side by side in the same R session.
+> Can you make a patch with a new argument, like predict(cache=TRUE) for
+> your new version and FALSE for the old version? That way we could run
+> both in the same R session to more obviously see the improvements.
+>
+> On Thu, Nov 5, 2026 at 4:00?PM Dong Yin <dy323 at cam.ac.uk> wrote:
+> >
+> > Hi Toby and all,
+> >
+> > The list rejected my last message because of the images (again, sorry), so here it is again in text for everyone else. Toby, sorry for the duplicate.
+> >
+> > I don't think the error comes from the patch. Stock R 4.5.2 and the unpatched trunk sources stop with the same message, and the same number, at N = 39810:
+> >
+> > workspace required (2377642345) is too large probably because of setting 'se = TRUE'.
+> >
+> > With se = TRUE, loess needs a workspace of roughly (D + 1) x nf x N doubles, and with the default span = 0.75 that passes INT_MAX at about N = 37,800. Without the patch your atime run reaches the 1 second limit long before that, so it never gets there. That's also why I used span = 0.5 for my N = 40,000 timings.
+> >
+> > The patch itself only adds an integer array of nv x N, and nv is 9 here, so about 1.3 MB at N = 37,000.
+> >
+> > On the scaling: unpatched predict took 0.08, 1.1, 5.2 and 24.2 s for N = 5,000, 10,000, 20,000 and 40,000 at span = 0.5. So below 10,000 it is much steeper than quadratic for me too, then close to quadratic up to 40,000. I'm not sure yet where the extra at small N comes from.
+> >
+> > Thanks,
+> > Don
+> >
+> > ________________________________
+> > From: Dong Yin <dy323 at cam.ac.uk>
+> > Sent: Thursday, 05 November 2026 20:58:16
+> > To: tdhock5 at gmail.com <tdhock5 at gmail.com>
+> > Cc: r-devel at r-project.org <r-devel at r-project.org>
+> > Subject: RE: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+> >
+> > Hi Toby,
+> >
+> > Thanks for trying it! I don't think the error comes from the patch. Stock R 4.5.2 stops with the same message, and the same number, at N = 39810:
+> >
+> >
+> >
+> > With se = TRUE, loess needs a workspace of roughly (D + 1) x nf x N doubles, and with the default span = 0.75 that passes INT_MAX at about N = 37,800 (panel B below). Without the patch your atime run reaches the 1 second limit long before that, so it never gets there. That's also why I used span = 0.5 for my N = 40,000 timings.
+> >
+> > The patch itself only adds an integer array of nv x N, and nv is 9 here, so about 1.3 MB at N = 37,000. well? i wonder
+> >
+> > Your plot made me look at the scaling again (panel A). Below N = 10,000 it is much steeper than quadratic for me too, then close to quadratic from 10,000 to 40,000. I'm not sure yet where the extra at small N comes from.
+> >
+> >
+> >
+> > Thanks,
+> > Don
+> >
+> > ________________________________
+> > From: Dong Yin <dy323 at cam.ac.uk>
+> > Sent: Thursday, 05 November 2026 15:22:48
+> > To: r-devel at r-project.org <r-devel at r-project.org>
+> > Subject: RE: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+> >
+> > Sorry, it looks like the list stripped the text of my previous message, so here it is again without the images.
+> >
+> > I am a student working on neuroimaging. I found a repeated linear search in ehg191 that makes predict.loess(se = TRUE) much slower than it needs to be. It is still present in R-devel r90840 (src/library/stats/src/loessf.f, lines 799 to 809).
+> >
+> > For every training observation and every k-d tree vertex, the routine scans that vertex's neighbour list backwards, so with a fixed span the search work grows with n squared. This is the path ggplot2's geom_smooth(method = "loess") takes by default, since it draws a confidence band, so I suspect quite a few people wait on it without knowing why.
+> >
+> > The proof of concept (ehg191-lookup.diff.txt, attached to my previous message: https://stat.ethz.ch/pipermail/r-devel/attachments/20261105/f1a77502/attachment.txt) builds the inverse neighbour positions once and replaces the scan with a lookup.
+> >
+> > On an Apple M4 chip, predicting at 80 points with n = 40,000 and span = 0.5 took 24.2 s before and 0.22 s after (medians of three paired runs). L and the full prediction result were bit for bit identical in every timing configuration and in 1,000 random configurations with one to three predictors, and 24 further fits, including statistics = "exact", were identical too.
+> >
+> > I think the slow part can be reproduced with:
+> >
+> > set.seed(20261105)
+> > n <- 20000L
+> > x <- runif(n, -3, 3)
+> > y <- sin(x) + rnorm(n, sd = 0.35)
+> > f <- loess(y ~ x)
+> > nd <- data.frame(x = seq(min(x), max(x), length.out = 80L))
+> > system.time(predict(f, nd, se = TRUE))
+> >
+> > I rebuilt the trunk loess.R, loessc.c and loessf.f, unchanged and patched, under R 4.5.2 on macOS arm64.
+> >
+> > Would this be worth turning into a proper patch with a regression test? I would be glad of advice on how you would prefer the workspace to be allocated.
+> >
+> > Thanks,
+> > Don
+> >
+> > ________________________________
+> > From: Dong Yin
+> > Sent: Thursday, 05 November 2026 14:44:33
+> > To: r-devel at r-project.org <r-devel at r-project.org>
+> > Cc: Y. Fang <yf346 at cam.ac.uk>
+> > Subject: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+> >
+> > Hi all,
+> >
+> > I am a student working on NeuroImaging. I found a repeated linear search in ehg191 that makes predict.loess(se = TRUE) much slower than it needs to be. It is still present in R-devel r90840 (src/library/stats/src/loessf.f, lines 799 to 809).
+> >
+> > so, for every training observation and every k-d tree vertex, the routine scans that vertex's neighbour list backwards, so with a fixed span the search work grows with n squared. This is the path ggplot2's geom_smooth(method = "loess") takes by default, since it draws a confidence band, so I suspect quite a few people wait on it without knowing why
+> >
+> > The attached POC builds the inverse neighbour positions once and replaces the scan with a lookup. The change in loessf.f is:
+> >
+> >
+> >
+> > On an apple m4 chip, predicting at 80 points with n = 40,000 and span = 0.5 took 24.2 s before and 0.22 s after (medians of three paired runs).
+> >
+> > L and the full prediction result were bit for bit identical in every timing configuration and in 1,000 random configurations with one to three predictors, and 24 further fits, including statistics = "exact", were identical too
+> >
+> >
+> >
+> > I think the slow part can be reproduced with:
+> >
+> > set.seed(20261105)
+> > n <- 20000L
+> > x <- runif(n, -3, 3)
+> > y <- sin(x) + rnorm(n, sd = 0.35)
+> > f <- loess(y ~ x)
+> > nd <- data.frame(x = seq(min(x), max(x), length.out = 80L))
+> > system.time(predict(f, nd, se = TRUE))
+> >
+> > I rebuilt the trunk loess.R, loessc.c and loessf.f, unchanged and patched, under R 4.5.2 on macOS arm64
+> >
+> > Would this be worth turning into a proper patch with a regression test or some Pls? I would be glad of advice on how you would prefer the workspace to be allocated.
+> >
+> > Thanks,
+> > Don
+
+
+From 1990j@|d @end|ng |rom gm@||@com  Fri Nov  6 20:17:45 2026
+From: 1990j@|d @end|ng |rom gm@||@com (Jesse Alderliesten)
+Date: Fri, 6 Nov 2026 20:17:45 +0100
+Subject: [Rd] 
+ stopifnot(<empty>) was "Potential feature request: Option to
+ warn ... with data.frames and $"
+In-Reply-To: <SJ0PR03MB58397D3DC24144B98022DE6F92762@SJ0PR03MB5839.namprd03.prod.outlook.com>
+References: <SJ0PR03MB583943813BBF4D0CD91C98E192762@SJ0PR03MB5839.namprd03.prod.outlook.com>
+ <27373.65081.863904.995560@stat.math.ethz.ch>
+ <SJ0PR03MB58397D3DC24144B98022DE6F92762@SJ0PR03MB5839.namprd03.prod.outlook.com>
+Message-ID: <CAFnaX9OEr6cozFxJttFBv99DbXjFE1YLLK_2UNNqwQCDHFtnRg@mail.gmail.com>
+
+Dear all,
+
+I agree that with Kirsten that adding the options(warnNonexistDollar=TRUE)
+would be useful to catch problems outside stopifnot().
+
+However, is it not much better to use indexing through `[`, which throws an
+error for nonexistent columns?
+That solves the problem of silently glossing over wrongly-spelled names and
+the problem of partial matching (which it does not use).
+
+```
+dat <- data.frame(column1=1:3,column2=NA)
+stopifnot(!any(is.na(dat[, "coluumn2"])))
+# Error in `[.data.frame`(dat, , "coluumn2") : undefined columns selected
+stopifnot(sum(dat[, "coluumn1"]) < 2)
+# Error in `[.data.frame`(dat, , "coluumn1") : undefined columns selected
+```
+
+Throwing an error of course makes this approach unsuitable to check if a
+column is present while simultaneously performing the assignment in the way
+Martin's example did.
+But first checking the presence of the name would work fine, even though it
+is a bit slower:
+
+```
+if(comp %in% names(mylist)) {
+    .....
+    <work with> mylist["comp"]
+    .....
+} else {
+    ## work without `mylist["comp"]  `, in some cases just
+    stop("component `comp` does not exist -- cannot do xyz")
+}
+```
+
+Kind regards,
+Jesse
+
+Op vr 6 nov 2026 om 19:41 schreef Kristen Kelly via R-devel <
+r-devel at r-project.org>:
+
+> Thanks Martin!
+>
+> I definitely think the option for stopifnot() would help with the the
+> first example I gave.
+>
+> But the problem runs deeper than just stopifnot(). In the second example,
+> the problem is that sum(dat$coluumn1) is 0. So stopifnot() is receiving a
+> perfectly legitimate test that 0 < 2. This would also be a problem outside
+> of stopifnot(), eg. someone might assign x <- sum(dat$coluum1) and then try
+> to use x for further calculations.
+>
+> There are probably also other R functions besides stopifnot() and sum()
+> that also silently do weird things with no warning when $ unexpectedly
+> returns NULL due to typos.
+>
+> Personally, I would rather see the warnings for mistyped/non-existent
+> column names with $ than not, even if it meant seeing some extra warnings.
+> Better that than having typos cause incorrect results in analyses with no
+> warning. Having it be a settable option (similar to warnPartialMatchDollar)
+> would let each user make that choice for themselves.
+>
+> Kristen
+>
+>
+>
+> From: Martin Maechler <maechler at stat.math.ethz.ch>
+> Date: Friday, November 6, 2026 at 11:20?AM
+> To: Kristen Kelly <Kristen.Kelly at colorado.edu>
+> Cc: R Development List <R-devel at r-project.org>
+> Subject: stopifnot(<empty>) was "Potential feature request: Option to warn
+> ... with data.frames and $"
+> [External email - use caution]
+>
+>
+> >>>>> Kristen Kelly via R-devel
+> >>>>>     on Fri, 6 Nov 2026 01:43:19 +0000 writes:
+>
+>     > Hello,
+>     > I hope I am writing to the correct list. I am hoping to make a
+> feature request for R, and I found a guide that says to write to r-devel
+> first to check if there is support for the idea.
+>
+>     > The feature I want to suggest is an option similar to
+> options(warnPartialMatchDollar=TRUE), but for cases where rather than being
+> a partial match, the variable name is misspelled or simply doesn?t exist
+> and attempting to use it produces NULL.
+>
+>     > This behavior of $ can sometimes lead to unexpected outcomes, as
+> demonstrated below:
+>
+>     > dat <- data.frame(column1=1:3,column2=NA)
+>     > stopifnot(!any(is.na(dat$coluumn2)))
+>     > stopifnot(sum(dat$coluumn1) < 2)
+>
+>     > In both cases, the data.frame returning NULL with a misspelled
+> column name leads to the check in the stopifnot() silently succeeding with
+> no warning that anything might be wrong.
+>
+>     > I know there are reasons why $ returns NULL, and I?m not suggesting
+> changing that. Just possibly adding an option, something like
+> options(warnNonexistDollar=TRUE), that people could turn on if they would
+> find it helpful to get a warning in cases like the example above.
+>
+>     > Is this something that?s likely to have enough support to be worth
+> submitting as a feature request?
+>
+>     > Thank you,
+>     > Kristen
+>
+> Thank you, Kirsten,
+>
+> for opening an interesting issue.
+> Personally I'm guessing that such a warning may not be very
+> useful as I expect it to be triggered too often.
+> Notably it has been a "trick" already in S, S-plus, for a really
+> fast test if a list component to be present,
+> to have something like
+>
+>    if(!is.null(cm <- mylist$comp)) {
+>      .....
+>      <work with> `cm`
+>      .....
+>    } else {
+>      ## work without `cm`, in some cases just
+>      stop("component `comp` does not exist -- cannot do xyz")
+>    }
+>
+> *HOWEVER*, I think the problem you really may want to solve
+> is the use inside stopifnot():
+>
+> The "problem" is that    all( logical(0) )  is TRUE
+> and _should_ be {all elements of the empty set are TRUE .. etc},
+> i.e., the "problem" is the specification of the  stopifnot()
+> function --- I added to R a *long* time ago, that it can and
+> often should be used "vectorized", i.e.,
+>
+>   stopifnot( x == y )
+>
+> should be 'fine' (in simple vector/matrix/array cases)  when x
+> and y have the same lengths and all their corresponding elements
+> x[i], y[i]  are equal.
+>
+> Hence stopifnot() uses internally code which may be simplified to
+> all(x == y).
+>
+> Really experienced R users (say 0.025% of all ;-) of course are
+> aware of that .. but it may still be considered "dangerous"
+> behaviour, a really bad case being
+>
+>     stopifnot(dim(x) == dim(y))
+>
+> to check if two matrices (or arrays) are compatible.  If one of
+> x or y is accidentally a vector instead of a matrix, the above
+> never signals the desired error.
+>
+> Hence, for many years, I have mused about, but never posted (nor
+> even discussed IIRC within the R core team ..)
+> an official proposal to eventually *change* stopifnot's default
+> behavior, and to eventually *warn* when its call to all(.) would be
+> applied to
+> an object of length 0.
+> Again this makes too many uses unuseful, so I have had (starting from
+> on April 13, 2020) a new argument to stopifnot, which *indeed*
+> is tweakable by a new option, as you can see:
+>
+> stopifnot <- function(..., exprs, exprObject, local = TRUE,
+>                       allow.logical0 =
+> getOption("stopifnot_allow.logical0", TRUE))
+> { ## allow.logical0=TRUE: compatible w/ R <= 4.6.x; to become FALSE; at
+> first in '--as-cran' !
+>
+>     ..............................
+>     ..............................
+>     <.... some 'allow.logical0' hack in the branch for
+>     stopifnot(exprs = { ......
+>     } )
+>     ....>
+>     ..............................
+>     ..............................
+>
+>     allTRUE <- if(allow.logical0)
+>                    function(x)              is.logical(x) && !anyNA(x) &&
+> all(x)
+>                else
+>                    function(x) length(x) && is.logical(x) && !anyNA(x) &&
+> all(x)
+>
+>     ... and then
+>
+>     for (i in seq_len(n)) {
+>         r <- ...elt(i)
+>         if(!allTRUE(r)) {
+>            ............
+>            ............
+>            stop(..............)
+>            .........
+>        }
+>     }
+>     invisible()
+> } # end { stopifnot() definition }
+>
+> Once I've started using this  in my "hacked" version of R-devel,
+> *and* set the
+>
+>    options(stopifnot_allow.logical0 = FALSE)
+>
+> I did need to add manually   `allow.logical0 = TRUE`
+> to *some* stopifnot() calls in my R code (in my packages and scripts)
+> and to R-core's code in base R {i.e., in the above "hacked"
+> branch of R-devel}.
+>
+> I vaguely remember (but am not sure, not remembering details)
+> that the updated stopifnot() -- without setting the new option
+> still had some rare hickups, but I really don't remember and
+> also somewhat doubt my vague memory...
+>
+> Maybe I should open an R bugzilla "wishlist" for this,
+> with my full current patch for such an enhanced stopifnot().
+>
+> In any case, your issue would be solved either by explicitly adding
+>   allow.logical0 = FALSE
+> to your stopifnot() calls involving  ` <datafr>$<comp> `
+> or by setting the above options(stopif... = FALSE)
+>
+> What do others think - about such an option for stopifnot()?
+>
+> With a repeated thank you for raising the issue,
+> Martin
+>
+>
+> --
+> Martin M?chler
+> R Core team and ETH Zurich
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From dy323 @end|ng |rom c@m@@c@uk  Fri Nov  6 23:30:23 2026
+From: dy323 @end|ng |rom c@m@@c@uk (Dong Yin)
+Date: Fri, 6 Nov 2026 22:30:23 +0000
+Subject: [Rd] loess: repeated neighbour list search in ehg191 makes
+ predict(se = TRUE) slow
+In-Reply-To: <CALK03d1ULodfdzgnBvXZYNjWvAdzgHGzcXRT1H-NnJdFD2QySA@mail.gmail.com>
+References: <LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB195223066928731782E41F8D5AA6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB195223142C012814DAA59E1CD8A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB19522342D561EFDB5174206EB0A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <CALK03d2FSTXptvsR6CUXOKUouzkKf27XDXxMTh+r7y6GGrRk8Q@mail.gmail.com>
+ <CALK03d1ULodfdzgnBvXZYNjWvAdzgHGzcXRT1H-NnJdFD2QySA@mail.gmail.com>
+Message-ID: <LO7P265MB195223E2891DDEA7AA93FEE2D2A6762@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+
+Hi Toby,
+
+Thanks for replying
+
+and good idea!
+
+the attached patch (against R-devel r90842) adds predict(..., cache = TRUE)
+
+on the span = 0.5 error, well, span was passed to predict(), which ignores it, so the fit still used 0.75. It needs to go to loess().
+
+also, with or without the patch, the existing workspace limit stops se = TRUE at about N = 46,300 for span = 0.5 (37,800 for 0.75), so N has to stay below that
+
+ares <- atime::atime(
+  N = unique(as.integer(10^seq(1, log10(45000), by = 0.1))),
+  setup = {
+    set.seed(20261105)
+    x <- runif(N, -3, 3)
+    y <- sin(x) + rnorm(N, sd = 0.35)
+    f <- loess(y ~ x, span = 0.5)
+    nd <- data.frame(x = seq(min(x), max(x), length.out = 80L))
+  },
+  seconds.limit = 1,
+  cache.FALSE = predict(f, nd, se = TRUE, cache = FALSE),
+  cache.TRUE = predict(f, nd, se = TRUE, cache = TRUE))
+
+in my run cache = FALSE hit the 1 s limit at N = 10,000, and both gave bit for bit identical predictions
+
+the gap between the two memory curves is just the new table, which is now allocated with R_alloc as you suggested; the existing workspace still uses R_Calloc, which atime doesn't see
+
+i guess the old search is probably what made predict(se = TRUE) grow with N^2. with cache = TRUE the time roughly doubles when N doubles (0.09 s to 0.17 s CPU from N = 20,000 to 40,000), while cache = FALSE roughly quadruples (1.1 s to 4.4 s from 10,000 to 20,000), which fits the log-linear plot you got. what still grows with N^2 is the workspace, and that is what limits N
+
+Thanks,
+Don
+
+
+________________________________________
+From: Toby Hocking <tdhock5 at gmail.com>
+Sent: Friday, 06 November 2026 19:06:03
+To: Dong Yin
+Cc: r-devel at r-project.org
+Subject: Re: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+
+also even better if the temporary arrays used the R memory allocation
+(not fortran), so then we can compare the memory usage (fortran
+allocations are not accounted for in the atime analysis)? is that
+possible? (I?m not great at hacking fortran but I know that could work
+with C)
+
+On Fri, Nov 6, 2026 at 2:03?PM Toby Hocking <tdhock5 at gmail.com> wrote:
+>
+> Thanks for the response Don. That is interesting.
+> I tried the span=0.5 but still error on my end.
+> Decreasing the atime seconds.limit from 1 to 0.1 gives an encouraging
+> result which looks log linear though
+> https://github.com/tdhock/atime/issues/135#issuecomment-6692949103
+>
+> The improvement would be more convincing if we could run the two
+> versions side by side in the same R session.
+> Can you make a patch with a new argument, like predict(cache=TRUE) for
+> your new version and FALSE for the old version? That way we could run
+> both in the same R session to more obviously see the improvements.
+>
+> On Thu, Nov 5, 2026 at 4:00?PM Dong Yin <dy323 at cam.ac.uk> wrote:
+> >
+> > Hi Toby and all,
+> >
+> > The list rejected my last message because of the images (again, sorry), so here it is again in text for everyone else. Toby, sorry for the duplicate.
+> >
+> > I don't think the error comes from the patch. Stock R 4.5.2 and the unpatched trunk sources stop with the same message, and the same number, at N = 39810:
+> >
+> > workspace required (2377642345) is too large probably because of setting 'se = TRUE'.
+> >
+> > With se = TRUE, loess needs a workspace of roughly (D + 1) x nf x N doubles, and with the default span = 0.75 that passes INT_MAX at about N = 37,800. Without the patch your atime run reaches the 1 second limit long before that, so it never gets there. That's also why I used span = 0.5 for my N = 40,000 timings.
+> >
+> > The patch itself only adds an integer array of nv x N, and nv is 9 here, so about 1.3 MB at N = 37,000.
+> >
+> > On the scaling: unpatched predict took 0.08, 1.1, 5.2 and 24.2 s for N = 5,000, 10,000, 20,000 and 40,000 at span = 0.5. So below 10,000 it is much steeper than quadratic for me too, then close to quadratic up to 40,000. I'm not sure yet where the extra at small N comes from.
+
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: loess-predict-cache-arg.diff.txt
+URL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20261106/89bd5026/attachment.txt>
+
