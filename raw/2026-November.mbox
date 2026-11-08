@@ -1380,3 +1380,178 @@ An embedded and charset-unspecified text was scrubbed...
 Name: loess-predict-cache-arg.diff.txt
 URL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20261106/89bd5026/attachment.txt>
 
+From @ndre@@g||@rd| @end|ng |rom un|m|b@|t  Sat Nov  7 17:42:31 2026
+From: @ndre@@g||@rd| @end|ng |rom un|m|b@|t (Andrea Gilardi - Unimib)
+Date: Sat, 7 Nov 2026 17:42:31 +0100
+Subject: [Rd] 
+ stopifnot(<empty>) was "Potential feature request: Option to
+ warn ... with data.frames and $"
+In-Reply-To: <27373.65081.863904.995560@stat.math.ethz.ch>
+References: <SJ0PR03MB583943813BBF4D0CD91C98E192762@SJ0PR03MB5839.namprd03.prod.outlook.com>
+ <27373.65081.863904.995560@stat.math.ethz.ch>
+Message-ID: <be8ac8a3-d198-4599-aec5-efc1a17411ff@unimib.it>
+
+Dear Martin, I've read your email and, personally, I like your proposal 
+to add such a new argument to stopifnot() and, eventually, set it equal 
+to FALSE by default. I believe the new approach would be similar to the 
+behaviour of isTRUE and isFALSE (i.e., isTRUE(logical(0)) returns FALSE 
+and isFALSE(logical(0)) also returns FALSE).
+
+Based on my (limited) experience, stopifnot(logical(0)) is rarely 
+planned by a developer or a user. Instead, it usually happens due to 
+unexpected (and unnoticed) edge cases in the data or in the code.?For 
+example, I was not aware of the hiccups of stopifnot() when comparing 
+two objects (such as the dim(x) == dim(y) example that you presented).
+
+Kind regards and thanks for your work on R
+
+Andrea
+
+On 11/6/2026 5:20 PM, Martin Maechler wrote:
+>>>>>> Kristen Kelly via R-devel
+>>>>>>      on Fri, 6 Nov 2026 01:43:19 +0000 writes:
+>      > Hello,
+>      > I hope I am writing to the correct list. I am hoping to make a feature request for R, and I found a guide that says to write to r-devel first to check if there is support for the idea.
+>
+>      > The feature I want to suggest is an option similar to options(warnPartialMatchDollar=TRUE), but for cases where rather than being a partial match, the variable name is misspelled or simply doesn?t exist and attempting to use it produces NULL.
+>
+>      > This behavior of $ can sometimes lead to unexpected outcomes, as demonstrated below:
+>
+>      > dat <- data.frame(column1=1:3,column2=NA)
+>      > stopifnot(!any(is.na(dat$coluumn2)))
+>      > stopifnot(sum(dat$coluumn1) < 2)
+>
+>      > In both cases, the data.frame returning NULL with a misspelled column name leads to the check in the stopifnot() silently succeeding with no warning that anything might be wrong.
+>
+>      > I know there are reasons why $ returns NULL, and I?m not suggesting changing that. Just possibly adding an option, something like options(warnNonexistDollar=TRUE), that people could turn on if they would find it helpful to get a warning in cases like the example above.
+>
+>      > Is this something that?s likely to have enough support to be worth submitting as a feature request?
+>
+>      > Thank you,
+>      > Kristen
+>
+> Thank you, Kirsten,
+>
+> for opening an interesting issue.
+> Personally I'm guessing that such a warning may not be very
+> useful as I expect it to be triggered too often.
+> Notably it has been a "trick" already in S, S-plus, for a really
+> fast test if a list component to be present,
+> to have something like
+>
+>     if(!is.null(cm <- mylist$comp)) {
+>       .....
+>       <work with> `cm`
+>       .....
+>     } else {
+>       ## work without `cm`, in some cases just
+>       stop("component `comp` does not exist -- cannot do xyz")
+>     }
+>
+> *HOWEVER*, I think the problem you really may want to solve
+> is the use inside stopifnot():
+>
+> The "problem" is that    all( logical(0) )  is TRUE
+> and _should_ be {all elements of the empty set are TRUE .. etc},
+> i.e., the "problem" is the specification of the  stopifnot()
+> function --- I added to R a *long* time ago, that it can and
+> often should be used "vectorized", i.e.,
+>
+>    stopifnot( x == y )
+>
+> should be 'fine' (in simple vector/matrix/array cases)  when x
+> and y have the same lengths and all their corresponding elements
+> x[i], y[i]  are equal.
+>
+> Hence stopifnot() uses internally code which may be simplified to
+> all(x == y).
+>
+> Really experienced R users (say 0.025% of all ;-) of course are
+> aware of that .. but it may still be considered "dangerous"
+> behaviour, a really bad case being
+>
+>      stopifnot(dim(x) == dim(y))
+>
+> to check if two matrices (or arrays) are compatible.  If one of
+> x or y is accidentally a vector instead of a matrix, the above
+> never signals the desired error.
+>
+> Hence, for many years, I have mused about, but never posted (nor
+> even discussed IIRC within the R core team ..)
+> an official proposal to eventually *change* stopifnot's default
+> behavior, and to eventually *warn* when its call to all(.) would be applied to
+> an object of length 0.
+> Again this makes too many uses unuseful, so I have had (starting from
+> on April 13, 2020) a new argument to stopifnot, which *indeed*
+> is tweakable by a new option, as you can see:
+>
+> stopifnot <- function(..., exprs, exprObject, local = TRUE,
+>                        allow.logical0 = getOption("stopifnot_allow.logical0", TRUE))
+> { ## allow.logical0=TRUE: compatible w/ R <= 4.6.x; to become FALSE; at first in '--as-cran' !
+>
+>      ..............................
+>      ..............................
+>      <.... some 'allow.logical0' hack in the branch for
+>      stopifnot(exprs = { ......
+>      } )
+>      ....>
+>      ..............................
+>      ..............................
+>
+>      allTRUE <- if(allow.logical0)
+> 		   function(x)              is.logical(x) && !anyNA(x) && all(x)
+> 	       else
+> 		   function(x) length(x) && is.logical(x) && !anyNA(x) && all(x)
+>
+>      ... and then
+>
+>      for (i in seq_len(n)) {
+> 	r <- ...elt(i)
+> 	if(!allTRUE(r)) {
+>             ............
+>             ............
+> 	   stop(..............)
+> 	   .........
+>         }
+>      }
+>      invisible()
+> } # end { stopifnot() definition }
+>
+> Once I've started using this  in my "hacked" version of R-devel,
+> *and* set the
+>
+>     options(stopifnot_allow.logical0 = FALSE)
+>
+> I did need to add manually   `allow.logical0 = TRUE`
+> to *some* stopifnot() calls in my R code (in my packages and scripts)
+> and to R-core's code in base R {i.e., in the above "hacked"
+> branch of R-devel}.
+>
+> I vaguely remember (but am not sure, not remembering details)
+> that the updated stopifnot() -- without setting the new option
+> still had some rare hickups, but I really don't remember and
+> also somewhat doubt my vague memory...
+>
+> Maybe I should open an R bugzilla "wishlist" for this,
+> with my full current patch for such an enhanced stopifnot().
+>
+> In any case, your issue would be solved either by explicitly adding
+>    allow.logical0 = FALSE
+> to your stopifnot() calls involving  ` <datafr>$<comp> `
+> or by setting the above options(stopif... = FALSE)
+>
+> What do others think - about such an option for stopifnot()?
+>
+> With a repeated thank you for raising the issue,
+> Martin
+>
+>
+> --
+> Martin M?chler
+> R Core team and ETH Zurich
+>
+> ______________________________________________
+> R-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-devel
+
+
