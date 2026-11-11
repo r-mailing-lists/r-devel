@@ -1950,3 +1950,504 @@ On Fri, Nov 6, 2026 at 5:30?PM Dong Yin <dy323 at cam.ac.uk> wrote:
 > > > On the scaling: unpatched predict took 0.08, 1.1, 5.2 and 24.2 s for N = 5,000, 10,000, 20,000 and 40,000 at span = 0.5. So below 10,000 it is much steeper than quadratic for me too, then close to quadratic up to 40,000. I'm not sure yet where the extra at small N comes from.
 
 
+From dy323 @end|ng |rom c@m@@c@uk  Tue Nov 10 17:43:53 2026
+From: dy323 @end|ng |rom c@m@@c@uk (Dong Yin)
+Date: Tue, 10 Nov 2026 16:43:53 +0000
+Subject: [Rd] loess: repeated neighbour list search in ehg191 makes
+ predict(se = TRUE) slow
+In-Reply-To: <CALK03d1D9qFBFvopoDTH4eKESdujW6+1yPMPNJ_H4PO1FZFHPQ@mail.gmail.com>
+References: <LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB195223066928731782E41F8D5AA6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB195223142C012814DAA59E1CD8A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB19522342D561EFDB5174206EB0A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <CALK03d2FSTXptvsR6CUXOKUouzkKf27XDXxMTh+r7y6GGrRk8Q@mail.gmail.com>
+ <CALK03d1ULodfdzgnBvXZYNjWvAdzgHGzcXRT1H-NnJdFD2QySA@mail.gmail.com>
+ <LO7P265MB195223E2891DDEA7AA93FEE2D2A6762@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <CALK03d1D9qFBFvopoDTH4eKESdujW6+1yPMPNJ_H4PO1FZFHPQ@mail.gmail.com>
+Message-ID: <LO7P265MB19522322E29AF3150A159C0992A6722@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+
+Hi Toby,
+
+Thanks for trying it
+
+1. can you please modify the code so that quadratic workspace memory uses R memory allocation, so we can see quadratic memory usage in the atime figure?
+
+yes, i tried moving the big workspace (iv and v in loess_workspace) to R_alloc. atime then shows the quadratic memory, but peak RSS went up about 3 times in my runs, so i'd use that as a measurement build only, i guess? i will think about this a bit further
+
+2. Is there a way of reducing that workspace memory from quadratic to linear?
+
+i think so. my understanding is that the workspace is quadratic because predict(se = TRUE) keeps the full vertex coefficient matrix, about (D + 1) x nf x nvmax doubles. we could keep a small record of each vertex's QR and rebuild the coefficients when they are needed? so the extra memory grows linearly with N; I added some iamges in:  https://github.com/tdhock/atime/issues/135
+
+so basically if i understood it correct R now fits a small local regression at each vertex and then stores all the coefficients in one table sized for max(200, N) vertices, although with the default settings only a handful exist (17 in your setup). the new code does the same fits in the same order, whjoch is keeps the coefficients of the vertices that really exist up to 64 MB, and for any it can't keep it saves only the few numbers needed to redo that fit later. Same behaviour in gradient checkpointing (https://arxiv.org/abs/1604.06174) and FlashAttention (https://arxiv.org/abs/2205.14135) which were what i was thinking about for this
+
+so with your setup (one predictor, span = 0.5, 80 points) the new version is 2 to 6 times faster than the Nov 6 patch at the same N, its native workspace at N = 45,000 is 28 MB instead of 20 GB (peak RSS 0.15 GB vs 4.7 GB), and it keeps going past the old limit (N = 200,000 in 0.15 s CPU). predictions and L were bit for bit identical in every case i compared (will relaly appreciate some double checking if possible thanks!)
+
+with 4 predictors my first version was up to 30% slower than the previous patch, but keeping the coefficients up to a fixed cap (64 MB) and rebuilding only the rest fixed that: over 60 settings with 1 to 4 predictors it's now faster in all of them (second figure). I am not sure whether the team would consider this tradeoff as worthy. when many x values are tied and the span is small, some neighbourhoods have zero radius (where R warns "zero-width neighborhood"), and in those cases it now gives exactly the same predictions, warnings and errors as current R.
+
+i tested that it also stays bit for bit identical with three BLAS libraries (reference, Accelerate, OpenBLAS). the costs are that for some medium sized fits it can use up to about 28 MB more than the current workspace, and the patch is bigger (it adds renamed copies of dqrdc and dqrsl that also save a few scalars about 2k LoCs which is another trade off). I've only tested on a Mac, so if the approach sounds ok i'll tidy it up and send the patch
+
+Thanks,
+Don
+
+
+________________________________________
+From: Toby Hocking <tdhock5 at gmail.com>
+Sent: Monday, 09 November 2026 19:08:08
+To: Dong Yin
+Cc: r-devel at r-project.org
+Subject: Re: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+
+Hi Don thanks for the update.
+
+I tried your patch and on my machine it is definitely faster, see
+figures https://github.com/tdhock/atime/issues/135#issuecomment-6748730446
+
+It is faster for all N so as long as the increased memory usage is
+acceptable, I would argue that somebody in R-core should accept the
+patch.
+
+You wrote "what still grows with N^2 is the workspace, and that is
+what limits N" but the emprical memory in the figure seems to be
+linear? I guess the quadratic workspace memory is using fortran not R
+memory allocation? Two ideas,
+
+1. can you please modify the code so that quadratic workspace memory
+uses R memory allocation, so we can see quadratic memory usage in the
+atime figure?
+
+2. Is there a way of reducing that workspace memory from quadratic to linear?
+
+Toby
+
+On Fri, Nov 6, 2026 at 5:30?PM Dong Yin <dy323 at cam.ac.uk> wrote:
+>
+> Hi Toby,
+>
+> Thanks for replying
+>
+> and good idea!
+>
+> the attached patch (against R-devel r90842) adds predict(..., cache = TRUE)
+>
+> on the span = 0.5 error, well, span was passed to predict(), which ignores it, so the fit still used 0.75. It needs to go to loess().
+>
+> also, with or without the patch, the existing workspace limit stops se = TRUE at about N = 46,300 for span = 0.5 (37,800 for 0.75), so N has to stay below that
+>
+> ares <- atime::atime(
+> N = unique(as.integer(10^seq(1, log10(45000), by = 0.1))),
+> setup = {
+> set.seed(20261105)
+> x <- runif(N, -3, 3)
+> y <- sin(x) + rnorm(N, sd = 0.35)
+> f <- loess(y ~ x, span = 0.5)
+> nd <- data.frame(x = seq(min(x), max(x), length.out = 80L))
+> },
+> seconds.limit = 1,
+> cache.FALSE = predict(f, nd, se = TRUE, cache = FALSE),
+> cache.TRUE = predict(f, nd, se = TRUE, cache = TRUE))
+>
+> in my run cache = FALSE hit the 1 s limit at N = 10,000, and both gave bit for bit identical predictions
+>
+> the gap between the two memory curves is just the new table, which is now allocated with R_alloc as you suggested; the existing workspace still uses R_Calloc, which atime doesn't see
+>
+> i guess the old search is probably what made predict(se = TRUE) grow with N^2. with cache = TRUE the time roughly doubles when N doubles (0.09 s to 0.17 s CPU from N = 20,000 to 40,000), while cache = FALSE roughly quadruples (1.1 s to 4.4 s from 10,000 to 20,000), which fits the log-linear plot you got. what still grows with N^2 is the workspace, and that is what limits N
+>
+> Thanks,
+> Don
+>
+>
+> ________________________________________
+> From: Toby Hocking <tdhock5 at gmail.com>
+> Sent: Friday, 06 November 2026 19:06:03
+> To: Dong Yin
+> Cc: r-devel at r-project.org
+> Subject: Re: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+>
+> also even better if the temporary arrays used the R memory allocation
+> (not fortran), so then we can compare the memory usage (fortran
+> allocations are not accounted for in the atime analysis)? is that
+> possible? (I?m not great at hacking fortran but I know that could work
+> with C)
+>
+> On Fri, Nov 6, 2026 at 2:03?PM Toby Hocking <tdhock5 at gmail.com> wrote:
+> >
+> > Thanks for the response Don. That is interesting.
+> > I tried the span=0.5 but still error on my end.
+> > Decreasing the atime seconds.limit from 1 to 0.1 gives an encouraging
+> > result which looks log linear though
+> > https://github.com/tdhock/atime/issues/135#issuecomment-6692949103
+> >
+> > The improvement would be more convincing if we could run the two
+> > versions side by side in the same R session.
+> > Can you make a patch with a new argument, like predict(cache=TRUE) for
+> > your new version and FALSE for the old version? That way we could run
+> > both in the same R session to more obviously see the improvements.
+> >
+> > On Thu, Nov 5, 2026 at 4:00?PM Dong Yin <dy323 at cam.ac.uk> wrote:
+> > >
+> > > Hi Toby and all,
+> > >
+> > > The list rejected my last message because of the images (again, sorry), so here it is again in text for everyone else. Toby, sorry for the duplicate.
+> > >
+> > > I don't think the error comes from the patch. Stock R 4.5.2 and the unpatched trunk sources stop with the same message, and the same number, at N = 39810:
+> > >
+> > > workspace required (2377642345) is too large probably because of setting 'se = TRUE'.
+> > >
+> > > With se = TRUE, loess needs a workspace of roughly (D + 1) x nf x N doubles, and with the default span = 0.75 that passes INT_MAX at about N = 37,800. Without the patch your atime run reaches the 1 second limit long before that, so it never gets there. That's also why I used span = 0.5 for my N = 40,000 timings.
+> > >
+> > > The patch itself only adds an integer array of nv x N, and nv is 9 here, so about 1.3 MB at N = 37,000.
+> > >
+> > > On the scaling: unpatched predict took 0.08, 1.1, 5.2 and 24.2 s for N = 5,000, 10,000, 20,000 and 40,000 at span = 0.5. So below 10,000 it is much steeper than quadratic for me too, then close to quadratic up to 40,000. I'm not sure yet where the extra at small N comes from.
+
+	[[alternative HTML version deleted]]
+
+
+From tdhock5 @end|ng |rom gm@||@com  Tue Nov 10 17:53:29 2026
+From: tdhock5 @end|ng |rom gm@||@com (Toby Hocking)
+Date: Tue, 10 Nov 2026 11:53:29 -0500
+Subject: [Rd] loess: repeated neighbour list search in ehg191 makes
+ predict(se = TRUE) slow
+In-Reply-To: <LO7P265MB19522322E29AF3150A159C0992A6722@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+References: <LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB195223066928731782E41F8D5AA6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB195223142C012814DAA59E1CD8A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB19522342D561EFDB5174206EB0A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <CALK03d2FSTXptvsR6CUXOKUouzkKf27XDXxMTh+r7y6GGrRk8Q@mail.gmail.com>
+ <CALK03d1ULodfdzgnBvXZYNjWvAdzgHGzcXRT1H-NnJdFD2QySA@mail.gmail.com>
+ <LO7P265MB195223E2891DDEA7AA93FEE2D2A6762@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <CALK03d1D9qFBFvopoDTH4eKESdujW6+1yPMPNJ_H4PO1FZFHPQ@mail.gmail.com>
+ <LO7P265MB19522322E29AF3150A159C0992A6722@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <CALK03d2mf0JtAEKcdx_EEm2oaVR7ry2KyiAptPdGRyt7TRrHWA@mail.gmail.com>
+
+Hi Don
+Thanks for the update, this sounds encouraging.
+Please send the patch, and I can try testing it.
+Does "2k LoCs" mean that you propose a diff which modifies 2000 lines
+of code? If so, that is probably difficult for R-core to
+review/accept/maintain, and I would suggest instead creating a package
+with your new code.
+Toby
+
+On Tue, Nov 10, 2026 at 11:43?AM Dong Yin <dy323 at cam.ac.uk> wrote:
+>
+> Hi Toby,
+>
+> Thanks for trying it
+>
+> 1. can you please modify the code so that quadratic workspace memory uses R memory allocation, so we can see quadratic memory usage in the atime figure?
+>
+> yes, i tried moving the big workspace (iv and v in loess_workspace) to R_alloc. atime then shows the quadratic memory, but peak RSS went up about 3 times in my runs, so i'd use that as a measurement build only, i guess? i will think about this a bit further
+>
+> 2. Is there a way of reducing that workspace memory from quadratic to linear?
+>
+> i think so. my understanding is that the workspace is quadratic because predict(se = TRUE) keeps the full vertex coefficient matrix, about (D + 1) x nf x nvmax doubles. we could keep a small record of each vertex's QR and rebuild the coefficients when they are needed? so the extra memory grows linearly with N; I added some iamges in:  https://github.com/tdhock/atime/issues/135
+>
+> so basically if i understood it correct R now fits a small local regression at each vertex and then stores all the coefficients in one table sized for max(200, N) vertices, although with the default settings only a handful exist (17 in your setup). the new code does the same fits in the same order, whjoch is keeps the coefficients of the vertices that really exist up to 64 MB, and for any it can't keep it saves only the few numbers needed to redo that fit later. Same behaviour in gradient checkpointing (https://arxiv.org/abs/1604.06174) and FlashAttention (https://arxiv.org/abs/2205.14135) which were what i was thinking about for this
+>
+> so with your setup (one predictor, span = 0.5, 80 points) the new version is 2 to 6 times faster than the Nov 6 patch at the same N, its native workspace at N = 45,000 is 28 MB instead of 20 GB (peak RSS 0.15 GB vs 4.7 GB), and it keeps going past the old limit (N = 200,000 in 0.15 s CPU). predictions and L were bit for bit identical in every case i compared (will relaly appreciate some double checking if possible thanks!)
+>
+> with 4 predictors my first version was up to 30% slower than the previous patch, but keeping the coefficients up to a fixed cap (64 MB) and rebuilding only the rest fixed that: over 60 settings with 1 to 4 predictors it's now faster in all of them (second figure). I am not sure whether the team would consider this tradeoff as worthy. when many x values are tied and the span is small, some neighbourhoods have zero radius (where R warns "zero-width neighborhood"), and in those cases it now gives exactly the same predictions, warnings and errors as current R.
+>
+> i tested that it also stays bit for bit identical with three BLAS libraries (reference, Accelerate, OpenBLAS). the costs are that for some medium sized fits it can use up to about 28 MB more than the current workspace, and the patch is bigger (it adds renamed copies of dqrdc and dqrsl that also save a few scalars about 2k LoCs which is another trade off). I've only tested on a Mac, so if the approach sounds ok i'll tidy it up and send the patch
+>
+> Thanks,
+> Don
+>
+>
+> ________________________________________
+> From: Toby Hocking <tdhock5 at gmail.com>
+> Sent: Monday, 09 November 2026 19:08:08
+> To: Dong Yin
+> Cc: r-devel at r-project.org
+> Subject: Re: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+>
+> Hi Don thanks for the update.
+>
+> I tried your patch and on my machine it is definitely faster, see
+> figures https://github.com/tdhock/atime/issues/135#issuecomment-6748730446
+>
+> It is faster for all N so as long as the increased memory usage is
+> acceptable, I would argue that somebody in R-core should accept the
+> patch.
+>
+> You wrote "what still grows with N^2 is the workspace, and that is
+> what limits N" but the emprical memory in the figure seems to be
+> linear? I guess the quadratic workspace memory is using fortran not R
+> memory allocation? Two ideas,
+>
+> 1. can you please modify the code so that quadratic workspace memory
+> uses R memory allocation, so we can see quadratic memory usage in the
+> atime figure?
+>
+> 2. Is there a way of reducing that workspace memory from quadratic to linear?
+>
+> Toby
+>
+> On Fri, Nov 6, 2026 at 5:30?PM Dong Yin <dy323 at cam.ac.uk> wrote:
+> >
+> > Hi Toby,
+> >
+> > Thanks for replying
+> >
+> > and good idea!
+> >
+> > the attached patch (against R-devel r90842) adds predict(..., cache = TRUE)
+> >
+> > on the span = 0.5 error, well, span was passed to predict(), which ignores it, so the fit still used 0.75. It needs to go to loess().
+> >
+> > also, with or without the patch, the existing workspace limit stops se = TRUE at about N = 46,300 for span = 0.5 (37,800 for 0.75), so N has to stay below that
+> >
+> > ares <- atime::atime(
+> > N = unique(as.integer(10^seq(1, log10(45000), by = 0.1))),
+> > setup = {
+> > set.seed(20261105)
+> > x <- runif(N, -3, 3)
+> > y <- sin(x) + rnorm(N, sd = 0.35)
+> > f <- loess(y ~ x, span = 0.5)
+> > nd <- data.frame(x = seq(min(x), max(x), length.out = 80L))
+> > },
+> > seconds.limit = 1,
+> > cache.FALSE = predict(f, nd, se = TRUE, cache = FALSE),
+> > cache.TRUE = predict(f, nd, se = TRUE, cache = TRUE))
+> >
+> > in my run cache = FALSE hit the 1 s limit at N = 10,000, and both gave bit for bit identical predictions
+> >
+> > the gap between the two memory curves is just the new table, which is now allocated with R_alloc as you suggested; the existing workspace still uses R_Calloc, which atime doesn't see
+> >
+> > i guess the old search is probably what made predict(se = TRUE) grow with N^2. with cache = TRUE the time roughly doubles when N doubles (0.09 s to 0.17 s CPU from N = 20,000 to 40,000), while cache = FALSE roughly quadruples (1.1 s to 4.4 s from 10,000 to 20,000), which fits the log-linear plot you got. what still grows with N^2 is the workspace, and that is what limits N
+> >
+> > Thanks,
+> > Don
+> >
+> >
+> > ________________________________________
+> > From: Toby Hocking <tdhock5 at gmail.com>
+> > Sent: Friday, 06 November 2026 19:06:03
+> > To: Dong Yin
+> > Cc: r-devel at r-project.org
+> > Subject: Re: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+> >
+> > also even better if the temporary arrays used the R memory allocation
+> > (not fortran), so then we can compare the memory usage (fortran
+> > allocations are not accounted for in the atime analysis)? is that
+> > possible? (I?m not great at hacking fortran but I know that could work
+> > with C)
+> >
+> > On Fri, Nov 6, 2026 at 2:03?PM Toby Hocking <tdhock5 at gmail.com> wrote:
+> > >
+> > > Thanks for the response Don. That is interesting.
+> > > I tried the span=0.5 but still error on my end.
+> > > Decreasing the atime seconds.limit from 1 to 0.1 gives an encouraging
+> > > result which looks log linear though
+> > > https://github.com/tdhock/atime/issues/135#issuecomment-6692949103
+> > >
+> > > The improvement would be more convincing if we could run the two
+> > > versions side by side in the same R session.
+> > > Can you make a patch with a new argument, like predict(cache=TRUE) for
+> > > your new version and FALSE for the old version? That way we could run
+> > > both in the same R session to more obviously see the improvements.
+> > >
+> > > On Thu, Nov 5, 2026 at 4:00?PM Dong Yin <dy323 at cam.ac.uk> wrote:
+> > > >
+> > > > Hi Toby and all,
+> > > >
+> > > > The list rejected my last message because of the images (again, sorry), so here it is again in text for everyone else. Toby, sorry for the duplicate.
+> > > >
+> > > > I don't think the error comes from the patch. Stock R 4.5.2 and the unpatched trunk sources stop with the same message, and the same number, at N = 39810:
+> > > >
+> > > > workspace required (2377642345) is too large probably because of setting 'se = TRUE'.
+> > > >
+> > > > With se = TRUE, loess needs a workspace of roughly (D + 1) x nf x N doubles, and with the default span = 0.75 that passes INT_MAX at about N = 37,800. Without the patch your atime run reaches the 1 second limit long before that, so it never gets there. That's also why I used span = 0.5 for my N = 40,000 timings.
+> > > >
+> > > > The patch itself only adds an integer array of nv x N, and nv is 9 here, so about 1.3 MB at N = 37,000.
+> > > >
+> > > > On the scaling: unpatched predict took 0.08, 1.1, 5.2 and 24.2 s for N = 5,000, 10,000, 20,000 and 40,000 at span = 0.5. So below 10,000 it is much steeper than quadratic for me too, then close to quadratic up to 40,000. I'm not sure yet where the extra at small N comes from.
+
+
+From dy323 @end|ng |rom c@m@@c@uk  Wed Nov 11 08:33:29 2026
+From: dy323 @end|ng |rom c@m@@c@uk (Dong Yin)
+Date: Wed, 11 Nov 2026 07:33:29 +0000
+Subject: [Rd] loess: repeated neighbour list search in ehg191 makes
+ predict(se = TRUE) slow
+In-Reply-To: <CALK03d2mf0JtAEKcdx_EEm2oaVR7ry2KyiAptPdGRyt7TRrHWA@mail.gmail.com>
+References: <LO7P265MB195223B7428F78CD03272BE304A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB195223066928731782E41F8D5AA6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB195223142C012814DAA59E1CD8A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <LO7P265MB19522342D561EFDB5174206EB0A6772@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <CALK03d2FSTXptvsR6CUXOKUouzkKf27XDXxMTh+r7y6GGrRk8Q@mail.gmail.com>
+ <CALK03d1ULodfdzgnBvXZYNjWvAdzgHGzcXRT1H-NnJdFD2QySA@mail.gmail.com>
+ <LO7P265MB195223E2891DDEA7AA93FEE2D2A6762@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <CALK03d1D9qFBFvopoDTH4eKESdujW6+1yPMPNJ_H4PO1FZFHPQ@mail.gmail.com>
+ <LO7P265MB19522322E29AF3150A159C0992A6722@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+ <CALK03d2mf0JtAEKcdx_EEm2oaVR7ry2KyiAptPdGRyt7TRrHWA@mail.gmail.com>
+Message-ID: <LO7P265MB195223C924BBEDEBF78FCE9CF2A6722@LO7P265MB195223.GBRP265.PROD.OUTLOOK.COM>
+
+Hi Toby,
+
+thank you for reading through all of that and for offering to test it, i really appreciate it that was actually a lot
+
+yes, it was about 2,000 added lines as a diff on top of the previous patch, so i agree, a package is the better form you are right.
+
+since then i removed the parts that turned out not to be needed line by line, and it is now about 1,100 added lines with the same bit for bit results. it also uses less memory (17 MB of native workspace at N = 45,000)
+
+i'll first put the code and all the checks in a repository and invite you there, so you can test it and we can talk it through. if it holds up, that repository becomes the package. i answered your questions about the worst case in the github thread
+
+Thanks again,
+
+Don
+
+
+________________________________________
+From: Toby Hocking <tdhock5 at gmail.com>
+Sent: Tuesday, 10 November 2026 16:53:29
+To: Dong Yin
+Cc: r-devel at r-project.org
+Subject: Re: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+
+Hi Don
+Thanks for the update, this sounds encouraging.
+Please send the patch, and I can try testing it.
+Does "2k LoCs" mean that you propose a diff which modifies 2000 lines
+of code? If so, that is probably difficult for R-core to
+review/accept/maintain, and I would suggest instead creating a package
+with your new code.
+Toby
+
+On Tue, Nov 10, 2026 at 11:43?AM Dong Yin <dy323 at cam.ac.uk> wrote:
+>
+> Hi Toby,
+>
+> Thanks for trying it
+>
+> 1. can you please modify the code so that quadratic workspace memory uses R memory allocation, so we can see quadratic memory usage in the atime figure?
+>
+> yes, i tried moving the big workspace (iv and v in loess_workspace) to R_alloc. atime then shows the quadratic memory, but peak RSS went up about 3 times in my runs, so i'd use that as a measurement build only, i guess? i will think about this a bit further
+>
+> 2. Is there a way of reducing that workspace memory from quadratic to linear?
+>
+> i think so. my understanding is that the workspace is quadratic because predict(se = TRUE) keeps the full vertex coefficient matrix, about (D + 1) x nf x nvmax doubles. we could keep a small record of each vertex's QR and rebuild the coefficients when they are needed? so the extra memory grows linearly with N; I added some iamges in:  https://github.com/tdhock/atime/issues/135
+>
+> so basically if i understood it correct R now fits a small local regression at each vertex and then stores all the coefficients in one table sized for max(200, N) vertices, although with the default settings only a handful exist (17 in your setup). the new code does the same fits in the same order, whjoch is keeps the coefficients of the vertices that really exist up to 64 MB, and for any it can't keep it saves only the few numbers needed to redo that fit later. Same behaviour in gradient checkpointing (https://arxiv.org/abs/1604.06174) and FlashAttention (https://arxiv.org/abs/2205.14135) which were what i was thinking about for this
+>
+> so with your setup (one predictor, span = 0.5, 80 points) the new version is 2 to 6 times faster than the Nov 6 patch at the same N, its native workspace at N = 45,000 is 28 MB instead of 20 GB (peak RSS 0.15 GB vs 4.7 GB), and it keeps going past the old limit (N = 200,000 in 0.15 s CPU). predictions and L were bit for bit identical in every case i compared (will relaly appreciate some double checking if possible thanks!)
+>
+> with 4 predictors my first version was up to 30% slower than the previous patch, but keeping the coefficients up to a fixed cap (64 MB) and rebuilding only the rest fixed that: over 60 settings with 1 to 4 predictors it's now faster in all of them (second figure). I am not sure whether the team would consider this tradeoff as worthy. when many x values are tied and the span is small, some neighbourhoods have zero radius (where R warns "zero-width neighborhood"), and in those cases it now gives exactly the same predictions, warnings and errors as current R.
+>
+> i tested that it also stays bit for bit identical with three BLAS libraries (reference, Accelerate, OpenBLAS). the costs are that for some medium sized fits it can use up to about 28 MB more than the current workspace, and the patch is bigger (it adds renamed copies of dqrdc and dqrsl that also save a few scalars about 2k LoCs which is another trade off). I've only tested on a Mac, so if the approach sounds ok i'll tidy it up and send the patch
+>
+> Thanks,
+> Don
+>
+>
+> ________________________________________
+> From: Toby Hocking <tdhock5 at gmail.com>
+> Sent: Monday, 09 November 2026 19:08:08
+> To: Dong Yin
+> Cc: r-devel at r-project.org
+> Subject: Re: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+>
+> Hi Don thanks for the update.
+>
+> I tried your patch and on my machine it is definitely faster, see
+> figures https://github.com/tdhock/atime/issues/135#issuecomment-6748730446
+>
+> It is faster for all N so as long as the increased memory usage is
+> acceptable, I would argue that somebody in R-core should accept the
+> patch.
+>
+> You wrote "what still grows with N^2 is the workspace, and that is
+> what limits N" but the emprical memory in the figure seems to be
+> linear? I guess the quadratic workspace memory is using fortran not R
+> memory allocation? Two ideas,
+>
+> 1. can you please modify the code so that quadratic workspace memory
+> uses R memory allocation, so we can see quadratic memory usage in the
+> atime figure?
+>
+> 2. Is there a way of reducing that workspace memory from quadratic to linear?
+>
+> Toby
+>
+> On Fri, Nov 6, 2026 at 5:30?PM Dong Yin <dy323 at cam.ac.uk> wrote:
+> >
+> > Hi Toby,
+> >
+> > Thanks for replying
+> >
+> > and good idea!
+> >
+> > the attached patch (against R-devel r90842) adds predict(..., cache = TRUE)
+> >
+> > on the span = 0.5 error, well, span was passed to predict(), which ignores it, so the fit still used 0.75. It needs to go to loess().
+> >
+> > also, with or without the patch, the existing workspace limit stops se = TRUE at about N = 46,300 for span = 0.5 (37,800 for 0.75), so N has to stay below that
+> >
+> > ares <- atime::atime(
+> > N = unique(as.integer(10^seq(1, log10(45000), by = 0.1))),
+> > setup = {
+> > set.seed(20261105)
+> > x <- runif(N, -3, 3)
+> > y <- sin(x) + rnorm(N, sd = 0.35)
+> > f <- loess(y ~ x, span = 0.5)
+> > nd <- data.frame(x = seq(min(x), max(x), length.out = 80L))
+> > },
+> > seconds.limit = 1,
+> > cache.FALSE = predict(f, nd, se = TRUE, cache = FALSE),
+> > cache.TRUE = predict(f, nd, se = TRUE, cache = TRUE))
+> >
+> > in my run cache = FALSE hit the 1 s limit at N = 10,000, and both gave bit for bit identical predictions
+> >
+> > the gap between the two memory curves is just the new table, which is now allocated with R_alloc as you suggested; the existing workspace still uses R_Calloc, which atime doesn't see
+> >
+> > i guess the old search is probably what made predict(se = TRUE) grow with N^2. with cache = TRUE the time roughly doubles when N doubles (0.09 s to 0.17 s CPU from N = 20,000 to 40,000), while cache = FALSE roughly quadruples (1.1 s to 4.4 s from 10,000 to 20,000), which fits the log-linear plot you got. what still grows with N^2 is the workspace, and that is what limits N
+> >
+> > Thanks,
+> > Don
+> >
+> >
+> > ________________________________________
+> > From: Toby Hocking <tdhock5 at gmail.com>
+> > Sent: Friday, 06 November 2026 19:06:03
+> > To: Dong Yin
+> > Cc: r-devel at r-project.org
+> > Subject: Re: loess: repeated neighbour list search in ehg191 makes predict(se = TRUE) slow
+> >
+> > also even better if the temporary arrays used the R memory allocation
+> > (not fortran), so then we can compare the memory usage (fortran
+> > allocations are not accounted for in the atime analysis)? is that
+> > possible? (I?m not great at hacking fortran but I know that could work
+> > with C)
+> >
+> > On Fri, Nov 6, 2026 at 2:03?PM Toby Hocking <tdhock5 at gmail.com> wrote:
+> > >
+> > > Thanks for the response Don. That is interesting.
+> > > I tried the span=0.5 but still error on my end.
+> > > Decreasing the atime seconds.limit from 1 to 0.1 gives an encouraging
+> > > result which looks log linear though
+> > > https://github.com/tdhock/atime/issues/135#issuecomment-6692949103
+> > >
+> > > The improvement would be more convincing if we could run the two
+> > > versions side by side in the same R session.
+> > > Can you make a patch with a new argument, like predict(cache=TRUE) for
+> > > your new version and FALSE for the old version? That way we could run
+> > > both in the same R session to more obviously see the improvements.
+> > >
+> > > On Thu, Nov 5, 2026 at 4:00?PM Dong Yin <dy323 at cam.ac.uk> wrote:
+> > > >
+> > > > Hi Toby and all,
+> > > >
+> > > > The list rejected my last message because of the images (again, sorry), so here it is again in text for everyone else. Toby, sorry for the duplicate.
+> > > >
+> > > > I don't think the error comes from the patch. Stock R 4.5.2 and the unpatched trunk sources stop with the same message, and the same number, at N = 39810:
+> > > >
+> > > > workspace required (2377642345) is too large probably because of setting 'se = TRUE'.
+> > > >
+> > > > With se = TRUE, loess needs a workspace of roughly (D + 1) x nf x N doubles, and with the default span = 0.75 that passes INT_MAX at about N = 37,800. Without the patch your atime run reaches the 1 second limit long before that, so it never gets there. That's also why I used span = 0.5 for my N = 40,000 timings.
+> > > >
+> > > > The patch itself only adds an integer array of nv x N, and nv is 9 here, so about 1.3 MB at N = 37,000.
+> > > >
+> > > > On the scaling: unpatched predict took 0.08, 1.1, 5.2 and 24.2 s for N = 5,000, 10,000, 20,000 and 40,000 at span = 0.5. So below 10,000 it is much steeper than quadratic for me too, then close to quadratic up to 40,000. I'm not sure yet where the extra at small N comes from.
+
+	[[alternative HTML version deleted]]
+
+
