@@ -2451,3 +2451,48 @@ On Tue, Nov 10, 2026 at 11:43?AM Dong Yin <dy323 at cam.ac.uk> wrote:
 	[[alternative HTML version deleted]]
 
 
+From p@kr|v|t@ky @end|ng |rom un@w@edu@@u  Thu Nov 12 04:40:42 2026
+From: p@kr|v|t@ky @end|ng |rom un@w@edu@@u (Pavel Krivitsky)
+Date: Thu, 12 Nov 2026 03:40:42 +0000
+Subject: [Rd] Why do getNamespaceVersion() and getNamespaceName() return
+ (uninformatively) named vectors?
+Message-ID: <0d181de8add1bb0c971073e310b42dc757fd366f.camel@unsw.edu.au>
+
+Dear All,
+
+Does anyone know if this is an omission or if there is a reason for doing it in this way that I am not seeing? These element names seem to be an artefact of how the information was extracted:
+```
+getNamespaceName("stats")
+#>    name
+#> "stats"
+getNamespaceVersion("stats")
+#> version
+#> "4.7.0"
+```
+This is in contrast to `packageVersion()`, which reads it from the `DESCRIPTION` file but returns an unnamed vector, which leads to unexpected behaviour:
+```
+as.package_version(getNamespaceVersion("stats")) == packageVersion("stats")
+#> [1] TRUE
+identical(as.package_version(getNamespaceVersion("stats")), packageVersion("stats"))
+#> [1] FALSE
+identical(as.package_version(unname(getNamespaceVersion("stats"))), packageVersion("stats"))
+#> [1] TRUE
+```
+
+The attached patch uses `[[]]` rather than `[]` to extract namespace name and version, which removes the names. It doesn't seem to break anything, but, again, there may be another reason.
+
+                                Best Regards,
+                                Pavel
+
+
+This email and any files transmitted with it may contain confidential information. If you believe you have received this email or any of its contents in error, please notify me immediately by return email and destroy this email. Do not use, disseminate, forward, print or copy any contents of an email received in error.
+
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: unname_getNamespace.patch
+Type: text/x-patch
+Size: 764 bytes
+Desc: unname_getNamespace.patch
+URL: <https://stat.ethz.ch/pipermail/r-devel/attachments/20261112/eee323fd/attachment.bin>
+
