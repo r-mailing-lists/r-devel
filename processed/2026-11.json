@@ -426,6 +426,25 @@
       "thread_depth": 0,
       "month": "2026-11",
       "source_url": "https://stat.ethz.ch/pipermail/r-devel/2026-November/084755.html"
+    },
+    {
+      "id": "msg-18933858444d",
+      "message_id": "<27383.13250.117819.823336@stat.math.ethz.ch>",
+      "from_name": "Martin Maechler",
+      "from_email_hash": "a92f4a07d4e3cad5fba985e30db2b0fff598d5ddfbadbb2e91ffe91636400c62",
+      "date": "2026-11-13T15:58:58Z",
+      "subject": "[Rd] Why do getNamespaceVersion() and getNamespaceName() return (uninformatively) named vectors?",
+      "subject_clean": "Why do getNamespaceVersion() and getNamespaceName() return (uninformatively) named vectors?",
+      "in_reply_to": "<fake-VM-id.a756c6cdceae77215122789edad66188@talos.iv>",
+      "references": [
+        "<0d181de8add1bb0c971073e310b42dc757fd366f.camel@unsw.edu.au>"
+      ],
+      "body_plain": ">>>>> Pavel Krivitsky via R-devel \n>>>>>     on Thu, 12 Nov 2026 03:40:42 +0000 writes:\n\n    > Dear All,\n    > Does anyone know if this is an omission or if there is a reason for doing it in this way that I am not seeing? These element names seem to be an artefact of how the information was extracted:\n    > ```\n    > getNamespaceName(\"stats\")\n    > #>    name\n    > #> \"stats\"\n    > getNamespaceVersion(\"stats\")\n    > #> version\n    > #> \"4.7.0\"\n    > ```\n    > This is in contrast to `packageVersion()`, which reads it from the `DESCRIPTION` file but returns an unnamed vector, which leads to unexpected behaviour:\n    > ```\n    > as.package_version(getNamespaceVersion(\"stats\")) == packageVersion(\"stats\")\n    > #> [1] TRUE\n    > identical(as.package_version(getNamespaceVersion(\"stats\")), packageVersion(\"stats\"))\n    > #> [1] FALSE\n    > identical(as.package_version(unname(getNamespaceVersion(\"stats\"))), packageVersion(\"stats\"))\n    > #> [1] TRUE\n    > ```\n\n    > The attached patch uses `[[]]` rather than `[]` to extract\n    > namespace name and version, which removes the names. It\n    > doesn't seem to break anything, but, again, there may be\n    > another reason. \n\nThank you, Pavel,\n\nI believe it is a very valid question, and I see that these,\n(single bracket) [-indexing for the  getNamespaceVersion() and\ngetNamespaceName() utilities have been there from the very\nbeginning when Luke Tierney added namespace support for most\npackages,  svn log  showing\n\n----------------------------------------------------------\nr23392 | luke | 2003-02-27 19:02:45 +0100\n\nAdded name space support for packages that do not use methods.\n----------------------------------------------------------\n\nIndeed, the \"counterpart\" functionality for packages, provided\nvia packageDescription() has been using  [[-indexing  on\npurpose, for these.\n\nI'm guessing that these two functions just being simple\nconvenience accessors,  Luke Tierney rather emphasized on all\nthe other implications and improved semantic namespaces brought\nto R, (and `[..]` has been more \"natural\" and less typing...).\n\nI even vaguely remember that in these early years of R, most R\nusers and developers were unaware of the fine distinction of `[`\nand `[[` for _atomic_ vectors  ... at least I think I myself was\n(not much paying attention to it).\n\nConsequently, I do think your proposed mini-patch makes sense\nreally, and should be applied.\n\nI'll do this in my \"working version\" of R-devel for now,\npreparing to commit unless I see bad effects or we get\nopposition to such a change here.\n\n\nMartin\n\n \n    > Best Regards,\n    > Pavel\n\n\n\n    > Index: src/library/base/R/namespace.R\n    > ===================================================================\n    > --- src/library/base/R/namespace.R\t(revision 90876)\n    > +++ src/library/base/R/namespace.R\t(working copy)\n    > @@ -51,7 +51,7 @@\n    > getNamespaceName <- function(ns) {\n    > ns <- asNamespace(ns)\n    > if (isBaseNamespace(ns)) \"base\"\n    > -    else .getNamespaceInfo(ns, \"spec\")[\"name\"]\n    > +    else .getNamespaceInfo(ns, \"spec\")[[\"name\"]]\n    > }\n \n    > getNamespaceVersion <- function(ns) {\n    > @@ -58,7 +58,7 @@\n    > ns <- asNamespace(ns)\n    > if (isBaseNamespace(ns))\n    > c(version = paste(R.version$major, R.version$minor, sep = \".\"))\n    > -    else .getNamespaceInfo(ns, \"spec\")[\"version\"]\n    > +    else .getNamespaceInfo(ns, \"spec\")[[\"version\"]]\n    > }\n \n    > getNamespaceExports <- function(ns) {",
+      "body_snippet": ">>>>> Pavel Krivitsky via R-devel \n>>>>>     on Thu, 12 Nov 2026 03:40:42 +0000 writes:\n\n    > Dear All,\n    > Does anyone know if this is an omission or if there is a reason for doing it in this way ",
+      "thread_id": "thread-25a8894b5f27",
+      "thread_depth": 1,
+      "month": "2026-11",
+      "source_url": "https://stat.ethz.ch/pipermail/r-devel/2026-November/084756.html"
     }
   ],
   "threads": [
@@ -482,12 +501,13 @@
     {
       "id": "thread-25a8894b5f27",
       "subject": "Why do getNamespaceVersion() and getNamespaceName() return (uninformatively) named vectors?",
-      "message_count": 1,
+      "message_count": 2,
       "participants": [
+        "Martin Maechler",
         "Pavel Krivitsky"
       ],
       "started": "2026-11-12T03:40:42Z",
-      "last_reply": "2026-11-12T03:40:42Z",
+      "last_reply": "2026-11-13T15:58:58Z",
       "root_message_id": "msg-25a8894b5f27"
     }
   ]
