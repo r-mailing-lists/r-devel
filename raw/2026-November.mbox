@@ -2601,3 +2601,102 @@ Martin
     > getNamespaceExports <- function(ns) {
 
 
+From DMuenz1 @end|ng |rom ITS@JNJ@com  Mon Nov 16 23:42:16 2026
+From: DMuenz1 @end|ng |rom ITS@JNJ@com (Muenz, Daniel [VISUS])
+Date: Mon, 16 Nov 2026 22:42:16 +0000
+Subject: [Rd] Proposal to add cat0() to base R
+Message-ID: <CH8PR07MB1144002F8CE3BEFE768A252DDA77C2@CH8PR07MB11440.namprd07.prod.outlook.com>
+
+Hi all,
+
+Would there be interest in adding a cat0() function to base R, analogous to paste0()? For example, we could write
+
+    cat0("x = ", x, "\n")
+
+instead of
+
+    cat("x = ", x, "\n", sep = "")
+
+The former is more concise, and paste0() has already established the convention that the 0 suffix denotes concatenation with no separator.
+
+Several CRAN packages already define their own cat0() with essentially this meaning. So adding it to base R could improve consistency across the R ecosystem and reduce the need for packages to provide their own implementations.
+
+Thoughts?
+
+Best,
+Daniel
+
+
+From ch@r|e@-||@te@+rd @end|ng |rom p|e@@y@org  Tue Nov 17 01:25:17 2026
+From: ch@r|e@-||@te@+rd @end|ng |rom p|e@@y@org (Charles Plessy)
+Date: Tue, 17 Nov 2026 09:25:17 +0900
+Subject: [Rd] Reporting package failures caused by missing NA payload
+ propagation
+Message-ID: <avue7d-ozyD9Yvfr@kumo.plessy.net>
+
+Dear R-devel,
+
+I am working on the Debian packaging of R and CRAN/Bioconductor packages. As
+part of Debian's continuous integration and archive maintenance processes, we
+routinely build and test these packages across all Debian architectures,
+including riscv64.
+
+As discussed previously on this list, RISC-V floating-point implementations
+commonly canonicalize NaNs, so NA_real_ payloads are often not preserved
+through arithmetic [1]. As a consequence, computations such as `NA_real_ + 0`
+may yield NaN rather than NA.
+
+I understand that:
+
+ - this behaviour is permitted by the RISC-V floating-point specification [1];
+
+ - R documentation already warns that NA versus NaN outcomes after computation
+   are platform-dependent [2];
+
+ - R Core does not intend to change R to preserve NA payloads on such platforms [3].
+
+To be clear, I am not asking whether R itself should change.
+
+In Debian we run package test suites on riscv64 and periodically encounter
+failures caused by assumptions about NA payload propagation. For example,
+recent failures in data.table were ultimately traced to this issue [4], and the
+adopted fix was to gate affected tests on observed behaviour rather than on
+architecture identity [5].
+
+More importantly, the same underlying assumption may affect package behaviour
+at runtime, not only tests. At the same time, Debian's automated testing
+infrastructure effectively acts as a detector for such assumptions and
+generates a stream of test failures and bug reports that package maintainers
+can use, or choose to ignore.
+
+>From the perspective of the R ecosystem, how should these signals be
+interpreted?
+
+Should package authors generally be encouraged to make code and tests robust to
+the absence of NA payload propagation when practical, or should platforms
+without this property be regarded as outside the scope of normal portability
+expectations?
+
+Related to this, what role should distributions such as Debian play when we
+encounter these issues? Is reporting such failures upstream generally useful as
+information about portability assumptions in packages, even when the platform
+behaviour itself is expected and documented? Or does this mostly generate noise
+unless there is a realistic expectation that support for such platforms will be
+added?
+
+Many thanks for your time. I look forward to hearing the community's views on this.
+
+Charles Plessy
+
+[1] https://docs.riscv.org/reference/isa/v20260120/unpriv/f-st-ext.html#20-1-3-nan-generation-and-propagation
+[2] https://stat.ethz.ch/R-manual/R-devel/library/base/html/NA.html
+[3] https://bugs.r-project.org/show_bug.cgi?id=18416
+[4] https://github.com/Rdatatable/data.table/issues/7695
+[5] https://github.com/Rdatatable/data.table/pull/7702
+
+-- 
+Charles Plessy
+http://charles.plessy.org
+Nagahama, Yomitan, Okinawa, Japan
+
+
