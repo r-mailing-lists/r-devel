@@ -2700,3 +2700,89 @@ http://charles.plessy.org
 Nagahama, Yomitan, Okinawa, Japan
 
 
+From Andre@G||||bert @end|ng |rom chu-rouen@|r  Fri Nov 20 00:37:38 2026
+From: Andre@G||||bert @end|ng |rom chu-rouen@|r (GILLIBERT, Andre)
+Date: Thu, 19 Nov 2026 23:37:38 +0000
+Subject: [Rd] Interested in patches for Rgui ?
+Message-ID: <810af581529046df8dda50e0162c3fed@chu-rouen.fr>
+
+Dear developers,
+
+
+Being a faithful user of Rgui, I recently started at improving it according to my own needs, that may actually be shared by others.
+
+If you are interested, I could divide it in several patches for different features.
+
+
+My pet peeve is the behavior of [CTRL+R] that copy-paste in the console, running code even after errors are met. This can be somehow fixed by putting braces around code, but this ought to be the default behavior of [CTRL+R]. For large sections of code, [CTRL+R] is also very slow, refreshing the output at each character of code copied. Line numbers of the original script file are also lost in the process.
+
+
+Currently, I improved Rgui with the following additions:
+
+1) Stopping the overwrite of the clipboard by [CTRL+R] (bypassing the clipboard entirely)
+
+2) Adding a new [CTRL+E] "Source selection" command that is more powerful than [CTRL+R] (in my opinion).
+
+This command copies the selection (thanks to a new utils::getEditorSelection() function) to a CHARSXP, create a text connection and call source() on that connection.
+
+It also keeps the line numbers and file name of the script file opened in the Rgui editor.
+
+
+3) Adding a new [CTRL+G] "Go to line number", very useful to find an error in a new function.
+
+This feature works well with [CTRL+E] because line numbers are remembered properly.
+
+
+4) Adding a number of Windows-specific helper functions in utils that were useful to implement getEditorSelection() and may help other extensions.
+
+utils::getParentWindow(hwnd), a wrapper around the Win32 API GetParent()
+
+utils::getWindowClassName(hwnd), a wrapper around the Win32 API GetClassName()
+
+utils::getWindowText(hwnd), a wrapper around the Win32 API GetWindowText()
+
+utils::getFocusWindow(hwnd), a wrapper around the Win32 API GetFocus()
+
+I also added a few functions to work with Rich Edit controls:
+
+utils::getRichEditSelection(hwnd)
+
+utils::getRichEditCurrentLine(hwnd)
+
+utils::getRichEditText(hwnd, start, end)
+
+utils::getRichEditSelectionRange(hwnd)
+
+utils::getRichEditSelection(hwnd)
+
+utils::getRichEditLineFromChar(hwnd,pos)
+
+
+Therefore, overall the [CTRL+E] patch is somewhat large.
+
+
+5) Introducing the possibility of adding keyboard shortcuts to new commands added by utils::winMenuAddItem.
+
+
+Although [CTRL+E] is useful, commands are not written anymore in the R history. This may be a useful when selecting very large sections of code but not appropriate for small chunks.
+
+
+I performed a few "improvements" of [CTRL+R] and [CTRL+V] to avoid execution of commands after error, but that is not entirely satisfactory at the current time.
+
+Since this is a major user-level change, I would probably add it as a customizable GUI option or change the keyboard shortcut.
+
+
+Are you interested in some of these modifications?
+
+If yes, which ones?
+
+
+--
+
+Sincerely
+
+Andr? GILLIBERT
+
+	[[alternative HTML version deleted]]
+
+
